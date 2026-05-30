@@ -1,0 +1,31 @@
+[Unit]
+Description=nothing-to-do task list server
+Documentation=https://github.com/yourname/nothing-to-do
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+
+# Adjust this to wherever you deployed the app
+WorkingDirectory=/opt/nothing-to-do
+
+# --experimental-sqlite enables the built-in SQLite module on Node 22 LTS.
+# On Node 23.4+ it is accepted but has no effect.
+ExecStart=/usr/bin/node --experimental-sqlite src/server.js
+
+Restart=on-failure
+RestartSec=5s
+
+# Load environment variables from .env
+EnvironmentFile=/opt/nothing-to-do/.env
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/nothing-to-do/data
+
+[Install]
+WantedBy=multi-user.target

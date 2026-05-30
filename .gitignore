@@ -1,0 +1,24 @@
+node_modules/
+
+# SQLite database and WAL files — back these up, but don't commit them
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Environment secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
