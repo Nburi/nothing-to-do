@@ -52,6 +52,9 @@ sudo apt-get install -y nodejs
 ```bash
 sudo mkdir -p /opt/nothing-to-do
 sudo chown $USER: /opt/nothing-to-do
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin ntd
+sudo mkdir -p /opt/nothing-to-do/data
+sudo chown -R ntd:ntd /opt/nothing-to-do/data
 git clone https://github.com/yourname/nothing-to-do /opt/nothing-to-do
 cd /opt/nothing-to-do
 npm install --omit=dev

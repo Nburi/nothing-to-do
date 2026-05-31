@@ -5,8 +5,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=nobody
-Group=nogroup
+User=ntd
+Group=ntd
 
 # Adjust this to wherever you deployed the app
 WorkingDirectory=/opt/nothing-to-do
