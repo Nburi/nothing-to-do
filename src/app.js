@@ -22,7 +22,11 @@ async function buildApp(opts = {}) {
     fastifyOpts = {}
   } = opts
 
-  const fastify = Fastify(fastifyOpts)
+  // trustProxy: true is required when the app runs behind nginx/Caddy/any reverse proxy.
+  // Without it, request.ip is always 127.0.0.1, so the rate limiter treats ALL users
+  // as one client — one person's failed logins lock out the entire server.
+  // fastifyOpts can override this for tests or special deployments.
+  const fastify = Fastify({ trustProxy: true, ...fastifyOpts })
   const db = initDb(dbPath)
 
   fastify.decorate('db', db)
@@ -46,7 +50,10 @@ async function buildApp(opts = {}) {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in ms
     },
-    store: new SqliteSessionStore(db)
+    store: new SqliteSessionStore(db),
+    // Don't persist sessions until they actually contain data (i.e. after login).
+    // Prevents a row being written to the sessions table for every anonymous page load.
+    saveUninitialized: false
   })
 
   // Serve the public/ directory at /
