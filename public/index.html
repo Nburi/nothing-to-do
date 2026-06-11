@@ -74,33 +74,118 @@
     </header>
 
     <main class="main-content">
-      <!-- Quick-add form -->
-      <form id="quick-add" class="quick-add">
+
+      <!-- Desktop: single quick-add above all columns -->
+      <form id="quick-add" class="quick-add desktop-only">
         <div class="quick-add-main">
-          <input type="text" id="qa-name" placeholder="Add a task…" autocomplete="off" maxlength="256">
+          <input type="text" id="qa-name" placeholder="Add to Inbox…" autocomplete="off" maxlength="256">
           <button type="submit" class="btn-add">Add</button>
-        </div>
-        <div id="qa-details" class="quick-add-details hidden">
-          <textarea id="qa-desc" placeholder="Description (optional)" rows="2" maxlength="4096"></textarea>
-          <div class="quick-add-meta">
-            <input type="text" id="qa-tags" placeholder="Tags: work, urgent…" maxlength="256">
-            <input type="datetime-local" id="qa-deadline">
-          </div>
         </div>
       </form>
 
-      <!-- Tag filters (shown only when tasks have tags) -->
-      <div id="tag-filters" class="tag-filters hidden"></div>
+      <!-- Desktop 3-column grid -->
+      <div class="columns-grid desktop-only" id="columns-grid">
+        <!-- Inbox column -->
+        <div class="column" id="col-inbox" data-list="inbox">
+          <div class="col-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+            Inbox
+          </div>
+          <div class="task-list" id="list-inbox"></div>
+        </div>
 
-      <!-- Active task list -->
-      <div id="task-list" class="task-list"></div>
+        <!-- To Dos column -->
+        <div class="column" id="col-todos" data-list="todos">
+          <div class="col-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            To Dos
+          </div>
+          <div class="today-section hidden" id="today-todos">
+            <div class="section-label">Today</div>
+            <div class="today-list" id="today-list-todos"></div>
+          </div>
+          <div class="task-list" id="list-todos"></div>
+        </div>
 
-      <!-- Completed-today section -->
-      <div id="done-section" class="hidden">
-        <div class="section-label">Done today</div>
-        <div id="done-list" class="task-list"></div>
+        <!-- Tasks column -->
+        <div class="column" id="col-tasks" data-list="tasks">
+          <div class="col-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Tasks
+          </div>
+          <div class="today-section hidden" id="today-tasks">
+            <div class="section-label">Today</div>
+            <div class="today-list" id="today-list-tasks"></div>
+          </div>
+          <div class="task-list" id="list-tasks"></div>
+        </div>
+      </div>
+
+      <!-- Mobile panels -->
+      <div class="mobile-only" id="mobile-panels">
+
+        <div class="mobile-panel active" data-list="inbox" id="panel-inbox">
+          <form class="quick-add mobile-quick-add" data-list="inbox">
+            <div class="quick-add-main">
+              <input type="text" class="mob-qa-name" placeholder="Add to Inbox…" autocomplete="off" maxlength="256">
+              <button type="submit" class="btn-add">Add</button>
+            </div>
+          </form>
+          <div class="task-list" id="mob-list-inbox"></div>
+        </div>
+
+        <div class="mobile-panel" data-list="todos" id="panel-todos">
+          <form class="quick-add mobile-quick-add" data-list="todos">
+            <div class="quick-add-main">
+              <input type="text" class="mob-qa-name" placeholder="Add to To Dos…" autocomplete="off" maxlength="256">
+              <button type="submit" class="btn-add">Add</button>
+            </div>
+          </form>
+          <div class="task-list" id="mob-list-todos"></div>
+        </div>
+
+        <div class="mobile-panel" data-list="tasks" id="panel-tasks">
+          <form class="quick-add mobile-quick-add" data-list="tasks">
+            <div class="quick-add-main">
+              <input type="text" class="mob-qa-name" placeholder="Add to Tasks…" autocomplete="off" maxlength="256">
+              <button type="submit" class="btn-add">Add</button>
+            </div>
+          </form>
+          <div class="task-list" id="mob-list-tasks"></div>
+        </div>
+
+        <div class="mobile-panel" data-list="all" id="panel-all">
+          <form class="quick-add mobile-quick-add" data-list="inbox">
+            <div class="quick-add-main">
+              <input type="text" class="mob-qa-name" placeholder="Add to Inbox…" autocomplete="off" maxlength="256">
+              <button type="submit" class="btn-add">Add</button>
+            </div>
+          </form>
+          <div class="task-list" id="mob-list-all"></div>
+        </div>
+
       </div>
     </main>
+
+    <!-- Mobile bottom nav -->
+    <nav class="mobile-nav mobile-only" id="mobile-nav">
+      <button class="mobile-nav-tab active" data-panel="inbox" aria-label="Inbox">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        <span>Inbox</span>
+      </button>
+      <button class="mobile-nav-tab" data-panel="todos" aria-label="To Dos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span>To Dos</span>
+      </button>
+      <button class="mobile-nav-tab" data-panel="tasks" aria-label="Tasks">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>Tasks</span>
+      </button>
+      <button class="mobile-nav-tab" data-panel="all" aria-label="All">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>All</span>
+      </button>
+    </nav>
   </div>
 
   <!-- ── Settings view ──────────────────────────────────────────────────── -->
@@ -120,6 +205,23 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Task context menu ──────────────────────────────────────────────── -->
+  <div id="task-menu" class="task-menu hidden" role="menu">
+    <button id="task-menu-edit" role="menuitem">Edit</button>
+    <button id="task-menu-delete" role="menuitem">Delete</button>
+  </div>
+
+  <!-- ── Mobile deadline picker ─────────────────────────────────────────── -->
+  <div id="deadline-picker" class="deadline-picker hidden">
+    <label for="deadline-picker-input">Deadline</label>
+    <input type="date" id="deadline-picker-input">
+    <div class="deadline-picker-actions">
+      <button id="deadline-picker-clear" class="btn-secondary">Clear</button>
+      <button id="deadline-picker-set" class="btn-primary">Set</button>
+    </div>
+  </div>
+  <div id="deadline-picker-overlay" class="deadline-picker-overlay hidden"></div>
 
   <!-- ── Edit task modal ────────────────────────────────────────────────── -->
   <div id="edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Edit task">
@@ -151,6 +253,6 @@
 
 </div><!-- #app -->
 
-<script src="/app.js?v=2"></script>
+<script src="/app.js?v=3"></script>
 </body>
 </html>

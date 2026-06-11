@@ -1,7 +1,6 @@
 'use strict'
 
 // ── Tag color palette ─────────────────────────────────────────────────────────
-// Each entry is [background, text]. Color is picked deterministically from tag name.
 const TAG_PALETTE = [
   ['#dbeafe', '#1e40af'],
   ['#dcfce7', '#166534'],
@@ -45,15 +44,15 @@ const api = {
 const state = {
   user:      null,   // { id, username }
   tasks:     [],     // full task list from server
-  activeTag: null,   // string tag currently filtering, or null
   editingId: null,   // task id currently in the edit modal
+  activeTab: 'inbox', // mobile active tab
 }
 
 // ── View helpers ──────────────────────────────────────────────────────────────
-function show(id)     { document.getElementById(id)?.classList.remove('hidden') }
-function hide(id)     { document.getElementById(id)?.classList.add('hidden') }
-function el(id)       { return document.getElementById(id) }
-function setText(id, v){ const e = el(id); if (e) e.textContent = v }
+function show(id)      { document.getElementById(id)?.classList.remove('hidden') }
+function hide(id)      { document.getElementById(id)?.classList.add('hidden') }
+function el(id)        { return document.getElementById(id) }
+function setText(id, v) { const e = el(id); if (e) e.textContent = v }
 
 function showError(id, msg) {
   const e = el(id)
@@ -99,30 +98,63 @@ function deadlineInfo(deadline) {
   return { text: d.toLocaleDateString([], { month: 'short', day: 'numeric', year: yr }), cls: 'deadline-future' }
 }
 
+// ── Sort tasks for display ────────────────────────────────────────────────────
+function sortTasksForColumn(tasks) {
+  const fourDaysMs = Date.now() + 4 * 86400000
+
+  function priority(t) {
+    if (t.is_important) return 0
+    const dl = t.deadline ? new Date(t.deadline).getTime() : null
+    if (dl !== null && dl <= fourDaysMs) return 1
+    return 2
+  }
+
+  return [...tasks].sort((a, b) => {
+    const pa = priority(a), pb = priority(b)
+    if (pa !== pb) return pa - pb
+    return a.created_at - b.created_at
+  })
+}
+
 // ── Task card rendering ───────────────────────────────────────────────────────
-function renderTaskCard(task) {
+function renderTaskCard(task, context = 'desktop') {
   const div = document.createElement('div')
-  div.className = 'task-card' + (task.completed_at ? ' is-done' : '')
+  div.className = 'task-card'
+    + (task.completed_at  ? ' is-done'      : '')
+    + (task.is_important  ? ' is-important' : '')
   div.dataset.id = task.id
 
-  // Check button
+  // Swipe hint overlay (mobile)
+  if (context === 'mobile') {
+    const hint = document.createElement('div')
+    hint.className = 'swipe-hint'
+    div.appendChild(hint)
+  }
+
+  // Desktop: draggable
+  if (context === 'desktop') {
+    div.draggable = true
+    div.addEventListener('dragstart', onDragStart)
+    div.addEventListener('dragend',   onDragEnd)
+  }
+
+  // Check button → mark done (stops propagation so body click doesn't fire)
   const check = document.createElement('button')
   check.className = 'btn-check'
   check.type = 'button'
   check.setAttribute('aria-label', task.completed_at ? 'Mark active' : 'Mark done')
   check.innerHTML = task.completed_at ? '✓' : ''
-  check.addEventListener('click', () => toggleDone(task.id))
+  check.addEventListener('click', (e) => { e.stopPropagation(); toggleDone(task.id) })
   div.appendChild(check)
 
-  // Body
+  // Body — click → toggle important
   const body = document.createElement('div')
   body.className = 'task-body'
+  body.addEventListener('click', () => toggleImportant(task.id))
 
   const name = document.createElement('div')
   name.className = 'task-name'
   name.textContent = task.name
-  name.title = 'Click to edit'
-  name.addEventListener('click', () => openEditModal(task.id))
   body.appendChild(name)
 
   if (task.description) {
@@ -133,8 +165,8 @@ function renderTaskCard(task) {
   }
 
   // Tags + deadline row
-  const hasTags     = task.tags && task.tags.length > 0
-  const dlInfo      = deadlineInfo(task.deadline)
+  const hasTags = task.tags && task.tags.length > 0
+  const dlInfo  = deadlineInfo(task.deadline)
   if (hasTags || dlInfo) {
     const meta = document.createElement('div')
     meta.className = 'task-meta'
@@ -146,7 +178,6 @@ function renderTaskCard(task) {
       pill.style.background = bg
       pill.style.color = color
       pill.textContent = tag
-      pill.addEventListener('click', (e) => { e.stopPropagation(); filterByTag(tag) })
       meta.appendChild(pill)
     }
 
@@ -160,88 +191,302 @@ function renderTaskCard(task) {
   }
   div.appendChild(body)
 
-  // Action buttons (edit via name click; delete here)
+  // 3-dots action button
   const actions = document.createElement('div')
   actions.className = 'task-actions'
 
-  const del = document.createElement('button')
-  del.className = 'btn-task-action btn-task-delete'
-  del.type = 'button'
-  del.setAttribute('aria-label', 'Delete task')
-  del.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`
-  del.addEventListener('click', () => deleteTask(task.id))
-  actions.appendChild(del)
+  const dots = document.createElement('button')
+  dots.className = 'btn-dots'
+  dots.type = 'button'
+  dots.setAttribute('aria-label', 'Task actions')
+  dots.textContent = '···'
+  dots.addEventListener('click', (e) => {
+    e.stopPropagation()
+    openTaskMenu(task, dots)
+  })
+  actions.appendChild(dots)
   div.appendChild(actions)
+
+  // Mobile swipe
+  if (context === 'mobile') {
+    attachSwipeHandlers(div, task)
+  }
 
   return div
 }
 
-// ── Tag filter bar ────────────────────────────────────────────────────────────
-function renderTagFilters(tasks) {
-  const allTags = [...new Set(tasks.flatMap(t => t.tags ?? []))].sort()
-  const container = el('tag-filters')
+// ── Task context menu ─────────────────────────────────────────────────────────
+let _menuTaskId = null
 
-  if (allTags.length === 0) {
-    container.classList.add('hidden')
+function openTaskMenu(task, anchor) {
+  closeTaskMenu()
+  _menuTaskId = task.id
+
+  const menu = el('task-menu')
+  menu.classList.remove('hidden')
+
+  // Wire up buttons for this task
+  el('task-menu-edit').onclick = () => { closeTaskMenu(); openEditModal(task.id) }
+  el('task-menu-delete').onclick = () => { closeTaskMenu(); deleteTask(task.id) }
+
+  // Position below the anchor button
+  const rect = anchor.getBoundingClientRect()
+  const menuW = 140
+  let left = rect.right - menuW
+  let top  = rect.bottom + 4
+
+  // Keep within viewport
+  if (left < 8) left = 8
+  if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8
+
+  menu.style.top  = top + 'px'
+  menu.style.left = left + 'px'
+}
+
+function closeTaskMenu() {
+  el('task-menu')?.classList.add('hidden')
+  _menuTaskId = null
+}
+
+// ── Desktop drag-and-drop ─────────────────────────────────────────────────────
+let _dragTaskId = null
+
+function onDragStart(e) {
+  _dragTaskId = Number(e.currentTarget.dataset.id)
+  e.currentTarget.classList.add('is-dragging')
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', String(_dragTaskId))
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('is-dragging')
+  _dragTaskId = null
+}
+
+function initDragAndDrop() {
+  document.querySelectorAll('.column').forEach(col => {
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      col.classList.add('drag-over')
+    })
+    col.addEventListener('dragleave', (e) => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over')
+    })
+    col.addEventListener('drop', async (e) => {
+      e.preventDefault()
+      col.classList.remove('drag-over')
+      const taskId = Number(e.dataTransfer.getData('text/plain'))
+      const newList = col.dataset.list
+      if (taskId && newList) await moveToList(taskId, newList)
+    })
+  })
+}
+
+// ── Mobile swipe gestures ─────────────────────────────────────────────────────
+function attachSwipeHandlers(cardEl, task) {
+  let startX = 0, startY = 0
+
+  cardEl.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX
+    startY = e.touches[0].clientY
+  }, { passive: true })
+
+  cardEl.addEventListener('touchmove', (e) => {
+    const dx = e.touches[0].clientX - startX
+    const dy = e.touches[0].clientY - startY
+    if (Math.abs(dy) > Math.abs(dx)) return
+    if (Math.abs(dx) < 20) { cardEl.classList.remove('swipe-right', 'swipe-left'); return }
+
+    const hint = cardEl.querySelector('.swipe-hint')
+    if (dx > 0) {
+      cardEl.classList.add('swipe-right')
+      cardEl.classList.remove('swipe-left')
+      if (hint) hint.textContent = task.list === 'inbox' ? '→ To Dos' : '→ Today'
+    } else {
+      cardEl.classList.add('swipe-left')
+      cardEl.classList.remove('swipe-right')
+      if (hint) hint.textContent = task.list === 'inbox' ? '← Tasks' : '← Deadline'
+    }
+  }, { passive: true })
+
+  cardEl.addEventListener('touchend', async (e) => {
+    cardEl.classList.remove('swipe-right', 'swipe-left')
+    const dx = e.changedTouches[0].clientX - startX
+    const dy = e.changedTouches[0].clientY - startY
+    if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 60) return
+
+    if (task.list === 'inbox') {
+      if (dx > 0) await moveToList(task.id, 'todos')
+      else        await moveToList(task.id, 'tasks')
+    } else {
+      if (dx > 0) await toggleToday(task.id)
+      else        openDeadlinePicker(task)
+    }
+  }, { passive: true })
+}
+
+// ── Mobile nav tabs ───────────────────────────────────────────────────────────
+function initMobileNav() {
+  document.querySelectorAll('.mobile-nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const panel = tab.dataset.panel
+      state.activeTab = panel
+
+      document.querySelectorAll('.mobile-nav-tab').forEach(t => t.classList.remove('active'))
+      tab.classList.add('active')
+
+      document.querySelectorAll('.mobile-panel').forEach(p => p.classList.remove('active'))
+      el(`panel-${panel}`)?.classList.add('active')
+    })
+  })
+}
+
+// ── Mobile quick-add ──────────────────────────────────────────────────────────
+function initMobileQuickAdd() {
+  document.querySelectorAll('.mobile-quick-add').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const input = form.querySelector('.mob-qa-name')
+      const name  = input.value.trim()
+      const list  = form.dataset.list
+      if (!name) return
+      const btn = form.querySelector('.btn-add')
+      btn.disabled = true
+      try {
+        await createTask({ name, list })
+        input.value = ''
+      } catch (err) {
+        alert(err.message ?? 'Failed to create task')
+      } finally {
+        btn.disabled = false
+      }
+    })
+  })
+}
+
+// ── Mobile deadline picker ────────────────────────────────────────────────────
+let _deadlineTaskId = null
+
+function openDeadlinePicker(task) {
+  _deadlineTaskId = task.id
+  const input = el('deadline-picker-input')
+  input.value = task.deadline ? task.deadline.slice(0, 10) : ''
+  show('deadline-picker-overlay')
+  show('deadline-picker')
+  input.focus()
+}
+
+function closeDeadlinePicker() {
+  hide('deadline-picker')
+  hide('deadline-picker-overlay')
+  _deadlineTaskId = null
+}
+
+function initDeadlinePicker() {
+  el('deadline-picker-set').addEventListener('click', async () => {
+    if (!_deadlineTaskId) return
+    const val = el('deadline-picker-input').value
+    await updateTask(_deadlineTaskId, { deadline: val || null })
+    closeDeadlinePicker()
+  })
+
+  el('deadline-picker-clear').addEventListener('click', async () => {
+    if (!_deadlineTaskId) return
+    await updateTask(_deadlineTaskId, { deadline: null })
+    closeDeadlinePicker()
+  })
+
+  el('deadline-picker-overlay').addEventListener('click', closeDeadlinePicker)
+}
+
+// ── Column & panel rendering ──────────────────────────────────────────────────
+function renderColumn(listName, allActive, allDone) {
+  const active = allActive.filter(t => t.list === listName)
+  const done   = allDone.filter(t => t.list === listName)
+
+  if (listName === 'todos' || listName === 'tasks') {
+    const todaySection = el(`today-${listName}`)
+    const todayListEl  = el(`today-list-${listName}`)
+    const todayItems   = active.filter(t => t.is_today)
+    todayListEl.innerHTML = ''
+    sortTasksForColumn(todayItems).forEach(t => todayListEl.appendChild(renderTaskCard(t, 'desktop')))
+    todaySection.classList.toggle('hidden', todayItems.length === 0)
+  }
+
+  const listEl  = el(`list-${listName}`)
+  listEl.innerHTML = ''
+
+  const mainItems = listName === 'inbox'
+    ? active
+    : active.filter(t => !t.is_today)
+
+  const sorted = sortTasksForColumn(mainItems)
+
+  if (sorted.length === 0 && done.length === 0) {
+    const empty = document.createElement('div')
+    empty.className = 'empty-state'
+    empty.innerHTML = `<div class="empty-state-title">Nothing here.</div><div class="empty-state-sub">Add a task above.</div>`
+    listEl.appendChild(empty)
+  } else {
+    sorted.forEach(t => listEl.appendChild(renderTaskCard(t, 'desktop')))
+  }
+
+  if (done.length > 0) {
+    const doneLabel = document.createElement('div')
+    doneLabel.className = 'section-label'
+    doneLabel.textContent = 'Done today'
+    listEl.appendChild(doneLabel)
+    done.forEach(t => listEl.appendChild(renderTaskCard(t, 'desktop')))
+  }
+}
+
+function renderMobilePanel(panelName, allActive, allDone) {
+  const listEl = el(`mob-list-${panelName}`)
+  if (!listEl) return
+  listEl.innerHTML = ''
+
+  let active, done
+  if (panelName === 'all') {
+    active = allActive
+    done   = allDone
+  } else {
+    active = allActive.filter(t => t.list === panelName)
+    done   = allDone.filter(t => t.list === panelName)
+  }
+
+  if (active.length === 0 && done.length === 0) {
+    const empty = document.createElement('div')
+    empty.className = 'empty-state'
+    empty.innerHTML = `<div class="empty-state-title">Nothing here.</div><div class="empty-state-sub">Add a task above.</div>`
+    listEl.appendChild(empty)
     return
   }
 
-  container.innerHTML = ''
-  container.classList.remove('hidden')
+  sortTasksForColumn(active).forEach(t => listEl.appendChild(renderTaskCard(t, 'mobile')))
 
-  // "All" pill
-  const allPill = document.createElement('span')
-  allPill.className = 'tag-filter-pill' + (state.activeTag === null ? ' active' : '')
-  allPill.textContent = 'All'
-  allPill.addEventListener('click', () => filterByTag(null))
-  container.appendChild(allPill)
-
-  for (const tag of allTags) {
-    const [bg, color] = tagColors(tag)
-    const pill = document.createElement('span')
-    pill.className = 'tag-filter-pill' + (state.activeTag === tag ? ' active' : '')
-    pill.style.background = bg
-    pill.style.color = color
-    pill.textContent = tag
-    pill.addEventListener('click', () => filterByTag(tag))
-    container.appendChild(pill)
+  if (done.length > 0) {
+    const doneLabel = document.createElement('div')
+    doneLabel.className = 'section-label'
+    doneLabel.textContent = 'Done today'
+    listEl.appendChild(doneLabel)
+    done.forEach(t => listEl.appendChild(renderTaskCard(t, 'mobile')))
   }
 }
 
 // ── Main task list renderer ───────────────────────────────────────────────────
 function renderTaskList() {
-  const filtered = state.activeTag
-    ? state.tasks.filter(t => t.tags?.includes(state.activeTag))
-    : state.tasks
+  const active = state.tasks.filter(t => t.completed_at == null)
+  const done   = state.tasks.filter(t => t.completed_at != null)
 
-  const active    = filtered.filter(t => t.completed_at == null)
-  const done      = filtered.filter(t => t.completed_at != null)
+  renderColumn('inbox', active, done)
+  renderColumn('todos', active, done)
+  renderColumn('tasks', active, done)
 
-  const taskListEl = el('task-list')
-  const doneListEl = el('done-list')
-  taskListEl.innerHTML = ''
-  doneListEl.innerHTML = ''
-
-  renderTagFilters(state.tasks)
-
-  if (active.length === 0 && done.length === 0) {
-    const emptyEl = document.createElement('div')
-    emptyEl.className = 'empty-state'
-    emptyEl.innerHTML = `
-      <div class="empty-state-title">Nothing to do.</div>
-      <div class="empty-state-sub">Add a task above to get started.</div>
-    `
-    taskListEl.appendChild(emptyEl)
-  } else {
-    for (const task of active) taskListEl.appendChild(renderTaskCard(task))
-  }
-
-  if (done.length > 0) {
-    el('done-section').classList.remove('hidden')
-    for (const task of done) doneListEl.appendChild(renderTaskCard(task))
-  } else {
-    el('done-section').classList.add('hidden')
-  }
+  renderMobilePanel('inbox', active, done)
+  renderMobilePanel('todos', active, done)
+  renderMobilePanel('tasks', active, done)
+  renderMobilePanel('all',   active, done)
 }
 
 // ── Data actions ──────────────────────────────────────────────────────────────
@@ -258,13 +503,6 @@ async function loadTasks() {
 async function createTask(fields) {
   const task = await api.post('/api/v1/tasks', fields)
   state.tasks.unshift(task)
-  // Re-sort: active first by created_at, then done
-  state.tasks.sort((a, b) => {
-    const aDone = a.completed_at != null
-    const bDone = b.completed_at != null
-    if (aDone !== bDone) return aDone ? 1 : -1
-    return a.created_at - b.created_at
-  })
   renderTaskList()
   return task
 }
@@ -273,6 +511,31 @@ async function toggleDone(taskId) {
   const task = await api.patch(`/api/v1/tasks/${taskId}/done`)
   const idx = state.tasks.findIndex(t => t.id === taskId)
   if (idx !== -1) state.tasks[idx] = task
+  renderTaskList()
+}
+
+async function toggleImportant(taskId) {
+  const task = state.tasks.find(t => t.id === taskId)
+  if (!task) return
+  const updated = await api.patch(`/api/v1/tasks/${taskId}`, { is_important: !task.is_important })
+  const idx = state.tasks.findIndex(t => t.id === taskId)
+  if (idx !== -1) state.tasks[idx] = updated
+  renderTaskList()
+}
+
+async function toggleToday(taskId) {
+  const task = state.tasks.find(t => t.id === taskId)
+  if (!task) return
+  const updated = await api.patch(`/api/v1/tasks/${taskId}`, { is_today: !task.is_today })
+  const idx = state.tasks.findIndex(t => t.id === taskId)
+  if (idx !== -1) state.tasks[idx] = updated
+  renderTaskList()
+}
+
+async function moveToList(taskId, newList) {
+  const updated = await api.patch(`/api/v1/tasks/${taskId}`, { list: newList })
+  const idx = state.tasks.findIndex(t => t.id === taskId)
+  if (idx !== -1) state.tasks[idx] = updated
   renderTaskList()
 }
 
@@ -290,51 +553,22 @@ async function updateTask(taskId, fields) {
   return task
 }
 
-function filterByTag(tag) {
-  state.activeTag = tag === state.activeTag ? null : tag
-  renderTaskList()
-}
-
-// ── Quick-add form ────────────────────────────────────────────────────────────
-function initQuickAdd() {
-  const nameInput = el('qa-name')
-  const details   = el('qa-details')
-  const form      = el('quick-add')
-
-  // Expand to show detail fields when the user focuses the name input
-  nameInput.addEventListener('focus', () => details.classList.remove('hidden'))
-
-  // Collapse if user clicks outside the form and the name is empty
-  document.addEventListener('click', (e) => {
-    if (!form.contains(e.target) && !nameInput.value.trim()) {
-      details.classList.add('hidden')
-    }
-  })
+// ── Desktop quick-add form ────────────────────────────────────────────────────
+function initDesktopQuickAdd() {
+  const form = el('quick-add')
+  if (!form) return
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
+    const nameInput = el('qa-name')
     const name = nameInput.value.trim()
     if (!name) { nameInput.focus(); return }
-
-    const desc     = el('qa-desc').value.trim()
-    const tagsRaw  = el('qa-tags').value.trim()
-    const deadline = el('qa-deadline').value
 
     const submitBtn = form.querySelector('.btn-add')
     submitBtn.disabled = true
     try {
-      await createTask({
-        name,
-        description: desc || undefined,
-        tags:        tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : undefined,
-        deadline:    deadline || undefined,
-      })
-      // Reset form
+      await createTask({ name, list: 'inbox' })
       nameInput.value = ''
-      el('qa-desc').value = ''
-      el('qa-tags').value = ''
-      el('qa-deadline').value = ''
-      details.classList.add('hidden')
     } catch (err) {
       alert(err.message ?? 'Failed to create task')
     } finally {
@@ -349,9 +583,9 @@ function openEditModal(taskId) {
   if (!task) return
 
   state.editingId = taskId
-  el('edit-name').value    = task.name
-  el('edit-desc').value    = task.description ?? ''
-  el('edit-tags').value    = (task.tags ?? []).join(', ')
+  el('edit-name').value     = task.name
+  el('edit-desc').value     = task.description ?? ''
+  el('edit-tags').value     = (task.tags ?? []).join(', ')
   el('edit-deadline').value = task.deadline
     ? (task.deadline.length === 10 ? task.deadline + 'T00:00' : task.deadline.slice(0, 16))
     : ''
@@ -471,7 +705,6 @@ function renderTokenStatus(hasToken, newToken) {
 el('btn-gen-token').addEventListener('click', async () => {
   const isRegen = el('btn-gen-token').textContent.startsWith('Regen')
   if (isRegen) {
-    // Show inline confirmation instead of a blocking dialog
     el('btn-gen-token').textContent = 'Confirm — invalidates current token'
     el('btn-gen-token').dataset.confirming = '1'
     setTimeout(() => {
@@ -565,10 +798,24 @@ el('btn-logout').addEventListener('click', async () => {
   await api.post('/auth/logout').catch(() => {})
   state.user  = null
   state.tasks = []
-  state.activeTag = null
+  state.activeTab = 'inbox'
   showView('view-login')
   el('login-username').value = ''
   el('login-password').value = ''
+})
+
+// ── Close menu on outside click ───────────────────────────────────────────────
+document.addEventListener('click', (e) => {
+  if (!el('task-menu')?.classList.contains('hidden')) {
+    if (!el('task-menu').contains(e.target)) closeTaskMenu()
+  }
+})
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeTaskMenu()
+    closeDeadlinePicker()
+  }
 })
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -579,12 +826,15 @@ async function onLoggedIn(user) {
   setText('header-username', user.username)
   showView('view-tasks')
   await loadTasks()
-  // Guard against duplicate listener registration on logout + re-login
   if (!_uiInitialized) {
     _uiInitialized = true
-    initQuickAdd()
+    initDesktopQuickAdd()
+    initMobileQuickAdd()
+    initMobileNav()
     initEditModal()
     initSettings()
+    initDragAndDrop()
+    initDeadlinePicker()
   }
 }
 

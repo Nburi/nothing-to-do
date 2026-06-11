@@ -24,7 +24,8 @@ module.exports = async function apiV1(fastify) {
 
   function getTaskWithTags(taskId, userId) {
     const task = db.prepare(`
-      SELECT id, name, description, deadline, completed_at, created_at
+      SELECT id, name, description, deadline, completed_at, created_at,
+             list, is_important, is_today
       FROM tasks WHERE id = ? AND user_id = ?
     `).get(taskId, userId)
 
@@ -43,7 +44,8 @@ module.exports = async function apiV1(fastify) {
     // Return active tasks and tasks completed today (Zurich time); nothing older.
     // Ordering: active first (by creation date), then completed tasks.
     const rows = db.prepare(`
-      SELECT id, name, description, deadline, completed_at, created_at
+      SELECT id, name, description, deadline, completed_at, created_at,
+             list, is_important, is_today
       FROM tasks
       WHERE user_id = ?
         AND (completed_at IS NULL OR completed_at >= ?)
@@ -86,6 +88,8 @@ module.exports = async function apiV1(fastify) {
     return []
   }
 
+  const VALID_LISTS = ['inbox', 'todos', 'tasks']
+
   // Convert a raw DB row to the public API shape.
   // completed_at is kept as a Unix ms integer (null when active).
   function serializeTask(row, tags) {
@@ -96,7 +100,10 @@ module.exports = async function apiV1(fastify) {
       tags:         tags,
       deadline:     row.deadline ?? null,
       completed_at: row.completed_at != null ? Number(row.completed_at) : null,
-      created_at:   Number(row.created_at)
+      created_at:   Number(row.created_at),
+      list:         row.list ?? 'inbox',
+      is_important: row.is_important === 1,
+      is_today:     row.is_today === 1,
     }
   }
 
@@ -110,22 +117,26 @@ module.exports = async function apiV1(fastify) {
   // Body: { name: string (required), description?: string, tags?: string[], deadline?: string }
   // deadline format: "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"
   fastify.post('/tasks', apiLimit, async (request, reply) => {
-    const { name, description, tags: rawTags, deadline } = request.body ?? {}
+    const { name, description, tags: rawTags, deadline, list, is_important } = request.body ?? {}
 
     if (typeof name !== 'string' || name.trim().length === 0) {
       return reply.code(400).send({ error: 'Task name is required and must not be empty' })
     }
 
-    const tags = parseTags(rawTags)
+    const tags      = parseTags(rawTags)
+    const taskList  = list && VALID_LISTS.includes(list) ? list : 'inbox'
+    const important = is_important ? 1 : 0
 
     const result = db.prepare(`
-      INSERT INTO tasks (user_id, name, description, deadline)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO tasks (user_id, name, description, deadline, list, is_important)
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       request.user.id,
       name.trim(),
       description ? String(description).trim() || null : null,
-      deadline    ? String(deadline).trim()    || null : null
+      deadline    ? String(deadline).trim()    || null : null,
+      taskList,
+      important
     )
 
     const taskId = Number(result.lastInsertRowid)
@@ -145,7 +156,7 @@ module.exports = async function apiV1(fastify) {
       .get(taskId, request.user.id)
     if (!exists) return reply.code(404).send({ error: 'Task not found' })
 
-    const { name, description, tags: rawTags, deadline } = request.body ?? {}
+    const { name, description, tags: rawTags, deadline, list, is_important, is_today } = request.body ?? {}
 
     // Build a dynamic SET clause from whichever fields were provided
     const sets = []
@@ -165,6 +176,32 @@ module.exports = async function apiV1(fastify) {
     if (deadline !== undefined) {
       sets.push('deadline = ?')
       vals.push(deadline ? String(deadline).trim() || null : null)
+    }
+    if (list !== undefined) {
+      if (!VALID_LISTS.includes(list)) {
+        return reply.code(400).send({ error: "list must be 'inbox', 'todos', or 'tasks'" })
+      }
+      sets.push('list = ?')
+      vals.push(list)
+      // Moving to inbox always clears is_today (enforce invariant server-side)
+      if (list === 'inbox') {
+        sets.push('is_today = 0')
+      }
+    }
+    if (is_important !== undefined) {
+      sets.push('is_important = ?')
+      vals.push(is_important ? 1 : 0)
+    }
+    if (is_today !== undefined) {
+      if (is_today) {
+        // Validate: is_today=true only allowed when effective list != 'inbox'
+        const effectiveList = list ?? db.prepare('SELECT list FROM tasks WHERE id = ?').get(taskId)?.list
+        if (effectiveList === 'inbox') {
+          return reply.code(400).send({ error: "is_today cannot be set on inbox tasks; move task to todos or tasks first" })
+        }
+      }
+      sets.push('is_today = ?')
+      vals.push(is_today ? 1 : 0)
     }
 
     if (sets.length > 0) {
