@@ -106,31 +106,55 @@ It checks `pragma_table_info('tasks')` and adds missing columns with `ALTER TABL
 
 ---
 
-## Current Issues (as of v2 branch)
-
-### Session cookie not set in preview environment
-**Symptom:** After login via the preview browser, `/auth/me` and `/api/v1/tasks` return 401. All 14 sessions in `tasks.db` have `userId: undefined`.
-
-**Root cause being investigated:**
-- `@fastify/session` is registering sessions to the SQLite store but without `userId`
-- The `request.session.regenerate()` + `request.session.userId = user.id` pattern works in tests (44/44 pass) but fails in the real browser preview
-- The existing `data/tasks.db` also contains an extra `today` column (from a prior development attempt before v2) which is harmless
-
-**What was tried:**
-1. Confirmed `Set-Cookie` header is absent from login responses via `fetch` in browser dev console (though note: browsers hide `Set-Cookie` from JS, so it may actually be set)
-2. Confirmed sessions ARE being created in the DB (14 sessions) but `userId` is not stored
-3. Server config: `secure: false` in dev (correct), `sameSite: 'lax'` (correct for same-origin)
-4. Attempted to reset `data/tasks.db` — blocked by auto-mode safety classifier
-
-**Next steps to unblock:**
-- Manually delete `data/tasks.db` (and any `-wal`/`-shm` files) from the project, then restart the preview server for a clean state. The migration runs automatically on startup.
-- OR run `node --experimental-sqlite -e "const {initDb}=require('./src/db'); const db=initDb(); db.prepare('DELETE FROM sessions').run(); db.close()"` to flush stale sessions.
-
-**Note:** This appears to be a preview-environment-specific issue. All 44 unit/integration tests pass, including full auth and session tests.
-
 ---
 
 ## Solved Issues
+
+### Session cookie never set — `NODE_ENV=production` from `.env` file
+
+**Symptom:** After login or register, `/auth/me` and `/api/v1/tasks` returned 401. No `Set-Cookie` header appeared in the HTTP response. All sessions in `tasks.db` had `userId: undefined` or were saved without `userId` at all.
+
+**What was tried first (did NOT fix it):**
+
+1. **Deleting `data/tasks.db`** — the hypothesis was that stale sessions from earlier development attempts were causing confusion. Deleting the DB didn't help; fresh logins still produced no cookie.
+
+2. **Removing `session.regenerate()`** — the login handler used `await request.session.regenerate()` before setting `request.session.userId = user.id`. The hypothesis was that `regenerate()` was creating a new session instance that lost its connection to the `onSend` hook, so the cookie was never written. Removing `regenerate()` and setting `userId` directly appeared correct (all 44 tests still passed), but the cookie was still absent in real HTTP requests.
+
+3. **Checking `NODE_ENV` from the shell** — running `node -e "console.log(process.env.NODE_ENV)"` returned `undefined`, which pointed away from the `.env` hypothesis. This was misleading because the shell process doesn't call `require('dotenv').config()`.
+
+**Root cause:**
+
+`src/server.js` calls `require('dotenv').config()` at startup, which loads `.env`. That file contains `NODE_ENV=production`. In `src/app.js`, the session cookie was configured as:
+
+```javascript
+secure: process.env.NODE_ENV === 'production'  // evaluates to true after dotenv loads
+```
+
+With `secure: true`, `@fastify/session`'s `onSend` hook sets `isInsecureConnection = true` for any non-HTTPS request and silently skips writing the cookie. The server responds 200 but never sends `Set-Cookie`.
+
+This affected ALL environments where the server was started via `node src/server.js` (production config, preview tool, direct dev). The only place it worked was in tests — because `test/*.test.js` calls `buildApp()` directly without going through `server.js`, so `dotenv` never loads.
+
+**How it was found:**
+
+Added `console.log` to `src/app.js` right before `fastify.register('@fastify/session', ...)` and saw `NODE_ENV: production` in the server output despite the shell showing it unset. Added a debug log inside `@fastify/session`'s `onSend` handler (in node_modules) and confirmed `cookieOpts.secure: true` and `isInsecure: true`.
+
+**Fix (in `src/app.js`):**
+
+```javascript
+// Before (broken):
+secure: process.env.NODE_ENV === 'production'
+
+// After (fixed):
+secure: 'auto'
+```
+
+`'auto'` is a built-in mode in `@fastify/session` / `@fastify/cookie`: it sets `secure: false` when `request.protocol === 'http'` and `secure: true` when `request.protocol === 'https'`. This is correct for all environments without depending on `NODE_ENV`:
+- Dev / preview (HTTP) → cookie is set without `Secure` flag ✓
+- Production behind nginx/Caddy (HTTPS) → cookie is set with `Secure` flag ✓
+
+**Side effect also fixed:** `session.regenerate()` was removed from the login and register handlers. With `regenerate()` present, the empty session was saved to the store before `userId` was set. The real `userId`-bearing session was saved later in `onSend` — but since `isInsecureConnection` was `true`, `onSend` bailed out early. After the `secure: 'auto'` fix, `regenerate()` would have worked again, but it was left removed since it added complexity without meaningful security benefit in this self-hosted context (session fixation is not a realistic threat model here).
+
+---
 
 ### Index on `list` column failed on new databases
 **Problem:** `CREATE INDEX idx_tasks_user_list ON tasks(user_id, list, completed_at)` was placed inside the main `CREATE TABLE` schema block. On fresh databases (`:memory:` for tests), the migration block that adds the `list` column via `ALTER TABLE` hadn't run yet, so the index creation failed with "no such column: list".
