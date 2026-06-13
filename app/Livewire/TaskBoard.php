@@ -47,28 +47,41 @@ class TaskBoard extends Component
         return $this->active('inbox');
     }
 
+    /** Whole-list collections, fetched once and split for the Today areas below. */
+    #[Computed]
+    public function todosAll(): Collection
+    {
+        return $this->active('todos');
+    }
+
+    #[Computed]
+    public function tasksAll(): Collection
+    {
+        return $this->active('tasks');
+    }
+
     #[Computed]
     public function todosToday(): Collection
     {
-        return $this->active('todos')->where('is_today', true)->values();
+        return $this->todosAll->where('is_today', true)->values();
     }
 
     #[Computed]
     public function todosRest(): Collection
     {
-        return $this->active('todos')->where('is_today', false)->values();
+        return $this->todosAll->where('is_today', false)->values();
     }
 
     #[Computed]
     public function tasksToday(): Collection
     {
-        return $this->active('tasks')->where('is_today', true)->values();
+        return $this->tasksAll->where('is_today', true)->values();
     }
 
     #[Computed]
     public function tasksRest(): Collection
     {
-        return $this->active('tasks')->where('is_today', false)->values();
+        return $this->tasksAll->where('is_today', false)->values();
     }
 
     /** Mobile "Today" page: every focused task across todos + tasks. */
@@ -83,16 +96,15 @@ class TaskBoard extends Component
             ->get();
     }
 
+    /** Derived from the already-loaded collections — no extra count queries. */
     #[Computed]
     public function counts(): array
     {
-        $base = Task::query()->forUser(auth()->user())->active();
-
         return [
-            'inbox' => (clone $base)->inList('inbox')->count(),
-            'todos' => (clone $base)->inList('todos')->count(),
-            'tasks' => (clone $base)->inList('tasks')->count(),
-            'today' => (clone $base)->where('is_today', true)->count(),
+            'inbox' => $this->inbox->count(),
+            'todos' => $this->todosAll->count(),
+            'tasks' => $this->tasksAll->count(),
+            'today' => $this->today->count(),
         ];
     }
 
@@ -120,13 +132,16 @@ class TaskBoard extends Component
 
     public function addTask(): void
     {
+        // Trim first so a whitespace-only title fails the required rule.
+        $this->newTitle = trim($this->newTitle);
+
         $data = $this->validate([
             'newTitle' => ['required', 'string', 'max:255'],
             'newList' => ['required', 'in:inbox,todos,tasks'],
         ]);
 
         auth()->user()->tasks()->create([
-            'title' => trim($data['newTitle']),
+            'title' => $data['newTitle'],
             'list' => $data['newList'],
             'sort_order' => 0,
         ]);
@@ -225,6 +240,8 @@ class TaskBoard extends Component
             return;
         }
 
+        $this->editTitle = trim($this->editTitle);
+
         $data = $this->validate([
             'editTitle' => ['required', 'string', 'max:255'],
             'editDeadline' => ['nullable', 'date'],
@@ -232,7 +249,7 @@ class TaskBoard extends Component
         ]);
 
         $this->userTask($this->editingId)->update([
-            'title' => trim($data['editTitle']),
+            'title' => $data['editTitle'],
             'deadline' => $data['editDeadline'] ?: null,
             'due_date' => $data['editDueDate'] ?: null,
         ]);

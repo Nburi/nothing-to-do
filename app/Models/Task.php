@@ -138,10 +138,16 @@ class Task extends Model
             return null;
         }
 
-        $days = Carbon::today()->diffInDays($date, false);
+        $today = Carbon::today();
+
+        if ($date->lessThan($today)) {
+            return 'überfällig';
+        }
+
+        // Carbon 3 returns a float; cast for exact day-bucket matching.
+        $days = (int) $today->diffInDays($date);
 
         return match (true) {
-            $days < 0 => 'überfällig',
             $days === 0 => 'heute',
             $days === 1 => 'morgen',
             $days <= 6 => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][$date->dayOfWeek],
