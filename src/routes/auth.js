@@ -35,10 +35,7 @@ module.exports = async function authRoutes(fastify) {
     const passwordHash = await hash(password)
     const result = insertUser.run(clean, passwordHash)
 
-    // Regenerate session ID to prevent session fixation: the pre-login session
-    // ID is destroyed and a fresh one is issued before we store the user identity.
     const newUserId = Number(result.lastInsertRowid)
-    await request.session.regenerate()
     request.session.userId = newUserId
     return reply.code(201).send({ id: newUserId, username: clean })
   })
@@ -72,8 +69,6 @@ module.exports = async function authRoutes(fastify) {
       return reply.code(401).send({ error: 'Invalid username or password' })
     }
 
-    // Regenerate session ID to prevent session fixation.
-    await request.session.regenerate()
     request.session.userId = user.id
     return reply.send({ id: user.id, username: user.username })
   })

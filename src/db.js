@@ -39,6 +39,9 @@ function initDb(dbPath) {
       deadline     TEXT,
       completed_at INTEGER,
       created_at   INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      list         TEXT    NOT NULL DEFAULT 'inbox',
+      is_important INTEGER NOT NULL DEFAULT 0,
+      is_today     INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
@@ -62,6 +65,18 @@ function initDb(dbPath) {
     CREATE INDEX IF NOT EXISTS idx_sessions_expires
       ON sessions(expires);
   `)
+
+  // Idempotent column migrations — safe to run on every startup
+  const taskCols = db.prepare("SELECT name FROM pragma_table_info('tasks')").all().map(r => r.name)
+  if (!taskCols.includes('list'))
+    db.exec("ALTER TABLE tasks ADD COLUMN list TEXT NOT NULL DEFAULT 'inbox'")
+  if (!taskCols.includes('is_important'))
+    db.exec("ALTER TABLE tasks ADD COLUMN is_important INTEGER NOT NULL DEFAULT 0")
+  if (!taskCols.includes('is_today'))
+    db.exec("ALTER TABLE tasks ADD COLUMN is_today INTEGER NOT NULL DEFAULT 0")
+
+  // Create index on list column (must be after migration so column always exists)
+  db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_user_list ON tasks(user_id, list, completed_at)")
 
   return db
 }

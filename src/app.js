@@ -45,9 +45,10 @@ async function buildApp(opts = {}) {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      // Secure flag is set only in production (behind HTTPS).
-      // In development this must be false so the cookie works over plain HTTP.
-      secure: process.env.NODE_ENV === 'production',
+      // 'auto' sets secure=true on HTTPS connections, false on HTTP.
+      // This works correctly regardless of NODE_ENV, which may be set to
+      // 'production' by the .env file even in dev/preview environments.
+      secure: 'auto',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in ms
     },
     store: new SqliteSessionStore(db),

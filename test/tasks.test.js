@@ -54,6 +54,9 @@ describe('Task CRUD', () => {
     assert.equal(task.deadline, '2099-12-31')
     assert.equal(task.completed_at, null)
     assert.ok(typeof task.id === 'number')
+    assert.equal(task.list, 'inbox')
+    assert.equal(task.is_important, false)
+    assert.equal(task.is_today, false)
   })
 
   test('rejects task with empty name', async () => {
@@ -274,5 +277,135 @@ describe('API token authentication', () => {
       headers: { authorization: `Bearer ${token}` },
     })
     assert.equal(res.statusCode, 401)
+  })
+})
+
+// ── Three-lists feature ───────────────────────────────────────────────────────
+
+describe('Three-lists feature', () => {
+  let app, session
+
+  before(async () => {
+    app = await buildApp({ dbPath: ':memory:', schedule: false, fastifyOpts: { logger: false } })
+    await app.ready()
+    session = await register(app, 'listuser')
+  })
+
+  after(() => app.close())
+
+  test('POST accepts valid list field', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/tasks',
+      headers: { cookie: session.cookieHeader },
+      payload: { name: 'Todo item', list: 'todos' },
+    })
+    assert.equal(res.statusCode, 201)
+    assert.equal(JSON.parse(res.body).list, 'todos')
+  })
+
+  test('POST with invalid list defaults to inbox', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/tasks',
+      headers: { cookie: session.cookieHeader },
+      payload: { name: 'Bad list', list: 'invalid' },
+    })
+    assert.equal(res.statusCode, 201)
+    assert.equal(JSON.parse(res.body).list, 'inbox')
+  })
+
+  test('POST accepts is_important field', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/tasks',
+      headers: { cookie: session.cookieHeader },
+      payload: { name: 'Important from start', is_important: true },
+    })
+    assert.equal(res.statusCode, 201)
+    assert.equal(JSON.parse(res.body).is_important, true)
+  })
+
+  test('PATCH moves task to different list', async () => {
+    const t = await makeTask(app, session.cookieHeader, { name: 'Movable' })
+    assert.equal(t.list, 'inbox')
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { list: 'todos' },
+    })
+    assert.equal(res.statusCode, 200)
+    assert.equal(JSON.parse(res.body).list, 'todos')
+  })
+
+  test('PATCH rejects invalid list value', async () => {
+    const t = await makeTask(app, session.cookieHeader, { name: 'Invalid target' })
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { list: 'nope' },
+    })
+    assert.equal(res.statusCode, 400)
+  })
+
+  test('PATCH sets is_important', async () => {
+    const t = await makeTask(app, session.cookieHeader, { name: 'Becomes important' })
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { is_important: true },
+    })
+    assert.equal(res.statusCode, 200)
+    assert.equal(JSON.parse(res.body).is_important, true)
+  })
+
+  test('PATCH rejects is_today=true on inbox task', async () => {
+    const t = await makeTask(app, session.cookieHeader, { name: 'Inbox task' })
+    assert.equal(t.list, 'inbox')
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { is_today: true },
+    })
+    assert.equal(res.statusCode, 400)
+    assert.match(JSON.parse(res.body).error, /inbox/i)
+  })
+
+  test('PATCH allows is_today=true on todos task', async () => {
+    const t = await makeTask(app, session.cookieHeader, { name: 'Today todo', list: 'todos' })
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { is_today: true },
+    })
+    assert.equal(res.statusCode, 200)
+    assert.equal(JSON.parse(res.body).is_today, true)
+  })
+
+  test('moving task to inbox auto-clears is_today', async () => {
+    const t = await makeTask(app, session.cookieHeader, { name: 'Was today', list: 'todos' })
+    await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { is_today: true },
+    })
+    const res = await app.inject({
+      method: 'PATCH', url: `/api/v1/tasks/${t.id}`,
+      headers: { cookie: session.cookieHeader },
+      payload: { list: 'inbox' },
+    })
+    assert.equal(res.statusCode, 200)
+    assert.equal(JSON.parse(res.body).is_today, false)
+  })
+
+  test('GET returns tasks with list, is_important, is_today fields', async () => {
+    const res = await app.inject({
+      method: 'GET', url: '/api/v1/tasks',
+      headers: { cookie: session.cookieHeader },
+    })
+    const { tasks } = JSON.parse(res.body)
+    assert.ok(tasks.length > 0)
+    for (const task of tasks) {
+      assert.ok('list' in task, 'task should have list field')
+      assert.ok('is_important' in task, 'task should have is_important field')
+      assert.ok('is_today' in task, 'task should have is_today field')
+    }
   })
 })
