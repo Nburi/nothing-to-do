@@ -75,16 +75,21 @@ I say so, with reasoning.
 
 ## 5. Tech stack
 
-> Finalized at the architecture step (see §7). Core framework below is fixed; interactivity/auth/
-> interaction libraries are proposed and approved with the user (rule 5) before install.
+- **Framework:** Laravel 13.15 (PHP 8.4)
+- **Interactivity:** Livewire 4 (server-driven). Alpine ships **inside** Livewire — never import a
+  second copy (double-init). `resources/js/app.js` adds only SortableJS + the swipe component.
+- **Auth:** Laravel Breeze (Blade stack), fully restyled.
+- **Drag & drop:** SortableJS (`window.boardSortable`).
+- **Swipe gestures:** hand-rolled Pointer-Events Alpine component (`swipeCard`) — no library.
+- **Styling:** Tailwind CSS **v3** (PostCSS). Topografie tokens are CSS custom properties (space-separated
+  RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
+  opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
+- **Database:** SQLite (development), MySQL (production-ready).
+- **Build:** Vite 8. **Tests:** PHPUnit (53 tests).
 
-- **Framework:** Laravel (version recorded after install)
-- **Frontend / interactivity:** _decided at architecture checkpoint_
-- **Auth:** _decided at architecture checkpoint_
-- **Drag & drop:** _decided at architecture checkpoint_
-- **Swipe gestures:** _decided at architecture checkpoint_
-- **Database:** SQLite (development), MySQL (production-ready)
-- **Build:** Vite
+> Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
+> package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
+> package.json — harmless, safe to remove later.
 
 ---
 
@@ -97,9 +102,33 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 
 ## 7. Architecture
 
-> Filled in at the architecture step (models, fields, relations, routes, controllers, frontend approach,
-> state management). Designed so a fourth list `projects` and a `Project` model with sub-tasks can be
-> added later without breaking existing logic.
+### Models
+- **`User`** (Breeze) `hasMany` **`Task`**.
+- **`Task`** — `user_id, title, list, is_today, is_important, deadline(date), due_date(date),
+  is_completed, completed_at, sort_order, timestamps`. See `docs/REQUIREMENTS.md` §2 for field meaning.
+  - `list` is a **string** (`inbox|todos|tasks`), not a DB enum, so a future `projects` value drops in.
+  - Scopes: `forUser`, `active`, `inList`, `boardOrdered` (important → due within 4 days → manual order).
+  - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
+    `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
+
+### Routing & "controllers"
+- `/` → board if authed, else the landing (`welcome`). `/app` → `TaskBoard` (auth). `/dashboard` →
+  redirect to `/app` (Breeze's post-login target). Profile + Breeze auth routes.
+- There is **no task controller** — the `TaskBoard` Livewire component *is* the controller. Every mutation
+  resolves the task through `auth()->user()->tasks()` (`userTask()` helper), so the frontend is never trusted.
+
+### Frontend & state
+- One full-page Livewire component, `App\Livewire\TaskBoard` (`#[Layout('layouts.app')]`), view at
+  `resources/views/livewire/task-board.blade.php` (+ `partials/`). **Class-based** component (ASCII
+  filename) — not Livewire 4's default emoji single-file component.
+- **Server state** (the source of truth) lives in Livewire computed properties. **Ephemeral UI state**
+  (active mobile tab, live swipe offset, drag-in-progress, open menus) lives in Alpine.
+- Drag (`reorder`) persists the destination zone's full id order + its list/today. Swipe (`swipeIntent`)
+  and the desktop click/checkbox/menu all call Livewire actions.
+
+### Future "Projects" (prepared, not built)
+Add a `projects` value to `Task::LISTS`, a `Project` model, a nullable `project_id` FK on tasks, and a
+fourth board column. The string `list`, the column partial, and the board abstraction extend without a rewrite.
 
 ---
 
@@ -115,8 +144,30 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 
 ## 9. Deployment process (Linux production)
 
-> Filled in as deployment-relevant changes land. After each `git pull` on the server, the user must run
-> the steps listed here (composer install, migrations, build, env vars, etc.).
+This is a **full rebuild** (old Node.js app → Laravel). The first deploy is a fresh setup, not an update.
+
+### First deploy (one time)
+1. `git pull` (the rebuild lives on branch `redesign/from-scratch` until you merge it to `main`).
+2. `composer install --no-dev --optimize-autoloader`
+3. `cp .env.example .env` and set: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://…`,
+   and the **MySQL** `DB_*` vars (or keep SQLite and create `database/database.sqlite`).
+4. `php artisan key:generate`
+5. `php artisan migrate --force`
+6. `npm ci && npm run build`  *(Linux has `pcntl`, so the full `composer run dev` also works there.)*
+7. `php artisan config:cache route:cache view:cache`
+8. Point the web root at `public/`; ensure `storage/` and `bootstrap/cache/` are writable.
+
+### Every later deploy
+```bash
+git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+npm ci && npm run build
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+# restart php-fpm / your process manager
+```
+
+No cron jobs or queue workers are required for the current feature set.
 
 ---
 
@@ -141,6 +192,28 @@ PowerShell 5.1 — it wraps stderr as an error record even on success.
 **Symptom:** it refuses to scaffold into a non-empty directory.
 **Fix:** scaffold into a temporary subdirectory, then move the contents up into the repo root (preserving
 `.git`).
+
+### Only Herd PHP (8.4.13) runs the app — Bash `php` (8.4.0) fails the platform check
+**Symptom:** `php artisan …` from the Bash tool dies with "Composer dependencies require PHP >= 8.4.1".
+**Cause:** Composer locked deps against Herd's PHP 8.4.13; the separate Bash `php` is 8.4.0.
+**Fix:** run **all** PHP/artisan/composer through PowerShell (Herd). Use Bash only for git.
+
+### Carbon 3 `diffInDays()` returns a float
+**Symptom:** day-bucket logic using `=== 0` / `=== 1` silently never matches (e.g. "heute"/"morgen").
+**Fix:** cast to int: `(int) $today->diffInDays($date)`, and check overdue separately with `lessThan()`.
+(See `Task::effectiveDateLabel`.)
+
+### Livewire 4 generates emoji-named single-file components
+**Symptom:** `php artisan make:livewire X` creates `resources/views/components/⚡x.blade.php`.
+**Fix:** delete it and use a **class-based** component in `app/Livewire/` (ASCII filename, easier to test,
+robust across Windows↔Linux git). Reference as `<livewire:task-board />` / route to the class.
+
+### Browser preview tool can't trigger Livewire 4 `wire:` directives
+**Symptom:** `preview_click` "succeeds" but no Livewire request fires (no `/livewire/update` POST).
+**Cause:** the preview tool's synthetic click events don't reach Livewire 4's delegated listeners; only
+`wire:model` (input) and the programmatic API work through it.
+**Fix (for verification only):** drive actions with a real DOM event via `preview_eval`
+(`el.click()`) or the API (`$wire.method()` / `Livewire.all()[0].$refresh()`). Real users are unaffected.
 
 ---
 
