@@ -169,6 +169,7 @@
 
     <!-- Mobile bottom nav -->
     <nav class="mobile-nav mobile-only" id="mobile-nav">
+      <div class="nav-indicator" id="nav-indicator"></div>
       <button class="mobile-nav-tab active" data-panel="inbox" aria-label="Inbox">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
         <span>Inbox</span>
@@ -207,13 +208,13 @@
   </div>
 
   <!-- ── Task context menu ──────────────────────────────────────────────── -->
-  <div id="task-menu" class="task-menu hidden" role="menu">
+  <div id="task-menu" class="task-menu" role="menu">
     <button id="task-menu-edit" role="menuitem">Edit</button>
     <button id="task-menu-delete" role="menuitem">Delete</button>
   </div>
 
   <!-- ── Mobile deadline picker ─────────────────────────────────────────── -->
-  <div id="deadline-picker" class="deadline-picker hidden">
+  <div id="deadline-picker" class="deadline-picker">
     <label for="deadline-picker-input">Deadline</label>
     <input type="date" id="deadline-picker-input">
     <div class="deadline-picker-actions">
@@ -221,10 +222,10 @@
       <button id="deadline-picker-set" class="btn-primary">Set</button>
     </div>
   </div>
-  <div id="deadline-picker-overlay" class="deadline-picker-overlay hidden"></div>
+  <div id="deadline-picker-overlay" class="deadline-picker-overlay"></div>
 
   <!-- ── Edit task modal ────────────────────────────────────────────────── -->
-  <div id="edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Edit task">
+  <div id="edit-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Edit task">
     <div class="modal">
       <h2>Edit task</h2>
       <div class="field">
@@ -253,6 +254,6 @@
 
 </div><!-- #app -->
 
-<script src="/app.js?v=3"></script>
+<script src="/app.js?v=4"></script>
 </body>
 </html>

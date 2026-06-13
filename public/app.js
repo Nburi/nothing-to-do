@@ -46,6 +46,7 @@ const state = {
   tasks:     [],     // full task list from server
   editingId: null,   // task id currently in the edit modal
   activeTab: 'inbox', // mobile active tab
+  _newTaskId: null,  // id of just-created task (for entry animation)
 }
 
 // ── View helpers ──────────────────────────────────────────────────────────────
@@ -66,6 +67,18 @@ function showView(viewId) {
   for (const id of ['view-login', 'view-register', 'view-tasks', 'view-settings']) {
     document.getElementById(id)?.classList.toggle('hidden', id !== viewId)
   }
+}
+
+// ── Animation helper: animate card(s) out before removal ─────────────────────
+async function animateCardsExit(taskId) {
+  const cards = document.querySelectorAll(`.task-card[data-id="${taskId}"]`)
+  cards.forEach(card => {
+    card.style.transition = 'opacity 160ms ease-out, transform 160ms ease-out'
+    card.style.opacity    = '0'
+    card.style.transform  = 'scale(0.96) translateX(8px)'
+    card.style.pointerEvents = 'none'
+  })
+  await new Promise(r => setTimeout(r, 180))
 }
 
 // ── Deadline formatting ───────────────────────────────────────────────────────
@@ -124,6 +137,13 @@ function renderTaskCard(task, context = 'desktop') {
     + (task.is_important  ? ' is-important' : '')
   div.dataset.id = task.id
 
+  // Mark freshly created task for enhanced entry animation
+  if (state._newTaskId === task.id) {
+    div.classList.add('is-new')
+    // Remove after animation completes so it doesn't persist on re-render
+    setTimeout(() => div.classList.remove('is-new'), 400)
+  }
+
   // Swipe hint overlay (mobile)
   if (context === 'mobile') {
     const hint = document.createElement('div')
@@ -138,7 +158,7 @@ function renderTaskCard(task, context = 'desktop') {
     div.addEventListener('dragend',   onDragEnd)
   }
 
-  // Check button → mark done (stops propagation so body click doesn't fire)
+  // Check button → mark done
   const check = document.createElement('button')
   check.className = 'btn-check'
   check.type = 'button'
@@ -223,28 +243,28 @@ function openTaskMenu(task, anchor) {
   _menuTaskId = task.id
 
   const menu = el('task-menu')
-  menu.classList.remove('hidden')
-
   // Wire up buttons for this task
-  el('task-menu-edit').onclick = () => { closeTaskMenu(); openEditModal(task.id) }
+  el('task-menu-edit').onclick   = () => { closeTaskMenu(); openEditModal(task.id) }
   el('task-menu-delete').onclick = () => { closeTaskMenu(); deleteTask(task.id) }
 
   // Position below the anchor button
-  const rect = anchor.getBoundingClientRect()
-  const menuW = 140
+  const rect  = anchor.getBoundingClientRect()
+  const menuW = 150
   let left = rect.right - menuW
   let top  = rect.bottom + 4
 
-  // Keep within viewport
   if (left < 8) left = 8
   if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8
 
-  menu.style.top  = top + 'px'
+  menu.style.top  = top  + 'px'
   menu.style.left = left + 'px'
+
+  // Animate open
+  menu.classList.add('is-open')
 }
 
 function closeTaskMenu() {
-  el('task-menu')?.classList.add('hidden')
+  el('task-menu')?.classList.remove('is-open')
   _menuTaskId = null
 }
 
@@ -328,13 +348,19 @@ function attachSwipeHandlers(cardEl, task) {
 
 // ── Mobile nav tabs ───────────────────────────────────────────────────────────
 function initMobileNav() {
-  document.querySelectorAll('.mobile-nav-tab').forEach(tab => {
+  const tabs      = document.querySelectorAll('.mobile-nav-tab')
+  const indicator = el('nav-indicator')
+
+  tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => {
       const panel = tab.dataset.panel
       state.activeTab = panel
 
-      document.querySelectorAll('.mobile-nav-tab').forEach(t => t.classList.remove('active'))
+      tabs.forEach(t => t.classList.remove('active'))
       tab.classList.add('active')
+
+      // Slide indicator to active tab
+      if (indicator) indicator.style.transform = `translateX(${index * 100}%)`
 
       document.querySelectorAll('.mobile-panel').forEach(p => p.classList.remove('active'))
       el(`panel-${panel}`)?.classList.add('active')
@@ -372,14 +398,14 @@ function openDeadlinePicker(task) {
   _deadlineTaskId = task.id
   const input = el('deadline-picker-input')
   input.value = task.deadline ? task.deadline.slice(0, 10) : ''
-  show('deadline-picker-overlay')
-  show('deadline-picker')
+  el('deadline-picker-overlay').classList.add('is-open')
+  el('deadline-picker').classList.add('is-open')
   input.focus()
 }
 
 function closeDeadlinePicker() {
-  hide('deadline-picker')
-  hide('deadline-picker-overlay')
+  el('deadline-picker').classList.remove('is-open')
+  el('deadline-picker-overlay').classList.remove('is-open')
   _deadlineTaskId = null
 }
 
@@ -503,7 +529,9 @@ async function loadTasks() {
 async function createTask(fields) {
   const task = await api.post('/api/v1/tasks', fields)
   state.tasks.unshift(task)
+  state._newTaskId = task.id
   renderTaskList()
+  state._newTaskId = null
   return task
 }
 
@@ -540,6 +568,7 @@ async function moveToList(taskId, newList) {
 }
 
 async function deleteTask(taskId) {
+  await animateCardsExit(taskId)
   await api.delete(`/api/v1/tasks/${taskId}`)
   state.tasks = state.tasks.filter(t => t.id !== taskId)
   renderTaskList()
@@ -591,12 +620,12 @@ function openEditModal(taskId) {
     : ''
 
   clearError('edit-error')
-  show('edit-modal')
+  el('edit-modal').classList.add('is-open')
   el('edit-name').focus()
 }
 
 function closeEditModal() {
-  hide('edit-modal')
+  el('edit-modal').classList.remove('is-open')
   state.editingId = null
 }
 
@@ -608,7 +637,7 @@ function initEditModal() {
   })
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !el('edit-modal').classList.contains('hidden')) {
+    if (e.key === 'Escape' && el('edit-modal').classList.contains('is-open')) {
       closeEditModal()
     }
   })
@@ -796,8 +825,8 @@ el('form-register').addEventListener('submit', async (e) => {
 
 el('btn-logout').addEventListener('click', async () => {
   await api.post('/auth/logout').catch(() => {})
-  state.user  = null
-  state.tasks = []
+  state.user      = null
+  state.tasks     = []
   state.activeTab = 'inbox'
   showView('view-login')
   el('login-username').value = ''
@@ -806,9 +835,8 @@ el('btn-logout').addEventListener('click', async () => {
 
 // ── Close menu on outside click ───────────────────────────────────────────────
 document.addEventListener('click', (e) => {
-  if (!el('task-menu')?.classList.contains('hidden')) {
-    if (!el('task-menu').contains(e.target)) closeTaskMenu()
-  }
+  if (!el('task-menu')?.classList.contains('is-open')) return
+  if (!el('task-menu').contains(e.target)) closeTaskMenu()
 })
 
 document.addEventListener('keydown', (e) => {
