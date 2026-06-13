@@ -3,15 +3,9 @@
   "configurations": [
     {
       "name": "nothing-to-do",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["--experimental-sqlite", "src/server.js"],
-      "port": 3000,
-      "autoPort": true,
-      "env": {
-        "SESSION_SECRET": "dev-preview-secret-not-for-production-12345",
-        "PORT": "3000",
-        "HOST": "127.0.0.1"
-      }
+      "runtimeExecutable": "C:\\Users\\ninob\\.config\\herd\\bin\\php84\\php.exe",
+      "runtimeArgs": ["artisan", "serve", "--port=8000", "--host=127.0.0.1"],
+      "port": 8000
     }
   ]
 }

@@ -1,9 +1,132 @@
-@import 'tailwindcss';
+/* Self-hosted Space Grotesk (Fontsource) — no external font requests. */
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/700.css';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+@layer base {
+    /* ── Topografie · map in daylight (channels are space-separated RGB) ── */
+    :root {
+        --paper: 241 237 226;
+        --surface: 252 251 247;
+        --line: 227 222 207;
+        --ink: 35 41 31;
+        --ink-soft: 92 98 83;
+        --ink-faint: 142 146 127;
+        --forest: 31 107 59;
+        --forest-soft: 226 239 230;
+        --overprint: 164 25 125;
+        --overprint-soft: 246 227 239;
+        --contour: 156 107 46;
+        --contour-soft: 241 231 214;
+        --signal: 168 57 42;
+        --signal-soft: 246 225 220;
+        --shadow-map: 0 1px 2px rgb(35 41 31 / 0.07), 0 2px 8px rgb(35 41 31 / 0.04);
+        color-scheme: light;
+    }
+
+    /* ── Topografie · map at night ───────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --paper: 16 20 14;
+            --surface: 25 30 22;
+            --line: 44 51 38;
+            --ink: 232 234 223;
+            --ink-soft: 167 172 153;
+            --ink-faint: 118 123 105;
+            --forest: 87 169 114;
+            --forest-soft: 27 40 30;
+            --overprint: 227 100 176;
+            --overprint-soft: 44 22 35;
+            --contour: 201 154 92;
+            --contour-soft: 39 31 18;
+            --signal: 217 101 79;
+            --signal-soft: 44 23 20;
+            --shadow-map: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 10px rgb(0 0 0 / 0.3);
+            color-scheme: dark;
+        }
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: rgb(var(--paper));
+        color: rgb(var(--ink));
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    ::selection {
+        background: rgb(var(--overprint));
+        color: #fff;
+    }
+
+    /* Map-grid scrollbars: thin, hairline-coloured. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(var(--line)) transparent;
+    }
+    *::-webkit-scrollbar {
+        width: 9px;
+        height: 9px;
+    }
+    *::-webkit-scrollbar-thumb {
+        background: rgb(var(--line));
+        border-radius: 9999px;
+        border: 2px solid rgb(var(--paper));
+    }
+    *::-webkit-scrollbar-thumb:hover {
+        background: rgb(var(--ink-faint));
+    }
+}
+
+@layer components {
+    /* Tinted elevation — never a pure-black shadow on map paper. */
+    .shadow-map {
+        box-shadow: var(--shadow-map);
+    }
+
+    /* Tabular figures for dates, counts, control codes. */
+    .tnum {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: 'tnum' 1;
+    }
+
+    /* Drag & drop: the drop target reads like a course leg — a dashed overprint outline. */
+    .board-ghost > * {
+        opacity: 0;
+    }
+    .board-ghost {
+        position: relative;
+    }
+    .board-ghost::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 1.5px dashed rgb(var(--overprint));
+        background: rgb(var(--overprint-soft));
+        border-radius: 0.625rem;
+    }
+    .board-chosen {
+        cursor: grabbing;
+    }
+}
+
+@layer utilities {
+    /* Honour reduced-motion: collapse decorative motion to instant. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
 }
