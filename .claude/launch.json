@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nothing-to-do",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--experimental-sqlite", "src/server.js"],
+      "port": 3000,
+      "autoPort": true,
+      "env": {
+        "SESSION_SECRET": "dev-preview-secret-not-for-production-12345",
+        "PORT": "3000",
+        "HOST": "127.0.0.1"
+      }
+    }
+  ]
+}
