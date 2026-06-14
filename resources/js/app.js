@@ -130,6 +130,11 @@ document.addEventListener('alpine:init', () => {
                 this.menuOpen = true;
                 return;
             }
+            if (intent === 'edit') {
+                this.spring();
+                this.$wire.startEdit(this.id);
+                return;
+            }
             this.flying = true;
             this.dx = Math.sign(this.dx) * (this.$el.offsetWidth + 24);
             setTimeout(() => {

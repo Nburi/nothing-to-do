@@ -2,13 +2,13 @@
     $isInbox = $task->isInbox();
     // right = swipe-right action (anchored left), left = swipe-left action (anchored right)
     $rightIntent = $isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today');
-    $leftIntent = $isInbox ? 'tasks' : 'menu';
+    $leftIntent = $isInbox ? 'tasks' : 'edit';
     $meta = [
-        'todos'   => ['label' => 'To-Dos',    'bg' => 'bg-forest', 'fg' => 'text-white'],
-        'tasks'   => ['label' => 'Tasks',      'bg' => 'bg-contour', 'fg' => 'text-white'],
-        'today'   => ['label' => 'Heute',      'bg' => 'bg-forest', 'fg' => 'text-white'],
-        'untoday' => ['label' => 'Kein Heute', 'bg' => 'bg-ink',    'fg' => 'text-paper'],
-        'menu'    => ['label' => 'Optionen',   'bg' => 'bg-ink',    'fg' => 'text-paper'],
+        'todos'   => ['label' => 'To-Dos',      'bg' => 'bg-forest',  'fg' => 'text-white'],
+        'tasks'   => ['label' => 'Tasks',        'bg' => 'bg-contour', 'fg' => 'text-white'],
+        'today'   => ['label' => 'Heute',        'bg' => 'bg-forest',  'fg' => 'text-white'],
+        'untoday' => ['label' => 'Kein Heute',   'bg' => 'bg-ink',     'fg' => 'text-paper'],
+        'edit'    => ['label' => 'Bearbeiten',   'bg' => 'bg-ink',     'fg' => 'text-paper'],
     ];
     $rm = $meta[$rightIntent];
     $lm = $meta[$leftIntent];
@@ -37,8 +37,8 @@
     >
         {{ $lm['label'] }}
         <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
-            @if ($leftIntent === 'menu')
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
+            @if ($leftIntent === 'edit')
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             @else
                 <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m0 0 5-5m-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             @endif
