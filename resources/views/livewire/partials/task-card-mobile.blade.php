@@ -21,7 +21,7 @@
     {{-- swipe-right action, anchored left --}}
     <div
         class="pointer-events-none absolute inset-0 flex items-center justify-start gap-2 rounded-card pl-5 text-sm font-medium {{ $rm['bg'] }} {{ $rm['fg'] }}"
-        x-show="dir === 'right'" :style="'opacity:' + progress" style="display: none;"
+        x-show="dir === 'right'" :style="{ opacity: progress }" style="display: none;"
     >
         <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -32,7 +32,7 @@
     {{-- swipe-left action, anchored right --}}
     <div
         class="pointer-events-none absolute inset-0 flex items-center justify-end gap-2 rounded-card pr-5 text-sm font-medium {{ $lm['bg'] }} {{ $lm['fg'] }}"
-        x-show="dir === 'left'" :style="'opacity:' + progress" style="display: none;"
+        x-show="dir === 'left'" :style="{ opacity: progress }" style="display: none;"
     >
         {{ $lm['label'] }}
         <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
