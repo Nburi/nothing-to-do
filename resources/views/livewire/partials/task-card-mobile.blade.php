@@ -50,14 +50,14 @@
          binding replaces the whole style attribute each frame and would wipe an
          inline touch-action, letting the browser steal the horizontal swipe. --}}
     <div
-        class="relative flex touch-pan-y items-start gap-3 rounded-card border border-line bg-surface py-3 pl-3 pr-2 shadow-map"
+        class="relative flex touch-pan-y items-start gap-3 rounded-card border py-3 pl-3 pr-2 shadow-map
+            {{ $task->is_important
+                ? 'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft'
+                : 'border-line bg-surface' }}"
         :class="{ 'transition-transform duration-200 ease-tactile': !dragging }"
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
     >
-        @if ($task->is_important)
-            <span class="pointer-events-none absolute inset-y-2.5 left-0 w-[3px] rounded-full bg-overprint" aria-hidden="true"></span>
-        @endif
 
         <button
             type="button"
