@@ -2,12 +2,11 @@
 <div
     wire:key="task-{{ $task->id }}"
     data-id="{{ $task->id }}"
-    class="group/card relative flex items-start gap-2.5 rounded-card border border-line bg-surface py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200 hover:border-ink-faint/50"
+    class="group/card relative flex items-start gap-2.5 rounded-card border py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200
+        {{ $task->is_important
+            ? 'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft'
+            : 'border-line bg-surface hover:border-ink-faint/50' }}"
 >
-    @if ($task->is_important)
-        {{-- course-overprint mark: this task is important --}}
-        <span class="pointer-events-none absolute inset-y-2 left-0 w-[3px] rounded-full bg-overprint" aria-hidden="true"></span>
-    @endif
 
     <button
         type="button"

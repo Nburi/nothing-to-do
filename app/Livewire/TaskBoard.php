@@ -216,10 +216,11 @@ class TaskBoard extends Component
         $task = $this->userTask($id);
 
         match ($intent) {
-            'todos' => $task->update(['list' => 'todos']),
-            'tasks' => $task->update(['list' => 'tasks']),
-            'today' => $task->isInbox() ? null : $task->update(['is_today' => true]),
-            default => null,
+            'todos'   => $task->update(['list' => 'todos']),
+            'tasks'   => $task->update(['list' => 'tasks']),
+            'today'   => $task->isInbox() ? null : $task->update(['is_today' => true]),
+            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
+            default   => null,
         };
     }
 

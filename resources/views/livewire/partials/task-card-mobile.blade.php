@@ -1,13 +1,14 @@
 @php
     $isInbox = $task->isInbox();
     // right = swipe-right action (anchored left), left = swipe-left action (anchored right)
-    $rightIntent = $isInbox ? 'todos' : 'today';
-    $leftIntent = $isInbox ? 'tasks' : 'menu';
+    $rightIntent = $isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today');
+    $leftIntent = $isInbox ? 'tasks' : 'edit';
     $meta = [
-        'todos' => ['label' => 'To-Dos', 'bg' => 'bg-forest', 'fg' => 'text-white'],
-        'tasks' => ['label' => 'Tasks', 'bg' => 'bg-contour', 'fg' => 'text-white'],
-        'today' => ['label' => 'Heute', 'bg' => 'bg-forest', 'fg' => 'text-white'],
-        'menu' => ['label' => 'Optionen', 'bg' => 'bg-ink', 'fg' => 'text-paper'],
+        'todos'   => ['label' => 'To-Dos',      'bg' => 'bg-forest',  'fg' => 'text-white'],
+        'tasks'   => ['label' => 'Tasks',        'bg' => 'bg-contour', 'fg' => 'text-white'],
+        'today'   => ['label' => 'Heute',        'bg' => 'bg-forest',  'fg' => 'text-white'],
+        'untoday' => ['label' => 'Kein Heute',   'bg' => 'bg-ink',     'fg' => 'text-paper'],
+        'edit'    => ['label' => 'Bearbeiten',   'bg' => 'bg-ink',     'fg' => 'text-paper'],
     ];
     $rm = $meta[$rightIntent];
     $lm = $meta[$leftIntent];
@@ -21,7 +22,7 @@
     {{-- swipe-right action, anchored left --}}
     <div
         class="pointer-events-none absolute inset-0 flex items-center justify-start gap-2 rounded-card pl-5 text-sm font-medium {{ $rm['bg'] }} {{ $rm['fg'] }}"
-        x-show="dir === 'right'" :style="'opacity:' + progress" style="display: none;"
+        x-show="dir === 'right'" :style="{ opacity: progress }" style="display: none;"
     >
         <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -32,12 +33,12 @@
     {{-- swipe-left action, anchored right --}}
     <div
         class="pointer-events-none absolute inset-0 flex items-center justify-end gap-2 rounded-card pr-5 text-sm font-medium {{ $lm['bg'] }} {{ $lm['fg'] }}"
-        x-show="dir === 'left'" :style="'opacity:' + progress" style="display: none;"
+        x-show="dir === 'left'" :style="{ opacity: progress }" style="display: none;"
     >
         {{ $lm['label'] }}
         <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
-            @if ($leftIntent === 'menu')
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
+            @if ($leftIntent === 'edit')
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             @else
                 <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m0 0 5-5m-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             @endif
@@ -49,14 +50,14 @@
          binding replaces the whole style attribute each frame and would wipe an
          inline touch-action, letting the browser steal the horizontal swipe. --}}
     <div
-        class="relative flex touch-pan-y items-start gap-3 rounded-card border border-line bg-surface py-3 pl-3 pr-2 shadow-map"
+        class="relative flex touch-pan-y items-start gap-3 rounded-card border py-3 pl-3 pr-2 shadow-map
+            {{ $task->is_important
+                ? 'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft'
+                : 'border-line bg-surface' }}"
         :class="{ 'transition-transform duration-200 ease-tactile': !dragging }"
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
     >
-        @if ($task->is_important)
-            <span class="pointer-events-none absolute inset-y-2.5 left-0 w-[3px] rounded-full bg-overprint" aria-hidden="true"></span>
-        @endif
 
         <button
             type="button"
