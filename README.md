@@ -1,293 +1,58 @@
-# nothing-to-do
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-A self-hosted, multi-user to-do list with a clean web UI and a token-authenticated REST API. Built to run as a permanent service on a Linux server — no cloud services, no external databases.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-**Key features**
+## About Laravel
 
-- Multiple user accounts, each fully isolated from the others
-- Tasks with name, description, tags, and deadline
-- Mark done / unmark; completed tasks auto-purge at **00:00 Europe/Zurich**
-- REST API compatible with **Apple Shortcuts** and any HTTP client
-- SQLite — a single file, trivially backup-able
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
----
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-## Prerequisites
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-| Requirement | Minimum version | Notes |
-|---|---|---|
-| Node.js | 22.5.0 | On Node 22.x the `--experimental-sqlite` flag is required (see scripts). Node 23.4+ needs no flag. |
-| npm | 8+ | |
+## Learning Laravel
 
-The app uses only the Node.js built-in SQLite module (`node:sqlite`). No native compilation tools (Python, gcc, Visual Studio) required.
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
----
+In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
-## Quick start (development)
+You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
 
-```bash
-git clone https://github.com/yourname/nothing-to-do
-cd nothing-to-do
-npm install
-cp .env.example .env   # edit SESSION_SECRET at minimum
-npm run dev            # starts with --watch for auto-reload
-```
+## Agentic Development
 
-Open http://localhost:3000, register an account, and you're good to go.
-
----
-
-## Production deployment on Linux
-
-### 1. Install Node.js
+Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
 
 ```bash
-# Node 22 LTS via NodeSource
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
+composer require laravel/boost --dev
+
+php artisan boost:install
 ```
 
-### 2. Deploy the app
+Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
-```bash
-sudo mkdir -p /opt/nothing-to-do
-sudo chown $USER: /opt/nothing-to-do
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin ntd
-sudo mkdir -p /opt/nothing-to-do/data
-sudo chown -R ntd:ntd /opt/nothing-to-do/data
-git clone https://github.com/yourname/nothing-to-do /opt/nothing-to-do
-cd /opt/nothing-to-do
-npm install --omit=dev
-```
+## Contributing
 
-### 3. Configure environment
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-```bash
-cp .env.example .env
-# Generate a strong session secret:
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# Paste the output as SESSION_SECRET in .env
-nano .env
-```
+## Code of Conduct
 
-### 4. Install the systemd service
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-```bash
-sudo cp nothing-to-do.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now nothing-to-do
-sudo systemctl status nothing-to-do
-```
+## Security Vulnerabilities
 
-### 5. Set up nginx (reverse proxy + TLS)
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-```bash
-sudo cp nginx.conf.example /etc/nginx/sites-available/nothing-to-do
-# Edit the server_name and certificate paths
-sudo nano /etc/nginx/sites-available/nothing-to-do
-sudo ln -s /etc/nginx/sites-available/nothing-to-do /etc/nginx/sites-enabled/
-sudo certbot --nginx -d tasks.example.com
-sudo nginx -t && sudo systemctl reload nginx
-```
+## License
 
----
-
-## Docker
-
-```bash
-# Create a .env with at minimum: SESSION_SECRET=<your-secret>
-docker compose up -d
-```
-
-The database is stored in a named Docker volume (`ntd-data`). Back it up with:
-
-```bash
-docker run --rm -v ntd-data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/ntd-backup.tar.gz /data
-```
-
----
-
-## Backup
-
-The entire application state is a single SQLite file:
-
-```bash
-# Simple backup (stop-the-world safe)
-cp /opt/nothing-to-do/data/tasks.db /backup/tasks-$(date +%Y%m%d).db
-
-# Live backup (safe while running, uses SQLite's online backup)
-sqlite3 /opt/nothing-to-do/data/tasks.db ".backup /backup/tasks-$(date +%Y%m%d).db"
-```
-
----
-
-## REST API reference
-
-All API endpoints are under `/api/v1/`. Authentication is via a **Bearer token** in the `Authorization` header.
-
-### Get your API token
-
-1. Log in to the web UI
-2. Click the ⚙ settings icon
-3. Click **Generate token**
-4. Copy the token (it is shown exactly once)
-
-### Endpoints
-
-#### List tasks
-```
-GET /api/v1/tasks
-Authorization: Bearer ntd_<your-token>
-```
-
-Returns active tasks and tasks completed today (Zurich time):
-```json
-{
-  "tasks": [
-    {
-      "id": 1,
-      "name": "Buy groceries",
-      "description": "Milk, eggs, bread",
-      "tags": ["shopping"],
-      "deadline": "2024-01-15T18:00",
-      "completed_at": null,
-      "created_at": 1705312800000
-    }
-  ]
-}
-```
-
-#### Create a task
-```
-POST /api/v1/tasks
-Authorization: Bearer ntd_<your-token>
-Content-Type: application/json
-
-{
-  "name": "Buy groceries",
-  "description": "Milk, eggs, bread",
-  "tags": ["shopping", "weekly"],
-  "deadline": "2024-01-15T18:00"
-}
-```
-
-- `name` — **required**
-- `description`, `tags`, `deadline` — optional
-- `deadline` format: `YYYY-MM-DD` (date only) or `YYYY-MM-DDTHH:MM` (with time)
-
-Returns `201` with the created task object.
-
-#### Update a task
-```
-PATCH /api/v1/tasks/:id
-Authorization: Bearer ntd_<your-token>
-Content-Type: application/json
-
-{
-  "name": "New name",
-  "deadline": "2024-02-01"
-}
-```
-
-Send only the fields you want to change. To clear a field, send `null`. To clear tags, send `"tags": []`.
-
-#### Mark as done (toggle)
-```
-PATCH /api/v1/tasks/:id/done
-Authorization: Bearer ntd_<your-token>
-```
-
-Toggles the completed state. Returns the updated task.
-
-#### Delete a task
-```
-DELETE /api/v1/tasks/:id
-Authorization: Bearer ntd_<your-token>
-```
-
-Permanently deletes the task. Returns `204 No Content`.
-
----
-
-## curl examples
-
-```bash
-TOKEN="ntd_your_token_here"
-BASE="https://tasks.example.com"
-
-# List tasks
-curl -s -H "Authorization: Bearer $TOKEN" $BASE/api/v1/tasks | jq .
-
-# Create a task
-curl -s -X POST $BASE/api/v1/tasks \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Call dentist","tags":["health"],"deadline":"2024-01-20"}'
-
-# Mark task 42 as done
-curl -s -X PATCH $BASE/api/v1/tasks/42/done \
-  -H "Authorization: Bearer $TOKEN"
-
-# Delete task 42
-curl -s -X DELETE $BASE/api/v1/tasks/42 \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## Apple Shortcuts setup
-
-You can add and manage tasks directly from Shortcuts using the **Get Contents of URL** action.
-
-### Create a task from Shortcuts
-
-1. Add a **Get Contents of URL** action
-2. Set the URL to `https://tasks.example.com/api/v1/tasks`
-3. Set **Method** to `POST`
-4. Add a **Header**: `Authorization` → `Bearer ntd_your_token_here`
-5. Set **Request Body** to `JSON`
-6. Add JSON fields:
-   - `name` → (text input or variable, e.g. from an **Ask for Input** action)
-   - `description` → optional
-   - `tags` → optional array, e.g. `["shortcuts","auto"]`
-   - `deadline` → optional, format `YYYY-MM-DD`
-
-### List tasks from Shortcuts
-
-1. **Get Contents of URL** → `https://tasks.example.com/api/v1/tasks`
-2. Method: `GET`
-3. Header: `Authorization` → `Bearer ntd_your_token_here`
-4. The response is a JSON object with a `tasks` array
-5. Use **Get Dictionary Value** → `tasks` to extract the list
-
-### Quick-add task (one-tap Shortcut)
-
-Create a shortcut that:
-1. **Ask for Input** — "Task name?"
-2. **Get Contents of URL** (POST, with the name from step 1)
-3. **Show Notification** — "Task added!"
-
-Add this shortcut to your home screen or as a widget for one-tap task entry.
-
----
-
-## Running tests
-
-```bash
-npm test
-```
-
-Tests use Node's built-in `node:test` runner and an in-memory SQLite database — no setup required.
-
----
-
-## Architecture notes
-
-**Midnight purge:** Implemented as an in-process `node-schedule` cron job (`0 0 * * *`, `Europe/Zurich` timezone). On every startup, the purge also runs immediately to catch up on any days the server was offline. The purge is idempotent — running it multiple times is safe.
-
-**Authentication:** The web UI uses session cookies (`@fastify/session` backed by SQLite). The REST API uses per-user Bearer tokens. Both auth methods work against the same `/api/v1/*` endpoints, so the web UI and external tools share identical data access paths.
-
-**API tokens:** The raw token is returned once at generation time and never stored. Only a SHA-256 hash of the token is persisted in the database.
-
-**Database:** A single SQLite file under `data/tasks.db`. WAL mode is enabled for better read performance. Foreign key constraints are enforced with `PRAGMA foreign_keys = ON`.
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

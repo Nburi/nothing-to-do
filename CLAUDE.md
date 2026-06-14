@@ -1,196 +1,230 @@
-# nothing-to-do — Developer Notes
+# nothing-to-do — Project Guide (`CLAUDE.md`)
 
-## Stack
-
-- **Runtime:** Node.js ≥ 22.5.0 (uses `node:sqlite` via `--experimental-sqlite` flag)
-- **Backend:** Fastify 4.28, raw SQL with SQLite (no ORM)
-- **Frontend:** Vanilla JS + HTML + CSS (no framework, no build step)
-- **Auth:** Argon2 (passwords), SHA-256 (API tokens), `@fastify/session` with SQLite session store
-- **Tests:** Node.js native `node:test` module
-
-## Key Commands
-
-```bash
-npm start          # Production server
-npm run dev        # Dev server with --watch
-npm test           # Run all tests (44 tests)
-```
-
-## File Structure
-
-```
-src/
-  server.js        # Entry point
-  app.js           # Fastify app builder
-  db.js            # SQLite init + session store + migration
-  scheduler.js     # Nightly task purge (00:00 Zurich time)
-  api/v1.js        # Task CRUD REST API
-  routes/auth.js   # Login / register / logout / me
-  routes/settings.js  # API token management
-  middleware/auth.js   # Bearer token + session auth hook
-public/
-  index.html       # SPA shell
-  app.js           # Frontend JS (vanilla)
-  styles.css       # CSS (no framework)
-test/
-  auth.test.js
-  tasks.test.js
-  scheduler.test.js
-data/
-  tasks.db         # SQLite file (created on first start, gitignored)
-```
-
-## Database Schema
-
-### tasks table
-```sql
-id           INTEGER PK AUTOINCREMENT
-user_id      INTEGER FK → users.id ON DELETE CASCADE
-name         TEXT NOT NULL
-description  TEXT
-deadline     TEXT  -- "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"
-completed_at INTEGER  -- Unix ms; NULL = active
-created_at   INTEGER  -- Unix ms
-list         TEXT NOT NULL DEFAULT 'inbox'   -- added v2
-is_important INTEGER NOT NULL DEFAULT 0      -- added v2
-is_today     INTEGER NOT NULL DEFAULT 0      -- added v2
-```
-
-### Migration strategy (v1 → v2)
-The migration is **embedded in `src/db.js`** and runs automatically on every server start.
-It checks `pragma_table_info('tasks')` and adds missing columns with `ALTER TABLE ADD COLUMN`.
-**No manual SQL required on production** — just `git pull` + service restart.
+> This is the central document for the project. It is kept current at all times.
+> If you solve a problem that could recur, document it under **Known Issues & Solutions**.
 
 ---
 
-## Feature Version History
+## 1. What is `nothing-to-do`?
 
-### v1 (initial)
-- Single flat task list
-- Tags (comma-separated), deadline, description
-- Apple Shortcuts / REST API support via Bearer token
-- Nightly purge of completed tasks (Zurich time)
+A **personal productivity system** for a single user (not a team tool). It is built around
+the **"3 Things" framework**, which sorts work into three types by size and shape:
 
-### v2 (branch: `feature/three-lists-ui`)
-#### New data model fields
-- `list` — `'inbox' | 'todos' | 'tasks'` (default `'inbox'`)
-- `is_important` — boolean flag (default `false`)
-- `is_today` — boolean flag; only valid when `list != 'inbox'` (default `false`)
-  - Server auto-clears `is_today` when a task is moved to inbox via PATCH
+- **To-Do** — a small task; several can be cleared in one work session.
+- **Task** — a larger thing, but still a single work step.
+- **Project** — multi-part, has sub-tasks. *Not built yet — but the architecture must leave room for it.*
 
-#### API changes
-- `POST /api/v1/tasks` — now accepts `list`, `is_important`
-- `PATCH /api/v1/tasks/:id` — now accepts `list`, `is_important`, `is_today`
-  - `list` is validated (400 if not one of inbox/todos/tasks)
-  - `is_today=true` on an inbox task returns 400
-- All task responses now include `list`, `is_important`, `is_today`
+Incoming items land in an **Inbox** and get triaged into **To-Dos** or **Tasks**. Each item can
+be flagged **today** (focus for the day), **important**, and given a **deadline** (hard, external)
+and/or a **due date** (soft, self-imposed).
 
-#### Desktop UI (≥768px)
-- 3-column layout: Inbox | To Dos | Tasks
-- Single quick-add input above all columns (adds to Inbox)
-- "Today" subsection at top of To Dos and Tasks columns
-- Sort order per column: important first → deadline ≤4 days → rest
-- Drag & Drop (HTML5 DnD API) to move tasks between columns
-- Click task body → toggle `is_important`
-- Click circle → toggle done
-- 3-dots menu → Edit / Delete
+The product goal is **speed and calm**: fast capture, minimal clicks, a clear overview, no feature bloat.
+The app should feel reliable and quiet enough to be used every single day.
 
-#### Mobile UI (<768px)
-- 4-tab bottom nav: Inbox / To Dos / Tasks / All
-- Per-tab quick-add input
-- Swipe gestures on task cards:
-  - Inbox: swipe right → move to To Dos, swipe left → move to Tasks
-  - To Dos / Tasks: swipe right → toggle today, swipe left → deadline picker
-- Click body → toggle `is_important`
-- 3-dots menu → Edit / Delete
+**Target user:** a Swiss upper-secondary student and competitive orienteering athlete. One account, his own tasks.
 
 ---
 
----
+## 2. My role & working standard
 
-## Solved Issues
+I act as an **experienced senior web developer** with a strong sense for exceptional user experience.
+I care about: fine detail (hover states, timing, feedback), rich and fluid interactions (gestures,
+transitions), clean and maintainable code, and pragmatic quality — I will spend extra effort when it
+measurably improves the user's experience.
 
-### Session cookie never set — `NODE_ENV=production` from `.env` file
-
-**Symptom:** After login or register, `/auth/me` and `/api/v1/tasks` returned 401. No `Set-Cookie` header appeared in the HTTP response. All sessions in `tasks.db` had `userId: undefined` or were saved without `userId` at all.
-
-**What was tried first (did NOT fix it):**
-
-1. **Deleting `data/tasks.db`** — the hypothesis was that stale sessions from earlier development attempts were causing confusion. Deleting the DB didn't help; fresh logins still produced no cookie.
-
-2. **Removing `session.regenerate()`** — the login handler used `await request.session.regenerate()` before setting `request.session.userId = user.id`. The hypothesis was that `regenerate()` was creating a new session instance that lost its connection to the `onSend` hook, so the cookie was never written. Removing `regenerate()` and setting `userId` directly appeared correct (all 44 tests still passed), but the cookie was still absent in real HTTP requests.
-
-3. **Checking `NODE_ENV` from the shell** — running `node -e "console.log(process.env.NODE_ENV)"` returned `undefined`, which pointed away from the `.env` hypothesis. This was misleading because the shell process doesn't call `require('dotenv').config()`.
-
-**Root cause:**
-
-`src/server.js` calls `require('dotenv').config()` at startup, which loads `.env`. That file contains `NODE_ENV=production`. In `src/app.js`, the session cookie was configured as:
-
-```javascript
-secure: process.env.NODE_ENV === 'production'  // evaluates to true after dotenv loads
-```
-
-With `secure: true`, `@fastify/session`'s `onSend` hook sets `isInsecureConnection = true` for any non-HTTPS request and silently skips writing the cookie. The server responds 200 but never sends `Set-Cookie`.
-
-This affected ALL environments where the server was started via `node src/server.js` (production config, preview tool, direct dev). The only place it worked was in tests — because `test/*.test.js` calls `buildApp()` directly without going through `server.js`, so `dotenv` never loads.
-
-**How it was found:**
-
-Added `console.log` to `src/app.js` right before `fastify.register('@fastify/session', ...)` and saw `NODE_ENV: production` in the server output despite the shell showing it unset. Added a debug log inside `@fastify/session`'s `onSend` handler (in node_modules) and confirmed `cookieOpts.secure: true` and `isInsecure: true`.
-
-**Fix (in `src/app.js`):**
-
-```javascript
-// Before (broken):
-secure: process.env.NODE_ENV === 'production'
-
-// After (fixed):
-secure: 'auto'
-```
-
-`'auto'` is a built-in mode in `@fastify/session` / `@fastify/cookie`: it sets `secure: false` when `request.protocol === 'http'` and `secure: true` when `request.protocol === 'https'`. This is correct for all environments without depending on `NODE_ENV`:
-- Dev / preview (HTTP) → cookie is set without `Secure` flag ✓
-- Production behind nginx/Caddy (HTTPS) → cookie is set with `Secure` flag ✓
-
-**Side effect also fixed:** `session.regenerate()` was removed from the login and register handlers. With `regenerate()` present, the empty session was saved to the store before `userId` was set. The real `userId`-bearing session was saved later in `onSend` — but since `isInsecureConnection` was `true`, `onSend` bailed out early. After the `secure: 'auto'` fix, `regenerate()` would have worked again, but it was left removed since it added complexity without meaningful security benefit in this self-hosted context (session fixation is not a realistic threat model here).
+I am a **co-creator, not just an implementer.** If I see a better solution than the one described,
+I say so, with reasoning.
 
 ---
 
-### Index on `list` column failed on new databases
-**Problem:** `CREATE INDEX idx_tasks_user_list ON tasks(user_id, list, completed_at)` was placed inside the main `CREATE TABLE` schema block. On fresh databases (`:memory:` for tests), the migration block that adds the `list` column via `ALTER TABLE` hadn't run yet, so the index creation failed with "no such column: list".
+## 3. Global rules (apply for the entire project lifetime)
 
-**Fix:** Added `list`, `is_important`, `is_today` directly to the `CREATE TABLE IF NOT EXISTS tasks (...)` statement (for fresh installs and tests), then kept the `ALTER TABLE` migration block for existing databases. Moved the new index creation to after the migration block.
-
-### Test error message mismatch
-**Problem:** `PATCH rejects is_today=true on inbox task` test expected the error to match `/inbox/i`, but the error message was `"is_today can only be set when list is 'todos' or 'tasks'"` which doesn't contain the word "inbox".
-
-**Fix:** Updated the error message to `"is_today cannot be set on inbox tasks; move task to todos or tasks first"`.
+1. **Git commits** — commit independently and sensibly after each meaningful step (setup, a finished
+   feature, a bugfix). Commit messages in English, precise. **Never push** — the user does that.
+2. **Git branches** — always work on a feature branch, never directly on `main`/`master`.
+   **Never merge** — the user does that.
+3. **Automatic error checking** — after every change, check the code for errors (linting, compilation,
+   `php artisan` checks, tests). Fix what is found before moving on.
+4. **Two failures = stop** — if a command or action fails **twice in a row in the same session**, stop
+   immediately. Describe (a) what I did, (b) why, (c) what failed and the exact error message. Then wait
+   for instructions. Do not keep guessing.
+5. **Stack changes** — before adding or removing any dependency, package, tool, or framework, **ask the
+   user first**, with a short justification.
+6. **To-do list** — keep a visible, current to-do list throughout the session so the user always knows
+   what is done, in progress, and upcoming.
+7. **Deployment notes** — whenever something must be done manually on the Linux production server
+   (migrations, `.env` variables, new dependencies, cron jobs), tell the user explicitly with a clear,
+   numbered checklist.
+8. **Maintain this file** — keep `CLAUDE.md` current. Document solved problems under *Known Issues*.
 
 ---
 
-## Production Deployment (from v1 to v2)
+## 4. Technical context
 
-After merging `feature/three-lists-ui` to main and pushing to GitHub:
+- **Local development:** Windows (Claude Code runs locally on Windows).
+  - Toolchain is provided by **Laravel Herd** (PHP 8.4, Composer, the `laravel` installer, nginx).
+    These live on the **PowerShell** PATH (`~/.config/herd/bin`), **not** the Bash PATH.
+  - Run PHP/Composer/Artisan/npm commands via **PowerShell**; use Bash for git.
+- **Production server:** Linux.
+- **Deployment:** the user pushes source to GitHub and pulls it onto the Linux server. Any change to the
+  stack or infrastructure ships with a full deployment checklist (see §9).
+- **Framework:** Laravel (PHP) — fixed, non-negotiable base.
+- **Authentication:** user accounts are required; each user sees only their own data.
 
+---
+
+## 5. Tech stack
+
+- **Framework:** Laravel 13.15 (PHP 8.4)
+- **Interactivity:** Livewire 4 (server-driven). Alpine ships **inside** Livewire — never import a
+  second copy (double-init). `resources/js/app.js` adds only SortableJS + the swipe component.
+- **Auth:** Laravel Breeze (Blade stack), fully restyled.
+- **Drag & drop:** SortableJS (`window.boardSortable`).
+- **Swipe gestures:** hand-rolled Pointer-Events Alpine component (`swipeCard`) — no library.
+- **Styling:** Tailwind CSS **v3** (PostCSS). Topografie tokens are CSS custom properties (space-separated
+  RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
+  opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
+- **Database:** SQLite (development), MySQL (production-ready).
+- **Build:** Vite 8. **Tests:** PHPUnit (53 tests).
+
+> Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
+> package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
+> package.json — harmless, safe to remove later.
+
+---
+
+## 6. Requirements
+
+See **`docs/REQUIREMENTS.md`** for the full, structured requirements (data model, sort order,
+interactions, desktop & mobile layouts, accounts, future Projects extension).
+
+---
+
+## 7. Architecture
+
+### Models
+- **`User`** (Breeze) `hasMany` **`Task`**.
+- **`Task`** — `user_id, title, list, is_today, is_important, deadline(date), due_date(date),
+  is_completed, completed_at, sort_order, timestamps`. See `docs/REQUIREMENTS.md` §2 for field meaning.
+  - `list` is a **string** (`inbox|todos|tasks`), not a DB enum, so a future `projects` value drops in.
+  - Scopes: `forUser`, `active`, `inList`, `boardOrdered` (important → due within 4 days → manual order).
+  - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
+    `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
+
+### Routing & "controllers"
+- `/` → board if authed, else the landing (`welcome`). `/app` → `TaskBoard` (auth). `/dashboard` →
+  redirect to `/app` (Breeze's post-login target). Profile + Breeze auth routes.
+- There is **no task controller** — the `TaskBoard` Livewire component *is* the controller. Every mutation
+  resolves the task through `auth()->user()->tasks()` (`userTask()` helper), so the frontend is never trusted.
+
+### Frontend & state
+- One full-page Livewire component, `App\Livewire\TaskBoard` (`#[Layout('layouts.app')]`), view at
+  `resources/views/livewire/task-board.blade.php` (+ `partials/`). **Class-based** component (ASCII
+  filename) — not Livewire 4's default emoji single-file component.
+- **Server state** (the source of truth) lives in Livewire computed properties. **Ephemeral UI state**
+  (active mobile tab, live swipe offset, drag-in-progress, open menus) lives in Alpine.
+- Drag (`reorder`) persists the destination zone's full id order + its list/today. Swipe (`swipeIntent`)
+  and the desktop click/checkbox/menu all call Livewire actions.
+
+### Future "Projects" (prepared, not built)
+Add a `projects` value to `Task::LISTS`, a `Project` model, a nullable `project_id` FK on tasks, and a
+fourth board column. The string `list`, the column partial, and the board abstraction extend without a rewrite.
+
+---
+
+## 8. Conventions
+
+- **Language:** code, comments, docs, and commit messages in **English**.
+- **Branches:** `type/short-description` — e.g. `feature/task-board`, `refactor/...`, `redesign/...`.
+- **Commits:** imperative English subject, body explains the *why* when not obvious.
+- **PHP:** PSR-12, Laravel conventions. Models singular, tables plural.
+- **Authorization:** never trust the frontend — every DB operation is scoped to the authenticated user.
+
+---
+
+## 9. Deployment process (Linux production)
+
+This is a **full rebuild** (old Node.js app → Laravel). The first deploy is a fresh setup, not an update.
+
+### First deploy (one time)
+1. `git pull` (the rebuild lives on branch `redesign/from-scratch` until you merge it to `main`).
+2. `composer install --no-dev --optimize-autoloader`
+3. `cp .env.example .env` and set: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://…`,
+   and the **MySQL** `DB_*` vars (or keep SQLite and create `database/database.sqlite`).
+4. `php artisan key:generate`
+5. `php artisan migrate --force`
+6. `npm ci && npm run build`  *(Linux has `pcntl`, so the full `composer run dev` also works there.)*
+7. `php artisan config:cache route:cache view:cache`
+8. Point the web root at `public/`; ensure `storage/` and `bootstrap/cache/` are writable.
+
+### Every later deploy
 ```bash
 git pull
-systemctl restart nothing-to-do   # or: docker-compose restart
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+npm ci && npm run build
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+# restart php-fpm / your process manager
 ```
 
-The DB migration runs automatically on startup. No manual SQL needed.
-
-**Cache busting:** `public/app.js` is loaded as `app.js?v=3` in `index.html`. Browsers will fetch the new file automatically.
-
-**Nginx:** No nginx config changes needed.
+No cron jobs or queue workers are required for the current feature set.
 
 ---
 
-## Testing
+## 10. Known Issues & Solutions
 
-```bash
-npm test
-# Expected: 44 pass, 0 fail
-# Suites: auth (10), tasks + isolation + token (24), scheduler (7), three-lists (10 — actually bundled in tasks.test.js as describe block)
+### Laravel Pail / `composer run dev` fails on Windows (pcntl)
+**Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag
+then tears down the whole dev environment.
+**Cause:** Laravel Pail requires the `pcntl` PHP extension (process forking), which is **POSIX-only** and
+**absent on Windows**.
+**Fix:** remove the `pail` (and the queue listener) processes from the `dev` script in `composer.json` on
+Windows. Keep only the PHP server + Vite. Pail/queue still work fine on the Linux production box.
+
+### Composer / Laravel installer not on the Bash PATH
+**Symptom:** `composer: command not found` in the Bash tool.
+**Cause:** the toolchain is installed via **Laravel Herd** and only registered on the **PowerShell** PATH
+(`C:\Users\<user>\.config\herd\bin`).
+**Fix:** run Composer/Laravel/Artisan via the PowerShell tool. Avoid `2>&1` on native commands in
+PowerShell 5.1 — it wraps stderr as an error record even on success.
+
+### `composer create-project` needs an empty target directory
+**Symptom:** it refuses to scaffold into a non-empty directory.
+**Fix:** scaffold into a temporary subdirectory, then move the contents up into the repo root (preserving
+`.git`).
+
+### Only Herd PHP (8.4.13) runs the app — Bash `php` (8.4.0) fails the platform check
+**Symptom:** `php artisan …` from the Bash tool dies with "Composer dependencies require PHP >= 8.4.1".
+**Cause:** Composer locked deps against Herd's PHP 8.4.13; the separate Bash `php` is 8.4.0.
+**Fix:** run **all** PHP/artisan/composer through PowerShell (Herd). Use Bash only for git.
+
+### Carbon 3 `diffInDays()` returns a float
+**Symptom:** day-bucket logic using `=== 0` / `=== 1` silently never matches (e.g. "heute"/"morgen").
+**Fix:** cast to int: `(int) $today->diffInDays($date)`, and check overdue separately with `lessThan()`.
+(See `Task::effectiveDateLabel`.)
+
+### Livewire 4 generates emoji-named single-file components
+**Symptom:** `php artisan make:livewire X` creates `resources/views/components/⚡x.blade.php`.
+**Fix:** delete it and use a **class-based** component in `app/Livewire/` (ASCII filename, easier to test,
+robust across Windows↔Linux git). Reference as `<livewire:task-board />` / route to the class.
+
+### Browser preview tool can't trigger Livewire 4 `wire:` directives
+**Symptom:** `preview_click` "succeeds" but no Livewire request fires (no `/livewire/update` POST).
+**Cause:** the preview tool's synthetic click events don't reach Livewire 4's delegated listeners; only
+`wire:model` (input) and the programmatic API work through it.
+**Fix (for verification only):** drive actions with a real DOM event via `preview_eval`
+(`el.click()`) or the API (`$wire.method()` / `Livewire.all()[0].$refresh()`). Real users are unaffected.
+
+---
+
+## 11. Key commands
+
+```powershell
+# (run in PowerShell — Herd toolchain)
+composer install            # PHP dependencies
+npm install                 # JS dependencies
+php artisan migrate         # run migrations
+php artisan test            # run the test suite
+npm run dev                 # Vite dev server (assets)
+php artisan serve           # PHP dev server  (http://127.0.0.1:8000)
 ```
-
-Tests use in-memory SQLite (`:memory:`) and never touch `data/tasks.db`.
