@@ -45,9 +45,11 @@
     </div>
 
     {{-- the card that tracks the finger --}}
+    {{-- touch-action lives in a class, not inline style: Alpine's :style transform
+         binding replaces the whole style attribute each frame and would wipe an
+         inline touch-action, letting the browser steal the horizontal swipe. --}}
     <div
-        class="relative flex items-start gap-3 rounded-card border border-line bg-surface py-3 pl-3 pr-2 shadow-map"
-        style="touch-action: pan-y;"
+        class="relative flex touch-pan-y items-start gap-3 rounded-card border border-line bg-surface py-3 pl-3 pr-2 shadow-map"
         :class="{ 'transition-transform duration-200 ease-tactile': !dragging }"
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
