@@ -1,13 +1,14 @@
 @php
     $isInbox = $task->isInbox();
     // right = swipe-right action (anchored left), left = swipe-left action (anchored right)
-    $rightIntent = $isInbox ? 'todos' : 'today';
+    $rightIntent = $isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today');
     $leftIntent = $isInbox ? 'tasks' : 'menu';
     $meta = [
-        'todos' => ['label' => 'To-Dos', 'bg' => 'bg-forest', 'fg' => 'text-white'],
-        'tasks' => ['label' => 'Tasks', 'bg' => 'bg-contour', 'fg' => 'text-white'],
-        'today' => ['label' => 'Heute', 'bg' => 'bg-forest', 'fg' => 'text-white'],
-        'menu' => ['label' => 'Optionen', 'bg' => 'bg-ink', 'fg' => 'text-paper'],
+        'todos'   => ['label' => 'To-Dos',    'bg' => 'bg-forest', 'fg' => 'text-white'],
+        'tasks'   => ['label' => 'Tasks',      'bg' => 'bg-contour', 'fg' => 'text-white'],
+        'today'   => ['label' => 'Heute',      'bg' => 'bg-forest', 'fg' => 'text-white'],
+        'untoday' => ['label' => 'Kein Heute', 'bg' => 'bg-ink',    'fg' => 'text-paper'],
+        'menu'    => ['label' => 'Optionen',   'bg' => 'bg-ink',    'fg' => 'text-paper'],
     ];
     $rm = $meta[$rightIntent];
     $lm = $meta[$leftIntent];
