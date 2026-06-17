@@ -47,5 +47,23 @@ class DatabaseSeeder extends Seeder
         // A completed task (hidden from the board, kept in the DB).
         Task::factory()->for($user)->todos()->completed()
             ->create(['title' => 'Karten für Testlauf gedruckt']);
+
+        // Projects — non-urgent, multi-part work parked for later.
+        $matura = $user->projects()->create(['name' => 'Maturaarbeit']);
+        $matura->tasks()->createMany([
+            ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Themenwahl finalisieren', 'is_important' => true],
+            ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Literatur recherchieren'],
+            ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Gliederung entwerfen'],
+            ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Betreuer angefragt', 'is_completed' => true, 'completed_at' => now()],
+        ]);
+
+        $saison = $user->projects()->create(['name' => 'Saisonplanung OL']);
+        $saison->tasks()->createMany([
+            ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Wettkampfkalender sichten', 'due_date' => now()->addDays(5)->toDateString()],
+            ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Trainingslager Tessin buchen'],
+        ]);
+
+        // A fresh, still-empty project.
+        $user->projects()->create(['name' => 'Zimmer umräumen']);
     }
 }

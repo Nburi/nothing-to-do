@@ -12,7 +12,8 @@ the **"3 Things" framework**, which sorts work into three types by size and shap
 
 - **To-Do** — a small task; several can be cleared in one work session.
 - **Task** — a larger thing, but still a single work step.
-- **Project** — multi-part, has sub-tasks. *Not built yet — but the architecture must leave room for it.*
+- **Project** — a container for non-urgent, multi-part work. Built: a fourth **Projekte** list shows
+  one card per project (name + next task + progress), and each card opens a dedicated project page.
 
 Incoming items land in an **Inbox** and get triaged into **To-Dos** or **Tasks**. Each item can
 be flagged **today** (focus for the day), **important**, and given a **deadline** (hard, external)
@@ -103,11 +104,15 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 ## 7. Architecture
 
 ### Models
-- **`User`** (Breeze) `hasMany` **`Task`**.
-- **`Task`** — `user_id, title, list, is_today, is_important, deadline(date), due_date(date),
+- **`User`** (Breeze) `hasMany` **`Task`** and `hasMany` **`Project`**.
+- **`Project`** — `user_id, name, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
+  uncompleted working set. Scopes: `forUser`, `ordered`.
+- **`Task`** — `user_id, title, list, project_id, is_today, is_important, deadline(date), due_date(date),
   is_completed, completed_at, sort_order, timestamps`. See `docs/REQUIREMENTS.md` §2 for field meaning.
-  - `list` is a **string** (`inbox|todos|tasks`), not a DB enum, so a future `projects` value drops in.
-  - Scopes: `forUser`, `active`, `inList`, `boardOrdered` (important → due within 4 days → manual order).
+  - `list` is a **string** (`inbox|todos|tasks|projects`), not a DB enum. `BOARD_LISTS` are the three
+    drag/quick-add columns; a task in the `projects` list also carries a `project_id` and lives on its
+    project page (never on the main board — see the `onBoard` scope = `project_id IS NULL`).
+  - Scopes: `forUser`, `active`, `inList`, `onBoard`, `boardOrdered` (important → due within 4 days → manual order).
   - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
     `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
 
@@ -126,9 +131,17 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - Drag (`reorder`) persists the destination zone's full id order + its list/today. Swipe (`swipeIntent`)
   and the desktop click/checkbox/menu all call Livewire actions.
 
-### Future "Projects" (prepared, not built)
-Add a `projects` value to `Task::LISTS`, a `Project` model, a nullable `project_id` FK on tasks, and a
-fourth board column. The string `list`, the column partial, and the board abstraction extend without a rewrite.
+### Projects (built)
+- A fourth **Projekte** column (desktop) / 5th bottom-nav tab (mobile) lists `Project` cards
+  (`partials/project-card.blade.php`): name + next active task + a `done/total` progress bar.
+- A card opens **`App\Livewire\ProjectPage`** (`/app/projects/{project}`, `route('project.show')`):
+  the project's tasks, a quick-add (creates `list=projects` tasks with `project_id`), a collapsible
+  "Aus der Inbox hinzufügen" picker (`assignToProject`), rename + delete (delete releases active tasks
+  back to the inbox), and per-task release (`removeFromProject`).
+- Shared task mutations + the edit sheet live in the **`App\Livewire\Concerns\ManagesTasks`** trait
+  (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
+- Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
+  `setToday` is a no-op for them).
 
 ---
 
