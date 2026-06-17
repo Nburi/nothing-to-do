@@ -178,6 +178,22 @@ class TaskBoard extends Component
         $this->newProjectName = '';
     }
 
+    /**
+     * Desktop drag & drop: a board task card dropped onto a project card.
+     * Moves the task into that project (and off the board / out of Today).
+     */
+    public function assignTaskToProject(int $taskId, int $projectId): void
+    {
+        $task = $this->userTask($taskId);
+        $project = auth()->user()->projects()->findOrFail($projectId);
+
+        $task->update([
+            'project_id' => $project->id,
+            'list' => 'projects',
+            'is_today' => false,
+        ]);
+    }
+
     /** Set/clear the Today focus. Inbox & project tasks can never be Today. */
     public function setToday(int $id, bool $value): void
     {

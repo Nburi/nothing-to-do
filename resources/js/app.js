@@ -21,10 +21,39 @@ window.boardSortable = function (el, wire) {
         chosenClass: 'board-chosen',
         delay: 60,
         delayOnTouchOnly: true,
+        // Mark the page as dragging so project cards can show a drop affordance.
+        onStart: () => document.body.classList.add('dragging-task'),
         onEnd: (evt) => {
+            document.body.classList.remove('dragging-task');
             const to = evt.to;
+            // A drop onto a project card lands in a zone with no data-list; the
+            // project drop zone's own onAdd handles that. Only persist real columns.
+            if (to.dataset.list === undefined) return;
             const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
             wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
+ * A project card as a drop target: receive-only member of the 'board' group.
+ * Dropping a task here assigns it to the project (server is the source of truth),
+ * so we pull the moved node straight back out and let Livewire re-render.
+ */
+window.projectDropZone = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: { name: 'board', pull: false, put: true },
+        sort: false,
+        draggable: '[data-id]', // nothing inside is draggable; the card stays a link
+        onAdd: (evt) => {
+            const taskId = evt.item.dataset.id;
+            const projectId = el.dataset.projectId;
+            evt.item.remove(); // don't leave the card visually holding the task
+            if (taskId && projectId) {
+                wire.assignTaskToProject(parseInt(taskId, 10), parseInt(projectId, 10));
+            }
         },
     });
     return el._sortable;

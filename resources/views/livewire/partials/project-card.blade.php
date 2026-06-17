@@ -8,10 +8,16 @@
     $pct = $total > 0 ? round(($done / $total) * 100) : 0;
 @endphp
 
+<div
+    wire:key="project-{{ $project->id }}"
+    class="project-drop rounded-card"
+    data-project-id="{{ $project->id }}"
+    x-data
+    x-init="window.projectDropZone($el, $wire)"
+>
 <a
     href="{{ route('project.show', $project) }}"
     wire:navigate
-    wire:key="project-{{ $project->id }}"
     class="group/proj block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50"
 >
     <div class="flex items-start justify-between gap-2">
@@ -41,3 +47,4 @@
         </div>
     @endif
 </a>
+</div>

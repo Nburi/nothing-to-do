@@ -115,6 +115,23 @@
     .board-chosen {
         cursor: grabbing;
     }
+
+    /* While a task is being dragged, project cards hint that they accept a drop. */
+    body.dragging-task .project-drop {
+        outline: 1.5px dashed rgb(var(--line));
+        outline-offset: 2px;
+        border-radius: 0.625rem;
+        transition: outline-color 0.15s ease;
+    }
+    /* The card the task is currently hovering over: a course-leg overprint. */
+    body.dragging-task .project-drop:has([data-id]) {
+        outline-color: rgb(var(--overprint));
+        background: rgb(var(--overprint-soft));
+    }
+    /* Hide the borrowed task node SortableJS parks inside the card mid-hover. */
+    .project-drop > [data-id] {
+        display: none;
+    }
 }
 
 @layer utilities {

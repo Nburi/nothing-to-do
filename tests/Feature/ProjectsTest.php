@@ -7,6 +7,7 @@ use App\Livewire\TaskBoard;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -115,6 +116,43 @@ class ProjectsTest extends TestCase
             'project_id' => $project->id,
             'list' => 'projects',
         ]);
+    }
+
+    public function test_a_board_task_can_be_dragged_onto_a_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $task = Task::factory()->for($user)->todos()->today()->create();
+
+        Livewire::actingAs($user)
+            ->test(TaskBoard::class)
+            ->call('assignTaskToProject', $task->id, $project->id);
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'project_id' => $project->id,
+            'list' => 'projects',
+            'is_today' => false,
+        ]);
+    }
+
+    public function test_a_task_cannot_be_dragged_onto_another_users_project(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($other)->create();
+        $task = Task::factory()->for($user)->todos()->create();
+
+        try {
+            Livewire::actingAs($user)
+                ->test(TaskBoard::class)
+                ->call('assignTaskToProject', $task->id, $project->id);
+            $this->fail('Expected a ModelNotFoundException for the foreign project.');
+        } catch (ModelNotFoundException $e) {
+            // The foreign project is invisible through the owner relationship.
+        }
+
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'project_id' => null]);
     }
 
     public function test_a_task_can_be_released_back_to_the_inbox(): void
