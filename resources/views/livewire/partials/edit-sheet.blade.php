@@ -12,6 +12,19 @@
                     @error('editTitle') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
+                @if ($this->editableProjects->isNotEmpty())
+                    <div>
+                        <label for="editProject" class="mb-1 block text-xs font-medium text-ink-soft">Projekt</label>
+                        <select id="editProject" wire:model="editProjectId" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0">
+                            <option value="">Kein Projekt</option>
+                            @foreach ($this->editableProjects as $project)
+                                <option value="{{ $project->id }}">{{ $project->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('editProjectId') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </div>
+                @endif
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="editDeadline" class="mb-1 block text-xs font-medium text-ink-soft">Deadline · hart</label>
