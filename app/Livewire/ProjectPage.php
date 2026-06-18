@@ -6,6 +6,7 @@ use App\Livewire\Concerns\ManagesTasks;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -25,6 +26,9 @@ class ProjectPage extends Component
 
     public bool $renaming = false;
 
+    /** Free-form Markdown scratchpad for ideas and thoughts about the project. */
+    public string $brainstorm = '';
+
     public function mount(Project $project): void
     {
         // Route binding loaded it; enforce ownership before trusting it.
@@ -32,6 +36,7 @@ class ProjectPage extends Component
 
         $this->projectId = $project->id;
         $this->projectName = $project->name;
+        $this->brainstorm = (string) ($project->brainstorm ?? '');
     }
 
     /** Always re-resolve through the owner relationship — never trust the id alone. */
@@ -79,7 +84,41 @@ class ProjectPage extends Component
             ->get();
     }
 
+    /**
+     * The brainstorming notes rendered to safe HTML for the read view.
+     * GitHub-flavoured Markdown (headings, lists, task lists, links); raw HTML
+     * is stripped and unsafe link schemes dropped, so user input can't inject.
+     */
+    #[Computed]
+    public function brainstormHtml(): string
+    {
+        $text = trim($this->brainstorm);
+
+        if ($text === '') {
+            return '';
+        }
+
+        return Str::markdown($text, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]);
+    }
+
     // ── Writes ────────────────────────────────────────────────────────
+
+    /** Autosave the brainstorming notes — fires on every Livewire model sync. */
+    public function updatedBrainstorm(): void
+    {
+        $data = $this->validate([
+            'brainstorm' => ['nullable', 'string', 'max:50000'],
+        ]);
+
+        $text = trim((string) ($data['brainstorm'] ?? ''));
+
+        $this->project->update(['brainstorm' => $text !== '' ? $this->brainstorm : null]);
+
+        $this->dispatch('brainstorm-saved');
+    }
 
     public function addTask(): void
     {

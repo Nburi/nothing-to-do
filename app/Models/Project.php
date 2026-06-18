@@ -16,6 +16,7 @@ class Project extends Model
 
     protected $fillable = [
         'name',
+        'brainstorm',
         'sort_order',
     ];
 

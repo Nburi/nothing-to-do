@@ -138,6 +138,12 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   the project's tasks, a quick-add (creates `list=projects` tasks with `project_id`), a collapsible
   "Aus der Inbox hinzufügen" picker (`assignToProject`), rename + delete (delete releases active tasks
   back to the inbox), and per-task release (`removeFromProject`).
+- The page has an **Aufgaben ⇄ Brainstorming** switch (Alpine, no round-trip). **Brainstorming** is a
+  per-project Markdown scratchpad (`projects.brainstorm` longtext): a read view that renders GitHub-
+  flavoured Markdown via `Str::markdown` (`html_input=strip`, `allow_unsafe_links=false` — XSS-safe,
+  no new dependency), and an edit view with a small formatting toolbar + auto-growing textarea.
+  Notes autosave on Livewire sync (`updatedBrainstorm`); rendered output is styled by `.prose-topo`
+  in `app.css`. Empty projects open straight into the editor for fast capture.
 - Shared task mutations + the edit sheet live in the **`App\Livewire\Concerns\ManagesTasks`** trait
   (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and

@@ -248,4 +248,67 @@ class ProjectsTest extends TestCase
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'is_today' => false]);
     }
+
+    public function test_brainstorm_notes_load_on_mount(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => "# Plan\n\nErste Idee."]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertSet('brainstorm', "# Plan\n\nErste Idee.");
+    }
+
+    public function test_brainstorm_notes_are_autosaved_on_change(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->set('brainstorm', "## Ideen\n\n- eins\n- zwei")
+            ->assertHasNoErrors()
+            ->assertDispatched('brainstorm-saved');
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $project->id,
+            'brainstorm' => "## Ideen\n\n- eins\n- zwei",
+        ]);
+    }
+
+    public function test_clearing_brainstorm_stores_null(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => 'etwas']);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->set('brainstorm', '   ')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('projects', ['id' => $project->id, 'brainstorm' => null]);
+    }
+
+    public function test_brainstorm_renders_markdown_to_html(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => '# Heading']);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertSeeHtml('<h1>Heading</h1>');
+    }
+
+    public function test_brainstorm_strips_unsafe_html_and_links(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'brainstorm' => "<script>alert('x')</script>\n\n[böse](javascript:alert(1))",
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertDontSeeHtml('<script>alert')
+            ->assertDontSee('javascript:', false);
+    }
 }

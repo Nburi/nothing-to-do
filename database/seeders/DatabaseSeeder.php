@@ -49,7 +49,26 @@ class DatabaseSeeder extends Seeder
             ->create(['title' => 'Karten für Testlauf gedruckt']);
 
         // Projects — non-urgent, multi-part work parked for later.
-        $matura = $user->projects()->create(['name' => 'Maturaarbeit']);
+        $matura = $user->projects()->create([
+            'name' => 'Maturaarbeit',
+            'brainstorm' => <<<'MD'
+                ## Mögliche Themen
+
+                - Laktatschwelle im OL-Training
+                - Kartenlesen unter Belastung
+                - **Favorit:** Pacing-Strategien auf der Langdistanz
+
+                ## Offene Fragen
+
+                - [ ] Betreuer:in fragen, ob das Thema trägt
+                - [ ] Reicht ein Halbjahr für die Datenerhebung?
+                - [x] Grobthema mit Trainer besprochen
+
+                ## Notiz
+
+                Idee: GPS-Daten von Wettkämpfen mit dem Höhenprofil verknüpfen. Siehe [omap.ch](https://omap.ch).
+                MD,
+        ]);
         $matura->tasks()->createMany([
             ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Themenwahl finalisieren', 'is_important' => true],
             ['user_id' => $user->id, 'list' => 'projects', 'title' => 'Literatur recherchieren'],
