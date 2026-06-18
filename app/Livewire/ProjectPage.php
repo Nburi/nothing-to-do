@@ -29,6 +29,9 @@ class ProjectPage extends Component
     /** Free-form Markdown scratchpad for ideas and thoughts about the project. */
     public string $brainstorm = '';
 
+    /** Whether the brainstorm space shows the editor (true) or the rendered notes (false). */
+    public bool $editingBrainstorm = false;
+
     public function mount(Project $project): void
     {
         // Route binding loaded it; enforce ownership before trusting it.
@@ -37,6 +40,9 @@ class ProjectPage extends Component
         $this->projectId = $project->id;
         $this->projectName = $project->name;
         $this->brainstorm = (string) ($project->brainstorm ?? '');
+
+        // Empty projects open straight into the editor for fast capture.
+        $this->editingBrainstorm = $this->brainstorm === '';
     }
 
     /** Always re-resolve through the owner relationship — never trust the id alone. */
@@ -106,8 +112,28 @@ class ProjectPage extends Component
 
     // ── Writes ────────────────────────────────────────────────────────
 
+    public function editBrainstorm(): void
+    {
+        $this->editingBrainstorm = true;
+        $this->dispatch('brainstorm-focus');
+    }
+
+    /** Persist the buffer and leave the editor (the "Fertig" button). */
+    public function stopEditingBrainstorm(): void
+    {
+        $this->saveBrainstorm();
+        $this->editingBrainstorm = false;
+    }
+
     /** Autosave the brainstorming notes — fires on every Livewire model sync. */
     public function updatedBrainstorm(): void
+    {
+        $this->saveBrainstorm();
+        $this->dispatch('brainstorm-saved');
+    }
+
+    /** Validate and write the notes through the owner relationship; empty stores null. */
+    protected function saveBrainstorm(): void
     {
         $data = $this->validate([
             'brainstorm' => ['nullable', 'string', 'max:50000'],
@@ -116,8 +142,6 @@ class ProjectPage extends Component
         $text = trim((string) ($data['brainstorm'] ?? ''));
 
         $this->project->update(['brainstorm' => $text !== '' ? $this->brainstorm : null]);
-
-        $this->dispatch('brainstorm-saved');
     }
 
     public function addTask(): void

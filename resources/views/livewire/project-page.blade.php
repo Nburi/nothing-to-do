@@ -84,12 +84,9 @@
         <div
             x-data="{
                 tab: 'tasks',
-                editing: @js(! $hasNotes),
                 saved: false,
                 _t: null,
-                openBrainstorm() { this.tab = 'brainstorm'; if (this.editing) this.$nextTick(() => this.focusEditor()); },
-                edit() { this.editing = true; this.$nextTick(() => this.focusEditor()); },
-                focusEditor() { const ta = this.$refs.ta; if (! ta) return; ta.focus(); this.autosize(); },
+                openBrainstorm() { this.tab = 'brainstorm'; this.$nextTick(() => { if (this.$refs.ta) { this.$refs.ta.focus(); this.autosize(); } }); },
                 autosize() { const ta = this.$refs.ta; if (! ta) return; ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight, 288) + 'px'; },
                 wrap(before, after) {
                     const ta = this.$refs.ta; if (! ta) return;
@@ -110,6 +107,7 @@
                 flashSaved() { this.saved = true; clearTimeout(this._t); this._t = setTimeout(() => this.saved = false, 1600); },
             }"
             @brainstorm-saved.window="flashSaved()"
+            @brainstorm-focus.window="$nextTick(() => document.getElementById('brainstorm-editor')?.focus())"
             class="mt-5"
         >
             {{-- Segmented switch --}}
@@ -207,23 +205,24 @@
             </div>
 
             {{-- Panel · Brainstorming --}}
-            <div role="tabpanel" x-show="tab === 'brainstorm'" x-cloak class="mt-4">
+            <div role="tabpanel" x-show="tab === 'brainstorm'" style="display: none;" class="mt-4">
+                @if (! $editingBrainstorm)
                 {{-- Read view --}}
-                <div x-show="! editing">
+                <div wire:key="brainstorm-read">
                     @if ($hasNotes)
                         <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
                             <div class="flex items-center justify-end border-b border-line px-2 py-1.5">
-                                <button type="button" @click="edit()" class="inline-flex items-center gap-1 rounded-card px-2 py-1 text-xs font-medium text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
+                                <button type="button" wire:click="editBrainstorm" class="inline-flex items-center gap-1 rounded-card px-2 py-1 text-xs font-medium text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
                                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3.5 12.5 6 6 12.5l-3 .5.5-3L10 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
                                     Bearbeiten
                                 </button>
                             </div>
-                            <div class="prose-topo cursor-text px-4 py-4 sm:px-5" @click="if (! $event.target.closest('a')) edit()">
+                            <div class="prose-topo cursor-text px-4 py-4 sm:px-5" @click="if (! $event.target.closest('a')) $wire.editBrainstorm()">
                                 {!! $this->brainstormHtml !!}
                             </div>
                         </div>
                     @else
-                        <button type="button" @click="edit()" class="group/empty flex w-full flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line bg-paper/40 px-4 py-12 text-center transition hover:border-ink-faint/60 hover:bg-paper/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
+                        <button type="button" wire:click="editBrainstorm" class="group/empty flex w-full flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line bg-paper/40 px-4 py-12 text-center transition hover:border-ink-faint/60 hover:bg-paper/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
                             <svg class="h-9 w-9 text-line transition group-hover/empty:text-ink-faint" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                                 <path d="M30 9.5 38.5 18 18 38.5l-9 1.5 1.5-9L30 9.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                                 <path d="m26.5 13 8.5 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -233,9 +232,9 @@
                         </button>
                     @endif
                 </div>
-
+                @else
                 {{-- Edit view --}}
-                <div x-show="editing" x-cloak>
+                <div wire:key="brainstorm-edit">
                     <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map focus-within:border-ink-faint/60">
                         {{-- Formatting toolbar (buttons keep focus in the textarea) --}}
                         <div class="flex flex-wrap items-center gap-0.5 border-b border-line px-1.5 py-1.5">
@@ -261,6 +260,7 @@
                         </div>
 
                         <textarea
+                            id="brainstorm-editor"
                             x-ref="ta"
                             wire:model.live.debounce.800ms="brainstorm"
                             @input="autosize()"
@@ -279,12 +279,13 @@
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 Gespeichert
                             </span>
-                            <button type="button" @click="editing = false" class="rounded-card bg-forest px-4 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
+                            <button type="button" wire:click="stopEditingBrainstorm" class="rounded-card bg-forest px-4 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
                                 Fertig
                             </button>
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

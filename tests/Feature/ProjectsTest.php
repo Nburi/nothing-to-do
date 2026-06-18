@@ -311,4 +311,61 @@ class ProjectsTest extends TestCase
             ->assertDontSeeHtml('<script>alert')
             ->assertDontSee('javascript:', false);
     }
+
+    public function test_an_empty_project_opens_brainstorm_in_edit_mode(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => null]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertSet('editingBrainstorm', true);
+    }
+
+    public function test_a_project_with_notes_opens_brainstorm_in_read_mode(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => 'eine Idee']);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertSet('editingBrainstorm', false);
+    }
+
+    public function test_finishing_brainstorm_saves_and_leaves_edit_mode(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => null]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertSet('editingBrainstorm', true)
+            ->set('brainstorm', '# Erste Idee')
+            ->call('stopEditingBrainstorm')
+            ->assertHasNoErrors()
+            ->assertSet('editingBrainstorm', false);
+
+        $this->assertDatabaseHas('projects', ['id' => $project->id, 'brainstorm' => '# Erste Idee']);
+    }
+
+    public function test_brainstorm_can_be_reopened_after_finishing_empty(): void
+    {
+        // Regression: emptying the notes and hitting "Fertig" must not lock the
+        // user out — re-entering the editor has to keep working without a reload.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['brainstorm' => 'alte Notiz']);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->assertSet('editingBrainstorm', false)
+            ->call('editBrainstorm')
+            ->assertSet('editingBrainstorm', true)
+            ->set('brainstorm', '')
+            ->call('stopEditingBrainstorm')
+            ->assertSet('editingBrainstorm', false)
+            ->call('editBrainstorm')
+            ->assertSet('editingBrainstorm', true);
+
+        $this->assertDatabaseHas('projects', ['id' => $project->id, 'brainstorm' => null]);
+    }
 }
