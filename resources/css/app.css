@@ -54,6 +54,11 @@
         -webkit-text-size-adjust: 100%;
     }
 
+    /* Alpine: hide x-cloak elements until Alpine has initialised. */
+    [x-cloak] {
+        display: none !important;
+    }
+
     body {
         background-color: rgb(var(--paper));
         color: rgb(var(--ink));
@@ -97,6 +102,101 @@
         font-feature-settings: 'tnum' 1;
     }
 
+    /* Rendered Brainstorming Markdown — typeset onto the Topografie map. */
+    .prose-topo {
+        font-size: 15px;
+        line-height: 1.7;
+        color: rgb(var(--ink));
+        overflow-wrap: break-word;
+    }
+    .prose-topo > :first-child {
+        margin-top: 0;
+    }
+    .prose-topo > :last-child {
+        margin-bottom: 0;
+    }
+    .prose-topo h1,
+    .prose-topo h2,
+    .prose-topo h3,
+    .prose-topo h4 {
+        margin: 1.35em 0 0.5em;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: rgb(var(--ink));
+    }
+    .prose-topo h1 { font-size: 1.4em; }
+    .prose-topo h2 { font-size: 1.2em; }
+    .prose-topo h3 { font-size: 1.05em; }
+    .prose-topo p { margin: 0.7em 0; }
+    .prose-topo a {
+        color: rgb(var(--overprint));
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        text-decoration-thickness: 1px;
+    }
+    .prose-topo a:hover { text-decoration-thickness: 2px; }
+    .prose-topo strong { font-weight: 700; color: rgb(var(--ink)); }
+    .prose-topo em { font-style: italic; }
+    .prose-topo ul,
+    .prose-topo ol {
+        margin: 0.7em 0;
+        padding-left: 1.4em;
+    }
+    .prose-topo ul { list-style: disc; }
+    .prose-topo ol { list-style: decimal; }
+    .prose-topo li { margin: 0.3em 0; }
+    .prose-topo li::marker { color: rgb(var(--ink-faint)); }
+    /* GitHub-flavoured task lists. */
+    .prose-topo ul:has(input[type='checkbox']) {
+        padding-left: 0.2em;
+        list-style: none;
+    }
+    .prose-topo li:has(> input[type='checkbox']) {
+        display: flex;
+        align-items: baseline;
+        gap: 0.15em;
+    }
+    .prose-topo input[type='checkbox'] {
+        margin-right: 0.45em;
+        accent-color: rgb(var(--forest));
+        transform: translateY(1px);
+    }
+    .prose-topo blockquote {
+        margin: 0.9em 0;
+        padding-left: 0.9em;
+        border-left: 2px solid rgb(var(--contour));
+        color: rgb(var(--ink-soft));
+        font-style: italic;
+    }
+    .prose-topo code {
+        padding: 0.08em 0.34em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.88em;
+        background: rgb(var(--paper));
+        border: 1px solid rgb(var(--line));
+        border-radius: 0.3rem;
+    }
+    .prose-topo pre {
+        margin: 0.9em 0;
+        padding: 0.85em 1em;
+        overflow-x: auto;
+        background: rgb(var(--paper));
+        border: 1px solid rgb(var(--line));
+        border-radius: 0.625rem;
+    }
+    .prose-topo pre code {
+        padding: 0;
+        font-size: 0.86em;
+        background: none;
+        border: 0;
+    }
+    .prose-topo hr {
+        margin: 1.4em 0;
+        border: 0;
+        border-top: 1px solid rgb(var(--line));
+    }
+
     /* Drag & drop: the drop target reads like a course leg — a dashed overprint outline. */
     .board-ghost > * {
         opacity: 0;
@@ -114,6 +214,23 @@
     }
     .board-chosen {
         cursor: grabbing;
+    }
+
+    /* While a task is being dragged, project cards hint that they accept a drop. */
+    body.dragging-task .project-drop {
+        outline: 1.5px dashed rgb(var(--line));
+        outline-offset: 2px;
+        border-radius: 0.625rem;
+        transition: outline-color 0.15s ease;
+    }
+    /* The card the task is currently hovering over: a course-leg overprint. */
+    body.dragging-task .project-drop:has([data-id]) {
+        outline-color: rgb(var(--overprint));
+        background: rgb(var(--overprint-soft));
+    }
+    /* Hide the borrowed task node SortableJS parks inside the card mid-hover. */
+    .project-drop > [data-id] {
+        display: none;
     }
 }
 

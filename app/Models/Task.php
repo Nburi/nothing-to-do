@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,13 +11,16 @@ use Illuminate\Support\Carbon;
 
 class Task extends Model
 {
-    /** @use HasFactory<\Database\Factories\TaskFactory> */
+    /** @use HasFactory<TaskFactory> */
     use HasFactory;
 
-    /** The three lists. A future 'projects' value slots in here. */
-    public const LISTS = ['inbox', 'todos', 'tasks'];
+    /** The board lists. Tasks in the 'projects' list live inside a Project. */
+    public const LISTS = ['inbox', 'todos', 'tasks', 'projects'];
 
-    /** Lists that support a Today focus area. Inbox deliberately does not. */
+    /** Lists offered as quick-add / drag targets on the main board. */
+    public const BOARD_LISTS = ['inbox', 'todos', 'tasks'];
+
+    /** Lists that support a Today focus area. Inbox & projects deliberately do not. */
     public const TODAY_LISTS = ['todos', 'tasks'];
 
     /** Urgency window in days for the soft "due soon" sort bucket. */
@@ -25,6 +29,7 @@ class Task extends Model
     protected $fillable = [
         'title',
         'list',
+        'project_id',
         'is_today',
         'is_important',
         'deadline',
@@ -52,11 +57,22 @@ class Task extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     // ── Scopes ────────────────────────────────────────────────────────
 
     public function scopeForUser(Builder $query, User $user): Builder
     {
         return $query->where('user_id', $user->id);
+    }
+
+    /** Tasks that live on the main board (Inbox/To-Dos/Tasks), not inside a project. */
+    public function scopeOnBoard(Builder $query): Builder
+    {
+        return $query->whereNull('project_id');
     }
 
     public function scopeActive(Builder $query): Builder
@@ -121,6 +137,11 @@ class Task extends Model
     public function isInbox(): bool
     {
         return $this->list === 'inbox';
+    }
+
+    public function isInProject(): bool
+    {
+        return $this->project_id !== null;
     }
 
     /** True when the effective date comes from a hard deadline (not a soft due date). */

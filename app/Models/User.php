@@ -24,6 +24,12 @@ class User extends Authenticatable
         return $this->hasMany(Task::class);
     }
 
+    /** @return HasMany<Project, $this> */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

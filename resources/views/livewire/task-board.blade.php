@@ -25,7 +25,7 @@
                 @error('newTitle') <p class="mt-1.5 px-1 text-xs text-signal">{{ $message }}</p> @enderror
             </form>
 
-            <div class="grid grid-cols-3 gap-5">
+            <div class="grid grid-cols-4 gap-5">
                 @include('livewire.partials.column', [
                     'list' => 'inbox', 'title' => 'Inbox', 'count' => $this->counts['inbox'],
                     'rest' => $this->inbox, 'empty' => 'Posteingang leer. Saubere Ausgangslage.',
@@ -40,6 +40,45 @@
                     'hasToday' => true, 'today' => $this->tasksToday, 'rest' => $this->tasksRest,
                     'empty' => 'Keine Tasks. Grössere Brocken landen hier.',
                 ])
+
+                {{-- Projects: one card per project, opens the project page. --}}
+                <section class="flex min-h-[55vh] flex-col">
+                    <header class="mb-3 flex items-center justify-between px-1">
+                        <h2 class="flex items-center gap-2 text-sm font-medium text-ink">
+                            Projekte
+                            <span class="tnum rounded-full bg-surface px-1.5 py-0.5 text-[11px] text-ink-faint">{{ $this->counts['projects'] }}</span>
+                        </h2>
+                    </header>
+
+                    <form wire:submit="addProject" class="mb-3">
+                        <div class="flex items-center gap-2 rounded-card border border-line bg-surface px-2.5 py-1.5 shadow-map focus-within:border-ink-faint/60">
+                            <input
+                                type="text"
+                                wire:model="newProjectName"
+                                placeholder="Neues Projekt …"
+                                autocomplete="off"
+                                class="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-faint focus:ring-0"
+                            />
+                            <button type="submit" class="grid h-7 w-7 flex-none place-items-center rounded-card bg-forest text-white transition hover:brightness-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest" aria-label="Projekt hinzufügen">
+                                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            </button>
+                        </div>
+                        @error('newProjectName') <p class="mt-1.5 px-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </form>
+
+                    <div class="flex flex-1 flex-col gap-2.5">
+                        @forelse ($this->projects as $project)
+                            @include('livewire.partials.project-card', ['project' => $project])
+                        @empty
+                            <div class="flex flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line px-4 py-10 text-center">
+                                <svg class="h-9 w-9 text-line" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                                    <path d="M8 16a2 2 0 0 1 2-2h9l3 4h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V16Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <p class="max-w-[22ch] text-xs leading-relaxed text-ink-faint">Noch keine Projekte. Sammle hier grössere Vorhaben.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -47,7 +86,23 @@
     {{-- ════════════════ MOBILE (< md) ════════════════ --}}
     <div class="md:hidden">
         <div class="px-4 pb-28 pt-4">
-            @if ($mobileTab !== 'today')
+            @if ($mobileTab === 'projects')
+                <form wire:submit="addProject" class="mb-4">
+                    <div class="flex items-center gap-2 rounded-card border border-line bg-surface px-3 py-2.5 shadow-map focus-within:border-ink-faint/60">
+                        <input
+                            type="text"
+                            wire:model="newProjectName"
+                            placeholder="Neues Projekt …"
+                            autocomplete="off"
+                            class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0"
+                        />
+                        <button type="submit" class="grid h-8 w-8 flex-none place-items-center rounded-card bg-forest text-white transition active:scale-95" aria-label="Projekt hinzufügen">
+                            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    @error('newProjectName') <p class="mt-1.5 px-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </form>
+            @elseif ($mobileTab !== 'today')
                 <form wire:submit="addTask" class="mb-4">
                     <div class="flex items-center gap-2 rounded-card border border-line bg-surface px-3 py-2.5 shadow-map focus-within:border-ink-faint/60">
                         <input
@@ -116,18 +171,27 @@
                             <x-board-empty>Noch kein Tagesfokus. Wisch in To-Dos oder Tasks nach rechts.</x-board-empty>
                         @endforelse
                         @break
+
+                    @case('projects')
+                        @forelse ($this->projects as $project)
+                            @include('livewire.partials.project-card', ['project' => $project])
+                        @empty
+                            <x-board-empty>Noch keine Projekte. Sammle hier grössere Vorhaben.</x-board-empty>
+                        @endforelse
+                        @break
                 @endswitch
             </div>
         </div>
 
         <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/90 backdrop-blur-sm">
-            <div class="mx-auto grid max-w-md grid-cols-4">
+            <div class="mx-auto grid max-w-md grid-cols-5">
                 @php
                     $tabs = [
                         'inbox' => ['label' => 'Inbox', 'path' => 'M3 13h4l1.5 2.5h7L17 13h4M5 6h14l2 7v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4l2-7Z'],
                         'todos' => ['label' => 'To-Dos', 'path' => 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01'],
                         'tasks' => ['label' => 'Tasks', 'path' => 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z'],
                         'today' => ['label' => 'Heute', 'path' => 'M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z'],
+                        'projects' => ['label' => 'Projekte', 'path' => 'M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'],
                     ];
                 @endphp
                 @foreach ($tabs as $key => $tab)
@@ -155,47 +219,5 @@
     </div>
 
     {{-- ════════════════ EDIT SHEET ════════════════ --}}
-    @if ($editingId)
-        <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Aufgabe bearbeiten">
-            <div class="absolute inset-0 bg-ink/40" wire:click="cancelEdit"></div>
-            <div class="animate-rise relative w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 shadow-map sm:rounded-card" @keydown.escape.window="$wire.cancelEdit()">
-                <form wire:submit="saveEdit" class="space-y-4">
-                    <h2 class="text-base font-medium text-ink">Aufgabe bearbeiten</h2>
-
-                    <div>
-                        <label for="editTitle" class="mb-1 block text-xs font-medium text-ink-soft">Titel</label>
-                        <input id="editTitle" type="text" wire:model="editTitle" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
-                        @error('editTitle') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="editDeadline" class="mb-1 block text-xs font-medium text-ink-soft">Deadline · hart</label>
-                            <input id="editDeadline" type="date" wire:model="editDeadline" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
-                        </div>
-                        <div>
-                            <label for="editDueDate" class="mb-1 block text-xs font-medium text-ink-soft">Wunschtermin · weich</label>
-                            <input id="editDueDate" type="date" wire:model="editDueDate" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
-                        </div>
-                    </div>
-                    @error('editDeadline') <p class="text-xs text-signal">{{ $message }}</p> @enderror
-                    @error('editDueDate') <p class="text-xs text-signal">{{ $message }}</p> @enderror
-
-                    <div class="flex items-center justify-between pt-1">
-                        <button type="button" wire:click="deleteTask({{ $editingId }})" class="rounded-card px-2 py-1.5 text-sm text-signal transition hover:bg-signal-soft">
-                            Löschen
-                        </button>
-                        <div class="flex items-center gap-2">
-                            <button type="button" wire:click="cancelEdit" class="rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-paper">
-                                Abbrechen
-                            </button>
-                            <button type="submit" class="rounded-card bg-forest px-4 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
-                                Speichern
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
+    @include('livewire.partials.edit-sheet')
 </div>

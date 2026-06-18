@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesTasks;
+use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -11,22 +13,18 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class TaskBoard extends Component
 {
+    use ManagesTasks;
+
     /** Quick-add. */
     public string $newTitle = '';
 
     public string $newList = 'inbox';
 
-    /** Active mobile page: inbox | todos | tasks | today. */
+    /** Add-project (Projects column / tab). */
+    public string $newProjectName = '';
+
+    /** Active mobile page: inbox | todos | tasks | today | projects. */
     public string $mobileTab = 'inbox';
-
-    /** Inline edit sheet. */
-    public ?int $editingId = null;
-
-    public string $editTitle = '';
-
-    public ?string $editDeadline = null;
-
-    public ?string $editDueDate = null;
 
     // ── Reads (computed, cached per request) ──────────────────────────
 
@@ -36,6 +34,7 @@ class TaskBoard extends Component
         return Task::query()
             ->forUser(auth()->user())
             ->active()
+            ->onBoard()
             ->inList($list)
             ->boardOrdered()
             ->get();
@@ -84,15 +83,33 @@ class TaskBoard extends Component
         return $this->tasksAll->where('is_today', false)->values();
     }
 
-    /** Mobile "Today" page: every focused task across todos + tasks. */
+    /** Mobile "Today" page: every focused board task across todos + tasks. */
     #[Computed]
     public function today(): Collection
     {
         return Task::query()
             ->forUser(auth()->user())
             ->active()
+            ->onBoard()
             ->where('is_today', true)
             ->boardOrdered()
+            ->get();
+    }
+
+    /**
+     * Projects with their working set: every active task (ordered) for the
+     * card preview + open count, plus a completed count for the progress label.
+     *
+     * @return Collection<int, Project>
+     */
+    #[Computed]
+    public function projects(): Collection
+    {
+        return Project::query()
+            ->forUser(auth()->user())
+            ->ordered()
+            ->withCount(['tasks as done_count' => fn ($q) => $q->where('is_completed', true)])
+            ->with('activeTasks')
             ->get();
     }
 
@@ -105,27 +122,23 @@ class TaskBoard extends Component
             'todos' => $this->todosAll->count(),
             'tasks' => $this->tasksAll->count(),
             'today' => $this->today->count(),
+            'projects' => $this->projects->count(),
         ];
     }
 
     // ── Writes (all ownership-scoped) ─────────────────────────────────
 
-    /** Always resolve a task through the owner relationship — never trust an id alone. */
-    private function userTask(int $id): Task
-    {
-        return auth()->user()->tasks()->findOrFail($id);
-    }
-
     public function setMobileTab(string $tab): void
     {
-        if (! in_array($tab, ['inbox', 'todos', 'tasks', 'today'], true)) {
+        if (! in_array($tab, ['inbox', 'todos', 'tasks', 'today', 'projects'], true)) {
             return;
         }
 
         $this->mobileTab = $tab;
 
-        // Quick-add on a list tab targets that list; the Today tab can't be added to.
-        if (in_array($tab, Task::LISTS, true)) {
+        // Quick-add on a board-list tab targets that list. Today & Projects
+        // don't feed the task quick-add, so leave the target untouched.
+        if (in_array($tab, Task::BOARD_LISTS, true)) {
             $this->newList = $tab;
         }
     }
@@ -149,29 +162,44 @@ class TaskBoard extends Component
         $this->newTitle = '';
     }
 
-    public function toggleImportant(int $id): void
+    public function addProject(): void
     {
-        $task = $this->userTask($id);
-        $task->update(['is_important' => ! $task->is_important]);
+        $this->newProjectName = trim($this->newProjectName);
+
+        $data = $this->validate([
+            'newProjectName' => ['required', 'string', 'max:255'],
+        ]);
+
+        auth()->user()->projects()->create([
+            'name' => $data['newProjectName'],
+            'sort_order' => 0,
+        ]);
+
+        $this->newProjectName = '';
     }
 
-    public function toggleComplete(int $id): void
+    /**
+     * Desktop drag & drop: a board task card dropped onto a project card.
+     * Moves the task into that project (and off the board / out of Today).
+     */
+    public function assignTaskToProject(int $taskId, int $projectId): void
     {
-        $task = $this->userTask($id);
-        $done = ! $task->is_completed;
+        $task = $this->userTask($taskId);
+        $project = auth()->user()->projects()->findOrFail($projectId);
 
         $task->update([
-            'is_completed' => $done,
-            'completed_at' => $done ? now() : null,
+            'project_id' => $project->id,
+            'list' => 'projects',
+            'is_today' => false,
         ]);
     }
 
-    /** Set/clear the Today focus. Inbox tasks can never be Today. */
+    /** Set/clear the Today focus. Inbox & project tasks can never be Today. */
     public function setToday(int $id, bool $value): void
     {
         $task = $this->userTask($id);
 
-        if ($task->isInbox()) {
+        if ($task->isInbox() || $task->isInProject()) {
             return;
         }
 
@@ -188,7 +216,8 @@ class TaskBoard extends Component
      */
     public function reorder(string $list, bool $today, array $ids): void
     {
-        if (! in_array($list, Task::LISTS, true)) {
+        // Only the three board columns are drag targets.
+        if (! in_array($list, Task::BOARD_LISTS, true)) {
             return;
         }
 
@@ -216,60 +245,12 @@ class TaskBoard extends Component
         $task = $this->userTask($id);
 
         match ($intent) {
-            'todos'   => $task->update(['list' => 'todos']),
-            'tasks'   => $task->update(['list' => 'tasks']),
-            'today'   => $task->isInbox() ? null : $task->update(['is_today' => true]),
+            'todos' => $task->update(['list' => 'todos']),
+            'tasks' => $task->update(['list' => 'tasks']),
+            'today' => $task->isInbox() ? null : $task->update(['is_today' => true]),
             'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
-            default   => null,
+            default => null,
         };
-    }
-
-    // ── Edit sheet ────────────────────────────────────────────────────
-
-    public function startEdit(int $id): void
-    {
-        $task = $this->userTask($id);
-        $this->editingId = $task->id;
-        $this->editTitle = $task->title;
-        $this->editDeadline = $task->deadline?->toDateString();
-        $this->editDueDate = $task->due_date?->toDateString();
-    }
-
-    public function saveEdit(): void
-    {
-        if ($this->editingId === null) {
-            return;
-        }
-
-        $this->editTitle = trim($this->editTitle);
-
-        $data = $this->validate([
-            'editTitle' => ['required', 'string', 'max:255'],
-            'editDeadline' => ['nullable', 'date'],
-            'editDueDate' => ['nullable', 'date'],
-        ]);
-
-        $this->userTask($this->editingId)->update([
-            'title' => $data['editTitle'],
-            'deadline' => $data['editDeadline'] ?: null,
-            'due_date' => $data['editDueDate'] ?: null,
-        ]);
-
-        $this->cancelEdit();
-    }
-
-    public function cancelEdit(): void
-    {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate']);
-    }
-
-    public function deleteTask(int $id): void
-    {
-        $this->userTask($id)->delete();
-
-        if ($this->editingId === $id) {
-            $this->cancelEdit();
-        }
     }
 
     public function render()
