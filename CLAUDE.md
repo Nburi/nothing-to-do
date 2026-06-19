@@ -86,7 +86,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (53 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (51 tests).
 
 > Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
 > package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
@@ -105,8 +105,9 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 
 ### Models
 - **`User`** (Breeze) `hasMany` **`Task`** and `hasMany` **`Project`**.
-- **`Project`** — `user_id, name, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
-  uncompleted working set. Scopes: `forUser`, `ordered`.
+- **`Project`** — `user_id, name, brainstorm, external_url, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
+  uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
+  Scopes: `forUser`, `ordered`.
 - **`Task`** — `user_id, title, list, project_id, is_today, is_important, deadline(date), due_date(date),
   is_completed, completed_at, sort_order, timestamps`. See `docs/REQUIREMENTS.md` §2 for field meaning.
   - `list` is a **string** (`inbox|todos|tasks|projects`), not a DB enum. `BOARD_LISTS` are the three
@@ -138,7 +139,9 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   the project's tasks, a quick-add (creates `list=projects` tasks with `project_id`), a collapsible
   "Aus der Inbox hinzufügen" picker (`assignToProject`), rename + delete (delete releases active tasks
   back to the inbox), and per-task release (`removeFromProject`).
-- The page has an **Aufgaben ⇄ Brainstorming** switch (Alpine, no round-trip). **Brainstorming** is a
+- The page has an **Aufgaben ⇄ Brainstorming** switch (Alpine, no round-trip). There is also an **external link** field
+  (`project.external_url`): a URL chip below the header that links out to Jira, GitHub, Linear, etc. Added/edited via
+  the `…` menu (triggers `editExternalLink`), removed with a `×` button next to the chip. **Brainstorming** is a
   per-project Markdown scratchpad (`projects.brainstorm` longtext): a read view that renders GitHub-
   flavoured Markdown via `Str::markdown` (`html_input=strip`, `allow_unsafe_links=false` — XSS-safe,
   no new dependency), and an edit view with a small formatting toolbar + auto-growing textarea.

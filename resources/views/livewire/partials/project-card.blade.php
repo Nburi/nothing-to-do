@@ -22,9 +22,18 @@
 >
     <div class="flex items-start justify-between gap-2">
         <h3 class="min-w-0 break-words text-sm font-medium text-ink">{{ $project->name }}</h3>
-        <svg class="mt-0.5 h-4 w-4 flex-none text-ink-faint transition group-hover/proj:translate-x-0.5 group-hover/proj:text-ink-soft" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <div class="mt-0.5 flex flex-none items-center gap-1.5">
+            @if ($project->external_url)
+                <span title="{{ $project->externalServiceName() }}" aria-label="{{ $project->externalServiceName() }} verknüpft">
+                    <svg class="h-3.5 w-3.5 text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M9.5 2.5h4v4M13.5 2.5l-6 6M6.5 3.5H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+            @endif
+            <svg class="h-4 w-4 text-ink-faint transition group-hover/proj:translate-x-0.5 group-hover/proj:text-ink-soft" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
     </div>
 
     @if ($total === 0)

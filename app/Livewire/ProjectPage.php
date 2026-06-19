@@ -32,6 +32,12 @@ class ProjectPage extends Component
     /** Whether the brainstorm space shows the editor (true) or the rendered notes (false). */
     public bool $editingBrainstorm = false;
 
+    /** URL of an external task board linked to this project (e.g. Jira, GitHub, Linear). */
+    public string $externalUrl = '';
+
+    /** Whether the external-link inline form is open. */
+    public bool $editingExternalLink = false;
+
     public function mount(Project $project): void
     {
         // Route binding loaded it; enforce ownership before trusting it.
@@ -40,6 +46,7 @@ class ProjectPage extends Component
         $this->projectId = $project->id;
         $this->projectName = $project->name;
         $this->brainstorm = (string) ($project->brainstorm ?? '');
+        $this->externalUrl = (string) ($project->external_url ?? '');
 
         // Empty projects open straight into the editor for fast capture.
         $this->editingBrainstorm = $this->brainstorm === '';
@@ -142,6 +149,30 @@ class ProjectPage extends Component
         $text = trim((string) ($data['brainstorm'] ?? ''));
 
         $this->project->update(['brainstorm' => $text !== '' ? $this->brainstorm : null]);
+    }
+
+    public function editExternalLink(): void
+    {
+        $this->externalUrl = (string) ($this->project->external_url ?? '');
+        $this->editingExternalLink = true;
+    }
+
+    public function saveExternalLink(): void
+    {
+        $data = $this->validate([
+            'externalUrl' => ['nullable', 'url', 'max:2048'],
+        ]);
+
+        $url = trim((string) ($data['externalUrl'] ?? ''));
+        $this->project->update(['external_url' => $url !== '' ? $url : null]);
+        $this->externalUrl = $url;
+        $this->editingExternalLink = false;
+    }
+
+    public function removeExternalLink(): void
+    {
+        $this->project->update(['external_url' => null]);
+        $this->externalUrl = '';
     }
 
     public function addTask(): void
