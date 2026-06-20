@@ -12,12 +12,64 @@
                         autocomplete="off"
                         class="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-faint focus:ring-0"
                     />
-                    <label class="sr-only" for="newList-d">Zielliste</label>
-                    <select id="newList-d" wire:model="newList" class="rounded-card border-line bg-paper py-1.5 pl-2.5 pr-8 text-sm text-ink-soft focus:border-overprint focus:ring-0">
-                        <option value="inbox">Inbox</option>
-                        <option value="todos">To-Dos</option>
-                        <option value="tasks">Tasks</option>
-                    </select>
+                    <div
+                        x-data="{
+                            open: false,
+                            list: $wire.entangle('newList'),
+                            options: [
+                                { value: 'inbox', label: 'Inbox' },
+                                { value: 'todos', label: 'To-Dos' },
+                                { value: 'tasks', label: 'Tasks' },
+                            ],
+                            get label() { return this.options.find(o => o.value === this.list)?.label ?? 'Inbox'; },
+                        }"
+                        class="relative flex-none"
+                    >
+                        <span class="sr-only">Zielliste</span>
+                        <button
+                            type="button"
+                            @click.stop="open = !open"
+                            @click.outside="open = false"
+                            @keydown.escape.window="open = false"
+                            :aria-expanded="open"
+                            aria-haspopup="listbox"
+                            class="flex items-center gap-1.5 rounded-card border border-line bg-paper py-1.5 pl-3 pr-2 text-sm text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        >
+                            <span x-text="label" class="min-w-[3.5rem] text-left"></span>
+                            <svg class="h-3.5 w-3.5 flex-none text-ink-faint transition-transform duration-150" :class="open && 'rotate-180'" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+
+                        <div
+                            x-show="open"
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute right-0 top-full z-20 mt-1 min-w-full origin-top-right overflow-hidden rounded-card border border-line bg-surface p-1 shadow-map"
+                            role="listbox"
+                            style="display: none;"
+                        >
+                            <template x-for="opt in options" :key="opt.value">
+                                <button
+                                    type="button"
+                                    @click="list = opt.value; open = false"
+                                    role="option"
+                                    :aria-selected="list === opt.value"
+                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                    :class="list === opt.value ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
+                                >
+                                    <span x-text="opt.label"></span>
+                                    <svg x-show="list === opt.value" class="ml-auto h-3 w-3 flex-none text-forest" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                                        <path d="M2 6 4.5 8.5 10 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
                     <button type="submit" class="flex-none rounded-card bg-forest px-4 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
                         Hinzufügen
                     </button>

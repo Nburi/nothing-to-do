@@ -1,4 +1,4 @@
-{{-- A task inside a project. Swipe left = open edit form (mobile). 3-dot menu = edit / release / delete. --}}
+{{-- A task inside a project. Swipe left = open edit form (mobile). Inline edit + delete buttons (desktop: on hover). --}}
 <div
     wire:key="ptask-{{ $task->id }}"
     class="group/card relative select-none"
@@ -71,37 +71,34 @@
             @endif
         </button>
 
-        <button
-            type="button"
-            @click.stop="menuOpen = true"
-            class="grid h-7 w-7 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint md:opacity-0 md:group-hover/card:opacity-100"
-            :class="menuOpen && '!opacity-100'"
-            aria-label="Aktionen"
-        >
-            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <circle cx="8" cy="3" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="8" cy="13" r="1.4" />
-            </svg>
-        </button>
-    </div>
+        {{-- Inline edit + delete actions (mobile: always visible; desktop: on hover) --}}
+        <div class="flex flex-none items-center gap-0.5">
+            <button
+                type="button"
+                wire:click="startEdit({{ $task->id }})"
+                @click.stop
+                class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
+                aria-label="Bearbeiten: {{ $task->title }}"
+            >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M10 3.5 12.5 6 6 12.5l-3 .5.5-3L10 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+            </button>
 
-    <div
-        x-show="menuOpen"
-        x-transition.opacity.duration.120ms
-        @click.outside="menuOpen = false"
-        @keydown.escape.window="menuOpen = false"
-        class="absolute right-2 top-12 z-20 w-44 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
-        style="display: none;"
-    >
-        <button type="button" wire:click="startEdit({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
-            Bearbeiten
-        </button>
-        @unless($task->is_completed)
-        <button type="button" wire:click="removeFromProject({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
-            Zurück in die Inbox
-        </button>
-        @endunless
-        <button type="button" wire:click="deleteTask({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft">
-            Löschen
-        </button>
+            <button
+                    type="button"
+                    x-data="{ armed: false, _t: null }"
+                    @click.stop="if (armed) { $wire.deleteTask({{ $task->id }}); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                    @click.outside="armed = false; clearTimeout(_t)"
+                    @keydown.escape.window="armed = false; clearTimeout(_t)"
+                    :class="armed ? '!opacity-100 bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+                    class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
+                    aria-label="Löschen: {{ $task->title }}"
+                >
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M3 4.5h10M6.5 3h3M4.5 4.5l.5 9h6l.5-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+        </div>
     </div>
 </div>
