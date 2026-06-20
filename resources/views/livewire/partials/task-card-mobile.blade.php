@@ -92,29 +92,69 @@
             @endif
         </button>
 
-        <button
-            type="button"
-            @click.stop="menuOpen = true"
-            class="grid h-7 w-7 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-            aria-label="Aktionen"
-        >
-            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="3" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="13" r="1.4"/></svg>
-        </button>
-    </div>
+        {{-- Inline edit + delete actions (always visible on mobile) --}}
+        <div class="flex flex-none items-center gap-0.5">
+            <button
+                type="button"
+                wire:click="startEdit({{ $task->id }})"
+                @click.stop
+                class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                aria-label="Bearbeiten: {{ $task->title }}"
+            >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M10 3.5 12.5 6 6 12.5l-3 .5.5-3L10 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+            </button>
 
-    <div
-        x-show="menuOpen"
-        x-transition.opacity.duration.120ms
-        @click.outside="menuOpen = false"
-        @keydown.escape.window="menuOpen = false"
-        class="absolute right-2 top-14 z-20 w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
-        style="display: none;"
-    >
-        <button type="button" wire:click="startEdit({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-2 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
-            Bearbeiten
-        </button>
-        <button type="button" wire:click="deleteTask({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-2 text-left text-sm text-signal transition hover:bg-signal-soft">
-            Löschen
-        </button>
+            <div
+                x-data="{ confirming: false, _t: null }"
+                class="relative flex-none"
+                @click.outside="confirming = false; clearTimeout(_t)"
+            >
+                <button
+                    type="button"
+                    x-show="!confirming"
+                    @click.stop="confirming = true; clearTimeout(_t); _t = setTimeout(() => confirming = false, 3000)"
+                    class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-signal-soft hover:text-signal focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                    aria-label="Löschen: {{ $task->title }}"
+                >
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M3 4.5h10M6.5 3h3M4.5 4.5l.5 9h6l.5-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+
+                <div
+                    x-show="confirming"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="absolute right-0 top-0 z-10 flex origin-top-right items-center gap-1 rounded-card border border-line bg-surface px-1.5 py-1 shadow-map"
+                    style="display: none;"
+                >
+                    <button
+                        type="button"
+                        wire:click="deleteTask({{ $task->id }})"
+                        @click.stop="confirming = false; clearTimeout(_t)"
+                        class="rounded px-1.5 py-0.5 text-[11px] font-medium text-signal transition hover:bg-signal-soft active:scale-95"
+                    >
+                        Löschen
+                    </button>
+                    <span class="h-3 w-px bg-line" aria-hidden="true"></span>
+                    <button
+                        type="button"
+                        @click.stop="confirming = false; clearTimeout(_t)"
+                        class="grid h-5 w-5 place-items-center rounded text-ink-faint transition hover:bg-paper hover:text-ink"
+                        aria-label="Abbrechen"
+                    >
+                        <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                            <path d="m2 2 8 8M10 2 2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

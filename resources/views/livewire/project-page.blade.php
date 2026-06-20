@@ -51,23 +51,29 @@
                     </button>
                     <div
                         x-show="open"
-                        x-transition.opacity.duration.120ms
+                        x-transition:enter="transition ease-out duration-100 origin-top-right"
+                        x-transition:enter-start="opacity-0 scale-95"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75 origin-top-right"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95"
                         @click.outside="open = false"
-                        class="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
+                        class="absolute right-0 top-9 z-20 w-44 origin-top-right overflow-hidden rounded-card border border-line bg-surface p-1 shadow-map"
                         style="display: none;"
                     >
-                        <button type="button" wire:click="$set('renaming', true)" @click="open = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                        <button type="button" wire:click="$set('renaming', true)" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             Umbenennen
                         </button>
-                        <button type="button" wire:click="editExternalLink" @click="open = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                        <button type="button" wire:click="editExternalLink" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             {{ $this->project->external_url ? 'Link bearbeiten' : 'Link hinzufügen' }}
                         </button>
+                        <div class="my-1 h-px bg-line/60"></div>
                         <button
                             type="button"
                             wire:click="deleteProject"
                             wire:confirm="Projekt löschen? Offene Aufgaben wandern zurück in die Inbox."
                             @click="open = false"
-                            class="block w-full px-3 py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft"
+                            class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft"
                         >
                             Projekt löschen
                         </button>
