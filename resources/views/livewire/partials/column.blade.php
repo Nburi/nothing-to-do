@@ -1,5 +1,6 @@
-{{-- A board column. $list, $title, $count, $rest (collection), and optionally
-     $hasToday + $today (collection) for the To-Dos / Tasks columns. --}}
+{{-- A board column. Variables: $list, $title, $count, $rest (active non-today tasks),
+     $completed (recently completed tasks, optional), and optionally
+     $hasToday + $today (active today tasks) for the To-Dos / Tasks columns. --}}
 <section class="flex min-h-[55vh] flex-col">
     <header class="mb-3 flex items-center justify-between px-1">
         <h2 class="flex items-center gap-2 text-sm font-medium text-ink">
@@ -29,6 +30,7 @@
         </div>
     @endif
 
+    {{-- Sortable zone: active non-today tasks only (no completed tasks inside here). --}}
     <div
         class="flex flex-1 flex-col gap-2"
         data-list="{{ $list }}" data-today="false"
@@ -38,7 +40,7 @@
             @include('livewire.partials.task-card', ['task' => $task])
         @endforeach
 
-        @if ($rest->isEmpty())
+        @if ($rest->isEmpty() && (($completed ?? collect())->isEmpty()))
             <div class="flex flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line px-4 py-10 text-center">
                 <svg class="h-9 w-9 text-line" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                     <path d="M24 8c8 0 14 5 14 11s-7 10-14 10S11 25 11 19 16 8 24 8Z" stroke="currentColor" stroke-width="1.5"/>
@@ -47,6 +49,20 @@
                 </svg>
                 <p class="max-w-[22ch] text-xs leading-relaxed text-ink-faint">{{ $empty }}</p>
             </div>
+        @elseif ($rest->isEmpty())
+            <p class="px-1 py-2 text-xs text-ink-faint">Hierher ziehen, um Aufgaben hinzuzufügen.</p>
         @endif
     </div>
+
+    {{-- Recently completed tasks — outside the sortable zone, not draggable. --}}
+    @if (($completed ?? collect())->isNotEmpty())
+        <div class="mt-2 border-t border-line/50 pt-2">
+            <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
+            <div class="flex flex-col gap-2">
+                @foreach ($completed as $task)
+                    @include('livewire.partials.task-card', ['task' => $task])
+                @endforeach
+            </div>
+        </div>
+    @endif
 </section>

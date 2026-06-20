@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'task_reset_time'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -28,6 +29,26 @@ class User extends Authenticatable
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    /**
+     * The start of the current "visibility window" for completed tasks.
+     * Completed tasks are shown until the daily reset time (default 01:00).
+     * Returns the most recent past occurrence of that time.
+     */
+    public function completedWindowStart(): Carbon
+    {
+        $time = $this->task_reset_time ?? '01:00';
+        [$h, $m] = array_pad(explode(':', $time), 2, '00');
+
+        $resetToday = Carbon::today()
+            ->setHour((int) $h)
+            ->setMinute((int) $m)
+            ->setSecond(0);
+
+        return now()->greaterThanOrEqualTo($resetToday)
+            ? $resetToday
+            : $resetToday->subDay();
     }
 
     /**

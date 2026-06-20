@@ -20,10 +20,12 @@
          binding replaces the whole style attribute each frame and would wipe an
          inline touch-action, letting the browser steal the horizontal swipe. --}}
     <div
-        class="relative flex touch-pan-y items-start gap-2.5 rounded-card border py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200
-            {{ $task->is_important
-                ? 'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft'
-                : 'border-line bg-surface hover:border-ink-faint/50' }}"
+        @class([
+            'relative flex touch-pan-y items-start gap-2.5 rounded-card border py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200',
+            'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft' => $task->is_important && !$task->is_completed,
+            'border-line bg-surface hover:border-ink-faint/50' => !$task->is_important && !$task->is_completed,
+            'border-line bg-surface opacity-50' => $task->is_completed,
+        ])
         :class="{ 'transition-transform duration-200 ease-tactile': !dragging }"
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
@@ -31,8 +33,12 @@
         <button
             type="button"
             wire:click="toggleComplete({{ $task->id }})"
-            class="mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 border-line text-transparent transition hover:border-forest hover:text-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-            aria-label="Erledigt markieren: {{ $task->title }}"
+            @class([
+                'mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                'border-forest bg-forest text-white' => $task->is_completed,
+                'border-line text-transparent hover:border-forest hover:text-forest' => !$task->is_completed,
+            ])
+            aria-label="{{ $task->is_completed ? 'Als offen markieren' : 'Erledigt markieren' }}: {{ $task->title }}"
         >
             <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                 <path d="M2.5 6.4 4.8 8.7 9.5 3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -45,9 +51,14 @@
             class="min-w-0 flex-1 cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
             title="Tippen markiert als wichtig"
         >
-            <span class="block break-words text-sm leading-snug {{ $task->is_important ? 'font-medium text-ink' : 'text-ink' }}">{{ $task->title }}</span>
+            <span @class([
+                'block break-words text-sm leading-snug',
+                'line-through text-ink-faint' => $task->is_completed,
+                'font-medium text-ink' => !$task->is_completed && $task->is_important,
+                'text-ink' => !$task->is_completed && !$task->is_important,
+            ])>{{ $task->title }}</span>
 
-            @if ($label = $task->effectiveDateLabel())
+            @if (!$task->is_completed && ($label = $task->effectiveDateLabel()))
                 <span class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium
                     {{ $task->isOverdue()
                         ? 'bg-signal-soft text-signal'
@@ -84,9 +95,11 @@
         <button type="button" wire:click="startEdit({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
             Bearbeiten
         </button>
+        @unless($task->is_completed)
         <button type="button" wire:click="removeFromProject({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
             Zurück in die Inbox
         </button>
+        @endunless
         <button type="button" wire:click="deleteTask({{ $task->id }})" @click="menuOpen = false" class="block w-full px-3 py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft">
             Löschen
         </button>

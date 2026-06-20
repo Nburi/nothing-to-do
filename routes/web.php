@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Livewire\ProjectPage;
+use App\Livewire\Settings;
 use App\Livewire\TaskBoard;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,10 @@ Route::get('/app', TaskBoard::class)
 Route::get('/app/projects/{project}', ProjectPage::class)
     ->middleware('auth')
     ->name('project.show');
+
+Route::get('/app/settings', Settings::class)
+    ->middleware('auth')
+    ->name('settings');
 
 // Breeze posts login/registration through to route('dashboard'); send it to the board.
 Route::redirect('/dashboard', '/app')->name('dashboard');
