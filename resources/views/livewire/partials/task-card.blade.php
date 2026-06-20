@@ -1,18 +1,24 @@
-{{-- Desktop task card. A SortableJS item (data-id). Tap body = important, circle = done. --}}
+{{-- Desktop task card. A SortableJS item (data-id) when active. Tap body = important, circle = done. --}}
 <div
     wire:key="task-{{ $task->id }}"
-    data-id="{{ $task->id }}"
-    class="group/card relative flex items-start gap-2.5 rounded-card border py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200
-        {{ $task->is_important
-            ? 'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft'
-            : 'border-line bg-surface hover:border-ink-faint/50' }}"
+    @unless($task->is_completed) data-id="{{ $task->id }}" @endunless
+    @class([
+        'group/card relative flex items-start gap-2.5 rounded-card border py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200',
+        'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft' => $task->is_important && !$task->is_completed,
+        'border-line bg-surface hover:border-ink-faint/50' => !$task->is_important && !$task->is_completed,
+        'border-line bg-surface opacity-50' => $task->is_completed,
+    ])
 >
 
     <button
         type="button"
         wire:click.stop="toggleComplete({{ $task->id }})"
-        class="mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 border-line text-transparent transition hover:border-forest hover:text-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-        aria-label="Erledigt markieren: {{ $task->title }}"
+        @class([
+            'mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+            'border-forest bg-forest text-white' => $task->is_completed,
+            'border-line text-transparent hover:border-forest hover:text-forest' => !$task->is_completed,
+        ])
+        aria-label="{{ $task->is_completed ? 'Als offen markieren' : 'Erledigt markieren' }}: {{ $task->title }}"
     >
         <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M2.5 6.4 4.8 8.7 9.5 3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -25,9 +31,14 @@
         class="min-w-0 flex-1 cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
         title="Tippen markiert als wichtig"
     >
-        <span class="block break-words text-sm leading-snug {{ $task->is_important ? 'font-medium text-ink' : 'text-ink' }}">{{ $task->title }}</span>
+        <span @class([
+            'block break-words text-sm leading-snug',
+            'line-through text-ink-faint' => $task->is_completed,
+            'font-medium text-ink' => !$task->is_completed && $task->is_important,
+            'text-ink' => !$task->is_completed && !$task->is_important,
+        ])>{{ $task->title }}</span>
 
-        @if ($label = $task->effectiveDateLabel())
+        @if (!$task->is_completed && ($label = $task->effectiveDateLabel()))
             <span class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium
                 {{ $task->isOverdue()
                     ? 'bg-signal-soft text-signal'

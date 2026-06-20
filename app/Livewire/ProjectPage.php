@@ -52,17 +52,32 @@ class ProjectPage extends Component
         return auth()->user()->projects()->findOrFail($this->projectId);
     }
 
-    /** @return Collection<int, Task> */
+    /**
+     * Active project tasks + tasks completed within the current visibility window.
+     * Active tasks come first (orderBy is_completed ASC prepended before boardOrdered).
+     *
+     * @return Collection<int, Task>
+     */
     #[Computed]
     public function tasks(): Collection
     {
+        $windowStart = auth()->user()->completedWindowStart();
+
         return auth()->user()->tasks()
             ->where('project_id', $this->projectId)
-            ->active()
+            ->where(function ($q) use ($windowStart) {
+                $q->where('is_completed', false)
+                    ->orWhere(function ($q2) use ($windowStart) {
+                        $q2->where('is_completed', true)
+                            ->where('completed_at', '>=', $windowStart);
+                    });
+            })
+            ->orderBy('is_completed')
             ->boardOrdered()
             ->get();
     }
 
+    /** All-time completed count — used for the progress bar. */
     #[Computed]
     public function doneCount(): int
     {
@@ -75,7 +90,8 @@ class ProjectPage extends Component
     #[Computed]
     public function totalCount(): int
     {
-        return $this->tasks->count() + $this->doneCount;
+        // Use active count from tasks() to avoid double-counting recently completed.
+        return $this->tasks->where('is_completed', false)->count() + $this->doneCount;
     }
 
     /** Inbox tasks available to pull into this project. */

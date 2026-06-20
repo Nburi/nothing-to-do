@@ -53,6 +53,9 @@
                                 <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Profil
                                 </a>
+                                <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Einstellungen
+                                </a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">

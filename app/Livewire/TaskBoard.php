@@ -28,14 +28,29 @@ class TaskBoard extends Component
 
     // ── Reads (computed, cached per request) ──────────────────────────
 
-    /** @return Collection<int, Task> */
-    private function active(string $list): Collection
+    /**
+     * Tasks visible in a board column: active tasks + tasks completed within the
+     * current visibility window (since the user's daily reset time). Active tasks
+     * come first (orderBy is_completed ASC prepended before boardOrdered).
+     *
+     * @return Collection<int, Task>
+     */
+    private function boardTasks(string $list): Collection
     {
+        $windowStart = auth()->user()->completedWindowStart();
+
         return Task::query()
             ->forUser(auth()->user())
-            ->active()
             ->onBoard()
             ->inList($list)
+            ->where(function ($q) use ($windowStart) {
+                $q->where('is_completed', false)
+                    ->orWhere(function ($q2) use ($windowStart) {
+                        $q2->where('is_completed', true)
+                            ->where('completed_at', '>=', $windowStart);
+                    });
+            })
+            ->orderBy('is_completed')   // active (0) before completed (1)
             ->boardOrdered()
             ->get();
     }
@@ -43,44 +58,46 @@ class TaskBoard extends Component
     #[Computed]
     public function inbox(): Collection
     {
-        return $this->active('inbox');
+        return $this->boardTasks('inbox');
     }
 
-    /** Whole-list collections, fetched once and split for the Today areas below. */
+    /** Whole-list collections (active + recently completed), fetched once and split below. */
     #[Computed]
     public function todosAll(): Collection
     {
-        return $this->active('todos');
+        return $this->boardTasks('todos');
     }
 
     #[Computed]
     public function tasksAll(): Collection
     {
-        return $this->active('tasks');
+        return $this->boardTasks('tasks');
     }
 
+    /** Only active tasks flagged for today (never show completed in the Today area). */
     #[Computed]
     public function todosToday(): Collection
     {
-        return $this->todosAll->where('is_today', true)->values();
+        return $this->todosAll->where('is_completed', false)->where('is_today', true)->values();
     }
 
+    /** Active non-today todos (completed ones are passed separately to the column partial). */
     #[Computed]
     public function todosRest(): Collection
     {
-        return $this->todosAll->where('is_today', false)->values();
+        return $this->todosAll->where('is_completed', false)->where('is_today', false)->values();
     }
 
     #[Computed]
     public function tasksToday(): Collection
     {
-        return $this->tasksAll->where('is_today', true)->values();
+        return $this->tasksAll->where('is_completed', false)->where('is_today', true)->values();
     }
 
     #[Computed]
     public function tasksRest(): Collection
     {
-        return $this->tasksAll->where('is_today', false)->values();
+        return $this->tasksAll->where('is_completed', false)->where('is_today', false)->values();
     }
 
     /** Mobile "Today" page: every focused board task across todos + tasks. */
@@ -113,14 +130,14 @@ class TaskBoard extends Component
             ->get();
     }
 
-    /** Derived from the already-loaded collections — no extra count queries. */
+    /** Active-task counts only — completed tasks don't inflate the badges. */
     #[Computed]
     public function counts(): array
     {
         return [
-            'inbox' => $this->inbox->count(),
-            'todos' => $this->todosAll->count(),
-            'tasks' => $this->tasksAll->count(),
+            'inbox' => $this->inbox->where('is_completed', false)->count(),
+            'todos' => $this->todosAll->where('is_completed', false)->count(),
+            'tasks' => $this->tasksAll->where('is_completed', false)->count(),
             'today' => $this->today->count(),
             'projects' => $this->projects->count(),
         ];

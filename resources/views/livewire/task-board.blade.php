@@ -28,16 +28,20 @@
             <div class="grid grid-cols-4 gap-5">
                 @include('livewire.partials.column', [
                     'list' => 'inbox', 'title' => 'Inbox', 'count' => $this->counts['inbox'],
-                    'rest' => $this->inbox, 'empty' => 'Posteingang leer. Saubere Ausgangslage.',
+                    'rest' => $this->inbox->where('is_completed', false)->values(),
+                    'completed' => $this->inbox->where('is_completed', true)->values(),
+                    'empty' => 'Posteingang leer. Saubere Ausgangslage.',
                 ])
                 @include('livewire.partials.column', [
                     'list' => 'todos', 'title' => 'To-Dos', 'count' => $this->counts['todos'],
                     'hasToday' => true, 'today' => $this->todosToday, 'rest' => $this->todosRest,
+                    'completed' => $this->todosAll->where('is_completed', true)->values(),
                     'empty' => 'Keine To-Dos. Zieh etwas aus der Inbox herüber.',
                 ])
                 @include('livewire.partials.column', [
                     'list' => 'tasks', 'title' => 'Tasks', 'count' => $this->counts['tasks'],
                     'hasToday' => true, 'today' => $this->tasksToday, 'rest' => $this->tasksRest,
+                    'completed' => $this->tasksAll->where('is_completed', true)->values(),
                     'empty' => 'Keine Tasks. Grössere Brocken landen hier.',
                 ])
 
@@ -123,14 +127,26 @@
             <div class="flex flex-col gap-2.5">
                 @switch($mobileTab)
                     @case('inbox')
-                        @forelse ($this->inbox as $task)
+                        @php $inboxActive = $this->inbox->where('is_completed', false); $inboxDone = $this->inbox->where('is_completed', true); @endphp
+                        @forelse ($inboxActive as $task)
                             @include('livewire.partials.task-card-mobile', ['task' => $task])
                         @empty
-                            <x-board-empty>Posteingang leer. Saubere Ausgangslage.</x-board-empty>
+                            @if ($inboxDone->isEmpty())
+                                <x-board-empty>Posteingang leer. Saubere Ausgangslage.</x-board-empty>
+                            @endif
                         @endforelse
+                        @if ($inboxDone->isNotEmpty())
+                            <div class="mt-0.5 border-t border-line/50 pt-1">
+                                <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
+                            </div>
+                            @foreach ($inboxDone as $task)
+                                @include('livewire.partials.task-card-mobile', ['task' => $task])
+                            @endforeach
+                        @endif
                         @break
 
                     @case('todos')
+                        @php $todosDone = $this->todosAll->where('is_completed', true); @endphp
                         @if ($this->todosToday->isNotEmpty())
                             <p class="px-1 pt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest">Heute</p>
                             @foreach ($this->todosToday as $task)
@@ -141,13 +157,22 @@
                         @forelse ($this->todosRest as $task)
                             @include('livewire.partials.task-card-mobile', ['task' => $task])
                         @empty
-                            @if ($this->todosToday->isEmpty())
+                            @if ($this->todosToday->isEmpty() && $todosDone->isEmpty())
                                 <x-board-empty>Keine To-Dos. Wisch eine Inbox-Aufgabe nach rechts.</x-board-empty>
                             @endif
                         @endforelse
+                        @if ($todosDone->isNotEmpty())
+                            <div class="mt-0.5 border-t border-line/50 pt-1">
+                                <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
+                            </div>
+                            @foreach ($todosDone as $task)
+                                @include('livewire.partials.task-card-mobile', ['task' => $task])
+                            @endforeach
+                        @endif
                         @break
 
                     @case('tasks')
+                        @php $tasksDone = $this->tasksAll->where('is_completed', true); @endphp
                         @if ($this->tasksToday->isNotEmpty())
                             <p class="px-1 pt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest">Heute</p>
                             @foreach ($this->tasksToday as $task)
@@ -158,10 +183,18 @@
                         @forelse ($this->tasksRest as $task)
                             @include('livewire.partials.task-card-mobile', ['task' => $task])
                         @empty
-                            @if ($this->tasksToday->isEmpty())
+                            @if ($this->tasksToday->isEmpty() && $tasksDone->isEmpty())
                                 <x-board-empty>Keine Tasks. Grössere Brocken landen hier.</x-board-empty>
                             @endif
                         @endforelse
+                        @if ($tasksDone->isNotEmpty())
+                            <div class="mt-0.5 border-t border-line/50 pt-1">
+                                <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
+                            </div>
+                            @foreach ($tasksDone as $task)
+                                @include('livewire.partials.task-card-mobile', ['task' => $task])
+                            @endforeach
+                        @endif
                         @break
 
                     @case('today')

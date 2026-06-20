@@ -154,17 +154,32 @@
                 </form>
 
                 {{-- Task list --}}
+                @php
+                    $activeTasks = $this->tasks->where('is_completed', false);
+                    $completedTasks = $this->tasks->where('is_completed', true);
+                @endphp
                 <div class="mt-4 flex flex-col gap-2">
-                    @forelse ($this->tasks as $task)
+                    @forelse ($activeTasks as $task)
                         @include('livewire.partials.project-task-card', ['task' => $task])
                     @empty
-                        <div class="flex flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line px-4 py-12 text-center">
-                            <svg class="h-9 w-9 text-line" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                                <path d="M8 16a2 2 0 0 1 2-2h9l3 4h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V16Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                            </svg>
-                            <p class="max-w-[26ch] text-xs leading-relaxed text-ink-faint">Noch keine offenen Aufgaben. Füge oben eine hinzu oder hol dir eine aus der Inbox.</p>
-                        </div>
+                        @if ($completedTasks->isEmpty())
+                            <div class="flex flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line px-4 py-12 text-center">
+                                <svg class="h-9 w-9 text-line" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                                    <path d="M8 16a2 2 0 0 1 2-2h9l3 4h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V16Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                </svg>
+                                <p class="max-w-[26ch] text-xs leading-relaxed text-ink-faint">Noch keine offenen Aufgaben. Füge oben eine hinzu oder hol dir eine aus der Inbox.</p>
+                            </div>
+                        @endif
                     @endforelse
+
+                    @if ($completedTasks->isNotEmpty())
+                        <div class="mt-1 border-t border-line/50 pt-2">
+                            <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
+                            @foreach ($completedTasks as $task)
+                                @include('livewire.partials.project-task-card', ['task' => $task])
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Pull tasks in from the inbox --}}
