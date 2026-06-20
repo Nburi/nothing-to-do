@@ -59,6 +59,9 @@
                         <button type="button" wire:click="$set('renaming', true)" @click="open = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             Umbenennen
                         </button>
+                        <button type="button" wire:click="editExternalLink" @click="open = false" class="block w-full px-3 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                            {{ $this->project->external_url ? 'Link bearbeiten' : 'Link hinzufügen' }}
+                        </button>
                         <button
                             type="button"
                             wire:click="deleteProject"
@@ -72,6 +75,45 @@
                 </div>
             @endif
         </div>
+
+        {{-- External link --}}
+        @if ($editingExternalLink)
+            <form wire:submit="saveExternalLink" class="mt-3 flex items-center gap-2">
+                <input
+                    type="url"
+                    wire:model="externalUrl"
+                    placeholder="https://…"
+                    autofocus
+                    class="min-w-0 flex-1 rounded-card border border-line bg-paper px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                />
+                <button type="submit" class="flex-none rounded-card bg-forest px-3 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Speichern</button>
+                <button type="button" wire:click="$set('editingExternalLink', false)" class="flex-none rounded-card px-2 py-1.5 text-sm text-ink-soft transition hover:bg-surface">Abbrechen</button>
+            </form>
+            @error('externalUrl') <p class="mt-1 px-1 text-xs text-signal">{{ $message }}</p> @enderror
+        @elseif ($this->project->external_url)
+            <div class="mt-3 flex items-center gap-2">
+                <a
+                    href="{{ $this->project->external_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[13px] text-ink-soft shadow-map transition hover:border-ink-faint/60 hover:text-ink"
+                >
+                    <svg class="h-3.5 w-3.5 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M9.5 2.5h4v4M13.5 2.5l-6 6M6.5 3.5H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    {{ $this->project->externalServiceName() }}
+                </a>
+                <button
+                    type="button"
+                    wire:click="removeExternalLink"
+                    wire:confirm="Externen Link entfernen?"
+                    class="grid h-6 w-6 place-items-center rounded-full text-ink-faint transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    aria-label="Link entfernen"
+                >
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+        @endif
 
         {{-- Progress bar --}}
         @if ($total > 0)

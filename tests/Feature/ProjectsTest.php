@@ -348,6 +348,67 @@ class ProjectsTest extends TestCase
         $this->assertDatabaseHas('projects', ['id' => $project->id, 'brainstorm' => '# Erste Idee']);
     }
 
+    public function test_external_link_can_be_saved_to_a_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->set('externalUrl', 'https://mycompany.atlassian.net/jira/software/projects/APP')
+            ->call('saveExternalLink')
+            ->assertHasNoErrors()
+            ->assertSet('editingExternalLink', false);
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $project->id,
+            'external_url' => 'https://mycompany.atlassian.net/jira/software/projects/APP',
+        ]);
+    }
+
+    public function test_external_link_is_validated_as_url(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->set('externalUrl', 'not-a-valid-url')
+            ->call('saveExternalLink')
+            ->assertHasErrors(['externalUrl']);
+    }
+
+    public function test_external_link_can_be_removed(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'external_url' => 'https://github.com/user/repo',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectPage::class, ['project' => $project])
+            ->call('removeExternalLink');
+
+        $this->assertDatabaseHas('projects', ['id' => $project->id, 'external_url' => null]);
+    }
+
+    public function test_service_name_is_detected_from_url(): void
+    {
+        $project = new Project();
+
+        $project->external_url = 'https://mycompany.atlassian.net/jira/software/projects/APP';
+        $this->assertSame('Jira', $project->externalServiceName());
+
+        $project->external_url = 'https://github.com/user/repo';
+        $this->assertSame('GitHub', $project->externalServiceName());
+
+        $project->external_url = 'https://linear.app/team/project/PROJ';
+        $this->assertSame('Linear', $project->externalServiceName());
+
+        $project->external_url = 'https://mycompany.com/tasks';
+        $this->assertSame('Mycompany', $project->externalServiceName());
+    }
+
     public function test_brainstorm_can_be_reopened_after_finishing_empty(): void
     {
         // Regression: emptying the notes and hitting "Fertig" must not lock the
