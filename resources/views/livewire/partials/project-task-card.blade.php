@@ -85,56 +85,20 @@
                 </svg>
             </button>
 
-            <div
-                x-data="{ confirming: false, _t: null }"
-                class="relative flex-none"
-                @click.outside="confirming = false; clearTimeout(_t)"
-            >
-                <button
+            <button
                     type="button"
-                    x-show="!confirming"
-                    @click.stop="confirming = true; clearTimeout(_t); _t = setTimeout(() => confirming = false, 3000)"
-                    class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-signal-soft hover:text-signal focus:outline-none focus-visible:ring-2 focus-visible:ring-signal md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
-                    :class="confirming && '!opacity-100'"
+                    x-data="{ armed: false, _t: null }"
+                    @click.stop="if (armed) { $wire.deleteTask({{ $task->id }}); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                    @click.outside="armed = false; clearTimeout(_t)"
+                    @keydown.escape.window="armed = false; clearTimeout(_t)"
+                    :class="armed ? '!opacity-100 bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+                    class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
                     aria-label="Löschen: {{ $task->title }}"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path d="M3 4.5h10M6.5 3h3M4.5 4.5l.5 9h6l.5-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
-
-                <div
-                    x-show="confirming"
-                    x-transition:enter="transition ease-out duration-100"
-                    x-transition:enter-start="opacity-0 scale-95"
-                    x-transition:enter-end="opacity-100 scale-100"
-                    x-transition:leave="transition ease-in duration-75"
-                    x-transition:leave-start="opacity-100 scale-100"
-                    x-transition:leave-end="opacity-0 scale-95"
-                    class="absolute right-0 top-0 z-10 flex origin-top-right items-center gap-1 rounded-card border border-line bg-surface px-1.5 py-1 shadow-map"
-                    style="display: none;"
-                >
-                    <button
-                        type="button"
-                        wire:click="deleteTask({{ $task->id }})"
-                        @click.stop="confirming = false; clearTimeout(_t)"
-                        class="rounded px-1.5 py-0.5 text-[11px] font-medium text-signal transition hover:bg-signal-soft active:scale-95"
-                    >
-                        Löschen
-                    </button>
-                    <span class="h-3 w-px bg-line" aria-hidden="true"></span>
-                    <button
-                        type="button"
-                        @click.stop="confirming = false; clearTimeout(_t)"
-                        class="grid h-5 w-5 place-items-center rounded text-ink-faint transition hover:bg-paper hover:text-ink"
-                        aria-label="Abbrechen"
-                    >
-                        <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                            <path d="m2 2 8 8M10 2 2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 </div>
