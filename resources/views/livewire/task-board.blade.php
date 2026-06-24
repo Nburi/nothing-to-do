@@ -6,6 +6,7 @@
                 wire:submit="addTask"
                 x-data="{ exp: false }"
                 @task-added.window="exp = false"
+                @click.outside="exp = false"
                 class="mb-6"
             >
                 <div
@@ -93,7 +94,6 @@
                         x-transition:enter-end="opacity-100 translate-y-0"
                         class="grid grid-cols-2 gap-3 border-t border-line/60 px-3 py-2.5"
                         style="display: none;"
-                        @click.outside="exp = false"
                     >
                         <div>
                             <label class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline</label>
@@ -141,6 +141,7 @@
                         wire:submit="addProject"
                         x-data="{ exp: false }"
                         @project-added.window="exp = false"
+                        @click.outside="exp = false"
                         class="mb-3"
                     >
                         <div
@@ -167,7 +168,6 @@
                                 x-transition:enter-end="opacity-100 translate-y-0"
                                 class="border-t border-line/60 px-2.5 py-2"
                                 style="display: none;"
-                                @click.outside="exp = false"
                             >
                                 <label class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline</label>
                                 <input type="date" wire:model="newProjectDeadline" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
@@ -238,6 +238,7 @@
                     wire:submit="addProject"
                     x-data="{ exp: false }"
                     @project-added.window="exp = false"
+                    @click.outside="exp = false"
                     class="mb-4"
                 >
                     <div
@@ -264,7 +265,6 @@
                             x-transition:enter-end="opacity-100 translate-y-0"
                             class="border-t border-line/60 px-3 py-2.5"
                             style="display: none;"
-                            @click.outside="exp = false"
                         >
                             <label class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline</label>
                             <input type="date" wire:model="newProjectDeadline" class="w-full rounded-card border-line bg-paper text-[15px] text-ink focus:border-overprint focus:ring-0" />
@@ -277,6 +277,7 @@
                     wire:submit="addTask"
                     x-data="{ exp: false }"
                     @task-added.window="exp = false"
+                    @click.outside="exp = false"
                     class="mb-4"
                 >
                     <div
@@ -303,7 +304,6 @@
                             x-transition:enter-end="opacity-100 translate-y-0"
                             class="grid grid-cols-2 gap-3 border-t border-line/60 px-3 py-2.5"
                             style="display: none;"
-                            @click.outside="exp = false"
                         >
                             <div>
                                 <label class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline</label>
