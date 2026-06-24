@@ -18,14 +18,51 @@ class Project extends Model
         'name',
         'brainstorm',
         'external_url',
+        'deadline',
         'sort_order',
     ];
 
     protected function casts(): array
     {
         return [
+            'deadline'   => 'date',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->deadline !== null && $this->deadline->isPast() && ! $this->deadline->isToday();
+    }
+
+    public function isUrgent(): bool
+    {
+        return $this->deadline !== null && $this->deadline->diffInDays(now()) <= 4 && ! $this->isOverdue();
+    }
+
+    public function deadlineLabel(): string
+    {
+        if (! $this->deadline) {
+            return '';
+        }
+
+        $today = now()->startOfDay();
+        $diff = (int) $today->diffInDays($this->deadline, false);
+
+        if ($diff < 0) {
+            return 'Überfällig';
+        }
+        if ($diff === 0) {
+            return 'Heute';
+        }
+        if ($diff === 1) {
+            return 'Morgen';
+        }
+        if ($diff <= 6) {
+            return $this->deadline->locale('de_CH')->isoFormat('ddd');
+        }
+
+        return $this->deadline->format('d.m.');
     }
 
     public function user(): BelongsTo

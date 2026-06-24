@@ -20,8 +20,14 @@ class TaskBoard extends Component
 
     public string $newList = 'inbox';
 
+    public ?string $newDeadline = null;
+
+    public ?string $newDueDate = null;
+
     /** Add-project (Projects column / tab). */
     public string $newProjectName = '';
+
+    public ?string $newProjectDeadline = null;
 
     /** Active mobile page: inbox | todos | tasks | today | projects. */
     public string $mobileTab = 'inbox';
@@ -114,6 +120,18 @@ class TaskBoard extends Component
     }
 
     /**
+     * Standalone tasks placed in the Projects column but not inside any project.
+     * These are on-board tasks (project_id IS NULL) with list = 'projects'.
+     *
+     * @return Collection<int, Task>
+     */
+    #[Computed]
+    public function projectTasks(): Collection
+    {
+        return $this->boardTasks('projects');
+    }
+
+    /**
      * Projects with their working set: every active task (ordered) for the
      * card preview + open count, plus a completed count for the progress label.
      *
@@ -135,11 +153,11 @@ class TaskBoard extends Component
     public function counts(): array
     {
         return [
-            'inbox' => $this->inbox->where('is_completed', false)->count(),
-            'todos' => $this->todosAll->where('is_completed', false)->count(),
-            'tasks' => $this->tasksAll->where('is_completed', false)->count(),
-            'today' => $this->today->count(),
-            'projects' => $this->projects->count(),
+            'inbox'    => $this->inbox->where('is_completed', false)->count(),
+            'todos'    => $this->todosAll->where('is_completed', false)->count(),
+            'tasks'    => $this->tasksAll->where('is_completed', false)->count(),
+            'today'    => $this->today->count(),
+            'projects' => $this->projects->count() + $this->projectTasks->where('is_completed', false)->count(),
         ];
     }
 
@@ -166,17 +184,22 @@ class TaskBoard extends Component
         $this->newTitle = trim($this->newTitle);
 
         $data = $this->validate([
-            'newTitle' => ['required', 'string', 'max:255'],
-            'newList' => ['required', 'in:inbox,todos,tasks'],
+            'newTitle'    => ['required', 'string', 'max:255'],
+            'newList'     => ['required', 'in:inbox,todos,tasks'],
+            'newDeadline' => ['nullable', 'date'],
+            'newDueDate'  => ['nullable', 'date'],
         ]);
 
         auth()->user()->tasks()->create([
-            'title' => $data['newTitle'],
-            'list' => $data['newList'],
+            'title'    => $data['newTitle'],
+            'list'     => $data['newList'],
+            'deadline' => $data['newDeadline'] ?: null,
+            'due_date' => $data['newDueDate'] ?: null,
             'sort_order' => 0,
         ]);
 
-        $this->newTitle = '';
+        $this->reset(['newTitle', 'newDeadline', 'newDueDate']);
+        $this->dispatch('task-added');
     }
 
     public function addProject(): void
@@ -184,15 +207,18 @@ class TaskBoard extends Component
         $this->newProjectName = trim($this->newProjectName);
 
         $data = $this->validate([
-            'newProjectName' => ['required', 'string', 'max:255'],
+            'newProjectName'     => ['required', 'string', 'max:255'],
+            'newProjectDeadline' => ['nullable', 'date'],
         ]);
 
         auth()->user()->projects()->create([
-            'name' => $data['newProjectName'],
+            'name'     => $data['newProjectName'],
+            'deadline' => $data['newProjectDeadline'] ?: null,
             'sort_order' => 0,
         ]);
 
-        $this->newProjectName = '';
+        $this->reset(['newProjectName', 'newProjectDeadline']);
+        $this->dispatch('project-added');
     }
 
     /**
@@ -233,13 +259,13 @@ class TaskBoard extends Component
      */
     public function reorder(string $list, bool $today, array $ids): void
     {
-        // Only the three board columns are drag targets.
-        if (! in_array($list, Task::BOARD_LISTS, true)) {
+        // Board columns + standalone project list are valid drag targets.
+        if (! in_array($list, [... Task::BOARD_LISTS, 'projects'], true)) {
             return;
         }
 
-        // Inbox has no Today area.
-        $today = $list === 'inbox' ? false : $today;
+        // Inbox and project list have no Today area.
+        $today = in_array($list, ['inbox', 'projects'], true) ? false : $today;
 
         foreach (array_values($ids) as $position => $id) {
             $task = auth()->user()->tasks()->find((int) $id);
@@ -248,11 +274,18 @@ class TaskBoard extends Component
                 continue; // ignore ids that aren't ours
             }
 
-            $task->update([
-                'list' => $list,
-                'is_today' => $today,
+            $updates = [
+                'list'       => $list,
+                'is_today'   => $today,
                 'sort_order' => $position,
-            ]);
+            ];
+
+            // Moving into the standalone project list clears the project assignment.
+            if ($list === 'projects') {
+                $updates['project_id'] = null;
+            }
+
+            $task->update($updates);
         }
     }
 
