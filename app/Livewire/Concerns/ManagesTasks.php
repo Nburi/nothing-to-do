@@ -24,6 +24,8 @@ trait ManagesTasks
 
     public ?string $editDueDate = null;
 
+    public string $editList = 'inbox';
+
     public ?int $editProjectId = null;
 
     /** Always resolve a task through the owner relationship — never trust an id alone. */
@@ -63,6 +65,7 @@ trait ManagesTasks
         $this->editTitle = $task->title;
         $this->editDeadline = $task->deadline?->toDateString();
         $this->editDueDate = $task->due_date?->toDateString();
+        $this->editList = $task->list;
         $this->editProjectId = $task->project_id;
     }
 
@@ -78,6 +81,7 @@ trait ManagesTasks
             'editTitle'     => ['required', 'string', 'max:255'],
             'editDeadline'  => ['nullable', 'date'],
             'editDueDate'   => ['nullable', 'date'],
+            'editList'      => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
         ]);
 
@@ -89,18 +93,27 @@ trait ManagesTasks
             'due_date' => $data['editDueDate'] ?: null,
         ];
 
+        // editProjectId takes priority: if a project is selected the task is
+        // always placed in the 'projects' list regardless of editList.
         $newProjectId = $data['editProjectId'] ? (int) $data['editProjectId'] : null;
+        $newList = $data['editList'];
 
-        if ($newProjectId !== $task->project_id) {
-            if ($newProjectId !== null) {
-                // Moving into a project — task leaves the board
-                $updates['project_id'] = $newProjectId;
-                $updates['list'] = 'projects';
+        if ($newProjectId !== null) {
+            // Assigned to a specific project
+            $updates['project_id'] = $newProjectId;
+            $updates['list'] = 'projects';
+            $updates['is_today'] = false;
+        } elseif ($newList === 'projects') {
+            // Standalone project task (no specific project)
+            $updates['project_id'] = null;
+            $updates['list'] = 'projects';
+            $updates['is_today'] = false;
+        } else {
+            // Regular board list — clear any project assignment
+            $updates['project_id'] = null;
+            $updates['list'] = $newList;
+            if (! in_array($newList, Task::TODAY_LISTS, true)) {
                 $updates['is_today'] = false;
-            } else {
-                // Removing from a project — task lands in inbox
-                $updates['project_id'] = null;
-                $updates['list'] = 'inbox';
             }
         }
 
@@ -111,7 +124,7 @@ trait ManagesTasks
 
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editProjectId']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editList', 'editProjectId']);
     }
 
     public function deleteTask(int $id): void

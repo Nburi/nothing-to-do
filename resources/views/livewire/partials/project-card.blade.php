@@ -23,6 +23,16 @@
     <div class="flex items-start justify-between gap-2">
         <h3 class="min-w-0 break-words text-sm font-medium text-ink">{{ $project->name }}</h3>
         <div class="mt-0.5 flex flex-none items-center gap-1.5">
+            @if ($project->deadline)
+                <span
+                    class="tnum rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight"
+                    @class([
+                        'bg-signal-soft text-signal' => $project->isOverdue(),
+                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' => !$project->isOverdue() && $project->isUrgent(),
+                        'bg-surface text-ink-faint border border-line' => !$project->isOverdue() && !$project->isUrgent(),
+                    ])
+                >{{ $project->deadlineLabel() }}</span>
+            @endif
             @if ($project->external_url)
                 <span title="{{ $project->externalServiceName() }}" aria-label="{{ $project->externalServiceName() }} verknüpft">
                     <svg class="h-3.5 w-3.5 text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true">

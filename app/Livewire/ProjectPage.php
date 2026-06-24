@@ -38,6 +38,12 @@ class ProjectPage extends Component
     /** Whether the external-link inline form is open. */
     public bool $editingExternalLink = false;
 
+    /** Project-level deadline (date string or empty). */
+    public string $projectDeadline = '';
+
+    /** Whether the deadline inline form is open. */
+    public bool $editingDeadline = false;
+
     public function mount(Project $project): void
     {
         // Route binding loaded it; enforce ownership before trusting it.
@@ -47,6 +53,7 @@ class ProjectPage extends Component
         $this->projectName = $project->name;
         $this->brainstorm = (string) ($project->brainstorm ?? '');
         $this->externalUrl = (string) ($project->external_url ?? '');
+        $this->projectDeadline = $project->deadline?->toDateString() ?? '';
 
         // Empty projects open straight into the editor for fast capture.
         $this->editingBrainstorm = $this->brainstorm === '';
@@ -189,6 +196,30 @@ class ProjectPage extends Component
     {
         $this->project->update(['external_url' => null]);
         $this->externalUrl = '';
+    }
+
+    public function editDeadline(): void
+    {
+        $this->projectDeadline = $this->project->deadline?->toDateString() ?? '';
+        $this->editingDeadline = true;
+    }
+
+    public function saveDeadline(): void
+    {
+        $data = $this->validate([
+            'projectDeadline' => ['nullable', 'date'],
+        ]);
+
+        $date = trim((string) ($data['projectDeadline'] ?? ''));
+        $this->project->update(['deadline' => $date !== '' ? $date : null]);
+        $this->projectDeadline = $date;
+        $this->editingDeadline = false;
+    }
+
+    public function removeDeadline(): void
+    {
+        $this->project->update(['deadline' => null]);
+        $this->projectDeadline = '';
     }
 
     public function addTask(): void

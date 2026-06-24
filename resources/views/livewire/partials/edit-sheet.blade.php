@@ -12,8 +12,70 @@
                     @error('editTitle') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
+                {{-- List selector: Inbox / To-Dos / Tasks / Projekte --}}
+                <div
+                    x-data="{
+                        open: false,
+                        list: $wire.entangle('editList'),
+                        options: [
+                            { value: 'inbox',    label: 'Inbox' },
+                            { value: 'todos',    label: 'To-Dos' },
+                            { value: 'tasks',    label: 'Tasks' },
+                            { value: 'projects', label: 'Projekte' },
+                        ],
+                        get label() { return this.options.find(o => o.value === this.list)?.label ?? 'Inbox'; },
+                    }"
+                    class="relative"
+                >
+                    <label class="mb-1 block text-xs font-medium text-ink-soft">Liste</label>
+                    <button
+                        type="button"
+                        @click.stop="open = !open"
+                        @click.outside="open = false"
+                        @keydown.escape.window="open = false"
+                        :aria-expanded="open"
+                        aria-haspopup="listbox"
+                        class="flex w-full items-center gap-2 rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink transition hover:border-ink-faint/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    >
+                        <span x-text="label" class="min-w-0 flex-1 text-left"></span>
+                        <svg class="h-3.5 w-3.5 flex-none text-ink-faint transition-transform duration-150" :class="open && 'rotate-180'" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div
+                        x-show="open"
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="opacity-0 scale-95"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95"
+                        class="absolute inset-x-0 top-full z-20 mt-1 origin-top overflow-hidden rounded-card border border-line bg-surface p-1 shadow-map"
+                        role="listbox"
+                        style="display: none;"
+                    >
+                        <template x-for="opt in options" :key="opt.value">
+                            <button
+                                type="button"
+                                @click="list = opt.value; open = false"
+                                role="option"
+                                :aria-selected="list === opt.value"
+                                class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                :class="list === opt.value ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
+                            >
+                                <span x-text="opt.label"></span>
+                                <svg x-show="list === opt.value" class="ml-auto h-3 w-3 flex-none text-forest" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                                    <path d="M2 6 4.5 8.5 10 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+                    @error('editList') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- Project selector — only when Projekte is the chosen list and projects exist --}}
                 @if ($this->editableProjects->isNotEmpty())
-                    <div>
+                    <div x-show="$wire.editList === 'projects'" style="display: none;">
                         <label class="mb-1 block text-xs font-medium text-ink-soft">Projekt</label>
                         <div
                             x-data="{

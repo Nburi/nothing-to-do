@@ -67,6 +67,9 @@
                         <button type="button" wire:click="editExternalLink" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             {{ $this->project->external_url ? 'Link bearbeiten' : 'Link hinzufügen' }}
                         </button>
+                        <button type="button" wire:click="editDeadline" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                            {{ $this->project->deadline ? 'Deadline bearbeiten' : 'Deadline setzen' }}
+                        </button>
                         <div class="my-1 h-px bg-line/60"></div>
                         <button
                             type="button"
@@ -115,6 +118,49 @@
                     wire:confirm="Externen Link entfernen?"
                     class="grid h-6 w-6 place-items-center rounded-full text-ink-faint transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     aria-label="Link entfernen"
+                >
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+        @endif
+
+        {{-- Deadline --}}
+        @if ($editingDeadline)
+            <form wire:submit="saveDeadline" class="mt-3 flex items-center gap-2">
+                <input
+                    type="date"
+                    wire:model="projectDeadline"
+                    autofocus
+                    class="min-w-0 flex-1 rounded-card border border-line bg-paper px-3 py-1.5 text-sm text-ink focus:border-overprint focus:ring-0"
+                />
+                <button type="submit" class="flex-none rounded-card bg-forest px-3 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Speichern</button>
+                <button type="button" wire:click="$set('editingDeadline', false)" class="flex-none rounded-card px-2 py-1.5 text-sm text-ink-soft transition hover:bg-surface">Abbrechen</button>
+            </form>
+            @error('projectDeadline') <p class="mt-1 px-1 text-xs text-signal">{{ $message }}</p> @enderror
+        @elseif ($this->project->deadline)
+            <div class="mt-3 flex items-center gap-2">
+                <button
+                    type="button"
+                    wire:click="editDeadline"
+                    @class([
+                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium shadow-map transition hover:brightness-105',
+                        'border-signal/30 bg-signal-soft text-signal' => $this->project->isOverdue(),
+                        'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-400' => !$this->project->isOverdue() && $this->project->isUrgent(),
+                        'border-line bg-surface text-ink-soft hover:border-ink-faint/60 hover:text-ink' => !$this->project->isOverdue() && !$this->project->isUrgent(),
+                    ])
+                >
+                    <svg class="h-3.5 w-3.5 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M5 1.5v3M11 1.5v3M2 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    {{ $this->project->deadlineLabel() }}
+                </button>
+                <button
+                    type="button"
+                    wire:click="removeDeadline"
+                    wire:confirm="Deadline entfernen?"
+                    class="grid h-6 w-6 place-items-center rounded-full text-ink-faint transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    aria-label="Deadline entfernen"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                 </button>
