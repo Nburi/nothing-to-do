@@ -82,30 +82,30 @@ class TaskBoard extends Component
         return $this->boardTasks('tasks');
     }
 
-    /** Only active tasks flagged for today (never show completed in the Today area). */
+    /** Only active tasks in today's focus — flagged today, or planned for today by the Brief. */
     #[Computed]
     public function todosToday(): Collection
     {
-        return $this->todosAll->where('is_completed', false)->where('is_today', true)->values();
+        return $this->todosAll->where('is_completed', false)->filter->isTodayFocus()->values();
     }
 
-    /** Active non-today todos (completed ones are passed separately to the column partial). */
+    /** Active todos not in today's focus (completed ones are passed separately to the column partial). */
     #[Computed]
     public function todosRest(): Collection
     {
-        return $this->todosAll->where('is_completed', false)->where('is_today', false)->values();
+        return $this->todosAll->where('is_completed', false)->reject->isTodayFocus()->values();
     }
 
     #[Computed]
     public function tasksToday(): Collection
     {
-        return $this->tasksAll->where('is_completed', false)->where('is_today', true)->values();
+        return $this->tasksAll->where('is_completed', false)->filter->isTodayFocus()->values();
     }
 
     #[Computed]
     public function tasksRest(): Collection
     {
-        return $this->tasksAll->where('is_completed', false)->where('is_today', false)->values();
+        return $this->tasksAll->where('is_completed', false)->reject->isTodayFocus()->values();
     }
 
     /** Mobile "Today" page: every focused board task across todos + tasks. */
@@ -116,7 +116,8 @@ class TaskBoard extends Component
             ->forUser(auth()->user())
             ->active()
             ->onBoard()
-            ->where('is_today', true)
+            ->where(fn ($q) => $q->where('is_today', true)
+                ->orWhereDate('planned_for', Carbon::today()->toDateString()))
             ->boardOrdered()
             ->get();
     }
@@ -328,7 +329,11 @@ class TaskBoard extends Component
             return;
         }
 
-        $task->update(['is_today' => $value]);
+        // Leaving Today also clears a Brief plan, so it doesn't linger back in.
+        $task->update([
+            'is_today' => $value,
+            'planned_for' => $value ? $task->planned_for : null,
+        ]);
     }
 
     /**
@@ -380,7 +385,7 @@ class TaskBoard extends Component
             'todos' => $task->update(['list' => 'todos']),
             'tasks' => $task->update(['list' => 'tasks']),
             'today' => $task->isInbox() ? null : $task->update(['is_today' => true]),
-            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
+            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false, 'planned_for' => null]),
             default => null,
         };
     }
