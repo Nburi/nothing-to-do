@@ -100,7 +100,9 @@ class ScheduleEvent extends Model
         $start = $start instanceof Carbon ? $start->toDateString() : $start;
         $end = $end instanceof Carbon ? $end->toDateString() : $end;
 
-        return $query->whereBetween('date', [$start, $end]);
+        // Compare by date part — robust whether a row stored "Y-m-d" (raw insert)
+        // or "Y-m-d 00:00:00" (Eloquent date cast on SQLite).
+        return $query->whereDate('date', '>=', $start)->whereDate('date', '<=', $end);
     }
 
     public function scopeOrdered(Builder $query): Builder
@@ -259,7 +261,10 @@ class ScheduleEvent extends Model
         }
 
         if ($rows !== []) {
-            self::insert($rows);
+            // insertOrIgnore + the (user,template,date) unique index makes this
+            // race-safe: a concurrent render that already inserted the same
+            // occurrence is silently skipped instead of duplicating it.
+            self::insertOrIgnore($rows);
         }
     }
 }

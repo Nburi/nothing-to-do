@@ -100,13 +100,35 @@ trait ManagesSchedule
         ]);
 
         if ($this->editingEventId !== null) {
-            $this->userEvent($this->editingEventId)->update([
+            $event = $this->userEvent($this->editingEventId);
+            $origTemplate = $event->template_id;
+            $origDate = $event->date->toDateString();
+
+            // Moving a recurring occurrence to another day detaches it into a one-off
+            // and tombstones the original slot, so materialisation never regenerates
+            // a duplicate there. Editing it in place keeps the series link.
+            $movedFromSeries = $origTemplate !== null && $origDate !== $data['eventDate'];
+
+            $event->update([
                 'title' => $data['eventTitle'],
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
                 'color' => $data['eventColor'],
+                'template_id' => $movedFromSeries ? null : $event->template_id,
             ]);
+
+            if ($movedFromSeries) {
+                auth()->user()->scheduleEvents()->create([
+                    'template_id' => $origTemplate,
+                    'type' => ScheduleEvent::TYPE_APPOINTMENT,
+                    'date' => $origDate,
+                    'start_time' => $data['eventStart'],
+                    'end_time' => $data['eventEnd'],
+                    'is_cancelled' => true,
+                    'source' => 'manual',
+                ]);
+            }
 
             $this->cancelEventForm();
 

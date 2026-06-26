@@ -127,6 +127,32 @@ class ScheduleTest extends TestCase
         $this->assertDatabaseMissing('schedule_events', ['id' => $event->id]);
     }
 
+    public function test_moving_a_recurring_occurrence_detaches_it_and_does_not_regenerate(): void
+    {
+        $user = $this->actingUser();
+        $template = EventTemplate::factory()->recurring('1')->create([ // Mondays
+            'user_id' => $user->id, 'default_start' => '08:00', 'duration' => 90,
+        ]);
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'));
+        $occ = ScheduleEvent::forUser($user)->whereNotNull('template_id')->firstOrFail();
+
+        Livewire::test(Schedule::class)
+            ->call('startEditEvent', $occ->id)
+            ->set('eventDate', '2026-06-23') // move Mon → Tue
+            ->set('eventStart', '08:00')
+            ->set('eventEnd', '09:30')
+            ->call('saveEventForm')
+            ->assertHasNoErrors();
+
+        $occ->refresh();
+        $this->assertSame('2026-06-23', $occ->date->toDateString());
+        $this->assertNull($occ->template_id); // detached into a one-off
+
+        // The original Monday slot is tombstoned, so re-materialising won't recreate it.
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'));
+        $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->where('template_id', $template->id)->forDay('2026-06-22')->count());
+    }
+
     public function test_applying_a_template_places_an_appointment(): void
     {
         $user = $this->actingUser();

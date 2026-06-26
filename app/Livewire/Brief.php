@@ -152,6 +152,16 @@ class Brief extends Component
         return $this->generator()->generate($this->freeBlocks, $this->buildUnits());
     }
 
+    /** Whether a Brief plan already exists for the target day (so committing replaces it). */
+    #[Computed]
+    public function hasExistingPlan(): bool
+    {
+        return auth()->user()->scheduleEvents()
+            ->where('date', $this->targetDate)
+            ->where('source', 'brief')
+            ->exists();
+    }
+
     /**
      * The ordered focus queue: one To-Do-Session (if any todos), then one
      * Work-Session per Task-session in priority order.
@@ -180,6 +190,12 @@ class Brief extends Component
 
     public function nextStep(): void
     {
+        // Don't leave step 1 without any free time painted — there'd be nothing to
+        // plan, and finalising would wipe an existing plan for the day.
+        if ($this->step === 1 && $this->freeMinutes === 0) {
+            return;
+        }
+
         $this->step = min(3, $this->step + 1);
     }
 
@@ -237,6 +253,8 @@ class Brief extends Component
         } elseif (auth()->user()->tasks()->whereKey($id)->exists()) {
             $this->selectedTodos[] = $id;
         }
+
+        unset($this->demand, $this->plan);
     }
 
     public function toggleTask(int $id): void

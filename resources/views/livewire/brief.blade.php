@@ -274,16 +274,28 @@
     @endif
 
     {{-- ════════ Footer nav ════════ --}}
+    @php $blockNext = $step === 1 && $this->freeMinutes === 0; @endphp
     <div class="fixed inset-x-0 bottom-0 border-t border-line bg-paper/90 px-4 py-3 backdrop-blur-sm">
-        <div class="mx-auto flex max-w-xl items-center gap-3">
-            @if ($step > 1)
-                <button wire:click="prevStep" class="rounded-card border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink active:scale-95">Zurück</button>
+        <div class="mx-auto max-w-xl">
+            @if ($step === 3 && $this->hasExistingPlan)
+                <p class="mb-2 text-center text-[11px] text-ink-faint">Ersetzt den bestehenden Plan für diesen Tag.</p>
+            @elseif ($blockNext)
+                <p class="mb-2 text-center text-[11px] text-ink-faint">Markiere zuerst etwas Arbeitszeit.</p>
             @endif
-            @if ($step < 3)
-                <button wire:click="nextStep" class="flex-1 rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Weiter</button>
-            @else
-                <button wire:click="finalize" class="flex-1 rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Tagesplan erstellen</button>
-            @endif
+            <div class="flex items-center gap-3">
+                @if ($step > 1)
+                    <button wire:click="prevStep" class="rounded-card border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink active:scale-95">Zurück</button>
+                @endif
+                @if ($step < 3)
+                    <button wire:click="nextStep" @disabled($blockNext) @class([
+                        'flex-1 rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white transition active:scale-[0.98]',
+                        'hover:brightness-110' => ! $blockNext,
+                        'cursor-not-allowed opacity-50' => $blockNext,
+                    ])>Weiter</button>
+                @else
+                    <button wire:click="finalize" class="flex-1 rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Tagesplan erstellen</button>
+                @endif
+            </div>
         </div>
     </div>
 

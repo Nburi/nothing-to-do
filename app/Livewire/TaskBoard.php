@@ -200,7 +200,17 @@ class TaskBoard extends Component
             return false;
         }
 
-        return now()->format('H:i') >= ($user->brief_time ?? '19:00');
+        $nowMin = now()->hour * 60 + now()->minute;
+        $briefMin = ScheduleEvent::toMinutes($user->brief_time ?? '19:00');
+
+        // Morning planners get a bounded morning window (so they aren't nudged at
+        // 19:00 to plan a day that's nearly over); evening planners from the nudge
+        // time until the day ends.
+        if (($user->brief_when ?? 'evening') === 'morning') {
+            return $nowMin >= $briefMin && $nowMin < 12 * 60;
+        }
+
+        return $nowMin >= $briefMin;
     }
 
     /** Greeting + how much is waiting, for the nudge banner. */

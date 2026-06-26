@@ -77,4 +77,32 @@ class BoardTodayFocusTest extends TestCase
 
         $this->assertNull($task->refresh()->planned_for);
     }
+
+    public function test_morning_nudge_only_shows_inside_the_morning_window(): void
+    {
+        $user = User::factory()->create(['brief_when' => 'morning', 'brief_time' => '07:00']);
+        $this->actingAs($user);
+
+        Carbon::setTestNow('2026-06-26 08:00');
+        $this->assertTrue(Livewire::test(TaskBoard::class)->instance()->showBriefNudge());
+
+        Carbon::setTestNow('2026-06-26 18:00'); // afternoon — past the morning window
+        $this->assertFalse(Livewire::test(TaskBoard::class)->instance()->showBriefNudge());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_evening_nudge_shows_from_the_configured_time(): void
+    {
+        $user = User::factory()->create(['brief_when' => 'evening', 'brief_time' => '19:00']);
+        $this->actingAs($user);
+
+        Carbon::setTestNow('2026-06-26 17:00');
+        $this->assertFalse(Livewire::test(TaskBoard::class)->instance()->showBriefNudge());
+
+        Carbon::setTestNow('2026-06-26 20:30');
+        $this->assertTrue(Livewire::test(TaskBoard::class)->instance()->showBriefNudge());
+
+        Carbon::setTestNow();
+    }
 }

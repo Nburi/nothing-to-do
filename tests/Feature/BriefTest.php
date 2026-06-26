@@ -46,10 +46,21 @@ class BriefTest extends TestCase
         $this->actingUser();
 
         Livewire::test(Brief::class)
+            ->set('freeBlocks', [['start' => 600, 'end' => 720]]) // free time so step 1 can advance
             ->call('prevStep')->assertSet('step', 1)
             ->call('nextStep')->assertSet('step', 2)
             ->call('nextStep')->assertSet('step', 3)
             ->call('nextStep')->assertSet('step', 3);
+    }
+
+    public function test_cannot_advance_past_step_one_without_free_time(): void
+    {
+        $this->actingUser();
+
+        Livewire::test(Brief::class)
+            ->assertSet('step', 1)
+            ->call('nextStep')      // no free time painted
+            ->assertSet('step', 1); // stays put
     }
 
     public function test_it_suggests_important_and_urgent_items(): void
