@@ -2,6 +2,9 @@
     {{-- ════════════════ DESKTOP (≥ md) ════════════════ --}}
     <div class="hidden md:block">
         <div class="mx-auto max-w-[1400px] px-6 py-6">
+            <div class="mb-6">
+                @include('livewire.partials.schedule-strip')
+            </div>
             <form
                 wire:submit="addTask"
                 x-data="{ exp: false }"
@@ -233,6 +236,9 @@
     {{-- ════════════════ MOBILE (< md) ════════════════ --}}
     <div class="md:hidden">
         <div class="px-4 pb-28 pt-4">
+            <div class="mb-4">
+                @include('livewire.partials.schedule-strip')
+            </div>
             @if ($mobileTab === 'projects')
                 <form
                     wire:submit="addProject"

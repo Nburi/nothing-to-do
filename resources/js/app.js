@@ -171,4 +171,133 @@ document.addEventListener('alpine:init', () => {
             }, 150);
         },
     }));
+
+    /**
+     * scheduleEvent — drag an event on the timeline grid. Body drag moves it
+     * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
+     * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.
+     * Geometry (top/height in px) is derived from minutes via the grid's --ppm.
+     *
+     * cfg: { id, start, end }  (start/end in minutes from midnight)
+     */
+    window.Alpine.data('scheduleEvent', (cfg = {}) => ({
+        id: cfg.id,
+        start: cfg.start ?? 0,
+        end: cfg.end ?? 0,
+        ppm: 1,
+        dayStart: 360,
+        snap: 5,
+        minLen: 10,
+        kind: null,
+        sy: 0,
+        origStart: 0,
+        origEnd: 0,
+        moved: false,
+        lastTap: 0,
+
+        init() {
+            const grid = this.$el.closest('[data-grid]');
+            if (grid) {
+                this.ppm = parseFloat(grid.dataset.ppm) || 1;
+                this.dayStart = parseInt(grid.dataset.dayStart, 10) || 360;
+            }
+        },
+
+        get top() {
+            return (this.start - this.dayStart) * this.ppm;
+        },
+        get height() {
+            return Math.max((this.end - this.start) * this.ppm, 16);
+        },
+
+        begin(kind, e) {
+            if (e.button != null && e.button !== 0) return;
+            this.kind = kind;
+            this.sy = e.clientY;
+            this.origStart = this.start;
+            this.origEnd = this.end;
+            this.moved = false;
+            this.$el.setPointerCapture?.(e.pointerId);
+            if (e.cancelable) e.preventDefault();
+        },
+
+        drag(e) {
+            if (!this.kind) return;
+            const dy = e.clientY - this.sy;
+            if (Math.abs(dy) > 3) this.moved = true;
+            const dMin = Math.round(dy / this.ppm / this.snap) * this.snap;
+            const dur = this.origEnd - this.origStart;
+
+            if (this.kind === 'move') {
+                const ns = Math.max(0, Math.min(1440 - dur, this.origStart + dMin));
+                this.start = ns;
+                this.end = ns + dur;
+            } else if (this.kind === 'bottom') {
+                this.end = Math.max(this.origStart + this.minLen, Math.min(1440, this.origEnd + dMin));
+            } else if (this.kind === 'top') {
+                this.start = Math.min(this.origEnd - this.minLen, Math.max(0, this.origStart + dMin));
+            }
+        },
+
+        finish() {
+            if (!this.kind) return;
+            const kind = this.kind;
+            this.kind = null;
+
+            if (!this.moved) {
+                this.start = this.origStart;
+                this.end = this.origEnd;
+                this.tap();
+                return;
+            }
+
+            const hhmm = (m) =>
+                `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+            if (kind === 'move') this.$wire.moveEvent(this.id, hhmm(this.start));
+            else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+        },
+
+        tap() {
+            const now = Date.now();
+            if (now - this.lastTap < 320) {
+                this.$wire.startEditEvent(this.id);
+                this.lastTap = 0;
+            } else {
+                this.lastTap = now;
+            }
+        },
+    }));
+
+    /**
+     * focusTimer — a live, client-side Pomodoro countdown for the header ring.
+     * Seeded with the seconds left + the session length; ticks each second and
+     * exposes the mm:ss label and the SVG stroke-dashoffset for the ring fill.
+     *
+     * cfg: { remaining, total, circ }
+     */
+    window.Alpine.data('focusTimer', (cfg = {}) => ({
+        remaining: Math.max(0, cfg.remaining ?? 0),
+        total: Math.max(1, cfg.total ?? 1),
+        circ: cfg.circ ?? 264,
+        timer: null,
+
+        init() {
+            this.timer = setInterval(() => {
+                if (this.remaining > 0) this.remaining--;
+                else clearInterval(this.timer);
+            }, 1000);
+        },
+        destroy() {
+            clearInterval(this.timer);
+        },
+        get mmss() {
+            const m = Math.floor(this.remaining / 60);
+            const s = this.remaining % 60;
+            return `${m}:${String(s).padStart(2, '0')}`;
+        },
+        get offset() {
+            return this.circ * (this.remaining / this.total);
+        },
+    }));
 });

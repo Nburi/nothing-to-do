@@ -4,7 +4,9 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesTasks;
 use App\Models\Project;
+use App\Models\ScheduleEvent;
 use App\Models\Task;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -146,6 +148,42 @@ class TaskBoard extends Component
             ->withCount(['tasks as done_count' => fn ($q) => $q->where('is_completed', true)])
             ->with('activeTasks')
             ->get();
+    }
+
+    /** Today's timeline events (recurring series materialised on read). */
+    #[Computed]
+    public function scheduleToday(): Collection
+    {
+        $today = Carbon::today();
+
+        ScheduleEvent::materializeRange(auth()->user(), $today, $today->copy());
+
+        return ScheduleEvent::forUser(auth()->user())
+            ->visible()
+            ->forDay($today)
+            ->ordered()
+            ->get();
+    }
+
+    /**
+     * The Work-/To-Do-Session that is running now, or starts within 5 minutes —
+     * the trigger that swaps the header strip for the focus timer.
+     */
+    #[Computed]
+    public function focusSession(): ?ScheduleEvent
+    {
+        $now = now();
+        $nowMin = $now->hour * 60 + $now->minute;
+
+        return $this->scheduleToday->first(function (ScheduleEvent $e) use ($now, $nowMin) {
+            if (! $e->isWorkSession()) {
+                return false;
+            }
+
+            $untilStart = $e->startMinutes() - $nowMin;
+
+            return $e->isActive($now) || ($untilStart >= 0 && $untilStart <= 5);
+        });
     }
 
     /** Active-task counts only — completed tasks don't inflate the badges. */
