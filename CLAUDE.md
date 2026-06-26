@@ -86,7 +86,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (51 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (89 tests).
 
 > Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
 > package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
@@ -104,7 +104,9 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 ## 7. Architecture
 
 ### Models
-- **`User`** (Breeze) `hasMany` **`Task`** and `hasMany` **`Project`**.
+- **`User`** (Breeze) `hasMany` **`Task`**, **`Project`**, **`ScheduleEvent`**, **`EventTemplate`**. Carries the
+  Brief timing (`brief_when` evening/morning, `brief_time`, `brief_dismissed_on`) + Pomodoro settings;
+  `pomodoro()` returns the rhythm array, `briefTargetDate()` = tomorrow (evening) / today (morning).
 - **`Project`** — `user_id, name, brainstorm, external_url, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
   uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
   Scopes: `forUser`, `ordered`.
@@ -116,6 +118,19 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   - Scopes: `forUser`, `active`, `inList`, `onBoard`, `boardOrdered` (important → due within 4 days → manual order).
   - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
     `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
+  - Schedule additions: `estimated_sessions` (25′ Work-Sessions a Task needs, set by the Brief) and
+    `planned_for(date)` — the day the Brief planned it for, **decoupled from `is_today`** so an evening
+    plan surfaces on the right day. `isTodayFocus()` = `is_today || planned_for is today` drives the
+    Today area; `scopePlannedFor`.
+- **`ScheduleEvent`** — `user_id, template_id?, suggested_task_id?, type, title?, color, date, start_time,
+  end_time, source(manual|brief), is_cancelled, timestamps`. `type` ∈ `appointment|work_session|todo_session|break`.
+  Times are `HH:MM` strings; `toMinutes/fromMinutes/startMinutes/endMinutes/durationMinutes`, `isActive/isPast/
+  progress/secondsRemaining(now)` for the strip + timer. Scopes `forUser/visible/forDay/forRange/ordered`.
+  `materializeRange()` fills recurring-template occurrences for a date range — **idempotent and delete-safe**
+  (skips any (template,date) that already has a row, including an `is_cancelled` tombstone).
+- **`EventTemplate`** — `user_id, name, color, duration, default_start?, is_recurring, recurrence(ISO weekday
+  mask "1,2,3,4,5"), sort_order`. Reusable appointment blueprint; `occursOn(date)`. A recurring appointment
+  *is* a recurring template that materialises.
 
 ### Routing & "controllers"
 - `/` → board if authed, else the landing (`welcome`). `/app` → `TaskBoard` (auth). `/dashboard` →
@@ -151,6 +166,37 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
   `setToday` is a no-op for them).
+
+### Schedule & Brief (built)
+- **Zeitplan page** — `App\Livewire\Schedule` (`/app/schedule`, `route('schedule')`): a time-scaled vertical
+  spine, **mobile = one day, desktop = the current week**, with day/week navigation. Times sit left of the
+  spine, name/details right; the spine is tinted in the event's Topografie colour (contour = appointment,
+  forest = session, etc.). Recurring series are materialised on read.
+- **Header strip** — `partials/schedule-strip.blade.php` in the board: a calm **Zeitstrahl** (filled mark =
+  past, hollow = upcoming, partial-fill = active, mark length ∝ duration, red "now" line). It swaps to a
+  **circular live focus timer** when a Work-/To-Do-Session is active or starts within 5 min (`TaskBoard::
+  focusSession`). The whole strip links to the Zeitplan page.
+- **Brief** — `App\Livewire\Brief` (`/app/brief`, `route('brief')`): the 3-step planning ritual. (1) paint
+  free working time on the target day + edit appointments; (2) pick To-Dos (one shared To-Do-Session) and
+  Tasks with a session count, with a **live capacity meter** (demand vs the painted time) and a soft,
+  non-blocking over-capacity warning; suggestions are ordered by deadline + how long a task has waited.
+  (3) review the generated plan, then commit. Committing writes the generated sessions/breaks onto the day
+  and sets `planned_for` on the chosen items; **re-running replaces that day's plan**. A dashboard nudge
+  banner (`partials/brief-banner.blade.php`) suggests the Brief past `brief_time`; the user starts it manually.
+- **`App\Services\ScheduleGenerator`** — a pure, DB-free Pomodoro layout engine: free-time blocks +
+  an ordered focus queue → sessions/breaks (short break between sessions, long break every Nth, ≤1
+  To-Do-Session, no trailing breaks, breaks never span an appointment gap). `capacity()` runs the **same**
+  layout so the Brief's meter can never disagree with the generated plan.
+- **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by both `Schedule` and
+  `Brief`): create/edit/delete appointments, drag-to-move (keeps duration), drag-to-resize (min-length
+  guard), apply-template. The event form sheet is `partials/schedule-event-form.blade.php`; the event card
+  (with the pointer gestures) is `partials/schedule-event.blade.php`.
+- **Gestures** are hand-rolled Alpine pointer components in `resources/js/app.js` (no new deps):
+  `scheduleEvent` (move / resize / double-tap edit), `focusTimer` (live countdown ring), `freePaint`
+  (drag to mark free time in the Brief). Desktop uses the hover pencil; mobile uses double-tap.
+- **Settings** (`App\Livewire\Settings`) gains a Brief section (evening/morning + nudge time + "Brief jetzt
+  starten") and a Pomodoro section (work / short break / long break / sessions-per-long-break) via
+  `saveSchedule()`.
 
 ---
 
@@ -234,8 +280,18 @@ robust across Windows↔Linux git). Reference as `<livewire:task-board />` / rou
 **Symptom:** `preview_click` "succeeds" but no Livewire request fires (no `/livewire/update` POST).
 **Cause:** the preview tool's synthetic click events don't reach Livewire 4's delegated listeners; only
 `wire:model` (input) and the programmatic API work through it.
-**Fix (for verification only):** drive actions with a real DOM event via `preview_eval`
-(`el.click()`) or the API (`$wire.method()` / `Livewire.all()[0].$refresh()`). Real users are unaffected.
+**Fix (for verification only):** drive actions through the JS API via `preview_eval` —
+`Livewire.all()[0].$wire.call('method', ...args)` and `.$wire.set('prop', value, false)`. In Livewire 4
+the component object exposes a `.$wire` proxy (not top-level `.set`/`.call`). Real users are unaffected.
+
+### `php artisan tinker --execute "…"` mangles quotes from PowerShell
+**Symptom:** a one-liner passed to `tinker --execute` dies with a PHP parse error (`unexpected '@'`) or
+PowerShell splits the string on a `|` inside it.
+**Cause:** PowerShell 5.1 reinterprets `|`, `@`, and embedded double-quotes when forwarding an argument to a
+native exe, corrupting the PHP snippet.
+**Fix:** don't seed/poke the DB with `tinker --execute`. Write a throwaway seeder (`php artisan db:seed
+--class=…`) or a small test, or drive state through the running app's Livewire `$wire` API in the browser
+preview. Reserve PHP verification for PHPUnit, which has no shell-quoting surface.
 
 ---
 
