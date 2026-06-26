@@ -12,7 +12,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['name', 'email', 'password', 'task_reset_time'])]
+#[Fillable([
+    'name', 'email', 'password', 'task_reset_time',
+    'brief_when', 'brief_time', 'brief_dismissed_on',
+    'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,6 +33,37 @@ class User extends Authenticatable
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    /** @return HasMany<ScheduleEvent, $this> */
+    public function scheduleEvents(): HasMany
+    {
+        return $this->hasMany(ScheduleEvent::class);
+    }
+
+    /** @return HasMany<EventTemplate, $this> */
+    public function eventTemplates(): HasMany
+    {
+        return $this->hasMany(EventTemplate::class);
+    }
+
+    /** The Pomodoro rhythm (minutes / count) used to generate Work-Sessions. */
+    public function pomodoro(): array
+    {
+        return [
+            'work' => (int) ($this->pomodoro_work ?? 25),
+            'short_break' => (int) ($this->pomodoro_short_break ?? 5),
+            'long_break' => (int) ($this->pomodoro_long_break ?? 15),
+            'long_every' => (int) ($this->pomodoro_long_every ?? 4),
+        ];
+    }
+
+    /** The day the Brief currently plans for: tomorrow in the evening, today in the morning. */
+    public function briefTargetDate(): Carbon
+    {
+        return ($this->brief_when ?? 'evening') === 'morning'
+            ? Carbon::today()
+            : Carbon::tomorrow();
     }
 
     /**
@@ -61,6 +96,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'brief_dismissed_on' => 'date',
         ];
     }
 }
