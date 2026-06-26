@@ -186,6 +186,50 @@ class TaskBoard extends Component
         });
     }
 
+    /**
+     * Whether to nudge the Brief: past the configured time and not already
+     * dismissed today. The app only suggests — the user starts it manually.
+     */
+    #[Computed]
+    public function showBriefNudge(): bool
+    {
+        $user = auth()->user();
+
+        if ($user->brief_dismissed_on?->isToday()) {
+            return false;
+        }
+
+        return now()->format('H:i') >= ($user->brief_time ?? '19:00');
+    }
+
+    /** Greeting + how much is waiting, for the nudge banner. */
+    #[Computed]
+    public function briefNudge(): array
+    {
+        $user = auth()->user();
+        $target = $user->briefTargetDate();
+        $wd = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+        $hour = now()->hour;
+
+        $dueSoon = Task::query()->forUser($user)->active()->onBoard()
+            ->whereIn('list', ['todos', 'tasks'])
+            ->where(fn ($q) => $q->whereDate('deadline', '<=', $target->toDateString())
+                ->orWhereDate('due_date', '<=', $target->toDateString()))
+            ->count();
+
+        return [
+            'greeting' => $hour < 11 ? 'Guten Morgen' : ($hour < 18 ? 'Guten Tag' : 'Guten Abend'),
+            'dayName' => $wd[$target->dayOfWeekIso - 1],
+            'waiting' => $this->counts['todos'] + $this->counts['tasks'],
+            'dueSoon' => $dueSoon,
+        ];
+    }
+
+    public function dismissBrief(): void
+    {
+        auth()->user()->update(['brief_dismissed_on' => Carbon::today()->toDateString()]);
+    }
+
     /** Active-task counts only — completed tasks don't inflate the badges. */
     #[Computed]
     public function counts(): array

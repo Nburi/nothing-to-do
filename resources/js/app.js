@@ -300,4 +300,59 @@ document.addEventListener('alpine:init', () => {
             return this.circ * (this.remaining / this.total);
         },
     }));
+
+    /**
+     * freePaint — drag on an empty stretch of the Brief's timeline to mark free
+     * working time. Reports the painted range (minutes, snapped to 5') to
+     * Livewire, which merges it into the free-time blocks. A provisional overlay
+     * follows the finger while painting.
+     */
+    window.Alpine.data('freePaint', () => ({
+        ppm: 1,
+        dayStart: 360,
+        snap: 5,
+        painting: false,
+        startMin: 0,
+        curMin: 0,
+
+        init() {
+            this.ppm = parseFloat(this.$el.dataset.ppm) || 1;
+            this.dayStart = parseInt(this.$el.dataset.dayStart, 10) || 360;
+        },
+
+        yToMin(clientY) {
+            const rect = this.$el.getBoundingClientRect();
+            const raw = this.dayStart + (clientY - rect.top) / this.ppm;
+            const snapped = Math.round(raw / this.snap) * this.snap;
+            return Math.max(this.dayStart, Math.min(this.dayStart + rect.height / this.ppm, snapped));
+        },
+
+        begin(e) {
+            if (e.button != null && e.button !== 0) return;
+            this.painting = true;
+            this.startMin = this.yToMin(e.clientY);
+            this.curMin = this.startMin;
+            this.$el.setPointerCapture?.(e.pointerId);
+            if (e.cancelable) e.preventDefault();
+        },
+
+        move(e) {
+            if (this.painting) this.curMin = this.yToMin(e.clientY);
+        },
+
+        end() {
+            if (!this.painting) return;
+            this.painting = false;
+            const a = Math.min(this.startMin, this.curMin);
+            const b = Math.max(this.startMin, this.curMin);
+            if (b - a >= this.snap) this.$wire.addFreeBlock(a, b);
+        },
+
+        get provTop() {
+            return (Math.min(this.startMin, this.curMin) - this.dayStart) * this.ppm;
+        },
+        get provHeight() {
+            return Math.abs(this.curMin - this.startMin) * this.ppm;
+        },
+    }));
 });

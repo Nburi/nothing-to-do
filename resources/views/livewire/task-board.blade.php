@@ -2,6 +2,11 @@
     {{-- ════════════════ DESKTOP (≥ md) ════════════════ --}}
     <div class="hidden md:block">
         <div class="mx-auto max-w-[1400px] px-6 py-6">
+            @if ($this->showBriefNudge)
+                <div class="mb-4">
+                    @include('livewire.partials.brief-banner')
+                </div>
+            @endif
             <div class="mb-6">
                 @include('livewire.partials.schedule-strip')
             </div>
@@ -236,6 +241,11 @@
     {{-- ════════════════ MOBILE (< md) ════════════════ --}}
     <div class="md:hidden">
         <div class="px-4 pb-28 pt-4">
+            @if ($this->showBriefNudge)
+                <div class="mb-3">
+                    @include('livewire.partials.brief-banner')
+                </div>
+            @endif
             <div class="mb-4">
                 @include('livewire.partials.schedule-strip')
             </div>
