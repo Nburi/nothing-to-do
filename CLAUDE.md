@@ -86,7 +86,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (51 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (116 tests).
 
 > Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
 > package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
@@ -104,7 +104,9 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 ## 7. Architecture
 
 ### Models
-- **`User`** (Breeze) `hasMany` **`Task`** and `hasMany` **`Project`**.
+- **`User`** (Breeze) `hasMany` **`Task`**, **`Project`**, **`ScheduleEvent`**, **`EventTemplate`**,
+  **`EventCategory`**. Carries the Pomodoro rhythm settings; `pomodoro()` returns the rhythm array
+  (`work/short_break/long_break/long_every`), consumed by `PomodoroCycle` and any category's focus timer.
 - **`Project`** — `user_id, name, brainstorm, external_url, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
   uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
   Scopes: `forUser`, `ordered`.
@@ -116,6 +118,28 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   - Scopes: `forUser`, `active`, `inList`, `onBoard`, `boardOrdered` (important → due within 4 days → manual order).
   - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
     `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
+  - Today focus is plain `is_today` — no decoupled planning field.
+- **`EventCategory`** — `user_id, name, color, pomodoro_enabled, sort_order`. A reusable, user-configured
+  category (Schule/Training/Arbeiten/Abmachen by default). `hasMany` `ScheduleEvent` and `EventTemplate`
+  (both `nullOnDelete` — deleting a category leaves existing blocks intact, falling back to their stored
+  title/colour snapshot). Scopes `forUser`, `ordered`. Managed via **Settings**' Kategorien card.
+- **`ScheduleEvent`** — `user_id, template_id?, category_id?, title?, color, date, start_time, end_time,
+  is_cancelled, pomodoro_started_at?, timestamps`. Every event is either a **Termin** (free-text
+  `title`/`color`, `category_id` null) or a **Kategorie** block (`category_id` set). `isAppointment()` /
+  `isCategory()` branch on that. `displayTitle()`/`colorToken()` prefer the **live** category name/colour,
+  falling back to the `title`/`color` snapshot written at creation time if the category was later deleted.
+  Times are `HH:MM` strings; `toMinutes/fromMinutes/startMinutes/endMinutes/durationMinutes`, `isActive/isPast/
+  progress/secondsRemaining(now)` for the strip + timeline. `pomodoro_started_at` (nullable timestamp) is set
+  only by an explicit user tap — reaching the block's scheduled time never starts it automatically.
+  `pomodoroPhaseNow(now, rhythm)` delegates to `PomodoroCycle::at()` and returns the current phase plus
+  second-precise `remaining_seconds`/`total_seconds` for the live ring, or `null` if not started. Scopes
+  `forUser/visible/forDay/forRange/ordered`. `materializeRange()` fills recurring-template occurrences for a
+  date range — **idempotent and delete-safe** (skips any (template,date) that already has a row, including
+  an `is_cancelled` tombstone), carrying the template's `category_id` through.
+- **`EventTemplate`** — `user_id, category_id?, name, color, duration, default_start?, is_recurring,
+  recurrence(ISO weekday mask "1,2,3,4,5"), sort_order`. Reusable Termin/Kategorie blueprint; `occursOn(date)`,
+  `displayName()`/`colorToken()` (same live-vs-snapshot preference as `ScheduleEvent`). A recurring
+  Termin/Kategorie *is* a recurring template that materialises.
 
 ### Routing & "controllers"
 - `/` → board if authed, else the landing (`welcome`). `/app` → `TaskBoard` (auth). `/dashboard` →
@@ -151,6 +175,46 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
   `setToday` is a no-op for them).
+
+### Schedule (Zeitplan) (built)
+- **Zeitplan page** — `App\Livewire\Schedule` (`/app/schedule`, `route('schedule')`): a time-scaled vertical
+  spine, **mobile = one day, desktop = the current week**, with day/week navigation. Times sit left of the
+  spine, name/details right; the spine is tinted in the block's Topografie colour — a category's colour is
+  resolved **live** (renaming/recolouring it in Settings repaints every block, past and future), a Termin's
+  colour is fixed at creation. Recurring series are materialised on read.
+- Every event is exactly one of two kinds: a **Termin** (free-text title + a fixed colour) or a **Kategorie**
+  block (references an `EventCategory`; name/colour follow the category live). A category can optionally
+  carry a **Pomodoro focus timer** (`pomodoro_enabled`).
+- **Header strip** — `partials/schedule-strip.blade.php` in the board: a calm **Zeitstrahl** (filled mark =
+  past, hollow = upcoming, partial-fill = active, mark length ∝ duration, red "now" line) when nothing is
+  due. When a Pomodoro-enabled category block is active or starts within 5 min (`TaskBoard::focusSession`),
+  the strip swaps to a **focus card** with two states: **Bereit** (a Start button — reaching the scheduled
+  time never auto-starts the timer) and **Läuft** (the live countdown ring, fed by `TaskBoard::focusPhase`).
+  The ring's wrapper carries a `wire:key` keyed on `(event, phase, cycle)` plus `wire:poll.5s.visible`, so a
+  poll that detects a phase change (work → break) forces Alpine to tear down and reinitialise the ring with
+  the new phase's config — a plain re-render wouldn't, since Alpine only evaluates `x-data` once per DOM
+  node. `startFocusTimer`/`stopFocusTimer` on `TaskBoard` set/clear `pomodoro_started_at` (ownership- and
+  `pomodoro_enabled`-guarded); a tap before the block's scheduled start begins the cycle immediately.
+- **`App\Services\PomodoroCycle`** — a pure, stateless Pomodoro layout: `at(elapsedMinutes, rhythm)` walks
+  work→break cycles and returns the phase (`work|short_break|long_break`), cycle number, and minute
+  boundaries; a break is long when its preceding work cycle's number is divisible by `long_every`.
+  `ScheduleEvent::pomodoroPhaseNow()` wraps it with second-precision remaining/total time for the ring.
+- **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by `Schedule`): create/edit/
+  delete Termine and Kategorie blocks, drag-to-move (keeps duration), drag-to-resize (min-length guard),
+  apply-template. The event form sheet (`partials/schedule-event-form.blade.php`) has a Termin/Kategorie
+  toggle — Termin keeps the title input + 5-swatch picker, Kategorie shows a chip picker over the user's
+  categories; the event card with the pointer gestures is `partials/schedule-event.blade.php`.
+- **Gestures** are hand-rolled Alpine pointer components in `resources/js/app.js` (no new deps):
+  `scheduleEvent` (move / resize / double-tap edit), `focusTimer` (live countdown ring — also plays a short
+  synthesised Web Audio chime when a phase's countdown reaches 0, no audio file/package). Desktop uses the
+  hover pencil; mobile uses double-tap. `window.primeFocusAudio()` initialises/resumes the shared
+  `AudioContext` on the Start button's `onclick` (a real user gesture), so the later automatic chime isn't
+  blocked by autoplay policy.
+- **Settings** (`App\Livewire\Settings`) has a Pomodoro section (work / short break / long break /
+  sessions-per-long-break, via `saveSchedule()`) and a **Kategorien** card: add/rename/recolour/toggle-
+  Pomodoro/delete, all ownership-scoped (`ManagesSchedule`'s and `Settings`' colour validation both read
+  `ScheduleEvent::EVENT_COLORS` — a plain class constant, not a trait constant, since PHP forbids accessing
+  a trait's own constant via the trait's name directly).
 
 ---
 
@@ -220,10 +284,21 @@ PowerShell 5.1 — it wraps stderr as an error record even on success.
 **Cause:** Composer locked deps against Herd's PHP 8.4.13; the separate Bash `php` is 8.4.0.
 **Fix:** run **all** PHP/artisan/composer through PowerShell (Herd). Use Bash only for git.
 
-### Carbon 3 `diffInDays()` returns a float
-**Symptom:** day-bucket logic using `=== 0` / `=== 1` silently never matches (e.g. "heute"/"morgen").
-**Fix:** cast to int: `(int) $today->diffInDays($date)`, and check overdue separately with `lessThan()`.
-(See `Task::effectiveDateLabel`.)
+### Carbon 3 `diffIn*()` methods return a float
+**Symptom:** day-bucket logic using `=== 0` / `=== 1` silently never matches (e.g. "heute"/"morgen"); or a
+strict `assertSame(int, ...)` test fails with "900.0 is identical to 900" on downstream int arithmetic.
+**Fix:** cast to int at the call site: `(int) $today->diffInDays($date)` / `(int) $start->diffInSeconds($now,
+false)`. Check overdue separately with `lessThan()`. (See `Task::effectiveDateLabel`,
+`ScheduleEvent::pomodoroPhaseNow`.)
+
+### PHP 8.2+ forbids accessing a trait's own constant via the trait's name
+**Symptom:** `Cannot access trait constant App\Livewire\Concerns\X::FOO directly` — thrown at the call site,
+not where the trait defines it.
+**Cause:** a `public const` declared inside a `trait` may only be reached through a **class** that `use`s the
+trait (or via `self::`/`static::` from inside the trait itself); `TraitName::FOO` from outside is rejected.
+**Fix:** put constants that need to be referenced by name from outside on a real class instead (e.g.
+`ScheduleEvent::EVENT_COLORS`, not `ManagesSchedule::EVENT_COLORS`), and have the trait's own methods read it
+via the class too. Only use a trait constant if every reader is either the trait itself or a class using it.
 
 ### Livewire 4 generates emoji-named single-file components
 **Symptom:** `php artisan make:livewire X` creates `resources/views/components/⚡x.blade.php`.
@@ -234,8 +309,18 @@ robust across Windows↔Linux git). Reference as `<livewire:task-board />` / rou
 **Symptom:** `preview_click` "succeeds" but no Livewire request fires (no `/livewire/update` POST).
 **Cause:** the preview tool's synthetic click events don't reach Livewire 4's delegated listeners; only
 `wire:model` (input) and the programmatic API work through it.
-**Fix (for verification only):** drive actions with a real DOM event via `preview_eval`
-(`el.click()`) or the API (`$wire.method()` / `Livewire.all()[0].$refresh()`). Real users are unaffected.
+**Fix (for verification only):** drive actions through the JS API via `preview_eval` —
+`Livewire.all()[0].$wire.call('method', ...args)` and `.$wire.set('prop', value, false)`. In Livewire 4
+the component object exposes a `.$wire` proxy (not top-level `.set`/`.call`). Real users are unaffected.
+
+### `php artisan tinker --execute "…"` mangles quotes from PowerShell
+**Symptom:** a one-liner passed to `tinker --execute` dies with a PHP parse error (`unexpected '@'`) or
+PowerShell splits the string on a `|` inside it.
+**Cause:** PowerShell 5.1 reinterprets `|`, `@`, and embedded double-quotes when forwarding an argument to a
+native exe, corrupting the PHP snippet.
+**Fix:** don't seed/poke the DB with `tinker --execute`. Write a throwaway seeder (`php artisan db:seed
+--class=…`) or a small test, or drive state through the running app's Livewire `$wire` API in the browser
+preview. Reserve PHP verification for PHPUnit, which has no shell-quoting surface.
 
 ---
 

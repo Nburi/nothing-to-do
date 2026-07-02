@@ -6,6 +6,18 @@ import Sortable from 'sortablejs';
 window.Sortable = Sortable;
 
 /**
+ * Primes the shared focus-timer AudioContext on the "Start" tap — a genuine
+ * user gesture, required so the chime that later fires automatically (when a
+ * phase ends) isn't blocked by the browser's autoplay policy.
+ */
+window.primeFocusAudio = function () {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!window._focusAudioCtx) window._focusAudioCtx = new AudioCtx();
+    if (window._focusAudioCtx.state === 'suspended') window._focusAudioCtx.resume();
+};
+
+/**
  * Drag & drop for a board zone (a column, or a column's Today area).
  * On drop we read the DESTINATION zone (evt.to) and persist its full id order
  * plus its list/today, so cross-column moves and in-column reordering both work.
@@ -169,6 +181,168 @@ document.addEventListener('alpine:init', () => {
             setTimeout(() => {
                 this.$wire.swipeIntent(this.id, intent);
             }, 150);
+        },
+    }));
+
+    /**
+     * scheduleEvent — drag an event on the timeline grid. Body drag moves it
+     * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
+     * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.
+     * Geometry (top/height in px) is derived from minutes via the grid's --ppm.
+     *
+     * cfg: { id, start, end }  (start/end in minutes from midnight)
+     */
+    window.Alpine.data('scheduleEvent', (cfg = {}) => ({
+        id: cfg.id,
+        start: cfg.start ?? 0,
+        end: cfg.end ?? 0,
+        ppm: 1,
+        dayStart: 360,
+        snap: 5,
+        minLen: 10,
+        kind: null,
+        sy: 0,
+        origStart: 0,
+        origEnd: 0,
+        moved: false,
+        lastTap: 0,
+
+        init() {
+            const grid = this.$el.closest('[data-grid]');
+            if (grid) {
+                this.ppm = parseFloat(grid.dataset.ppm) || 1;
+                this.dayStart = parseInt(grid.dataset.dayStart, 10) || 360;
+            }
+        },
+
+        get top() {
+            return (this.start - this.dayStart) * this.ppm;
+        },
+        get height() {
+            return Math.max((this.end - this.start) * this.ppm, 16);
+        },
+
+        begin(kind, e) {
+            if (e.button != null && e.button !== 0) return;
+            this.kind = kind;
+            this.sy = e.clientY;
+            this.origStart = this.start;
+            this.origEnd = this.end;
+            this.moved = false;
+            this.$el.setPointerCapture?.(e.pointerId);
+            if (e.cancelable) e.preventDefault();
+        },
+
+        drag(e) {
+            if (!this.kind) return;
+            const dy = e.clientY - this.sy;
+            if (Math.abs(dy) > 3) this.moved = true;
+            const dMin = Math.round(dy / this.ppm / this.snap) * this.snap;
+            const dur = this.origEnd - this.origStart;
+
+            if (this.kind === 'move') {
+                const ns = Math.max(0, Math.min(1440 - dur, this.origStart + dMin));
+                this.start = ns;
+                this.end = ns + dur;
+            } else if (this.kind === 'bottom') {
+                this.end = Math.max(this.origStart + this.minLen, Math.min(1440, this.origEnd + dMin));
+            } else if (this.kind === 'top') {
+                this.start = Math.min(this.origEnd - this.minLen, Math.max(0, this.origStart + dMin));
+            }
+        },
+
+        finish() {
+            if (!this.kind) return;
+            const kind = this.kind;
+            this.kind = null;
+
+            if (!this.moved) {
+                this.start = this.origStart;
+                this.end = this.origEnd;
+                this.tap();
+                return;
+            }
+
+            const hhmm = (m) =>
+                `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+            if (kind === 'move') this.$wire.moveEvent(this.id, hhmm(this.start));
+            else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+        },
+
+        tap() {
+            const now = Date.now();
+            if (now - this.lastTap < 320) {
+                this.$wire.startEditEvent(this.id);
+                this.lastTap = 0;
+            } else {
+                this.lastTap = now;
+            }
+        },
+    }));
+
+    /**
+     * focusTimer — a live, client-side Pomodoro countdown for the header ring.
+     * Seeded with the seconds left + the phase length; ticks each second and
+     * exposes the mm:ss label and the SVG stroke-dashoffset for the ring fill.
+     * Chimes when it reaches 0 — the poll-driven re-render that follows swaps
+     * in the next phase's fresh config (see wire:key on the ring in
+     * schedule-strip.blade.php).
+     *
+     * cfg: { remaining, total, circ }
+     */
+    window.Alpine.data('focusTimer', (cfg = {}) => ({
+        remaining: Math.max(0, cfg.remaining ?? 0),
+        total: Math.max(1, cfg.total ?? 1),
+        circ: cfg.circ ?? 264,
+        timer: null,
+
+        init() {
+            this.timer = setInterval(() => {
+                if (this.remaining > 0) {
+                    this.remaining--;
+                    if (this.remaining === 0) {
+                        this.chime();
+                        clearInterval(this.timer);
+                    }
+                }
+            }, 1000);
+        },
+        destroy() {
+            clearInterval(this.timer);
+        },
+        get mmss() {
+            const m = Math.floor(this.remaining / 60);
+            const s = this.remaining % 60;
+            return `${m}:${String(s).padStart(2, '0')}`;
+        },
+        get offset() {
+            return this.circ * (this.remaining / this.total);
+        },
+        /** A few short synthesised pulses — no audio file, no new package. */
+        chime() {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!window._focusAudioCtx) window._focusAudioCtx = new AudioCtx();
+            const ctx = window._focusAudioCtx;
+            if (ctx.state === 'suspended') ctx.resume();
+
+            [0, 0.7, 1.4].forEach((offset) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 880;
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                const start = ctx.currentTime + offset;
+                gain.gain.setValueAtTime(0, start);
+                gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
+                gain.gain.linearRampToValueAtTime(0, start + 0.3);
+
+                osc.start(start);
+                osc.stop(start + 0.35);
+            });
         },
     }));
 });
