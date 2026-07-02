@@ -86,7 +86,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (116 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (131 tests).
 
 > Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
 > package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
@@ -199,6 +199,15 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   work→break cycles and returns the phase (`work|short_break|long_break`), cycle number, and minute
   boundaries; a break is long when its preceding work cycle's number is divisible by `long_every`.
   `ScheduleEvent::pomodoroPhaseNow()` wraps it with second-precision remaining/total time for the ring.
+- **`App\Services\TaskSuggestor`** — "what to work on" for the focus card, tiered by the run's current
+  Pomodoro cycle number (`TaskBoard::taskSuggestion()`, read via `$phase['cycle']`, defaulting to 1 while
+  still in **Bereit** so it previews the session about to start): cycle 1 nudges to clear the ToDos list
+  (falling through if none are open), any cycle then prefers the top active **today** task (board order),
+  and once today's list is empty it falls back to a deterministic pick between a project's next task and
+  another todos/tasks-list task — seeded by `(event id, cycle)` via `crc32()` so the choice stays stable
+  across the ring's 5s poll instead of reshuffling every request. Hidden during a break. Rendered by
+  `partials/schedule-strip-suggestion.blade.php` in both focus-card states; a task suggestion opens the
+  existing inline edit sheet (`startEdit`), a project suggestion links to its project page.
 - **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by `Schedule`): create/edit/
   delete Termine and Kategorie blocks, drag-to-move (keeps duration), drag-to-resize (min-length guard),
   apply-template. The event form sheet (`partials/schedule-event-form.blade.php`) has a Termin/Kategorie
