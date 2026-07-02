@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\ScheduleEvent;
 use App\Models\User;
@@ -23,13 +24,62 @@ class ScheduleEventTest extends TestCase
         $this->assertSame('14:25', ScheduleEvent::fromMinutes(865));
     }
 
-    public function test_colour_token_falls_back_to_type_default(): void
+    public function test_display_title_and_color_prefer_the_live_category(): void
     {
-        $work = ScheduleEvent::factory()->workSession()->make(['color' => null]);
-        $appt = ScheduleEvent::factory()->make(['color' => null, 'type' => ScheduleEvent::TYPE_APPOINTMENT]);
+        $category = EventCategory::factory()->make(['name' => 'Training', 'color' => 'forest']);
+        $event = ScheduleEvent::factory()->make(['title' => 'stale snapshot', 'color' => 'contour', 'category_id' => 1]);
+        $event->setRelation('category', $category);
 
-        $this->assertSame('forest', $work->colorToken());
-        $this->assertSame('contour', $appt->colorToken());
+        $this->assertTrue($event->isCategory());
+        $this->assertSame('Training', $event->displayTitle());
+        $this->assertSame('forest', $event->colorToken());
+    }
+
+    public function test_display_title_and_color_fall_back_to_the_snapshot_when_uncategorised(): void
+    {
+        $event = ScheduleEvent::factory()->make(['title' => 'Zahnarzt', 'color' => 'signal', 'category_id' => null]);
+        $event->setRelation('category', null);
+
+        $this->assertTrue($event->isAppointment());
+        $this->assertSame('Zahnarzt', $event->displayTitle());
+        $this->assertSame('signal', $event->colorToken());
+    }
+
+    public function test_color_token_falls_back_to_contour_when_nothing_is_set(): void
+    {
+        $event = ScheduleEvent::factory()->make(['color' => null, 'category_id' => null]);
+        $event->setRelation('category', null);
+
+        $this->assertSame('contour', $event->colorToken());
+    }
+
+    public function test_display_title_and_color_follow_a_renamed_recoloured_category_live(): void
+    {
+        $user = User::factory()->create();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Training', 'color' => 'forest']);
+        $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
+            ->create(['title' => 'Training', 'color' => 'forest']);
+
+        $category->update(['name' => 'Lauftraining', 'color' => 'signal']);
+        $event->refresh();
+
+        $this->assertSame('Lauftraining', $event->displayTitle());
+        $this->assertSame('signal', $event->colorToken());
+    }
+
+    public function test_display_title_and_color_fall_back_to_snapshot_once_the_category_is_deleted(): void
+    {
+        $user = User::factory()->create();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Training', 'color' => 'forest']);
+        $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
+            ->create(['title' => 'Training', 'color' => 'forest']);
+
+        $category->delete();
+        $event->refresh();
+
+        $this->assertNull($event->category_id);
+        $this->assertSame('Training', $event->displayTitle());
+        $this->assertSame('forest', $event->colorToken());
     }
 
     public function test_occurs_on_respects_iso_weekday_mask(): void
@@ -63,6 +113,27 @@ class ScheduleEventTest extends TestCase
         $this->assertSame('Schule', $events->first()->title);
         $this->assertSame('08:00', $events->first()->start_time);
         $this->assertSame('09:30', $events->first()->end_time);
+    }
+
+    public function test_materialize_carries_the_templates_category_through(): void
+    {
+        $user = User::factory()->create();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Training', 'color' => 'forest']);
+        EventTemplate::factory()->recurring('1')->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Training',
+            'color' => 'forest',
+            'default_start' => '17:00',
+            'duration' => 60,
+        ]);
+
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'));
+
+        $event = ScheduleEvent::forUser($user)->firstOrFail();
+        $this->assertSame($category->id, $event->category_id);
+        $this->assertSame('Training', $event->displayTitle());
+        $this->assertSame('forest', $event->colorToken());
     }
 
     public function test_cancelled_recurring_occurrence_is_not_regenerated(): void

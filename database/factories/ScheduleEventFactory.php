@@ -19,14 +19,12 @@ class ScheduleEventFactory extends Factory
         return [
             'user_id' => User::factory(),
             'template_id' => null,
-            'suggested_task_id' => null,
-            'type' => ScheduleEvent::TYPE_APPOINTMENT,
+            'category_id' => null,
             'title' => fake()->randomElement(['Schule', 'Lauftraining', 'Zahnarzt', 'Lerngruppe']),
             'color' => 'contour',
             'date' => now()->toDateString(),
             'start_time' => ScheduleEvent::fromMinutes($startMin),
             'end_time' => ScheduleEvent::fromMinutes($startMin + $duration),
-            'source' => 'manual',
             'is_cancelled' => false,
         ];
     }
@@ -39,36 +37,6 @@ class ScheduleEventFactory extends Factory
     public function at(string $start, string $end): static
     {
         return $this->state(['start_time' => $start, 'end_time' => $end]);
-    }
-
-    public function workSession(): static
-    {
-        return $this->state([
-            'type' => ScheduleEvent::TYPE_WORK,
-            'title' => null,
-            'color' => 'forest',
-            'source' => 'brief',
-        ]);
-    }
-
-    public function todoSession(): static
-    {
-        return $this->state([
-            'type' => ScheduleEvent::TYPE_TODO,
-            'title' => null,
-            'color' => 'forest',
-            'source' => 'brief',
-        ]);
-    }
-
-    public function break(): static
-    {
-        return $this->state([
-            'type' => ScheduleEvent::TYPE_BREAK,
-            'title' => null,
-            'color' => 'ink-faint',
-            'source' => 'brief',
-        ]);
     }
 
     public function cancelled(): static

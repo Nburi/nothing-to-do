@@ -15,6 +15,7 @@ class EventTemplateFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'category_id' => null,
             'name' => fake()->randomElement(['Schule', 'Lauftraining', 'Zahnarzt', 'Krafttraining', 'Nachhilfe']),
             'color' => fake()->randomElement(['contour', 'overprint', 'forest', 'signal']),
             'duration' => fake()->randomElement([30, 45, 60, 90, 120]),

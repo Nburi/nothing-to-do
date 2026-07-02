@@ -121,7 +121,7 @@
                     <span class="self-center text-[11px] text-ink-faint">Vorlagen:</span>
                     @foreach ($this->templates as $t)
                         <button wire:click="applyTemplate({{ $t->id }}, '{{ $focusedDate }}')" class="rounded-card border border-line bg-surface px-2.5 py-1 text-xs text-ink-soft transition active:scale-95 hover:text-ink">
-                            + {{ $t->name }}
+                            + {{ $t->displayName() }}
                         </button>
                     @endforeach
                 </div>

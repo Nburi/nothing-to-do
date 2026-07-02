@@ -34,8 +34,6 @@ class Task extends Model
         'is_important',
         'deadline',
         'due_date',
-        'estimated_sessions',
-        'planned_for',
         'is_completed',
         'completed_at',
         'sort_order',
@@ -49,8 +47,6 @@ class Task extends Model
             'is_completed' => 'boolean',
             'deadline' => 'date',
             'due_date' => 'date',
-            'estimated_sessions' => 'integer',
-            'planned_for' => 'date',
             'completed_at' => 'datetime',
             'sort_order' => 'integer',
         ];
@@ -87,14 +83,6 @@ class Task extends Model
     public function scopeInList(Builder $query, string $list): Builder
     {
         return $query->where('list', $list);
-    }
-
-    /** Tasks the Brief planned for a given day. */
-    public function scopePlannedFor(Builder $query, Carbon|string $date): Builder
-    {
-        $date = $date instanceof Carbon ? $date->toDateString() : $date;
-
-        return $query->whereDate('planned_for', $date);
     }
 
     /**
@@ -154,17 +142,6 @@ class Task extends Model
     public function isInProject(): bool
     {
         return $this->project_id !== null;
-    }
-
-    /**
-     * Whether this task belongs in today's focus area. True if flagged today,
-     * or if the Brief planned it for today (planned_for surfaces on its day
-     * without flagging is_today ahead of time).
-     */
-    public function isTodayFocus(): bool
-    {
-        return $this->is_today
-            || ($this->planned_for !== null && $this->planned_for->isToday());
     }
 
     /** True when the effective date comes from a hard deadline (not a soft due date). */

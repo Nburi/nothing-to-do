@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Concerns;
 
-use App\Models\EventTemplate;
 use App\Models\ScheduleEvent;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -10,16 +9,12 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
 /**
- * Shared appointment + template mutations for the timeline. Used by both the
- * Schedule page and the Brief so the two surfaces edit the day identically.
- * Every write is resolved through the owner relationship — an id alone is
- * never trusted.
+ * Shared appointment/category + template mutations for the timeline. Used by
+ * the Schedule page. Every write is resolved through the owner relationship —
+ * an id alone is never trusted.
  */
 trait ManagesSchedule
 {
-    /** Topografie colour tokens an appointment may use. */
-    public const EVENT_COLORS = ['contour', 'overprint', 'forest', 'signal', 'ink'];
-
     /** Smallest event the grid will allow (minutes). */
     public const MIN_EVENT = 10;
 
@@ -27,6 +22,9 @@ trait ManagesSchedule
     public bool $showEventForm = false;
 
     public ?int $editingEventId = null;
+
+    /** 'appointment' (free-text Termin) or 'category' (linked to an EventCategory). */
+    public string $eventKind = 'appointment';
 
     public string $eventTitle = '';
 
@@ -38,9 +36,11 @@ trait ManagesSchedule
 
     public string $eventColor = 'contour';
 
+    public ?int $eventCategoryId = null;
+
     public bool $eventRecurring = false;
 
-    /** ISO weekdays (1=Mon … 7=Sun) a recurring appointment repeats on. */
+    /** ISO weekdays (1=Mon … 7=Sun) a recurring block repeats on. */
     public array $eventDays = [];
 
     public bool $eventSaveAsTemplate = false;
@@ -57,9 +57,17 @@ trait ManagesSchedule
         return auth()->user()->eventTemplates()->ordered()->get();
     }
 
+    /** The user's configured categories, for the event form's chip picker. */
+    #[Computed]
+    public function categories(): Collection
+    {
+        return auth()->user()->eventCategories()->ordered()->get();
+    }
+
     public function openEventForm(?string $date = null): void
     {
-        $this->reset(['editingEventId', 'eventTitle', 'eventColor', 'eventRecurring', 'eventDays', 'eventSaveAsTemplate']);
+        $this->reset(['editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId', 'eventRecurring', 'eventDays', 'eventSaveAsTemplate']);
+        $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
         $this->eventDate = $date ?: Carbon::today()->toDateString();
         $this->eventStart = '08:00';
@@ -72,6 +80,8 @@ trait ManagesSchedule
         $event = $this->userEvent($id);
 
         $this->editingEventId = $event->id;
+        $this->eventKind = $event->isCategory() ? 'category' : 'appointment';
+        $this->eventCategoryId = $event->category_id;
         $this->eventTitle = (string) $event->title;
         $this->eventDate = $event->date->toDateString();
         $this->eventStart = $event->start_time;
@@ -86,18 +96,37 @@ trait ManagesSchedule
 
     public function saveEventForm(): void
     {
-        $this->eventTitle = trim($this->eventTitle);
-
-        $data = $this->validate([
-            'eventTitle' => ['required', 'string', 'max:255'],
+        $rules = [
+            'eventKind' => ['required', 'in:appointment,category'],
             'eventDate' => ['required', 'date'],
             'eventStart' => ['required', 'date_format:H:i'],
             'eventEnd' => ['required', 'date_format:H:i', 'after:eventStart'],
-            'eventColor' => ['required', Rule::in(self::EVENT_COLORS)],
             'eventRecurring' => ['boolean'],
             'eventDays' => ['array'],
             'eventDays.*' => ['integer', 'between:1,7'],
-        ]);
+        ];
+
+        if ($this->eventKind === 'category') {
+            $rules['eventCategoryId'] = ['required', Rule::exists('event_categories', 'id')->where('user_id', auth()->id())];
+        } else {
+            $this->eventTitle = trim($this->eventTitle);
+            $rules['eventTitle'] = ['required', 'string', 'max:255'];
+            $rules['eventColor'] = ['required', Rule::in(ScheduleEvent::EVENT_COLORS)];
+        }
+
+        $data = $this->validate($rules);
+
+        // Resolve the literal title/colour snapshot this save writes to the row.
+        if ($this->eventKind === 'category') {
+            $category = auth()->user()->eventCategories()->findOrFail($data['eventCategoryId']);
+            $categoryId = $category->id;
+            $title = $category->name;
+            $color = $category->color;
+        } else {
+            $categoryId = null;
+            $title = $data['eventTitle'];
+            $color = $data['eventColor'];
+        }
 
         if ($this->editingEventId !== null) {
             $event = $this->userEvent($this->editingEventId);
@@ -110,23 +139,22 @@ trait ManagesSchedule
             $movedFromSeries = $origTemplate !== null && $origDate !== $data['eventDate'];
 
             $event->update([
-                'title' => $data['eventTitle'],
+                'category_id' => $categoryId,
+                'title' => $title,
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
-                'color' => $data['eventColor'],
+                'color' => $color,
                 'template_id' => $movedFromSeries ? null : $event->template_id,
             ]);
 
             if ($movedFromSeries) {
                 auth()->user()->scheduleEvents()->create([
                     'template_id' => $origTemplate,
-                    'type' => ScheduleEvent::TYPE_APPOINTMENT,
                     'date' => $origDate,
                     'start_time' => $data['eventStart'],
                     'end_time' => $data['eventEnd'],
                     'is_cancelled' => true,
-                    'source' => 'manual',
                 ]);
             }
 
@@ -139,12 +167,13 @@ trait ManagesSchedule
         $duration = ScheduleEvent::toMinutes($data['eventEnd']) - ScheduleEvent::toMinutes($data['eventStart']);
 
         if ($data['eventRecurring']) {
-            // A recurring appointment is a recurring template that materialises.
+            // A recurring block is a recurring template that materialises.
             $days = $data['eventDays'] ?: [$date->dayOfWeekIso];
 
             $template = auth()->user()->eventTemplates()->create([
-                'name' => $data['eventTitle'],
-                'color' => $data['eventColor'],
+                'category_id' => $categoryId,
+                'name' => $title,
+                'color' => $color,
                 'duration' => $duration,
                 'default_start' => $data['eventStart'],
                 'is_recurring' => true,
@@ -162,10 +191,12 @@ trait ManagesSchedule
                 ScheduleEvent::materializeRange(auth()->user(), $date->copy()->startOfDay(), $date->copy()->startOfDay());
             }
         } else {
-            if ($this->eventSaveAsTemplate) {
+            // A category is already the reusable primitive — quick-add templates
+            // only make sense for one-off, free-text Termine.
+            if ($this->eventKind === 'appointment' && $this->eventSaveAsTemplate) {
                 auth()->user()->eventTemplates()->create([
-                    'name' => $data['eventTitle'],
-                    'color' => $data['eventColor'],
+                    'name' => $title,
+                    'color' => $color,
                     'duration' => $duration,
                     'default_start' => $data['eventStart'],
                     'is_recurring' => false,
@@ -173,13 +204,12 @@ trait ManagesSchedule
             }
 
             auth()->user()->scheduleEvents()->create([
-                'type' => ScheduleEvent::TYPE_APPOINTMENT,
-                'title' => $data['eventTitle'],
-                'color' => $data['eventColor'],
+                'category_id' => $categoryId,
+                'title' => $title,
+                'color' => $color,
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
-                'source' => 'manual',
             ]);
         }
 
@@ -247,7 +277,7 @@ trait ManagesSchedule
         ]);
     }
 
-    /** Drop / tap a template onto a day → a concrete appointment. */
+    /** Drop / tap a template onto a day → a concrete event. */
     public function applyTemplate(int $templateId, string $date, ?string $start = null): void
     {
         $template = auth()->user()->eventTemplates()->findOrFail($templateId);
@@ -259,13 +289,12 @@ trait ManagesSchedule
         // A placed copy is independent (no template_id) — it won't be swept by
         // series materialisation or removed if the template is later deleted.
         auth()->user()->scheduleEvents()->create([
-            'type' => ScheduleEvent::TYPE_APPOINTMENT,
-            'title' => $template->name,
-            'color' => $template->color,
+            'category_id' => $template->category_id,
+            'title' => $template->displayName(),
+            'color' => $template->colorToken(),
             'date' => $date,
             'start_time' => $startTime,
             'end_time' => ScheduleEvent::fromMinutes(ScheduleEvent::toMinutes($startTime) + $template->duration),
-            'source' => 'manual',
         ]);
     }
 

@@ -11,9 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * A reusable appointment blueprint for fast entry in the Brief / schedule
- * (e.g. "Schule", "Lauftraining", "Zahnarzt"). Recurring templates auto-
- * materialise a concrete ScheduleEvent on each matching weekday.
+ * A reusable appointment blueprint for fast entry in the schedule (e.g.
+ * "Schule", "Lauftraining", "Zahnarzt"). Recurring templates auto-materialise
+ * a concrete ScheduleEvent on each matching weekday. May point to an
+ * EventCategory instead of carrying its own name/colour.
  */
 class EventTemplate extends Model
 {
@@ -21,6 +22,7 @@ class EventTemplate extends Model
     use HasFactory;
 
     protected $fillable = [
+        'category_id',
         'name',
         'color',
         'duration',
@@ -42,6 +44,11 @@ class EventTemplate extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(EventCategory::class);
     }
 
     /** @return HasMany<ScheduleEvent, $this> */
@@ -82,5 +89,17 @@ class EventTemplate extends Model
     public function occursOn(Carbon $date): bool
     {
         return $this->is_recurring && in_array($date->dayOfWeekIso, $this->recurrenceDays(), true);
+    }
+
+    /** The live category name, falling back to the template's own snapshot. */
+    public function displayName(): string
+    {
+        return $this->category?->name ?? $this->name;
+    }
+
+    /** Resolve the colour token: live category colour, else the stored snapshot. */
+    public function colorToken(): string
+    {
+        return $this->category?->color ?: ($this->color ?: 'contour');
     }
 }

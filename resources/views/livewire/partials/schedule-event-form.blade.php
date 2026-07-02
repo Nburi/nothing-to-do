@@ -31,23 +31,66 @@
     >
         <div class="mx-auto max-h-[88dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map md:rounded-card">
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-base font-medium text-ink">{{ $editingEventId ? 'Termin bearbeiten' : 'Neuer Termin' }}</h2>
+                <h2 class="text-base font-medium text-ink">{{ $editingEventId ? 'Eintrag bearbeiten' : 'Neuer Eintrag' }}</h2>
                 <button wire:click="cancelEventForm" class="grid h-8 w-8 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink" aria-label="Schließen">
                     <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
             </div>
 
             <form wire:submit="saveEventForm" class="space-y-4">
-                <div>
-                    <input
-                        type="text"
-                        wire:model="eventTitle"
-                        placeholder="Titel — z. B. Lauftraining"
-                        autocomplete="off"
-                        class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
-                    />
-                    @error('eventTitle') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                <div class="inline-flex rounded-card border border-line bg-paper p-0.5">
+                    @foreach (['appointment' => 'Termin', 'category' => 'Kategorie'] as $val => $lbl)
+                        <button
+                            type="button"
+                            wire:click="$set('eventKind', '{{ $val }}')"
+                            @class([
+                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'bg-forest text-white shadow-sm' => $eventKind === $val,
+                                'text-ink-soft hover:text-ink' => $eventKind !== $val,
+                            ])
+                        >{{ $lbl }}</button>
+                    @endforeach
                 </div>
+
+                @if ($eventKind === 'category')
+                    <div>
+                        @if ($this->categories->isEmpty())
+                            <p class="rounded-card border border-line bg-paper/60 p-3 text-sm leading-relaxed text-ink-soft">
+                                Noch keine Kategorien angelegt.
+                                <a href="{{ route('settings') }}" wire:navigate class="font-medium text-overprint hover:underline">In den Einstellungen anlegen →</a>
+                            </p>
+                        @else
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($this->categories as $cat)
+                                    <button
+                                        type="button"
+                                        wire:click="$set('eventCategoryId', {{ $cat->id }})"
+                                        @class([
+                                            'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition',
+                                            'border-ink/60 bg-paper text-ink' => $eventCategoryId === $cat->id,
+                                            'border-line text-ink-soft hover:border-ink-faint/60' => $eventCategoryId !== $cat->id,
+                                        ])
+                                    >
+                                        <span class="h-2.5 w-2.5 rounded-full {{ $swatches[$cat->color] ?? 'bg-contour' }}"></span>
+                                        {{ $cat->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                        @error('eventCategoryId') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </div>
+                @else
+                    <div>
+                        <input
+                            type="text"
+                            wire:model="eventTitle"
+                            placeholder="Titel — z. B. Zahnarzt"
+                            autocomplete="off"
+                            class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                        />
+                        @error('eventTitle') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </div>
+                @endif
 
                 <div>
                     <label class="mb-1 block text-[11px] font-medium text-ink-faint">Datum</label>
@@ -67,23 +110,25 @@
                 </div>
                 @error('eventEnd') <p class="-mt-2 text-xs text-signal">{{ $message }}</p> @enderror
 
-                <div>
-                    <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Farbe</label>
-                    <div class="flex gap-2.5">
-                        @foreach ($swatches as $token => $bg)
-                            <button
-                                type="button"
-                                wire:click="$set('eventColor', '{{ $token }}')"
-                                @class([
-                                    'h-7 w-7 rounded-full transition', $bg,
-                                    'ring-2 ring-offset-2 ring-offset-surface ring-ink/60' => $eventColor === $token,
-                                    'hover:scale-110' => $eventColor !== $token,
-                                ])
-                                aria-label="Farbe {{ $token }}"
-                            ></button>
-                        @endforeach
+                @if ($eventKind === 'appointment')
+                    <div>
+                        <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Farbe</label>
+                        <div class="flex gap-2.5">
+                            @foreach ($swatches as $token => $bg)
+                                <button
+                                    type="button"
+                                    wire:click="$set('eventColor', '{{ $token }}')"
+                                    @class([
+                                        'h-7 w-7 rounded-full transition', $bg,
+                                        'ring-2 ring-offset-2 ring-offset-surface ring-ink/60' => $eventColor === $token,
+                                        'hover:scale-110' => $eventColor !== $token,
+                                    ])
+                                    aria-label="Farbe {{ $token }}"
+                                ></button>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
+                @endif
 
                 @if ($editingEventId === null)
                     <div x-data="{ rec: $wire.entangle('eventRecurring'), days: $wire.entangle('eventDays') }" class="rounded-card border border-line bg-paper/60 p-3">
@@ -104,10 +149,12 @@
                         </div>
                     </div>
 
-                    <label class="flex cursor-pointer items-center gap-2.5">
-                        <input type="checkbox" wire:model="eventSaveAsTemplate" class="rounded border-line text-forest focus:ring-forest" />
-                        <span class="text-sm text-ink-soft">Als Vorlage speichern</span>
-                    </label>
+                    @if ($eventKind === 'appointment')
+                        <label class="flex cursor-pointer items-center gap-2.5">
+                            <input type="checkbox" wire:model="eventSaveAsTemplate" class="rounded border-line text-forest focus:ring-forest" />
+                            <span class="text-sm text-ink-soft">Als Vorlage speichern</span>
+                        </label>
+                    @endif
                 @endif
 
                 <div class="flex items-center gap-2 pt-1">
@@ -115,7 +162,7 @@
                         {{ $editingEventId ? 'Speichern' : 'Hinzufügen' }}
                     </button>
                     @if ($editingEventId)
-                        <button type="button" wire:click="deleteEvent({{ $editingEventId }})" wire:confirm="Diesen Termin löschen?" class="grid h-11 w-11 flex-none place-items-center rounded-card border border-line text-signal transition hover:bg-signal-soft active:scale-95" aria-label="Termin löschen">
+                        <button type="button" wire:click="deleteEvent({{ $editingEventId }})" wire:confirm="Diesen Eintrag löschen?" class="grid h-11 w-11 flex-none place-items-center rounded-card border border-line text-signal transition hover:bg-signal-soft active:scale-95" aria-label="Eintrag löschen">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
                         </button>
                     @endif

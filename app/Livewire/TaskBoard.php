@@ -82,30 +82,30 @@ class TaskBoard extends Component
         return $this->boardTasks('tasks');
     }
 
-    /** Only active tasks in today's focus — flagged today, or planned for today by the Brief. */
+    /** Active todos flagged for today's focus. */
     #[Computed]
     public function todosToday(): Collection
     {
-        return $this->todosAll->where('is_completed', false)->filter->isTodayFocus()->values();
+        return $this->todosAll->where('is_completed', false)->where('is_today', true)->values();
     }
 
     /** Active todos not in today's focus (completed ones are passed separately to the column partial). */
     #[Computed]
     public function todosRest(): Collection
     {
-        return $this->todosAll->where('is_completed', false)->reject->isTodayFocus()->values();
+        return $this->todosAll->where('is_completed', false)->where('is_today', false)->values();
     }
 
     #[Computed]
     public function tasksToday(): Collection
     {
-        return $this->tasksAll->where('is_completed', false)->filter->isTodayFocus()->values();
+        return $this->tasksAll->where('is_completed', false)->where('is_today', true)->values();
     }
 
     #[Computed]
     public function tasksRest(): Collection
     {
-        return $this->tasksAll->where('is_completed', false)->reject->isTodayFocus()->values();
+        return $this->tasksAll->where('is_completed', false)->where('is_today', false)->values();
     }
 
     /** Mobile "Today" page: every focused board task across todos + tasks. */
@@ -116,8 +116,7 @@ class TaskBoard extends Component
             ->forUser(auth()->user())
             ->active()
             ->onBoard()
-            ->where(fn ($q) => $q->where('is_today', true)
-                ->orWhereDate('planned_for', Carbon::today()->toDateString()))
+            ->where('is_today', true)
             ->boardOrdered()
             ->get();
     }
@@ -163,12 +162,16 @@ class TaskBoard extends Component
             ->visible()
             ->forDay($today)
             ->ordered()
+            ->with('category')
             ->get();
     }
 
     /**
-     * The Work-/To-Do-Session that is running now, or starts within 5 minutes —
-     * the trigger that swaps the header strip for the focus timer.
+     * The Pomodoro-enabled category block that is running now, starts within 5
+     * minutes, or already has a timer running on it — the trigger that swaps
+     * the header strip for the focus card/ring. A running timer keeps its
+     * event as the focus session even past the block's own scheduled window,
+     * so the ring never disappears mid-cycle.
      */
     #[Computed]
     public function focusSession(): ?ScheduleEvent
@@ -177,8 +180,12 @@ class TaskBoard extends Component
         $nowMin = $now->hour * 60 + $now->minute;
 
         return $this->scheduleToday->first(function (ScheduleEvent $e) use ($now, $nowMin) {
-            if (! $e->isWorkSession()) {
+            if (! $e->category?->pomodoro_enabled) {
                 return false;
+            }
+
+            if ($e->pomodoro_started_at !== null) {
+                return true;
             }
 
             $untilStart = $e->startMinutes() - $nowMin;
@@ -187,58 +194,11 @@ class TaskBoard extends Component
         });
     }
 
-    /**
-     * Whether to nudge the Brief: past the configured time and not already
-     * dismissed today. The app only suggests — the user starts it manually.
-     */
+    /** The focus session's current Pomodoro phase, or null if not started yet. */
     #[Computed]
-    public function showBriefNudge(): bool
+    public function focusPhase(): ?array
     {
-        $user = auth()->user();
-
-        if ($user->brief_dismissed_on?->isToday()) {
-            return false;
-        }
-
-        $nowMin = now()->hour * 60 + now()->minute;
-        $briefMin = ScheduleEvent::toMinutes($user->brief_time ?? '19:00');
-
-        // Morning planners get a bounded morning window (so they aren't nudged at
-        // 19:00 to plan a day that's nearly over); evening planners from the nudge
-        // time until the day ends.
-        if (($user->brief_when ?? 'evening') === 'morning') {
-            return $nowMin >= $briefMin && $nowMin < 12 * 60;
-        }
-
-        return $nowMin >= $briefMin;
-    }
-
-    /** Greeting + how much is waiting, for the nudge banner. */
-    #[Computed]
-    public function briefNudge(): array
-    {
-        $user = auth()->user();
-        $target = $user->briefTargetDate();
-        $wd = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-        $hour = now()->hour;
-
-        $dueSoon = Task::query()->forUser($user)->active()->onBoard()
-            ->whereIn('list', ['todos', 'tasks'])
-            ->where(fn ($q) => $q->whereDate('deadline', '<=', $target->toDateString())
-                ->orWhereDate('due_date', '<=', $target->toDateString()))
-            ->count();
-
-        return [
-            'greeting' => $hour < 11 ? 'Guten Morgen' : ($hour < 18 ? 'Guten Tag' : 'Guten Abend'),
-            'dayName' => $wd[$target->dayOfWeekIso - 1],
-            'waiting' => $this->counts['todos'] + $this->counts['tasks'],
-            'dueSoon' => $dueSoon,
-        ];
-    }
-
-    public function dismissBrief(): void
-    {
-        auth()->user()->update(['brief_dismissed_on' => Carbon::today()->toDateString()]);
+        return $this->focusSession?->pomodoroPhaseNow(now(), auth()->user()->pomodoro());
     }
 
     /** Active-task counts only — completed tasks don't inflate the badges. */
@@ -339,11 +299,7 @@ class TaskBoard extends Component
             return;
         }
 
-        // Leaving Today also clears a Brief plan, so it doesn't linger back in.
-        $task->update([
-            'is_today' => $value,
-            'planned_for' => $value ? $task->planned_for : null,
-        ]);
+        $task->update(['is_today' => $value]);
     }
 
     /**
@@ -395,9 +351,35 @@ class TaskBoard extends Component
             'todos' => $task->update(['list' => 'todos']),
             'tasks' => $task->update(['list' => 'tasks']),
             'today' => $task->isInbox() ? null : $task->update(['is_today' => true]),
-            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false, 'planned_for' => null]),
+            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
             default => null,
         };
+    }
+
+    protected function userScheduleEvent(int $id): ScheduleEvent
+    {
+        return auth()->user()->scheduleEvents()->findOrFail($id);
+    }
+
+    /**
+     * Start the Pomodoro focus timer on a category block. A tap before the
+     * block's scheduled start (inside the lead-in window) starts the cycle
+     * now, not at the scheduled time — reaching the time never auto-starts it.
+     */
+    public function startFocusTimer(int $id): void
+    {
+        $event = $this->userScheduleEvent($id);
+
+        if (! $event->category?->pomodoro_enabled) {
+            return;
+        }
+
+        $event->update(['pomodoro_started_at' => now()]);
+    }
+
+    public function stopFocusTimer(int $id): void
+    {
+        $this->userScheduleEvent($id)->update(['pomodoro_started_at' => null]);
     }
 
     public function render()

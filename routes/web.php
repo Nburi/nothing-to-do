@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Livewire\Brief;
 use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
@@ -25,10 +24,6 @@ Route::get('/app/projects/{project}', ProjectPage::class)
 Route::get('/app/schedule', Schedule::class)
     ->middleware('auth')
     ->name('schedule');
-
-Route::get('/app/brief', Brief::class)
-    ->middleware('auth')
-    ->name('brief');
 
 Route::get('/app/settings', Settings::class)
     ->middleware('auth')

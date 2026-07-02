@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Schedule;
+use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\ScheduleEvent;
 use App\Models\User;
@@ -37,6 +38,7 @@ class ScheduleTest extends TestCase
         $user = $this->actingUser();
 
         Livewire::test(Schedule::class)
+            ->set('eventKind', 'appointment')
             ->set('eventTitle', 'Zahnarzt')
             ->set('eventDate', '2026-06-26')
             ->set('eventStart', '14:00')
@@ -47,10 +49,10 @@ class ScheduleTest extends TestCase
 
         $this->assertDatabaseHas('schedule_events', [
             'user_id' => $user->id,
+            'category_id' => null,
             'title' => 'Zahnarzt',
             'start_time' => '14:00',
             'end_time' => '15:00',
-            'type' => ScheduleEvent::TYPE_APPOINTMENT,
         ]);
     }
 
@@ -60,6 +62,7 @@ class ScheduleTest extends TestCase
 
         Livewire::test(Schedule::class)
             ->set('weekStart', '2026-06-22') // Mon
+            ->set('eventKind', 'appointment')
             ->set('eventTitle', 'Schule')
             ->set('eventDate', '2026-06-22')
             ->set('eventStart', '08:00')
@@ -72,6 +75,7 @@ class ScheduleTest extends TestCase
 
         $this->assertDatabaseHas('event_templates', [
             'user_id' => $user->id,
+            'category_id' => null,
             'name' => 'Schule',
             'is_recurring' => true,
             'recurrence' => '1,2,3,4,5',
@@ -79,6 +83,137 @@ class ScheduleTest extends TestCase
 
         // Mon–Fri of that week materialised (5 occurrences).
         $this->assertSame(5, ScheduleEvent::forUser($user)->whereNotNull('template_id')->count());
+    }
+
+    public function test_it_creates_a_category_block(): void
+    {
+        $user = $this->actingUser();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Arbeiten', 'color' => 'overprint']);
+
+        Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $category->id)
+            ->set('eventDate', '2026-06-26')
+            ->set('eventStart', '14:00')
+            ->set('eventEnd', '16:00')
+            ->call('saveEventForm')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('schedule_events', [
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'title' => 'Arbeiten',
+            'color' => 'overprint',
+            'start_time' => '14:00',
+            'end_time' => '16:00',
+        ]);
+    }
+
+    public function test_creating_a_category_block_requires_a_category_id(): void
+    {
+        $this->actingUser();
+
+        Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventDate', '2026-06-26')
+            ->set('eventStart', '14:00')
+            ->set('eventEnd', '15:00')
+            ->call('saveEventForm')
+            ->assertHasErrors(['eventCategoryId']);
+    }
+
+    public function test_a_user_cannot_use_another_users_category(): void
+    {
+        $this->actingUser();
+        $other = EventCategory::factory()->for(User::factory())->create();
+
+        Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $other->id)
+            ->set('eventDate', '2026-06-26')
+            ->set('eventStart', '14:00')
+            ->set('eventEnd', '15:00')
+            ->call('saveEventForm')
+            ->assertHasErrors(['eventCategoryId']);
+    }
+
+    public function test_editing_an_appointment_into_a_category(): void
+    {
+        $user = $this->actingUser();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Training', 'color' => 'forest']);
+        $event = ScheduleEvent::factory()->for($user)
+            ->create(['title' => 'Zahnarzt', 'color' => 'signal', 'category_id' => null]);
+
+        Livewire::test(Schedule::class)
+            ->call('startEditEvent', $event->id)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $category->id)
+            ->call('saveEventForm')
+            ->assertHasNoErrors();
+
+        $event->refresh();
+        $this->assertSame($category->id, $event->category_id);
+        $this->assertSame('Training', $event->title);
+        $this->assertSame('forest', $event->color);
+    }
+
+    public function test_a_recurring_category_creates_a_template_with_the_category_and_materialises(): void
+    {
+        $user = $this->actingUser();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Training', 'color' => 'forest']);
+
+        Livewire::test(Schedule::class)
+            ->set('weekStart', '2026-06-22') // Mon
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $category->id)
+            ->set('eventDate', '2026-06-22')
+            ->set('eventStart', '17:00')
+            ->set('eventEnd', '18:00')
+            ->set('eventRecurring', true)
+            ->set('eventDays', [1, 3, 5])
+            ->call('saveEventForm')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('event_templates', [
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Training',
+            'recurrence' => '1,3,5',
+        ]);
+
+        // Materialised rows are inserted raw (insertOrIgnore), so the date is
+        // stored as a plain "Y-m-d" — unlike Eloquent's create(), which expands
+        // the `date` cast to a full datetime string on write.
+        $this->assertDatabaseHas('schedule_events', [
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'date' => '2026-06-22',
+        ]);
+    }
+
+    public function test_applying_a_template_carries_its_category(): void
+    {
+        $user = $this->actingUser();
+        $category = EventCategory::factory()->for($user)->create(['name' => 'Training', 'color' => 'forest']);
+        $template = EventTemplate::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Training',
+            'color' => 'forest',
+            'duration' => 60,
+            'default_start' => '17:00',
+        ]);
+
+        Livewire::test(Schedule::class)->call('applyTemplate', $template->id, '2026-06-27');
+
+        $this->assertDatabaseHas('schedule_events', [
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'title' => 'Training',
+            'date' => '2026-06-27 00:00:00',
+            'start_time' => '17:00',
+            'end_time' => '18:00',
+        ]);
     }
 
     public function test_move_keeps_duration(): void
