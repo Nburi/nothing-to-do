@@ -14,8 +14,8 @@
         --surface: 252 251 247;
         --line: 227 222 207;
         --ink: 35 41 31;
-        --ink-soft: 92 98 83;
-        --ink-faint: 142 146 127;
+        --ink-soft: 78 83 69;
+        --ink-faint: 106 110 89;
         --forest: 31 107 59;
         --forest-soft: 226 239 230;
         --overprint: 164 25 125;
@@ -36,7 +36,7 @@
             --line: 44 51 38;
             --ink: 232 234 223;
             --ink-soft: 167 172 153;
-            --ink-faint: 118 123 105;
+            --ink-faint: 133 138 119;
             --forest: 87 169 114;
             --forest-soft: 27 40 30;
             --overprint: 227 100 176;

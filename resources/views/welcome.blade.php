@@ -51,8 +51,7 @@
                             <p class="mb-2 px-0.5 text-[10px] font-medium text-ink-faint">{{ $name }}</p>
                             <div class="flex flex-col gap-2">
                                 @foreach ($items as [$t, $imp, $tag])
-                                    <div class="relative rounded-[7px] border border-line bg-surface px-2 py-2">
-                                        @if ($imp)<span class="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-overprint"></span>@endif
+                                    <div class="relative rounded-[7px] border px-2 py-2 {{ $imp ? 'border-line border-t-2 border-t-overprint bg-overprint-soft' : 'border-line bg-surface' }}">
                                         <div class="flex items-start gap-1.5">
                                             <span class="mt-px h-2.5 w-2.5 flex-none rounded-full border-2 border-line"></span>
                                             <span class="text-[11px] leading-tight text-ink">{{ $t }}</span>

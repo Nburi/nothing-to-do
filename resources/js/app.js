@@ -188,7 +188,9 @@ document.addEventListener('alpine:init', () => {
      * scheduleEvent — drag an event on the timeline grid. Body drag moves it
      * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
      * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.
-     * Geometry (top/height in px) is derived from minutes via the grid's --ppm.
+     * Geometry is percentage-based (top/height in % of the grid's span), so the
+     * grid may be any height — fixed px on desktop, viewport-filling on mobile.
+     * Drag math measures the live px-per-minute from the grid at gesture start.
      *
      * cfg: { id, start, end }  (start/end in minutes from midnight)
      */
@@ -198,6 +200,7 @@ document.addEventListener('alpine:init', () => {
         end: cfg.end ?? 0,
         ppm: 1,
         dayStart: 360,
+        span: 1020,
         snap: 5,
         minLen: 10,
         kind: null,
@@ -210,20 +213,22 @@ document.addEventListener('alpine:init', () => {
         init() {
             const grid = this.$el.closest('[data-grid]');
             if (grid) {
-                this.ppm = parseFloat(grid.dataset.ppm) || 1;
                 this.dayStart = parseInt(grid.dataset.dayStart, 10) || 360;
+                this.span = parseInt(grid.dataset.span, 10) || 1020;
             }
         },
 
         get top() {
-            return (this.start - this.dayStart) * this.ppm;
+            return ((this.start - this.dayStart) / this.span) * 100;
         },
         get height() {
-            return Math.max((this.end - this.start) * this.ppm, 16);
+            return ((this.end - this.start) / this.span) * 100;
         },
 
         begin(kind, e) {
             if (e.button != null && e.button !== 0) return;
+            const grid = this.$el.closest('[data-grid]');
+            if (grid) this.ppm = grid.getBoundingClientRect().height / this.span;
             this.kind = kind;
             this.sy = e.clientY;
             this.origStart = this.start;

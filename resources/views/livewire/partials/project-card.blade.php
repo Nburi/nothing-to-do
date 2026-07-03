@@ -28,7 +28,7 @@
                     class="tnum rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight"
                     @class([
                         'bg-signal-soft text-signal' => $project->isOverdue(),
-                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' => !$project->isOverdue() && $project->isUrgent(),
+                        'bg-contour-soft text-contour' => !$project->isOverdue() && $project->isUrgent(),
                         'bg-surface text-ink-faint border border-line' => !$project->isOverdue() && !$project->isUrgent(),
                     ])
                 >{{ $project->deadlineLabel() }}</span>

@@ -166,8 +166,17 @@
                 @error('editDueDate') <p class="text-xs text-signal">{{ $message }}</p> @enderror
 
                 <div class="flex items-center justify-between pt-1">
-                    <button type="button" wire:click="deleteTask({{ $editingId }})" class="rounded-card px-2 py-1.5 text-sm text-signal transition hover:bg-signal-soft">
-                        Löschen
+                    <button
+                        type="button"
+                        x-data="{ armed: false, _t: null }"
+                        @click="if (armed) { $wire.deleteTask({{ $editingId }}); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                        @click.outside="armed = false; clearTimeout(_t)"
+                        @keydown.escape.window="armed = false; clearTimeout(_t)"
+                        :class="armed ? 'bg-signal text-white' : 'text-signal hover:bg-signal-soft'"
+                        class="rounded-card px-2 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        aria-label="Aufgabe löschen"
+                    >
+                        <span x-text="armed ? 'Wirklich löschen?' : 'Löschen'">Löschen</span>
                     </button>
                     <div class="flex items-center gap-2">
                         <button type="button" wire:click="cancelEdit" class="rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-paper">
