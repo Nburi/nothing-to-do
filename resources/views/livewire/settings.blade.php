@@ -72,7 +72,8 @@
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <h2 class="mb-1 text-base font-medium text-ink">Zeitzone</h2>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
-            Stunden-Versatz zu UTC — z. B. <span class="font-medium text-ink">+1</span> für die Schweizer Winterzeit.
+            Stunden-Versatz zu UTC — z. B. <span class="font-medium text-ink">+1</span> für die Schweizer Winterzeit
+            oder <span class="font-medium text-ink">+5.5</span> für halbe/viertel Zeitzonen (z. B. Indien, Nepal).
         </p>
 
         <form
@@ -86,6 +87,7 @@
                 <input
                     id="timezoneOffset"
                     type="number"
+                    step="0.25"
                     min="-12"
                     max="14"
                     wire:model="timezoneOffset"
@@ -258,16 +260,16 @@
             <div class="grid max-w-md grid-cols-2 gap-4">
                 @php
                     $fields = [
-                        'pWork' => ['Work-Session (Min)', 5, 120],
-                        'pShortBreak' => ['Kurze Pause (Min)', 1, 60],
-                        'pLongBreak' => ['Lange Pause (Min)', 1, 120],
-                        'pLongEvery' => ['Sessions bis lange Pause', 2, 12],
+                        'pWork' => 'Work-Session (Min)',
+                        'pShortBreak' => 'Kurze Pause (Min)',
+                        'pLongBreak' => 'Lange Pause (Min)',
+                        'pLongEvery' => 'Sessions bis lange Pause',
                     ];
                 @endphp
-                @foreach ($fields as $model => [$label, $min, $max])
+                @foreach ($fields as $model => $label)
                     <div>
                         <label for="{{ $model }}" class="mb-1.5 block text-xs font-medium text-ink-soft">{{ $label }}</label>
-                        <input id="{{ $model }}" type="number" min="{{ $min }}" max="{{ $max }}" wire:model="{{ $model }}" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                        <input id="{{ $model }}" type="number" min="1" wire:model="{{ $model }}" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
                         @error($model) <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                     </div>
                 @endforeach

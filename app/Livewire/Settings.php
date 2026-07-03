@@ -24,7 +24,7 @@ class Settings extends Component
     public int $pLongEvery = 4;
 
     // Timezone
-    public int $timezoneOffset = 0;
+    public float $timezoneOffset = 0;
 
     public bool $timezoneAutoDst = false;
 
@@ -42,7 +42,7 @@ class Settings extends Component
         $this->pShortBreak = $user->pomodoro_short_break ?? 5;
         $this->pLongBreak = $user->pomodoro_long_break ?? 15;
         $this->pLongEvery = $user->pomodoro_long_every ?? 4;
-        $this->timezoneOffset = $user->timezone_offset ?? 0;
+        $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
     }
 
@@ -60,10 +60,10 @@ class Settings extends Component
     public function saveSchedule(): void
     {
         $data = $this->validate([
-            'pWork' => ['required', 'integer', 'between:5,120'],
-            'pShortBreak' => ['required', 'integer', 'between:1,60'],
-            'pLongBreak' => ['required', 'integer', 'between:1,120'],
-            'pLongEvery' => ['required', 'integer', 'between:2,12'],
+            'pWork' => ['required', 'integer', 'min:1'],
+            'pShortBreak' => ['required', 'integer', 'min:1'],
+            'pLongBreak' => ['required', 'integer', 'min:1'],
+            'pLongEvery' => ['required', 'integer', 'min:1'],
         ]);
 
         auth()->user()->update([
@@ -79,7 +79,7 @@ class Settings extends Component
     public function saveTimezone(): void
     {
         $data = $this->validate([
-            'timezoneOffset' => ['required', 'integer', 'between:-12,14'],
+            'timezoneOffset' => ['required', 'numeric', 'between:-12,14'],
             'timezoneAutoDst' => ['boolean'],
         ]);
 
