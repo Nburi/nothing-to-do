@@ -6,6 +6,7 @@ use App\Livewire\Concerns\ManagesTasks;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\TaskSuggestor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -199,6 +200,29 @@ class TaskBoard extends Component
     public function focusPhase(): ?array
     {
         return $this->focusSession?->pomodoroPhaseNow(now(), auth()->user()->pomodoro());
+    }
+
+    /**
+     * "What to work on" for the focus session — null once it's not the focus
+     * session, or during a break. Before the timer is started ("Bereit") this
+     * previews cycle 1's suggestion, since that's the session about to begin.
+     */
+    #[Computed]
+    public function taskSuggestion(): ?array
+    {
+        $session = $this->focusSession;
+
+        if ($session === null) {
+            return null;
+        }
+
+        $phase = $this->focusPhase;
+
+        if ($phase !== null && $phase['phase'] !== 'work') {
+            return null;
+        }
+
+        return TaskSuggestor::suggest(auth()->user(), $phase['cycle'] ?? 1, $session->id);
     }
 
     /** Active-task counts only — completed tasks don't inflate the badges. */

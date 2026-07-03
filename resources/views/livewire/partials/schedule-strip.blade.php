@@ -7,6 +7,7 @@
     $events = $this->scheduleToday;
     $focus = $this->focusSession;
     $phase = $this->focusPhase;
+    $suggestion = $this->taskSuggestion;
     $pct = fn ($min) => max(0, min(100, ($min - $dayStart) / $span * 100));
 
     $stripColor = fn ($token) => match ($token) {
@@ -48,6 +49,9 @@
                         'long_break' => 'Lange Pause',
                         default => $focus->displayTitle(),
                     } }}</p>
+                    @if ($suggestion)
+                        @include('livewire.partials.schedule-strip-suggestion')
+                    @endif
                     <a href="{{ route('schedule') }}" wire:navigate class="truncate text-xs text-ink-soft hover:text-ink">Zeitplan öffnen</a>
                 </div>
                 <button
@@ -70,6 +74,9 @@
                         <span class="tnum text-[11px] text-ink-faint">{{ $focus->start_time }}–{{ $focus->end_time }}</span>
                     </div>
                     <p class="truncate text-[15px] font-medium text-ink">{{ $focus->displayTitle() }}</p>
+                    @if ($suggestion)
+                        @include('livewire.partials.schedule-strip-suggestion')
+                    @endif
                     <a href="{{ route('schedule') }}" wire:navigate class="truncate text-xs text-ink-soft hover:text-ink">Zeitplan öffnen</a>
                 </div>
                 <button
