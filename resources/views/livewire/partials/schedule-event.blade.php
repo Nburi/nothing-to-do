@@ -20,14 +20,14 @@
 <div
     wire:key="ev-{{ $event->id }}"
     x-data="scheduleEvent({ id: {{ $event->id }}, start: {{ $startMin }}, end: {{ $endMin }} })"
-    x-bind:style="`top:${top}px; height:${height}px`"
+    x-bind:style="`top:${top}%; height:${height}%`"
     @pointerdown="begin('move', $event)"
     @pointermove="drag($event)"
     @pointerup="finish()"
     @pointercancel="finish()"
     style="touch-action: none"
     @class([
-        'group absolute select-none rounded-[7px] border px-2 py-1 text-left',
+        'group absolute min-h-[16px] select-none rounded-[7px] border px-2 py-1 text-left',
         $styles['bg'], $styles['bd'],
         'inset-x-1' => $compact,
         'left-[3.75rem] right-2' => ! $compact,
