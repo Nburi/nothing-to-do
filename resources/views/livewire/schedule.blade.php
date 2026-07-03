@@ -129,7 +129,14 @@
             @endif
 
             <div class="rounded-card border border-line bg-surface p-2">
-                <div class="relative" style="height: {{ $span * $ppmDay }}px" data-grid data-ppm="{{ $ppmDay }}" data-day-start="{{ $dayStart }}">
+                <div class="flex">
+                {{-- Time gutter — same hour marks as the desktop week view. --}}
+                <div class="relative w-8 flex-none" style="height: {{ $span * $ppmDay }}px" aria-hidden="true">
+                    @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                        <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) * $ppmDay }}px">{{ sprintf('%02d', $h) }}</span>
+                    @endfor
+                </div>
+                <div class="relative flex-1 border-l border-line/60" style="height: {{ $span * $ppmDay }}px" data-grid data-ppm="{{ $ppmDay }}" data-day-start="{{ $dayStart }}">
                     @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmDay }}px"></div>
                     @endfor
@@ -148,6 +155,7 @@
                             <p class="mt-1 text-xs text-ink-faint">Füge unten einen hinzu oder tippe eine Vorlage.</p>
                         </div>
                     @endforelse
+                </div>
                 </div>
             </div>
 
