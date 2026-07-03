@@ -57,6 +57,11 @@ I say so, with reasoning.
    (migrations, `.env` variables, new dependencies, cron jobs), tell the user explicitly with a clear,
    numbered checklist.
 8. **Maintain this file** — keep `CLAUDE.md` current. Document solved problems under *Known Issues*.
+9. **No `confirm()` for destructive actions** — never use `confirm()`, `window.confirm()`, Livewire's
+   `wire:confirm`, or any other blocking browser dialog to confirm a delete/remove action. Always use
+   the double-click "armed" pattern instead (click once arms the button — red background, 2s timeout,
+   resets on outside-click/Escape — click again within that window to actually delete). See *Known
+   Issues* for the exact Alpine snippet.
 
 ---
 
@@ -341,6 +346,28 @@ native exe, corrupting the PHP snippet.
 **Fix:** don't seed/poke the DB with `tinker --execute`. Write a throwaway seeder (`php artisan db:seed
 --class=…`) or a small test, or drive state through the running app's Livewire `$wire` API in the browser
 preview. Reserve PHP verification for PHPUnit, which has no shell-quoting surface.
+
+### Destructive actions must never use `confirm()` / `wire:confirm`
+**Rule:** blocking browser dialogs (`confirm()`, `window.confirm()`, Livewire's `wire:confirm`) are banned
+for delete/remove actions — they're jarring, unstyled, and block the main thread. Use the "armed"
+double-click pattern instead, exactly as already used across task cards, category rows, project actions,
+and the schedule event form:
+```html
+<button
+    type="button"
+    x-data="{ armed: false, _t: null }"
+    @click="if (armed) { $wire.someDestructiveAction(...args); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+    @click.outside="armed = false; clearTimeout(_t)"
+    @keydown.escape.window="armed = false; clearTimeout(_t)"
+    :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+    class="transition ..."
+    aria-label="…"
+>…</button>
+```
+First click arms the button (red background, 2s window); a second click within that window fires the
+action. Clicking outside or pressing Escape disarms it early. See `partials/task-card.blade.php`,
+`settings.blade.php` (category delete), `project-page.blade.php` (project delete, external link/deadline
+removal), and `partials/schedule-event-form.blade.php` (event delete) for reference implementations.
 
 ---
 

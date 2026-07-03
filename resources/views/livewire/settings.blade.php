@@ -202,9 +202,12 @@
 
                     <button
                         type="button"
-                        wire:click="deleteCategory({{ $category->id }})"
-                        wire:confirm="Kategorie {{ $category->name }} löschen? Bestehende Termine bleiben erhalten."
-                        class="grid h-8 w-8 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-signal-soft hover:text-signal"
+                        x-data="{ armed: false, _t: null }"
+                        @click="if (armed) { $wire.deleteCategory({{ $category->id }}); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                        @click.outside="armed = false; clearTimeout(_t)"
+                        @keydown.escape.window="armed = false; clearTimeout(_t)"
+                        :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                         aria-label="Kategorie löschen"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>

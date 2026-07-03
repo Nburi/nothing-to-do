@@ -73,12 +73,14 @@
                         <div class="my-1 h-px bg-line/60"></div>
                         <button
                             type="button"
-                            wire:click="deleteProject"
-                            wire:confirm="Projekt löschen? Offene Aufgaben wandern zurück in die Inbox."
-                            @click="open = false"
-                            class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft"
+                            x-data="{ armed: false, _t: null }"
+                            @click="if (armed) { $wire.deleteProject(); clearTimeout(_t); armed = false; open = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                            @click.outside="armed = false; clearTimeout(_t)"
+                            @keydown.escape.window="armed = false; clearTimeout(_t)"
+                            :class="armed ? 'bg-signal text-white' : 'text-signal hover:bg-signal-soft'"
+                            class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
                         >
-                            Projekt löschen
+                            <span x-text="armed ? 'Wirklich löschen?' : 'Projekt löschen'"></span>
                         </button>
                     </div>
                 </div>
@@ -114,9 +116,12 @@
                 </a>
                 <button
                     type="button"
-                    wire:click="removeExternalLink"
-                    wire:confirm="Externen Link entfernen?"
-                    class="grid h-6 w-6 place-items-center rounded-full text-ink-faint transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    x-data="{ armed: false, _t: null }"
+                    @click="if (armed) { $wire.removeExternalLink(); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                    @click.outside="armed = false; clearTimeout(_t)"
+                    @keydown.escape.window="armed = false; clearTimeout(_t)"
+                    :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-surface hover:text-ink'"
+                    class="grid h-6 w-6 place-items-center rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     aria-label="Link entfernen"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -157,9 +162,12 @@
                 </button>
                 <button
                     type="button"
-                    wire:click="removeDeadline"
-                    wire:confirm="Deadline entfernen?"
-                    class="grid h-6 w-6 place-items-center rounded-full text-ink-faint transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    x-data="{ armed: false, _t: null }"
+                    @click="if (armed) { $wire.removeDeadline(); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                    @click.outside="armed = false; clearTimeout(_t)"
+                    @keydown.escape.window="armed = false; clearTimeout(_t)"
+                    :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-surface hover:text-ink'"
+                    class="grid h-6 w-6 place-items-center rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     aria-label="Deadline entfernen"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
