@@ -73,6 +73,11 @@ window.projectDropZone = function (el, wire) {
 
 document.addEventListener('alpine:init', () => {
     /**
+     * Shared draw state: which category chip is currently "armed" for drawing.
+     * cat: category id | null, color: Topografie token | null.
+     */
+    window.Alpine.store('draw', { cat: null, color: null });
+    /**
      * swipeCard — native-feeling horizontal swipe for mobile task cards.
      * Tracks the finger 1:1, locks to the horizontal axis (vertical scroll still
      * works), resists past the threshold, springs back if abandoned. Visual action
@@ -283,6 +288,86 @@ document.addEventListener('alpine:init', () => {
             } else {
                 this.lastTap = now;
             }
+        },
+    }));
+
+    /**
+     * scheduleDraw — draw a new category block on the timeline by clicking and
+     * dragging on the empty grid background. Active only when a category chip in
+     * the footer is selected ($store.draw.cat !== null). Times snap to 5 minutes;
+     * a short tap (< minLen) defaults to a 30-minute block. Works on both the
+     * fixed-px desktop week columns and the %-based mobile day column.
+     *
+     * cfg: { date }  (ISO date string for the day this column represents)
+     */
+    window.Alpine.data('scheduleDraw', (cfg = {}) => ({
+        date: cfg.date ?? '',
+        dayStart: 360,
+        span: 1020,
+        snap: 5,
+        minLen: 10,
+        drawing: false,
+        startMin: 0,
+        currentMin: 0,
+
+        init() {
+            this.dayStart = parseInt(this.$el.dataset.dayStart, 10) || 360;
+            this.span = parseInt(this.$el.dataset.span, 10) || 1020;
+        },
+
+        yToMin(clientY) {
+            const rect = this.$el.getBoundingClientRect();
+            const ppm = rect.height / this.span;
+            const raw = (clientY - rect.top) / ppm + this.dayStart;
+            const clamped = Math.max(this.dayStart, Math.min(this.dayStart + this.span, raw));
+            return Math.round(clamped / this.snap) * this.snap;
+        },
+
+        beginDraw(e) {
+            if (!this.$store.draw.cat) return;
+            if (e.button != null && e.button !== 0) return;
+            this.drawing = true;
+            this.startMin = this.yToMin(e.clientY);
+            this.currentMin = this.startMin;
+            this.$el.setPointerCapture?.(e.pointerId);
+            if (e.cancelable) e.preventDefault();
+        },
+
+        moveDraw(e) {
+            if (!this.drawing) return;
+            this.currentMin = this.yToMin(e.clientY);
+        },
+
+        finishDraw() {
+            if (!this.drawing) return;
+            this.drawing = false;
+
+            let start = Math.min(this.startMin, this.currentMin);
+            let end = Math.max(this.startMin, this.currentMin);
+
+            if (end - start < this.minLen) {
+                end = Math.min(this.dayStart + this.span, start + 30);
+            }
+
+            const cat = this.$store.draw.cat;
+            if (cat && end > start) {
+                const hhmm = (m) =>
+                    `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+                this.$wire.quickCreateCategoryBlock(cat, this.date, hhmm(start), hhmm(end));
+            }
+        },
+
+        get previewStart() { return Math.min(this.startMin, this.currentMin); },
+        get previewEnd()   { return Math.max(this.startMin, this.currentMin); },
+        get previewTop()   { return ((this.previewStart - this.dayStart) / this.span) * 100; },
+        get previewHeight(){ return ((this.previewEnd - this.previewStart) / this.span) * 100; },
+
+        get previewColorStyle() {
+            const token = this.$store.draw.color;
+            if (!token) return '';
+            // CSS vars use plain token names: --forest, --contour, --ink-faint, etc.
+            const v = token === 'ink' ? '--ink-faint' : `--${token}`;
+            return `background: rgb(var(${v}) / 0.25); outline: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
         },
     }));
 
