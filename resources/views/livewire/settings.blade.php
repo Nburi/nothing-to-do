@@ -68,6 +68,84 @@
         </form>
     </div>
 
+    {{-- Zeitzone --}}
+    <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h2 class="mb-1 text-base font-medium text-ink">Zeitzone</h2>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Stunden-Versatz zu UTC — z. B. <span class="font-medium text-ink">+1</span> für die Schweizer Winterzeit.
+        </p>
+
+        <form
+            wire:submit="saveTimezone"
+            x-data="{ saved: false }"
+            @timezone-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
+            class="max-w-xs space-y-4"
+        >
+            <div>
+                <label for="timezoneOffset" class="mb-1.5 block text-sm font-medium text-ink">UTC-Versatz (Stunden)</label>
+                <input
+                    id="timezoneOffset"
+                    type="number"
+                    min="-12"
+                    max="14"
+                    wire:model="timezoneOffset"
+                    class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                />
+                @error('timezoneOffset')
+                    <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm font-medium text-ink">Sommer-/Winterzeit automatisch korrigieren</p>
+                    <p class="text-xs text-ink-soft">Zählt in der europäischen Sommerzeit automatisch eine Stunde dazu.</p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="$set('timezoneAutoDst', {{ $timezoneAutoDst ? 'false' : 'true' }})"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $timezoneAutoDst,
+                        'bg-line' => ! $timezoneAutoDst,
+                    ])
+                    aria-label="Sommer-/Winterzeit automatisch korrigieren {{ $timezoneAutoDst ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $timezoneAutoDst,
+                        'left-0.5' => ! $timezoneAutoDst,
+                    ])></span>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button
+                    type="submit"
+                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                >
+                    Speichern
+                </button>
+                <span
+                    x-show="saved"
+                    x-transition:enter="transition duration-150"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition duration-300"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
+                    style="display: none;"
+                >
+                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Gespeichert
+                </span>
+            </div>
+        </form>
+    </div>
+
     {{-- Kategorien --}}
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <h2 class="mb-1 text-base font-medium text-ink">Kategorien</h2>

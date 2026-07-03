@@ -107,6 +107,17 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **`User`** (Breeze) `hasMany` **`Task`**, **`Project`**, **`ScheduleEvent`**, **`EventTemplate`**,
   **`EventCategory`**. Carries the Pomodoro rhythm settings; `pomodoro()` returns the rhythm array
   (`work/short_break/long_break/long_every`), consumed by `PomodoroCycle` and any category's focus timer.
+  Also carries manual timezone settings — `timezone_offset` (a plain UTC-offset integer entered by the
+  user, e.g. `+1`, not an IANA zone; defaults to `0` so an unconfigured account behaves exactly like the
+  server clock) and `timezone_auto_dst` (adds +1 hour automatically while European DST is active, detected
+  by borrowing `Europe/Zurich`'s own transition dates via `DateTime::format('I')` rather than hand-rolled
+  EU rules). `localNow()`/`localToday()` return the shifted "now"/calendar day; every wall-clock-sensitive
+  read (task/project deadline buckets, the Zeitplan's "today", the completed-task reset window) goes
+  through these instead of a bare `now()`/`Carbon::today()` (which read the server's UTC clock and would
+  otherwise silently misplace "today" near midnight local time). The Pomodoro countdown itself
+  (`pomodoroPhaseNow`) deliberately keeps using the raw, unshifted `now()` — it's a pure elapsed-time diff
+  against `pomodoro_started_at`, so a timezone shift would cancel out at best and corrupt the countdown at
+  worst if applied inconsistently. Configured in **Settings**' Zeitzone card (`saveTimezone()`).
 - **`Project`** — `user_id, name, brainstorm, external_url, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
   uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
   Scopes: `forUser`, `ordered`.

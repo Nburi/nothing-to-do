@@ -5,15 +5,16 @@
     $ppmWeek = 0.6;                       // px per minute, desktop week
     $ppmDay = 0.95;                       // px per minute, mobile day
     $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-    $today = Carbon::today();
-    $nowMin = now()->hour * 60 + now()->minute;
+    $now = auth()->user()->localNow();
+    $today = $now->copy()->startOfDay();
+    $nowMin = $now->hour * 60 + $now->minute;
     $weekStartC = Carbon::parse($weekStart);
     $focused = Carbon::parse($focusedDate);
 
     $relDay = match (true) {
-        $focused->isToday() => 'Heute',
-        $focused->isTomorrow() => 'Morgen',
-        $focused->isYesterday() => 'Gestern',
+        $focused->isSameDay($today) => 'Heute',
+        $focused->isSameDay($today->copy()->addDay()) => 'Morgen',
+        $focused->isSameDay($today->copy()->subDay()) => 'Gestern',
         default => $wd[$focused->dayOfWeekIso - 1],
     };
 @endphp
@@ -54,11 +55,11 @@
                             wire:click="openEventForm('{{ $day->toDateString() }}')"
                             @class([
                                 'group flex-1 border-l border-line px-2 py-2.5 text-center transition hover:bg-paper',
-                                'bg-forest-soft/40' => $day->isToday(),
+                                'bg-forest-soft/40' => $day->isSameDay($today),
                             ])
                         >
                             <div class="text-[11px] uppercase tracking-wide text-ink-faint">{{ $wd[$day->dayOfWeekIso - 1] }}</div>
-                            <div class="tnum text-sm font-medium {{ $day->isToday() ? 'text-forest' : 'text-ink' }}">{{ $day->day }}</div>
+                            <div class="tnum text-sm font-medium {{ $day->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $day->day }}</div>
                         </button>
                     @endforeach
                 </div>
@@ -78,7 +79,7 @@
                                 <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px"></div>
                             @endfor
 
-                            @if ($day->isToday() && $nowMin >= $dayStart && $nowMin <= $dayEnd)
+                            @if ($day->isSameDay($today) && $nowMin >= $dayStart && $nowMin <= $dayEnd)
                                 <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) * $ppmWeek }}px">
                                     <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-signal"></span>
                                 </div>
@@ -107,7 +108,7 @@
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
                     <button wire:click="goToday" class="text-center leading-tight">
-                        <div class="text-sm font-medium {{ $focused->isToday() ? 'text-forest' : 'text-ink' }}">{{ $relDay }}</div>
+                        <div class="text-sm font-medium {{ $focused->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $relDay }}</div>
                         <div class="tnum text-[11px] text-ink-faint">{{ $wd[$focused->dayOfWeekIso - 1] }} · {{ $focused->isoFormat('D.M.') }}</div>
                     </button>
                     <button wire:click="nextDay" class="grid h-8 w-8 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Nächster Tag">
@@ -133,7 +134,7 @@
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmDay }}px"></div>
                     @endfor
 
-                    @if ($focused->isToday() && $nowMin >= $dayStart && $nowMin <= $dayEnd)
+                    @if ($focused->isSameDay($today) && $nowMin >= $dayStart && $nowMin <= $dayEnd)
                         <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) * $ppmDay }}px">
                             <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-signal"></span>
                         </div>

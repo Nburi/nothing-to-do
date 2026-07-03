@@ -28,8 +28,9 @@ class Schedule extends Component
 
     public function mount(): void
     {
-        $this->weekStart = Carbon::today()->startOfWeek()->toDateString();
-        $this->focusedDate = Carbon::today()->toDateString();
+        $today = auth()->user()->localToday();
+        $this->weekStart = $today->copy()->startOfWeek()->toDateString();
+        $this->focusedDate = $today->toDateString();
     }
 
     /** The seven Carbon dates of the visible week. */
@@ -98,7 +99,7 @@ class Schedule extends Component
 
     public function goToday(): void
     {
-        $this->focusDate(Carbon::today());
+        $this->focusDate(auth()->user()->localToday());
     }
 
     public function render()

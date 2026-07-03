@@ -2,7 +2,7 @@
     $dayStart = 6 * 60;
     $dayEnd = 23 * 60;
     $span = $dayEnd - $dayStart;
-    $now = now();
+    $now = auth()->user()->localNow();
     $nowMin = $now->hour * 60 + $now->minute;
     $events = $this->scheduleToday;
     $focus = $this->focusSession;

@@ -92,7 +92,7 @@ class Task extends Model
      */
     public function scopeBoardOrdered(Builder $query): Builder
     {
-        $threshold = Carbon::today()->addDays(self::URGENCY_DAYS)->toDateString();
+        $threshold = self::today()->addDays(self::URGENCY_DAYS)->toDateString();
 
         return $query
             ->orderByDesc('is_important')
@@ -109,6 +109,12 @@ class Task extends Model
 
     // ── Deadline logic (hard deadline wins over soft due date) ────────
 
+    /** The authenticated user's local calendar day, falling back to the server clock. */
+    private static function today(): Carbon
+    {
+        return auth()->user()?->localToday() ?? Carbon::today();
+    }
+
     /** The date that drives urgency/display: hard deadline takes precedence. */
     public function effectiveDate(): ?Carbon
     {
@@ -121,7 +127,7 @@ class Task extends Model
         $date = $this->effectiveDate();
 
         return $date !== null
-            && $date->lessThanOrEqualTo(Carbon::today()->addDays(self::URGENCY_DAYS));
+            && $date->lessThanOrEqualTo(self::today()->addDays(self::URGENCY_DAYS));
     }
 
     /** True when the effective date is strictly before today. */
@@ -131,7 +137,7 @@ class Task extends Model
 
         return ! $this->is_completed
             && $date !== null
-            && $date->lessThan(Carbon::today());
+            && $date->lessThan(self::today());
     }
 
     public function isInbox(): bool
@@ -159,7 +165,7 @@ class Task extends Model
             return null;
         }
 
-        $today = Carbon::today();
+        $today = self::today();
 
         if ($date->lessThan($today)) {
             return 'überfällig';

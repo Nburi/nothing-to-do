@@ -7,7 +7,6 @@ use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Services\TaskSuggestor;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -155,7 +154,7 @@ class TaskBoard extends Component
     #[Computed]
     public function scheduleToday(): Collection
     {
-        $today = Carbon::today();
+        $today = auth()->user()->localToday();
 
         ScheduleEvent::materializeRange(auth()->user(), $today, $today->copy());
 
@@ -177,7 +176,7 @@ class TaskBoard extends Component
     #[Computed]
     public function focusSession(): ?ScheduleEvent
     {
-        $now = now();
+        $now = auth()->user()->localNow();
         $nowMin = $now->hour * 60 + $now->minute;
 
         return $this->scheduleToday->first(function (ScheduleEvent $e) use ($now, $nowMin) {

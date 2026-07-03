@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'name', 'email', 'password', 'task_reset_time',
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every',
+    'timezone_offset', 'timezone_auto_dst',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -73,14 +74,59 @@ class User extends Authenticatable
         $time = $this->task_reset_time ?? '01:00';
         [$h, $m] = array_pad(explode(':', $time), 2, '00');
 
-        $resetToday = Carbon::today()
+        $now = $this->localNow();
+
+        $resetToday = $now->copy()->startOfDay()
             ->setHour((int) $h)
             ->setMinute((int) $m)
             ->setSecond(0);
 
-        return now()->greaterThanOrEqualTo($resetToday)
+        return $now->greaterThanOrEqualTo($resetToday)
             ? $resetToday
             : $resetToday->subDay();
+    }
+
+    /**
+     * Base UTC offset in whole hours (standard/winter time, no DST applied).
+     * Entered directly by the user (e.g. +1 for Switzerland, -5 for New York)
+     * since this is a single-user app, not a full IANA timezone picker.
+     */
+    public function timezoneOffsetHours(): int
+    {
+        return (int) ($this->timezone_offset ?? 0);
+    }
+
+    /**
+     * The effective UTC offset (in minutes) right now: the base offset, plus
+     * +1 hour when European DST is active and auto-correction is enabled.
+     * DST transition dates are borrowed from PHP's own "Europe/Zurich" tz
+     * database rather than hand-rolled EU rules — same rule, reusing data
+     * PHP already ships.
+     */
+    public function utcOffsetMinutes(?Carbon $at = null): int
+    {
+        $offset = $this->timezoneOffsetHours();
+
+        if ($this->timezone_auto_dst) {
+            $at ??= Carbon::now();
+            $dt = new \DateTime('@'.$at->getTimestamp());
+            $dt->setTimezone(new \DateTimeZone('Europe/Zurich'));
+            $offset += (int) $dt->format('I');
+        }
+
+        return $offset * 60;
+    }
+
+    /** The current moment, shifted to this user's configured local wall time. */
+    public function localNow(): Carbon
+    {
+        return Carbon::now()->addMinutes($this->utcOffsetMinutes());
+    }
+
+    /** Midnight of the user's current local calendar day. */
+    public function localToday(): Carbon
+    {
+        return $this->localNow()->startOfDay();
     }
 
     /**
@@ -93,6 +139,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'timezone_auto_dst' => 'boolean',
         ];
     }
 }
