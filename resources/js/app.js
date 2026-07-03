@@ -340,7 +340,6 @@ document.addEventListener('alpine:init', () => {
 
         finishDraw() {
             if (!this.drawing) return;
-            this.drawing = false;
 
             let start = Math.min(this.startMin, this.currentMin);
             let end = Math.max(this.startMin, this.currentMin);
@@ -353,7 +352,15 @@ document.addEventListener('alpine:init', () => {
             if (cat && end > start) {
                 const hhmm = (m) =>
                     `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-                this.$wire.quickCreateCategoryBlock(cat, this.date, hhmm(start), hhmm(end));
+                // Keep the preview block showing its final shape until the server
+                // responds and morphs in the real block — otherwise it vanishes for
+                // the length of the round trip, an empty flash on anything but
+                // localhost. Mirrors scheduleEvent's optimistic move/resize, which
+                // never lets the block disappear mid-gesture either.
+                this.$wire.quickCreateCategoryBlock(cat, this.date, hhmm(start), hhmm(end))
+                    .finally(() => { this.drawing = false; });
+            } else {
+                this.drawing = false;
             }
         },
 
