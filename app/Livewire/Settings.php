@@ -23,6 +23,11 @@ class Settings extends Component
 
     public int $pLongEvery = 4;
 
+    // Timezone
+    public int $timezoneOffset = 0;
+
+    public bool $timezoneAutoDst = false;
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -37,6 +42,8 @@ class Settings extends Component
         $this->pShortBreak = $user->pomodoro_short_break ?? 5;
         $this->pLongBreak = $user->pomodoro_long_break ?? 15;
         $this->pLongEvery = $user->pomodoro_long_every ?? 4;
+        $this->timezoneOffset = $user->timezone_offset ?? 0;
+        $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
     }
 
     public function save(): void
@@ -67,6 +74,21 @@ class Settings extends Component
         ]);
 
         $this->dispatch('schedule-saved');
+    }
+
+    public function saveTimezone(): void
+    {
+        $data = $this->validate([
+            'timezoneOffset' => ['required', 'integer', 'between:-12,14'],
+            'timezoneAutoDst' => ['boolean'],
+        ]);
+
+        auth()->user()->update([
+            'timezone_offset' => $data['timezoneOffset'],
+            'timezone_auto_dst' => $data['timezoneAutoDst'],
+        ]);
+
+        $this->dispatch('timezone-saved');
     }
 
     /** The user's categories, for the settings list. */

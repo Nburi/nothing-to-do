@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Project extends Model
 {
@@ -30,14 +31,20 @@ class Project extends Model
         ];
     }
 
+    /** The authenticated user's local calendar day, falling back to the server clock. */
+    private static function today(): Carbon
+    {
+        return auth()->user()?->localToday() ?? Carbon::today();
+    }
+
     public function isOverdue(): bool
     {
-        return $this->deadline !== null && $this->deadline->isPast() && ! $this->deadline->isToday();
+        return $this->deadline !== null && $this->deadline->lessThan(self::today());
     }
 
     public function isUrgent(): bool
     {
-        return $this->deadline !== null && $this->deadline->diffInDays(now()) <= 4 && ! $this->isOverdue();
+        return $this->deadline !== null && $this->deadline->diffInDays(self::today()) <= 4 && ! $this->isOverdue();
     }
 
     public function deadlineLabel(): string
@@ -46,7 +53,7 @@ class Project extends Model
             return '';
         }
 
-        $today = now()->startOfDay();
+        $today = self::today();
         $diff = (int) $today->diffInDays($this->deadline, false);
 
         if ($diff < 0) {

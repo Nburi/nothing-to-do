@@ -69,7 +69,7 @@ trait ManagesSchedule
         $this->reset(['editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId', 'eventRecurring', 'eventDays', 'eventSaveAsTemplate']);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
-        $this->eventDate = $date ?: Carbon::today()->toDateString();
+        $this->eventDate = $date ?: auth()->user()->localToday()->toDateString();
         $this->eventStart = '08:00';
         $this->eventEnd = '09:00';
         $this->showEventForm = true;
