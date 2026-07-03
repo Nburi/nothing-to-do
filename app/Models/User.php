@@ -87,13 +87,14 @@ class User extends Authenticatable
     }
 
     /**
-     * Base UTC offset in whole hours (standard/winter time, no DST applied).
+     * Base UTC offset in hours (standard/winter time, no DST applied), including
+     * fractional quarter/half-hour offsets (e.g. +5.5 for India, +5.75 for Nepal).
      * Entered directly by the user (e.g. +1 for Switzerland, -5 for New York)
      * since this is a single-user app, not a full IANA timezone picker.
      */
-    public function timezoneOffsetHours(): int
+    public function timezoneOffsetHours(): float
     {
-        return (int) ($this->timezone_offset ?? 0);
+        return (float) ($this->timezone_offset ?? 0);
     }
 
     /**
@@ -114,7 +115,7 @@ class User extends Authenticatable
             $offset += (int) $dt->format('I');
         }
 
-        return $offset * 60;
+        return (int) round($offset * 60);
     }
 
     /** The current moment, shifted to this user's configured local wall time. */
@@ -139,6 +140,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'timezone_offset' => 'float',
             'timezone_auto_dst' => 'boolean',
         ];
     }

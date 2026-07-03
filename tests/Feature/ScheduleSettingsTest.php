@@ -45,15 +45,51 @@ class ScheduleSettingsTest extends TestCase
         ]);
     }
 
-    public function test_it_validates_pomodoro_ranges(): void
+    public function test_it_rejects_non_positive_pomodoro_values(): void
     {
         $this->actingAs(User::factory()->create());
 
         Livewire::test(Settings::class)
             ->set('pWork', 0)
-            ->set('pLongEvery', 99)
+            ->set('pLongEvery', -1)
             ->call('saveSchedule')
             ->assertHasErrors(['pWork', 'pLongEvery']);
+    }
+
+    public function test_it_accepts_any_positive_pomodoro_value(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('pWork', 1)
+            ->set('pShortBreak', 1)
+            ->set('pLongBreak', 1)
+            ->set('pLongEvery', 99)
+            ->call('saveSchedule')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'pomodoro_work' => 1,
+            'pomodoro_short_break' => 1,
+            'pomodoro_long_break' => 1,
+            'pomodoro_long_every' => 99,
+        ]);
+    }
+
+    public function test_it_saves_a_fractional_timezone_offset(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('timezoneOffset', 5.5)
+            ->call('saveTimezone')
+            ->assertHasNoErrors();
+
+        $this->assertEquals(5.5, $user->refresh()->timezone_offset);
+        $this->assertSame(330, $user->utcOffsetMinutes());
     }
 
     public function test_it_adds_a_category(): void
