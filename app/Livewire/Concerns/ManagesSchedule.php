@@ -298,6 +298,31 @@ trait ManagesSchedule
         ]);
     }
 
+    /** Quick-create a category block by drawing on the timeline (no form needed). */
+    public function quickCreateCategoryBlock(int $categoryId, string $date, string $start, string $end): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($categoryId);
+
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return;
+        }
+        if (! preg_match('/^\d{2}:\d{2}$/', $start) || ! preg_match('/^\d{2}:\d{2}$/', $end)) {
+            return;
+        }
+        if (ScheduleEvent::toMinutes($end) - ScheduleEvent::toMinutes($start) < self::MIN_EVENT) {
+            return;
+        }
+
+        auth()->user()->scheduleEvents()->create([
+            'category_id' => $category->id,
+            'title'       => $category->name,
+            'color'       => $category->color,
+            'date'        => $date,
+            'start_time'  => $start,
+            'end_time'    => $end,
+        ]);
+    }
+
     public function deleteTemplate(int $id): void
     {
         auth()->user()->eventTemplates()->whereKey($id)->delete();

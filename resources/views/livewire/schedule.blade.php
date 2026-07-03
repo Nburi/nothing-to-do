@@ -73,7 +73,18 @@
 
                     @foreach ($this->weekDays as $day)
                         @php $dayEvents = $this->events->get($day->toDateString(), collect()); @endphp
-                        <div class="relative flex-1 border-l border-line" data-grid data-span="{{ $span }}" data-day-start="{{ $dayStart }}">
+                        <div
+                            class="relative flex-1 border-l border-line"
+                            data-grid
+                            data-span="{{ $span }}"
+                            data-day-start="{{ $dayStart }}"
+                            x-data="scheduleDraw({ date: '{{ $day->toDateString() }}' })"
+                            @pointerdown.self="beginDraw"
+                            @pointermove="moveDraw"
+                            @pointerup="finishDraw"
+                            :class="$store.draw.cat ? 'cursor-crosshair' : ''"
+                            style="touch-action: none"
+                        >
                             @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                                 <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px"></div>
                             @endfor
@@ -87,9 +98,20 @@
                             @foreach ($dayEvents as $event)
                                 @include('livewire.partials.schedule-event', ['event' => $event, 'compact' => true])
                             @endforeach
+
+                            {{-- Draw preview block --}}
+                            <div
+                                x-show="drawing"
+                                :style="`top:${previewTop}%; height:${Math.max(previewHeight, 0.5)}%; ${previewColorStyle}`"
+                                class="pointer-events-none absolute inset-x-0.5 z-30 rounded-[7px]"
+                                style="display:none"
+                            ></div>
                         </div>
                     @endforeach
                 </div>
+                @if ($this->categories->isNotEmpty())
+                    @include('livewire.partials.schedule-category-footer')
+                @endif
             </div>
             <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · Stift bearbeitet</p>
         </div>
@@ -140,7 +162,18 @@
                         <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%">{{ sprintf('%02d', $h) }}</span>
                     @endfor
                 </div>
-                <div class="relative flex-1 border-l border-line/60" data-grid data-span="{{ $span }}" data-day-start="{{ $dayStart }}">
+                <div
+                    class="relative flex-1 border-l border-line/60"
+                    data-grid
+                    data-span="{{ $span }}"
+                    data-day-start="{{ $dayStart }}"
+                    x-data="scheduleDraw({ date: '{{ $focusedDate }}' })"
+                    @pointerdown.self="beginDraw"
+                    @pointermove="moveDraw"
+                    @pointerup="finishDraw"
+                    :class="$store.draw.cat ? 'cursor-crosshair' : ''"
+                    style="touch-action: none"
+                >
                     @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
                     @endfor
@@ -159,9 +192,23 @@
                             <p class="mt-1 text-xs text-ink-faint">Tippe oben auf + oder eine Vorlage.</p>
                         </div>
                     @endforelse
+
+                    {{-- Draw preview block --}}
+                    <div
+                        x-show="drawing"
+                        :style="`top:${previewTop}%; height:${Math.max(previewHeight, 0.5)}%; ${previewColorStyle}`"
+                        class="pointer-events-none absolute inset-x-0.5 z-30 rounded-[7px]"
+                        style="display:none"
+                    ></div>
                 </div>
                 </div>
             </div>
+
+            @if ($this->categories->isNotEmpty())
+                <div class="mt-2 flex-none rounded-card border border-line bg-surface">
+                    @include('livewire.partials.schedule-category-footer')
+                </div>
+            @endif
         </div>
     </div>
 
