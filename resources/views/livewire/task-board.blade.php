@@ -476,4 +476,7 @@
 
     {{-- ════════════════ EDIT SHEET ════════════════ --}}
     @include('livewire.partials.edit-sheet')
+
+    {{-- ════════════════ PROJECT PICKER (mobile long-press) ════════════════ --}}
+    @include('livewire.partials.project-picker-sheet')
 </div>

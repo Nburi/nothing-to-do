@@ -45,11 +45,13 @@
             </svg>
         </button>
 
+        <div x-data="{ lastTap: 0 }" class="contents">
         <button
             type="button"
             wire:click="toggleImportant({{ $task->id }})"
+            @click="if (Date.now() - lastTap < 320) { $wire.startEdit({{ $task->id }}); lastTap = 0; } else { lastTap = Date.now(); }"
             class="min-w-0 flex-1 cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-            title="Tippen markiert als wichtig"
+            title="Tippen markiert als wichtig, doppelt tippen bearbeitet"
         >
             <span @class([
                 'block break-words text-sm leading-snug',
@@ -70,6 +72,7 @@
                 </span>
             @endif
         </button>
+        </div>
 
         {{-- Inline edit + delete actions (mobile: always visible; desktop: on hover) --}}
         <div class="flex flex-none items-center gap-0.5">

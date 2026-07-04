@@ -73,10 +73,19 @@ window.projectDropZone = function (el, wire) {
 
 document.addEventListener('alpine:init', () => {
     /**
-     * Shared draw state: which category chip is currently "armed" for drawing.
-     * cat: category id | null, color: Topografie token | null.
+     * Shared draw state: which category chip — or typed Termin title — is
+     * currently "armed" for drawing. cat and title are mutually exclusive;
+     * clear() resets both so arming one mode always cancels the other.
      */
-    window.Alpine.store('draw', { cat: null, color: null });
+    window.Alpine.store('draw', {
+        cat: null,
+        title: null,
+        color: null,
+        get active() { return this.cat !== null || this.title !== null; },
+        clear() { this.cat = null; this.title = null; this.color = null; },
+    });
+    /** Which task id (if any) the mobile long-press project-picker sheet is open for. */
+    window.Alpine.store('projectPicker', { taskId: null });
     /**
      * swipeCard — native-feeling horizontal swipe for mobile task cards.
      * Tracks the finger 1:1, locks to the horizontal axis (vertical scroll still
@@ -97,6 +106,9 @@ document.addEventListener('alpine:init', () => {
         sx: 0,
         sy: 0,
         threshold: 72,
+        longPressTimer: null,
+        longPressFired: false,
+        longPressMs: 500,
 
         init() {
             const w = this.$el.offsetWidth || 320;
@@ -124,6 +136,18 @@ document.addEventListener('alpine:init', () => {
             this.sy = e.clientY;
             this.dragging = true;
             this.locked = null;
+            this.longPressFired = false;
+            clearTimeout(this.longPressTimer);
+            // A hold with no directional lock opens the project-picker sheet —
+            // both swipe axes already have jobs, so long-press is the only free
+            // gesture left for a quick "assign to project" on mobile.
+            this.longPressTimer = setTimeout(() => {
+                if (!this.dragging || this.locked !== null) return;
+                this.longPressFired = true;
+                this.dragging = false;
+                this.dx = 0;
+                this.$store.projectPicker.taskId = this.id;
+            }, this.longPressMs);
         },
 
         move(e) {
@@ -132,10 +156,13 @@ document.addEventListener('alpine:init', () => {
             const dy = e.clientY - this.sy;
 
             if (this.locked === null) {
-                if (Math.abs(dx) > Math.abs(dy) + 6) this.locked = 'h';
-                else if (Math.abs(dy) > Math.abs(dx) + 6) {
+                if (Math.abs(dx) > Math.abs(dy) + 6) {
+                    this.locked = 'h';
+                    clearTimeout(this.longPressTimer);
+                } else if (Math.abs(dy) > Math.abs(dx) + 6) {
                     this.locked = 'v';
                     this.dragging = false;
+                    clearTimeout(this.longPressTimer);
                     return;
                 } else return;
             }
@@ -155,6 +182,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         up() {
+            clearTimeout(this.longPressTimer);
+            if (this.longPressFired) {
+                this.longPressFired = false;
+                return;
+            }
             if (!this.dragging && this.locked !== 'h') {
                 this.spring();
                 return;
@@ -324,7 +356,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         beginDraw(e) {
-            if (!this.$store.draw.cat) return;
+            if (!this.$store.draw.active) return;
             if (e.button != null && e.button !== 0) return;
             this.drawing = true;
             this.startMin = this.yToMin(e.clientY);
@@ -340,7 +372,6 @@ document.addEventListener('alpine:init', () => {
 
         finishDraw() {
             if (!this.drawing) return;
-            this.drawing = false;
 
             let start = Math.min(this.startMin, this.currentMin);
             let end = Math.max(this.startMin, this.currentMin);
@@ -349,11 +380,28 @@ document.addEventListener('alpine:init', () => {
                 end = Math.min(this.dayStart + this.span, start + 30);
             }
 
-            const cat = this.$store.draw.cat;
-            if (cat && end > start) {
-                const hhmm = (m) =>
-                    `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-                this.$wire.quickCreateCategoryBlock(cat, this.date, hhmm(start), hhmm(end));
+            const { cat, title, color } = this.$store.draw;
+            const hhmm = (m) =>
+                `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+            // Keep the preview block showing its final shape until the server
+            // responds and morphs in the real block — otherwise it vanishes for
+            // the length of the round trip, an empty flash on anything but
+            // localhost. Mirrors scheduleEvent's optimistic move/resize, which
+            // never lets the block disappear mid-gesture either.
+            if (title && end > start) {
+                this.$wire.quickCreateTermin(title, color, this.date, hhmm(start), hhmm(end))
+                    .finally(() => {
+                        this.drawing = false;
+                        // A one-off typed title — arm fresh for the next Termin
+                        // rather than redrawing the same title again by accident.
+                        this.$store.draw.clear();
+                    });
+            } else if (cat && end > start) {
+                this.$wire.quickCreateCategoryBlock(cat, this.date, hhmm(start), hhmm(end))
+                    .finally(() => { this.drawing = false; });
+            } else {
+                this.drawing = false;
             }
         },
 

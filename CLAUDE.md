@@ -62,6 +62,7 @@ I say so, with reasoning.
    the double-click "armed" pattern instead (click once arms the button — red background, 2s timeout,
    resets on outside-click/Escape — click again within that window to actually delete). See *Known
    Issues* for the exact Alpine snippet.
+10. Call me by my name, every time I ask something or give you a task.
 
 ---
 
@@ -171,6 +172,25 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (active mobile tab, live swipe offset, drag-in-progress, open menus) lives in Alpine.
 - Drag (`reorder`) persists the destination zone's full id order + its list/today. Swipe (`swipeIntent`)
   and the desktop click/checkbox/menu all call Livewire actions.
+- **Quick actions on the card face** (`partials/task-card.blade.php` / `task-card-mobile.blade.php` /
+  `project-task-card.blade.php`), for the mutations common enough to bypass the full edit sheet:
+  - **Quick date**: no dedicated icon — the date badge itself is the button once a deadline/due-date is set.
+    When neither is set, a faint "+ Termin" ghost placeholder takes its place (hover-revealed on desktop,
+    always-on but muted on mobile — there's no hover there). Either opens a small Alpine popover with just
+    the two date inputs, auto-saving on change via `ManagesTasks::quickSetDates()`. Deliberately *not* a
+    third icon in the action row (pencil + delete only) — an icon-per-action there got cramped fast.
+  - **Double-tap to edit**: tapping a task's title toggles `is_important` (unchanged); a *second* tap within
+    320ms — tracked by a local `x-data="{ lastTap: 0 }"` wrapper, timed the same way `scheduleEvent.tap()`
+    times a double-tap — also opens the edit sheet (`startEdit`). Deliberately built on the plain `click`
+    event (already proven reliable here) rather than native `dblclick`: these title buttons don't set
+    `touch-action: none`, so a real double-tap risks the browser's own double-tap-to-zoom intercepting a
+    native `dblclick` before it ever fires. The two toggles this fires en route (once per tap) cancel out,
+    so `is_important` ends up unchanged — a small, harmless side effect of reusing the tap that's already
+    there instead of adding a new gesture surface.
+  - **Mobile only:** a long-press on a task card (extends `swipeCard`'s `down()`/`move()`/`up()` with a 500ms
+    timer, cancelled by any directional swipe lock) opens `partials/project-picker-sheet.blade.php` via the
+    `Alpine.store('projectPicker')` store, calling the existing `TaskBoard::assignTaskToProject()` — the
+    touch equivalent of desktop's drag-onto-a-project-card, since neither swipe direction was free to reuse.
 
 ### Projects (built)
 - A fourth **Projekte** column (desktop) / 5th bottom-nav tab (mobile) lists `Project` cards
@@ -229,12 +249,20 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   apply-template. The event form sheet (`partials/schedule-event-form.blade.php`) has a Termin/Kategorie
   toggle — Termin keeps the title input + 5-swatch picker, Kategorie shows a chip picker over the user's
   categories; the event card with the pointer gestures is `partials/schedule-event.blade.php`.
+- **Quick-create footer** (`partials/schedule-category-footer.blade.php`) — a "Zeichnen:" row of category
+  chips plus a "+ Termin" pill, all sharing one gesture: tap arms `$store.draw` (category id+colour, or a
+  typed title+colour for a Termin), then a drag on the grid (`scheduleDraw` in `app.js`) draws the block and
+  calls `quickCreateCategoryBlock()` or the mirrored `quickCreateTermin()` — no form, 2–3 gestures total.
+  `$store.draw.active`/`clear()` cover both modes so arming one cancels the other. A **desktop template row**
+  (mirroring the mobile-only one) sits above the grid and applies a template to today's date in one click via
+  the existing `applyTemplate()` — no drawing needed, since a template already carries its own time/duration.
+  The full "+ Termin" button/modal remains the precision path (exact date, custom colour, recurring series).
 - **Gestures** are hand-rolled Alpine pointer components in `resources/js/app.js` (no new deps):
-  `scheduleEvent` (move / resize / double-tap edit), `focusTimer` (live countdown ring — also plays a short
-  synthesised Web Audio chime when a phase's countdown reaches 0, no audio file/package). Desktop uses the
-  hover pencil; mobile uses double-tap. `window.primeFocusAudio()` initialises/resumes the shared
-  `AudioContext` on the Start button's `onclick` (a real user gesture), so the later automatic chime isn't
-  blocked by autoplay policy.
+  `scheduleEvent` (move / resize / double-tap edit), `scheduleDraw` (quick-create, above), `focusTimer` (live
+  countdown ring — also plays a short synthesised Web Audio chime when a phase's countdown reaches 0, no
+  audio file/package). Desktop uses the hover pencil; mobile uses double-tap. `window.primeFocusAudio()`
+  initialises/resumes the shared `AudioContext` on the Start button's `onclick` (a real user gesture), so the
+  later automatic chime isn't blocked by autoplay policy.
 - **Settings** (`App\Livewire\Settings`) has a Pomodoro section (work / short break / long break /
   sessions-per-long-break, via `saveSchedule()`) and a **Kategorien** card: add/rename/recolour/toggle-
   Pomodoro/delete, all ownership-scoped (`ManagesSchedule`'s and `Settings`' colour validation both read

@@ -4,6 +4,7 @@ namespace App\Livewire\Concerns;
 
 use App\Models\Task;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
@@ -78,17 +79,17 @@ trait ManagesTasks
         $this->editTitle = trim($this->editTitle);
 
         $data = $this->validate([
-            'editTitle'     => ['required', 'string', 'max:255'],
-            'editDeadline'  => ['nullable', 'date'],
-            'editDueDate'   => ['nullable', 'date'],
-            'editList'      => ['required', Rule::in(Task::LISTS)],
+            'editTitle' => ['required', 'string', 'max:255'],
+            'editDeadline' => ['nullable', 'date'],
+            'editDueDate' => ['nullable', 'date'],
+            'editList' => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
         ]);
 
         $task = $this->userTask($this->editingId);
 
         $updates = [
-            'title'    => $data['editTitle'],
+            'title' => $data['editTitle'],
             'deadline' => $data['editDeadline'] ?: null,
             'due_date' => $data['editDueDate'] ?: null,
         ];
@@ -120,6 +121,28 @@ trait ManagesTasks
         $task->update($updates);
 
         $this->cancelEdit();
+    }
+
+    /**
+     * Quick-set just the deadline/due-date from the card face, bypassing the
+     * full edit sheet. Silently ignores invalid input — there's no form here
+     * to surface errors on, the popover just auto-saves on change.
+     */
+    public function quickSetDates(int $id, ?string $deadline, ?string $dueDate): void
+    {
+        $validator = Validator::make(
+            ['deadline' => $deadline, 'due_date' => $dueDate],
+            ['deadline' => ['nullable', 'date'], 'due_date' => ['nullable', 'date']],
+        );
+
+        if ($validator->fails()) {
+            return;
+        }
+
+        $this->userTask($id)->update([
+            'deadline' => $deadline ?: null,
+            'due_date' => $dueDate ?: null,
+        ]);
     }
 
     public function cancelEdit(): void
