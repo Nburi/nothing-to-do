@@ -83,43 +83,51 @@
             class="contents"
         >
             <div class="min-w-0 flex-1">
-                <button type="button" wire:click="toggleImportant({{ $task->id }})" class="block w-full text-left">
-                    <span @class([
-                        'block break-words text-[15px] leading-snug',
-                        'line-through text-ink-faint' => $task->is_completed,
-                        'font-medium text-ink' => !$task->is_completed && $task->is_important,
-                        'text-ink' => !$task->is_completed && !$task->is_important,
-                    ])>{{ $task->title }}</span>
-                </button>
-                @if (!$task->is_completed && ($label = $task->effectiveDateLabel()))
+                <div x-data="{ lastTap: 0 }" class="contents">
                     <button
                         type="button"
-                        @click.stop="dateOpen = !dateOpen"
-                        class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium
-                        {{ $task->isOverdue() ? 'bg-signal-soft text-signal' : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}"
+                        wire:click="toggleImportant({{ $task->id }})"
+                        @click="if (Date.now() - lastTap < 320) { $wire.startEdit({{ $task->id }}); lastTap = 0; } else { lastTap = Date.now(); }"
+                        class="block w-full text-left"
                     >
-                        @unless ($task->isOverdue())
-                            <span class="inline-block h-1 w-1 rounded-full {{ $task->effectiveIsHard() ? 'bg-contour' : 'bg-ink-faint' }}" aria-hidden="true"></span>
-                        @endunless
-                        {{ $label }}
+                        <span @class([
+                            'block break-words text-[15px] leading-snug',
+                            'line-through text-ink-faint' => $task->is_completed,
+                            'font-medium text-ink' => !$task->is_completed && $task->is_important,
+                            'text-ink' => !$task->is_completed && !$task->is_important,
+                        ])>{{ $task->title }}</span>
                     </button>
+                </div>
+                @if (!$task->is_completed)
+                    @if ($label = $task->effectiveDateLabel())
+                        <button
+                            type="button"
+                            @click.stop="dateOpen = !dateOpen"
+                            class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium
+                            {{ $task->isOverdue() ? 'bg-signal-soft text-signal' : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}"
+                            aria-label="Termin ändern: {{ $task->title }}"
+                        >
+                            @unless ($task->isOverdue())
+                                <span class="inline-block h-1 w-1 rounded-full {{ $task->effectiveIsHard() ? 'bg-contour' : 'bg-ink-faint' }}" aria-hidden="true"></span>
+                            @endunless
+                            {{ $label }}
+                        </button>
+                    @else
+                        <button
+                            type="button"
+                            @click.stop="dateOpen = !dateOpen"
+                            class="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                            aria-label="Termin setzen: {{ $task->title }}"
+                        >
+                            <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                            Termin
+                        </button>
+                    @endif
                 @endif
             </div>
 
-            {{-- Inline date + edit + delete actions (always visible on mobile) --}}
+            {{-- Inline edit + delete actions (always visible on mobile) --}}
             <div class="flex flex-none items-center gap-0.5">
-                <button
-                    type="button"
-                    @click.stop="dateOpen = !dateOpen"
-                    :class="dateOpen && 'bg-paper text-ink'"
-                    class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-                    aria-label="Termin setzen: {{ $task->title }}"
-                >
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M3 5.5h10M5.5 3v2M10.5 3v2M3.5 5.5v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-
                 <button
                     type="button"
                     wire:click="startEdit({{ $task->id }})"
@@ -155,7 +163,7 @@
                 x-transition:enter-end="opacity-100 scale-100"
                 @click.outside="dateOpen = false"
                 @keydown.escape.window="dateOpen = false"
-                class="absolute right-2 top-14 z-20 w-56 space-y-2 rounded-card border border-line bg-surface p-3 shadow-map"
+                class="absolute left-9 top-14 z-20 w-56 space-y-2 rounded-card border border-line bg-surface p-3 shadow-map"
                 style="display: none"
             >
                 <div>

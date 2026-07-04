@@ -171,12 +171,22 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (active mobile tab, live swipe offset, drag-in-progress, open menus) lives in Alpine.
 - Drag (`reorder`) persists the destination zone's full id order + its list/today. Swipe (`swipeIntent`)
   and the desktop click/checkbox/menu all call Livewire actions.
-- **Quick actions on the card face** (`partials/task-card.blade.php` / `task-card-mobile.blade.php`), for
-  the two mutations common enough to bypass the full edit sheet:
-  - A calendar icon (+ the date badge itself, once one is set) opens a small Alpine popover with just the
-    deadline/due-date inputs, auto-saving on change via `ManagesTasks::quickSetDates()` — 2 gestures instead
-    of opening the whole sheet.
-  - **Mobile only:** a long-press on a card (extends `swipeCard`'s `down()`/`move()`/`up()` with a 500ms
+- **Quick actions on the card face** (`partials/task-card.blade.php` / `task-card-mobile.blade.php` /
+  `project-task-card.blade.php`), for the mutations common enough to bypass the full edit sheet:
+  - **Quick date**: no dedicated icon — the date badge itself is the button once a deadline/due-date is set.
+    When neither is set, a faint "+ Termin" ghost placeholder takes its place (hover-revealed on desktop,
+    always-on but muted on mobile — there's no hover there). Either opens a small Alpine popover with just
+    the two date inputs, auto-saving on change via `ManagesTasks::quickSetDates()`. Deliberately *not* a
+    third icon in the action row (pencil + delete only) — an icon-per-action there got cramped fast.
+  - **Double-tap to edit**: tapping a task's title toggles `is_important` (unchanged); a *second* tap within
+    320ms — tracked by a local `x-data="{ lastTap: 0 }"` wrapper, timed the same way `scheduleEvent.tap()`
+    times a double-tap — also opens the edit sheet (`startEdit`). Deliberately built on the plain `click`
+    event (already proven reliable here) rather than native `dblclick`: these title buttons don't set
+    `touch-action: none`, so a real double-tap risks the browser's own double-tap-to-zoom intercepting a
+    native `dblclick` before it ever fires. The two toggles this fires en route (once per tap) cancel out,
+    so `is_important` ends up unchanged — a small, harmless side effect of reusing the tap that's already
+    there instead of adding a new gesture surface.
+  - **Mobile only:** a long-press on a task card (extends `swipeCard`'s `down()`/`move()`/`up()` with a 500ms
     timer, cancelled by any directional swipe lock) opens `partials/project-picker-sheet.blade.php` via the
     `Alpine.store('projectPicker')` store, calling the existing `TaskBoard::assignTaskToProject()` — the
     touch equivalent of desktop's drag-onto-a-project-card, since neither swipe direction was free to reuse.
