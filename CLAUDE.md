@@ -62,6 +62,7 @@ I say so, with reasoning.
    the double-click "armed" pattern instead (click once arms the button — red background, 2s timeout,
    resets on outside-click/Escape — click again within that window to actually delete). See *Known
    Issues* for the exact Alpine snippet.
+10. Call me by my name, every time I ask something or give you a task.
 
 ---
 
