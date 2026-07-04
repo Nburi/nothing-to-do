@@ -68,10 +68,10 @@
                 <button
                     type="button"
                     @click.stop="dateOpen = !dateOpen"
-                    class="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint opacity-0 transition hover:text-ink-soft focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:opacity-100"
+                    class="mt-0 flex max-h-0 min-h-0 items-center gap-1 overflow-hidden rounded px-1.5 py-0 text-[11px] font-medium text-ink-faint transition-all duration-150 hover:text-ink-soft focus:outline-none focus-visible:mt-1 focus-visible:max-h-5 focus-visible:py-0.5 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:mt-1 group-hover/card:max-h-5 group-hover/card:py-0.5"
                     aria-label="Termin setzen: {{ $task->title }}"
                 >
-                    <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <svg class="h-2.5 w-2.5 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     Termin
                 </button>
             @endif
