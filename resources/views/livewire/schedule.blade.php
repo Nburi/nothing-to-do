@@ -45,6 +45,17 @@
                 </div>
             </div>
 
+            @if ($this->templates->isNotEmpty())
+                <div class="mb-3 flex items-center gap-2 overflow-x-auto">
+                    <span class="flex-none text-[11px] text-ink-faint">Vorlagen:</span>
+                    @foreach ($this->templates as $t)
+                        <button wire:click="applyTemplate({{ $t->id }}, '{{ $today->toDateString() }}')" class="flex-none whitespace-nowrap rounded-card border border-line bg-surface px-2.5 py-1 text-xs text-ink-soft transition active:scale-95 hover:text-ink">
+                            + {{ $t->displayName() }}
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+
             <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
                 {{-- Day headers --}}
                 <div class="flex border-b border-line">
@@ -82,7 +93,7 @@
                             @pointerdown.self="beginDraw"
                             @pointermove="moveDraw"
                             @pointerup="finishDraw"
-                            :class="$store.draw.cat ? 'cursor-crosshair' : ''"
+                            :class="$store.draw.active ? 'cursor-crosshair' : ''"
                             style="touch-action: none"
                         >
                             @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
@@ -171,7 +182,7 @@
                     @pointerdown.self="beginDraw"
                     @pointermove="moveDraw"
                     @pointerup="finishDraw"
-                    :class="$store.draw.cat ? 'cursor-crosshair' : ''"
+                    :class="$store.draw.active ? 'cursor-crosshair' : ''"
                     style="touch-action: none"
                 >
                     @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)

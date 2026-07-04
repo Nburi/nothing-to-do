@@ -7,6 +7,7 @@ use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\ScheduleEvent;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -216,6 +217,54 @@ class ScheduleTest extends TestCase
         ]);
     }
 
+    public function test_quick_creating_a_termin_by_drawing(): void
+    {
+        $user = $this->actingUser();
+
+        Livewire::test(Schedule::class)
+            ->call('quickCreateTermin', 'Zahnarzt', 'overprint', '2026-06-26', '14:00', '14:30');
+
+        $this->assertDatabaseHas('schedule_events', [
+            'user_id' => $user->id,
+            'category_id' => null,
+            'title' => 'Zahnarzt',
+            'color' => 'overprint',
+            'date' => '2026-06-26 00:00:00',
+            'start_time' => '14:00',
+            'end_time' => '14:30',
+        ]);
+    }
+
+    public function test_quick_creating_a_termin_rejects_a_blank_title(): void
+    {
+        $user = $this->actingUser();
+
+        Livewire::test(Schedule::class)
+            ->call('quickCreateTermin', '   ', 'overprint', '2026-06-26', '14:00', '14:30');
+
+        $this->assertDatabaseMissing('schedule_events', ['user_id' => $user->id]);
+    }
+
+    public function test_quick_creating_a_termin_rejects_an_invalid_color(): void
+    {
+        $user = $this->actingUser();
+
+        Livewire::test(Schedule::class)
+            ->call('quickCreateTermin', 'Zahnarzt', 'not-a-color', '2026-06-26', '14:00', '14:30');
+
+        $this->assertDatabaseMissing('schedule_events', ['user_id' => $user->id]);
+    }
+
+    public function test_quick_creating_a_termin_guards_a_minimum_length(): void
+    {
+        $user = $this->actingUser();
+
+        Livewire::test(Schedule::class)
+            ->call('quickCreateTermin', 'Zahnarzt', 'overprint', '2026-06-26', '14:00', '14:05');
+
+        $this->assertDatabaseMissing('schedule_events', ['user_id' => $user->id]);
+    }
+
     public function test_move_keeps_duration(): void
     {
         $user = $this->actingUser();
@@ -311,7 +360,7 @@ class ScheduleTest extends TestCase
 
         // The event is resolved through the owner relationship, so another user's
         // id never matches — the write is rejected before it can run.
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         Livewire::test(Schedule::class)->call('moveEvent', $other->id, '12:00');
     }

@@ -315,11 +315,39 @@ trait ManagesSchedule
 
         auth()->user()->scheduleEvents()->create([
             'category_id' => $category->id,
-            'title'       => $category->name,
-            'color'       => $category->color,
-            'date'        => $date,
-            'start_time'  => $start,
-            'end_time'    => $end,
+            'title' => $category->name,
+            'color' => $category->color,
+            'date' => $date,
+            'start_time' => $start,
+            'end_time' => $end,
+        ]);
+    }
+
+    /** Quick-create a free-text Termin by drawing on the timeline (no form needed). */
+    public function quickCreateTermin(string $title, string $color, string $date, string $start, string $end): void
+    {
+        $title = trim($title);
+
+        if ($title === '' || mb_strlen($title) > 255 || ! in_array($color, ScheduleEvent::EVENT_COLORS, true)) {
+            return;
+        }
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return;
+        }
+        if (! preg_match('/^\d{2}:\d{2}$/', $start) || ! preg_match('/^\d{2}:\d{2}$/', $end)) {
+            return;
+        }
+        if (ScheduleEvent::toMinutes($end) - ScheduleEvent::toMinutes($start) < self::MIN_EVENT) {
+            return;
+        }
+
+        auth()->user()->scheduleEvents()->create([
+            'category_id' => null,
+            'title' => $title,
+            'color' => $color,
+            'date' => $date,
+            'start_time' => $start,
+            'end_time' => $end,
         ]);
     }
 

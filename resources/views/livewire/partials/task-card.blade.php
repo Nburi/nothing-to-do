@@ -2,6 +2,11 @@
 <div
     wire:key="task-{{ $task->id }}"
     @unless($task->is_completed) data-id="{{ $task->id }}" @endunless
+    x-data="{
+        dateOpen: false,
+        deadline: '{{ $task->deadline?->toDateString() }}',
+        dueDate: '{{ $task->due_date?->toDateString() }}',
+    }"
     @class([
         'group/card relative flex items-start gap-2.5 rounded-card border py-2.5 pl-3 pr-2 shadow-map transition-colors duration-200',
         'border-line border-t-[2.5px] border-t-overprint bg-overprint-soft' => $task->is_important && !$task->is_completed,
@@ -25,34 +30,73 @@
         </svg>
     </button>
 
-    <button
-        type="button"
-        wire:click="toggleImportant({{ $task->id }})"
-        class="min-w-0 flex-1 cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-        title="Tippen markiert als wichtig"
-    >
-        <span @class([
-            'block break-words text-sm leading-snug',
-            'line-through text-ink-faint' => $task->is_completed,
-            'font-medium text-ink' => !$task->is_completed && $task->is_important,
-            'text-ink' => !$task->is_completed && !$task->is_important,
-        ])>{{ $task->title }}</span>
+    <div class="min-w-0 flex-1">
+        <button
+            type="button"
+            wire:click="toggleImportant({{ $task->id }})"
+            class="block w-full cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+            title="Tippen markiert als wichtig"
+        >
+            <span @class([
+                'block break-words text-sm leading-snug',
+                'line-through text-ink-faint' => $task->is_completed,
+                'font-medium text-ink' => !$task->is_completed && $task->is_important,
+                'text-ink' => !$task->is_completed && !$task->is_important,
+            ])>{{ $task->title }}</span>
+        </button>
 
         @if (!$task->is_completed && ($label = $task->effectiveDateLabel()))
-            <span class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium
+            <button
+                type="button"
+                @click.stop="dateOpen = !dateOpen"
+                class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint
                 {{ $task->isOverdue()
                     ? 'bg-signal-soft text-signal'
-                    : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}">
+                    : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}"
+            >
                 @unless ($task->isOverdue())
                     <span class="inline-block h-1 w-1 rounded-full {{ $task->effectiveIsHard() ? 'bg-contour' : 'bg-ink-faint' }}" aria-hidden="true"></span>
                 @endunless
                 {{ $label }}
-            </span>
+            </button>
         @endif
-    </button>
+    </div>
 
-    {{-- Inline edit + delete actions (appear on hover) --}}
+    {{-- Quick deadline/due-date popover, opened by the calendar icon or the date badge above. --}}
+    <div
+        x-show="dateOpen"
+        x-transition:enter="transition ease-out duration-100"
+        x-transition:enter-start="opacity-0 scale-95"
+        x-transition:enter-end="opacity-100 scale-100"
+        @click.outside="dateOpen = false"
+        @keydown.escape.window="dateOpen = false"
+        class="absolute right-2 top-9 z-20 w-56 space-y-2 rounded-card border border-line bg-surface p-3 shadow-map"
+        style="display: none"
+    >
+        <div>
+            <label class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline · hart</label>
+            <input type="date" x-model="deadline" @change="$wire.quickSetDates({{ $task->id }}, deadline, dueDate)" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+        </div>
+        <div>
+            <label class="mb-1 block text-[11px] font-medium text-ink-faint">Wunschtermin · weich</label>
+            <input type="date" x-model="dueDate" @change="$wire.quickSetDates({{ $task->id }}, deadline, dueDate)" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+        </div>
+    </div>
+
+    {{-- Inline date + edit + delete actions (appear on hover) --}}
     <div class="flex flex-none items-center gap-0.5">
+        <button
+            type="button"
+            @click.stop="dateOpen = !dateOpen"
+            :class="dateOpen && 'opacity-100 bg-paper text-ink'"
+            class="grid h-7 w-7 place-items-center rounded-card text-ink-faint opacity-0 transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:opacity-100"
+            aria-label="Termin setzen: {{ $task->title }}"
+        >
+            <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 5.5h10M5.5 3v2M10.5 3v2M3.5 5.5v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+
         <button
             type="button"
             wire:click="startEdit({{ $task->id }})"
