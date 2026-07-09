@@ -299,4 +299,90 @@
             </div>
         </div>
     </form>
+
+    {{-- Shortcuts & API --}}
+    <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="mb-1 flex items-center justify-between gap-3">
+            <h2 class="text-base font-medium text-ink">Shortcuts & API</h2>
+            <a href="{{ route('docs.api') }}" class="text-sm font-medium text-overprint hover:underline" wire:navigate>
+                API-Dokumentation →
+            </a>
+        </div>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Persönliche Zugriffstoken für Apple Shortcuts und andere Automatisierungen. Ein Token verhält sich wie
+            ein Passwort für deinen Account — jedes trägt volle Rechte auf alle deine Daten.
+        </p>
+
+        @if ($createdToken)
+            <div x-data="{ copied: false }" class="mb-5 rounded-card border border-forest/40 bg-forest/10 p-4">
+                <p class="mb-2 text-sm font-medium text-ink">Token erstellt — jetzt kopieren, es wird nicht wieder angezeigt.</p>
+                <div class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        readonly
+                        value="{{ $createdToken }}"
+                        onclick="this.select()"
+                        class="min-w-0 flex-1 rounded-card border border-line bg-paper px-3 py-2 font-mono text-xs text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    />
+                    <button
+                        type="button"
+                        @click="navigator.clipboard.writeText('{{ $createdToken }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                        class="flex-none rounded-card bg-forest px-3 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]"
+                    >
+                        <span x-show="!copied">Kopieren</span>
+                        <span x-show="copied" style="display: none;">Kopiert ✓</span>
+                    </button>
+                </div>
+                <button type="button" wire:click="dismissCreatedToken" class="mt-3 text-xs text-ink-soft hover:text-ink">
+                    Fertig
+                </button>
+            </div>
+        @endif
+
+        <div class="space-y-2">
+            @forelse ($this->apiTokens as $token)
+                <div wire:key="token-{{ $token->id }}" class="flex items-center gap-3 rounded-card border border-line bg-paper/60 px-3 py-2.5">
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-ink">{{ $token->name }}</p>
+                        <p class="text-xs text-ink-faint">
+                            Erstellt {{ $token->created_at->locale('de_CH')->diffForHumans() }}
+                            @if ($token->last_used_at)
+                                · zuletzt verwendet {{ $token->last_used_at->locale('de_CH')->diffForHumans() }}
+                            @else
+                                · noch nie verwendet
+                            @endif
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        x-data="{ armed: false, _t: null }"
+                        @click="if (armed) { $wire.revokeApiToken({{ $token->id }}); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                        @click.outside="armed = false; clearTimeout(_t)"
+                        @keydown.escape.window="armed = false; clearTimeout(_t)"
+                        :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        aria-label="Token widerrufen"
+                    >
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                    </button>
+                </div>
+            @empty
+                <p class="text-sm text-ink-faint">Noch keine Token.</p>
+            @endforelse
+        </div>
+
+        <form wire:submit="createApiToken" class="mt-4 flex items-center gap-2 border-t border-line pt-4">
+            <input
+                type="text"
+                wire:model="newTokenName"
+                placeholder="Name — z. B. iPhone Shortcuts"
+                autocomplete="off"
+                class="min-w-0 flex-1 rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+            />
+            <button type="submit" class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
+                Token erstellen
+            </button>
+        </form>
+        @error('newTokenName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+    </div>
 </div>
