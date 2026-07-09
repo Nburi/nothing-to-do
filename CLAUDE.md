@@ -86,13 +86,15 @@ I say so, with reasoning.
 - **Interactivity:** Livewire 4 (server-driven). Alpine ships **inside** Livewire — never import a
   second copy (double-init). `resources/js/app.js` adds only SortableJS + the swipe component.
 - **Auth:** Laravel Breeze (Blade stack), fully restyled.
+- **API auth:** Laravel Sanctum (personal access tokens) — powers the token-authenticated JSON API used by
+  Apple Shortcuts and other integrations; see §7 "API (Apple Shortcuts)".
 - **Drag & drop:** SortableJS (`window.boardSortable`).
 - **Swipe gestures:** hand-rolled Pointer-Events Alpine component (`swipeCard`) — no library.
 - **Styling:** Tailwind CSS **v3** (PostCSS). Topografie tokens are CSS custom properties (space-separated
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (131 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (181 tests).
 
 > Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
 > package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
@@ -269,6 +271,28 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   `ScheduleEvent::EVENT_COLORS` — a plain class constant, not a trait constant, since PHP forbids accessing
   a trait's own constant via the trait's name directly).
 
+### API (Apple Shortcuts) (built)
+- A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
+  exposes, so it can be driven from Apple Shortcuts or any other automation — not a 1:1 mirror of every
+  Livewire method, but full CRUD + state coverage (e.g. one `PATCH /tasks/{id}` covers toggle-complete,
+  toggle-important, set-today, move-list, and assign/release-project, instead of five separate endpoints).
+  Controllers live in `App\Http\Controllers\Api`, one per resource: `TaskController`, `ProjectController`,
+  `ScheduleEventController` (+ `focus`/`start-focus`/`stop-focus` for the Pomodoro timer),
+  `EventCategoryController`, `EventTemplateController`, `MeController` (account info, rhythm/timezone
+  settings, board counts). Responses are shaped by `App\Http\Resources\*Resource` classes.
+- **Auth:** Laravel Sanctum personal access tokens, managed from **Settings → Shortcuts & API**
+  (`App\Livewire\Settings::createApiToken()`/`revokeApiToken()`) — the plaintext token is shown exactly
+  once at creation, never stored/re-displayed; revoke uses the same armed double-click pattern as every
+  other destructive action in the app.
+- **Docs:** `/docs/api` (`resources/views/docs/api.blade.php`, auth-gated, linked from Settings) — full
+  endpoint reference plus a walkthrough for building Apple Shortcuts against it (the "Get Contents of URL"
+  action's config, and five worked example Shortcuts).
+- **Gotcha:** a controller's `store()` must return `$model->fresh()`, not the just-created in-memory model —
+  columns with a DB-level `->default(...)` (e.g. `is_today`, `is_completed`, `is_cancelled`) are absent from
+  the in-memory attribute bag until reloaded, so the first JSON response after creation would otherwise show
+  `null` instead of the real default. Caught by an end-to-end curl smoke test, not by PHPUnit (the difference
+  only shows up in the *first* response after an insert).
+
 ---
 
 ## 8. Conventions
@@ -374,6 +398,17 @@ native exe, corrupting the PHP snippet.
 **Fix:** don't seed/poke the DB with `tinker --execute`. Write a throwaway seeder (`php artisan db:seed
 --class=…`) or a small test, or drive state through the running app's Livewire `$wire` API in the browser
 preview. Reserve PHP verification for PHPUnit, which has no shell-quoting surface.
+
+### An API controller's `store()` must return `$model->fresh()`
+**Symptom:** the JSON returned from a `POST` that creates a row shows `null` for a boolean column
+(`is_today`, `is_completed`, `is_cancelled`, …) even though the column has a DB-level `->default(false)` and
+every other request shows it correctly as `false`.
+**Cause:** the migration's default is enforced by the database, not by Eloquent — a freshly `->create()`d
+model only has the attributes you explicitly passed, so a column you didn't set is simply absent from the
+in-memory attribute bag until the row is reloaded.
+**Fix:** every API `store()` (and any other action that serialises a just-created model) must return
+`$model->fresh()`, not `$model` itself. PHPUnit didn't catch this — `assertDatabaseHas`/`fresh()` calls in
+the test itself masked it — an end-to-end curl smoke test against a running `php artisan serve` did.
 
 ### Destructive actions must never use `confirm()` / `wire:confirm`
 **Rule:** blocking browser dialogs (`confirm()`, `window.confirm()`, Livewire's `wire:confirm`) are banned

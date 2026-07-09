@@ -147,6 +147,45 @@ class Settings extends Component
         auth()->user()->eventCategories()->whereKey($id)->delete();
     }
 
+    // ── Shortcuts & API tokens ──────────────────────────────────────────
+
+    public string $newTokenName = '';
+
+    /** The plaintext token, shown exactly once right after creation — never stored, never shown again. */
+    public ?string $createdToken = null;
+
+    #[Computed]
+    public function apiTokens(): Collection
+    {
+        return auth()->user()->tokens()->latest()->get();
+    }
+
+    public function createApiToken(): void
+    {
+        $this->newTokenName = trim($this->newTokenName);
+
+        $data = $this->validate([
+            'newTokenName' => ['required', 'string', 'max:255'],
+        ]);
+
+        $token = auth()->user()->createToken($data['newTokenName']);
+
+        $this->createdToken = $token->plainTextToken;
+        $this->newTokenName = '';
+        unset($this->apiTokens);
+    }
+
+    public function dismissCreatedToken(): void
+    {
+        $this->createdToken = null;
+    }
+
+    public function revokeApiToken(int $id): void
+    {
+        auth()->user()->tokens()->whereKey($id)->delete();
+        unset($this->apiTokens);
+    }
+
     public function render()
     {
         return view('livewire.settings');

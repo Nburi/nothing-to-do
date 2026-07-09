@@ -29,6 +29,10 @@ Route::get('/app/settings', Settings::class)
     ->middleware('auth')
     ->name('settings');
 
+Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
+    ->middleware('auth')
+    ->name('docs.api');
+
 // Breeze posts login/registration through to route('dashboard'); send it to the board.
 Route::redirect('/dashboard', '/app')->name('dashboard');
 
