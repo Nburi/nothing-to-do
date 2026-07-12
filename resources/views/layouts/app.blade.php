@@ -26,6 +26,14 @@
 
                     @auth
                         <div class="flex items-center gap-1.5">
+                        <a href="{{ route('cleanup') }}" wire:navigate @class([
+                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
+                            'bg-surface text-ink' => request()->routeIs('cleanup'),
+                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('cleanup'),
+                        ]) @if(request()->routeIs('cleanup')) aria-current="page" @endif>
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
+                            Aufräumen
+                        </a>
                         <a href="{{ route('schedule') }}" wire:navigate @class([
                             'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
                             'bg-surface text-ink' => request()->routeIs('schedule'),
@@ -59,6 +67,9 @@
                                     <p class="truncate text-sm font-medium text-ink">{{ auth()->user()->name }}</p>
                                     <p class="truncate text-xs text-ink-faint">{{ auth()->user()->email }}</p>
                                 </div>
+                                <a href="{{ route('cleanup') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                    Aufräumen
+                                </a>
                                 <a href="{{ route('schedule') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Zeitplan
                                 </a>
