@@ -222,6 +222,271 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
+     * cleanup store — the ordered id queues driving the swipe-stack triage
+     * page (see cleanupSwipeCard below). Seeded once per page mount from the
+     * server's computed task lists; from then on ordering/phase/"später"
+     * requeueing is entirely client-side, so a phase emptying out never needs
+     * a Livewire round trip. Re-seeded fresh on every wire:navigate visit —
+     * that's what makes deferred order genuinely session-local.
+     */
+    window.Alpine.store('cleanup', {
+        phase: 'inbox', // 'inbox' | 'review' | 'done'
+        inboxOrder: [],
+        reviewOrder: [],
+        inboxTotal: 0,
+        reviewTotal: 0,
+        seeded: false,
+
+        // Livewire re-morphs the component root on every action, which re-runs
+        // this element's x-init — without a guard that would silently wipe the
+        // client-tracked order (and any "später" requeues) after every single
+        // swipe. Alpine also auto-calls a store's init() once with no arguments
+        // as soon as the store is registered, before x-init ever runs — that
+        // call is distinguished by cfg.inbox being undefined and ignored too.
+        init(cfg = {}) {
+            if (this.seeded || cfg.inbox === undefined) return;
+            this.seeded = true;
+            this.inboxOrder = [...(cfg.inbox ?? [])];
+            this.reviewOrder = [...(cfg.review ?? [])];
+            this.inboxTotal = this.inboxOrder.length;
+            this.reviewTotal = this.reviewOrder.length;
+            this.phase = this.inboxOrder.length
+                ? 'inbox'
+                : (this.reviewOrder.length ? 'review' : 'done');
+        },
+
+        order(phase) {
+            return phase === 'inbox' ? this.inboxOrder : this.reviewOrder;
+        },
+        stackIndexOf(phase, id) {
+            return this.order(phase).indexOf(id);
+        },
+
+        /** Commit or skip: gone from this session for good. */
+        remove(phase, id) {
+            const arr = this.order(phase);
+            const i = arr.indexOf(id);
+            if (i !== -1) arr.splice(i, 1);
+            this.advanceIfEmpty();
+        },
+
+        /** "später": move to the back of the same phase's queue. */
+        requeue(phase, id) {
+            const arr = this.order(phase);
+            const i = arr.indexOf(id);
+            if (i !== -1) {
+                arr.splice(i, 1);
+                arr.push(id);
+            }
+        },
+
+        /** Bridges phase 1 → phase 2: a task just sorted into Todos/Tasks becomes reviewable this same session. */
+        enqueueReview(id) {
+            if (!this.reviewOrder.includes(id)) {
+                this.reviewOrder.push(id);
+                this.reviewTotal++;
+            }
+        },
+
+        advanceIfEmpty() {
+            if (this.phase === 'inbox' && this.inboxOrder.length === 0) {
+                this.phase = this.reviewOrder.length ? 'review' : 'done';
+            } else if (this.phase === 'review' && this.reviewOrder.length === 0) {
+                this.phase = 'done';
+            }
+        },
+
+        get remainingLabel() {
+            if (this.phase === 'inbox') return `${this.inboxOrder.length} von ${this.inboxTotal}`;
+            if (this.phase === 'review') return `${this.reviewOrder.length} von ${this.reviewTotal}`;
+            return '';
+        },
+    });
+
+    /**
+     * cleanupSwipeCard — 4-directional swipe for the Cleanup triage stack.
+     * Same pointer handling / threshold / resistance / dead-side-damping math
+     * as swipeCard above, generalised from one axis (dx) to two (dx and dy):
+     * the first move past a small deadzone locks the gesture to the
+     * horizontal or vertical axis, exactly like swipeCard already does — the
+     * difference here is the vertical axis drives an action instead of
+     * ceding to page scroll (there is no scrolling list of cards to protect).
+     *
+     * Each configured direction resolves via a `kind`:
+     *   'commit'  — fly off screen, then call the configured $wire method (if
+     *               any) and remove the card from its queue for good.
+     *   'defer'   — "später": continue off the same edge, but only requeue
+     *               it at the back of the same queue — no $wire call at all.
+     *   'popover' — mirrors swipeCard's existing 'menu' intent: must reach
+     *               threshold, then springs back and opens the inline
+     *               deadline popover without advancing or removing the card.
+     *   null / unconfigured — dead side, resists and never commits, exactly
+     *               like swipeCard's unconfigured sides.
+     *
+     * cfg: { id, phase, deadline, dueDate, right, left, down, up }
+     * each direction is null or { kind, wire?, args? }
+     */
+    window.Alpine.data('cleanupSwipeCard', (cfg = {}) => ({
+        id: cfg.id,
+        phase: cfg.phase,
+        dirs: {
+            right: cfg.right ?? null,
+            left: cfg.left ?? null,
+            down: cfg.down ?? null,
+            up: cfg.up ?? null,
+        },
+        dx: 0,
+        dy: 0,
+        dragging: false,
+        flying: false,
+        locked: null,
+        dateOpen: false,
+        deadline: cfg.deadline ?? '',
+        dueDate: cfg.dueDate ?? '',
+        sx: 0,
+        sy: 0,
+        thresholdH: 72,
+        thresholdV: 72,
+
+        init() {
+            this.thresholdH = Math.max(64, Math.round((this.$el.offsetWidth || 320) * 0.38));
+            this.thresholdV = Math.max(64, Math.round((this.$el.offsetHeight || 220) * 0.38));
+        },
+
+        get stackIndex() {
+            return this.$store.cleanup.stackIndexOf(this.phase, this.id);
+        },
+        get isTop() {
+            return this.stackIndex === 0;
+        },
+        /** Outer stack position (peek offset/scale) — the live drag transform lives on the inner face card instead, so reveal panels (siblings of the face card) stay put while it slides. */
+        get stackStyle() {
+            const i = this.stackIndex;
+            if (i < 0 || i > 2) return 'display: none';
+            if (i === 0) return 'z-index: 3;';
+            const offset = i * 10;
+            const scale = 1 - i * 0.045;
+            return `transform: translateY(${offset}px) scale(${scale}); z-index: ${3 - i}; pointer-events: none;`;
+        },
+
+        get progress() {
+            if (this.dx !== 0) return Math.min(Math.abs(this.dx) / this.thresholdH, 1);
+            if (this.dy !== 0) return Math.min(Math.abs(this.dy) / this.thresholdV, 1);
+            return 0;
+        },
+        get dir() {
+            if (this.dx !== 0) return this.dx > 0 ? 'right' : 'left';
+            if (this.dy !== 0) return this.dy > 0 ? 'down' : 'up';
+            return null;
+        },
+        get reached() {
+            if (this.dx !== 0) return Math.abs(this.dx) >= this.thresholdH;
+            if (this.dy !== 0) return Math.abs(this.dy) >= this.thresholdV;
+            return false;
+        },
+
+        down(e) {
+            if (e.pointerType === 'mouse' || this.flying || this.dateOpen || !this.isTop) return;
+            this.sx = e.clientX;
+            this.sy = e.clientY;
+            this.dragging = true;
+            this.locked = null;
+        },
+
+        move(e) {
+            if (!this.dragging) return;
+            const dx = e.clientX - this.sx;
+            const dy = e.clientY - this.sy;
+
+            if (this.locked === null) {
+                if (Math.abs(dx) > Math.abs(dy) + 6) this.locked = 'h';
+                else if (Math.abs(dy) > Math.abs(dx) + 6) this.locked = 'v';
+                else return;
+            }
+
+            if (e.cancelable) e.preventDefault();
+
+            if (this.locked === 'h') {
+                const dir = dx > 0 ? 'right' : 'left';
+                if (!this.dirs[dir]) { this.dx = dx * 0.18; return; }
+                const sign = Math.sign(dx);
+                const abs = Math.abs(dx);
+                const max = this.thresholdH * 1.6;
+                this.dx = sign * (abs <= max ? abs : max + (abs - max) * 0.22);
+            } else {
+                const dir = dy > 0 ? 'down' : 'up';
+                if (!this.dirs[dir]) { this.dy = dy * 0.18; return; }
+                const sign = Math.sign(dy);
+                const abs = Math.abs(dy);
+                const max = this.thresholdV * 1.6;
+                this.dy = sign * (abs <= max ? abs : max + (abs - max) * 0.22);
+            }
+        },
+
+        up() {
+            if (!this.dragging) return;
+            this.dragging = false;
+            this.locked = null;
+            const dir = this.dir;
+            const cfgDir = dir ? this.dirs[dir] : null;
+            const commit = this.reached && cfgDir;
+            if (commit) this.resolve(dir, cfgDir);
+            else this.spring();
+        },
+
+        spring() {
+            this.dx = 0;
+            this.dy = 0;
+        },
+
+        /** Button fallback: synthesise a past-threshold gesture and resolve it exactly like a completed swipe. */
+        trigger(dirName) {
+            if (!this.isTop || this.flying || this.dateOpen) return;
+            const cfgDir = this.dirs[dirName];
+            if (!cfgDir) return;
+            if (dirName === 'right') this.dx = this.thresholdH;
+            else if (dirName === 'left') this.dx = -this.thresholdH;
+            else if (dirName === 'down') this.dy = this.thresholdV;
+            else if (dirName === 'up') this.dy = -this.thresholdV;
+            this.resolve(dirName, cfgDir);
+        },
+
+        resolve(dirName, cfgDir) {
+            if (cfgDir.kind === 'popover') {
+                this.spring();
+                this.dateOpen = true;
+                return;
+            }
+
+            if (cfgDir.kind === 'defer') {
+                this.flying = true;
+                this.dy = (this.$el.offsetHeight || 220) + 60;
+                setTimeout(() => {
+                    this.$store.cleanup.requeue(this.phase, this.id);
+                    this.flying = false;
+                    this.dx = 0;
+                    this.dy = 0;
+                }, 180);
+                return;
+            }
+
+            // 'commit' — right/left only in this feature.
+            this.flying = true;
+            const w = this.$el.offsetWidth || 320;
+            this.dx = dirName === 'right' ? w + 24 : -(w + 24);
+            setTimeout(() => {
+                if (cfgDir.wire) this.$wire[cfgDir.wire](...(cfgDir.args ?? []));
+                if (this.phase === 'inbox') this.$store.cleanup.enqueueReview(this.id);
+                this.$store.cleanup.remove(this.phase, this.id);
+            }, 150);
+        },
+
+        quickSetDate() {
+            this.$wire.quickSetDates(this.id, this.deadline || null, this.dueDate || null);
+        },
+    }));
+
+    /**
      * scheduleEvent — drag an event on the timeline grid. Body drag moves it
      * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
      * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.

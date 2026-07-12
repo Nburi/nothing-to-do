@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Livewire\Cleanup;
 use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
@@ -24,6 +25,10 @@ Route::get('/app/projects/{project}', ProjectPage::class)
 Route::get('/app/schedule', Schedule::class)
     ->middleware('auth')
     ->name('schedule');
+
+Route::get('/app/cleanup', Cleanup::class)
+    ->middleware('auth')
+    ->name('cleanup');
 
 Route::get('/app/settings', Settings::class)
     ->middleware('auth')
