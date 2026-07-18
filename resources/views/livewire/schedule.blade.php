@@ -85,6 +85,7 @@
                     @foreach ($this->weekDays as $day)
                         @php $dayEvents = $this->events->get($day->toDateString(), collect()); @endphp
                         <div
+                            wire:key="draw-grid-{{ $day->toDateString() }}"
                             class="relative flex-1 border-l border-line"
                             data-grid
                             data-span="{{ $span }}"
@@ -174,6 +175,7 @@
                     @endfor
                 </div>
                 <div
+                    wire:key="draw-grid-{{ $focusedDate }}"
                     class="relative flex-1 border-l border-line/60"
                     data-grid
                     data-span="{{ $span }}"

@@ -512,6 +512,24 @@ window.Alpine.store('foo', {
 ```
 See the `cleanup` store in `resources/js/app.js` for the reference implementation.
 
+### An un-keyed `x-data` element frozen across a Livewire morph reads stale server data
+**Symptom:** on the Zeitplan page, navigating to a different week (or a different day on mobile) and then
+drawing a Kategorie/Termin block writes it to the *previously displayed* day/week instead of the one on
+screen.
+**Cause:** the opposite failure mode from the `x-init` issue above. Livewire's morph tries to preserve an
+Alpine component's live state across a re-render by reusing the same DOM node when the node's position/
+structure didn't change — so `x-data="scheduleDraw({ date: '{{ $day->toDateString() }}' })"` only ever
+evaluates its factory **once**, at first mount. Paging `prevWeek`/`nextWeek`/`prevDay`/`nextDay` re-renders
+the blade with a new `$day`/`$focusedDate`, but the day-column `<div x-data="scheduleDraw(...)">` has no
+`wire:key`, so Livewire patches its attributes in place rather than replacing the node — Alpine's `date`
+stays whatever it was on first page load, and every subsequent drag writes to that stale date.
+**Fix:** give the element a `wire:key` derived from the value the factory closes over
+(`wire:key="draw-grid-{{ $day->toDateString() }}"` / `wire:key="draw-grid-{{ $focusedDate }}"`). A changed
+key makes Livewire's morph treat it as a genuinely new node — destroy the old, mount a fresh one — which
+re-runs `x-data` with the current date. Same underlying lesson as the focus ring's `wire:key` (§7 Schedule):
+any `x-data`/`x-init` that closes over server-rendered values needs a key tied to those values, or Alpine
+will silently keep serving the values from first mount.
+
 ---
 
 ## 11. Key commands
