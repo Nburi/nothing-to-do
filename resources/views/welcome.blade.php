@@ -3,7 +3,9 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#1f6b3b">
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.pwa-head')
         <title>nothing-to-do — drei Listen, ein ruhiger Kopf</title>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
