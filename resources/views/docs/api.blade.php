@@ -71,7 +71,7 @@
             <div class="space-y-4 text-sm">
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /me</p>
-                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today/projects).</p>
+                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus/Autostart, Benachrichtigungs-Einstellungen, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today/projects).</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /me</p>
@@ -81,6 +81,10 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_short_break</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_break</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_every</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_autostart</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_event_start</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_pomo_start</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_break_start</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_offset</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_auto_dst</code>.
                     </p>
@@ -228,17 +232,31 @@
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/start-focus</p>
-                    <p class="mt-1 text-ink-soft">Startet den Pomodoro-Timer eines Kategorie-Blocks (nur wenn dessen Kategorie Pomodoro aktiviert hat).</p>
+                    <p class="mt-1 text-ink-soft">Startet den Pomodoro-Timer eines Kategorie-Blocks (nur wenn dessen Kategorie Pomodoro aktiviert hat). Immer manuell — die erste Session startet nie von selbst.</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/stop-focus</p>
+                    <p class="mt-1 text-ink-soft">Beendet die Session komplett — ein neuer <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start-focus</code>-Aufruf ist nötig, um wieder zu beginnen.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/continue-focus</p>
+                    <p class="mt-1 text-ink-soft">
+                        Startet manuell die nächste Phase — nötig, wenn <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_autostart</code> deaktiviert ist und die
+                        vorige Phase fertig ist (der Timer friert dann ein, bis dieser Endpoint aufgerufen wird).
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/skip-focus-break</p>
+                    <p class="mt-1 text-ink-soft">Überspringt die aktuelle oder anstehende Pause und startet direkt die nächste Fokus-Session.</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /schedule-events/focus</p>
                     <p class="mt-1 text-ink-soft">
                         Der Fokus-Header von jetzt: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code> (der aktive/bald startende
                         Pomodoro-Block, oder <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code>), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">phase</code>
-                        (Work/Pause + Restsekunden) und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">suggestion</code> ("was jetzt tun").
+                        (Work/Pause, Restsekunden, plus <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">awaiting_next</code>/<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">next_phase</code>
+                        wenn der Timer eingefroren auf einen manuellen <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">continue-focus</code> wartet) und
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">suggestion</code> ("was jetzt tun").
                     </p>
                 </div>
             </div>

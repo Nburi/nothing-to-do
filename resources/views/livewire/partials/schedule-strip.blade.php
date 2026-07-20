@@ -17,18 +17,70 @@
         'ink-faint', 'ink' => ['fill' => 'bg-ink-faint', 'out' => 'border-ink-faint'],
         default => ['fill' => 'bg-contour', 'out' => 'border-contour'],
     };
+
+    $isBreak = fn (?string $p) => in_array($p, ['short_break', 'long_break'], true);
 @endphp
 
+<div
+    x-data="eventStartNotifier({
+        enabled: @js((bool) auth()->user()->notify_event_start),
+        events: @js($events->map(fn ($e) => ['id' => $e->id, 'title' => $e->displayTitle(), 'startSeconds' => $e->startMinutes() * 60])->values()),
+        nowSeconds: {{ $nowMin * 60 + $now->second }},
+    })"
+>
 @if ($focus)
     {{-- Focus card: a plain div (not the clickable-card <a> below) since it hosts
-         its own Start/Stop button — a button can't sit inside an <a>. --}}
+         its own Start/Stop/Continue/Skip buttons — a button can't sit inside an <a>. --}}
     <div class="rounded-card border border-line bg-surface px-4 py-3 shadow-map">
-        @if ($phase)
+        @if ($phase && $phase['awaiting_next'])
+            @php
+                $nextIsBreak = $isBreak($phase['next_phase']);
+                $nextLabel = match ($phase['next_phase']) {
+                    'long_break' => 'Lange Pause bereit',
+                    'short_break' => 'Kurze Pause bereit',
+                    default => 'Nächste Session bereit',
+                };
+            @endphp
+            <div class="flex items-center gap-4">
+                <div class="grid h-16 w-16 flex-none place-items-center rounded-full border-2 border-dashed border-forest/40 text-forest">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="mb-0.5 flex items-center gap-2">
+                        <span class="rounded bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">Bereit</span>
+                    </div>
+                    <p class="truncate text-[15px] font-medium text-ink">{{ $nextLabel }}</p>
+                    @if ($suggestion)
+                        @include('livewire.partials.schedule-strip-suggestion')
+                    @endif
+                    <a href="{{ route('schedule') }}" wire:navigate class="truncate text-xs text-ink-soft hover:text-ink">Zeitplan öffnen</a>
+                </div>
+                <div class="flex flex-none flex-col items-stretch gap-1.5">
+                    <button
+                        type="button"
+                        wire:click="continuePhase({{ $focus->id }})"
+                        onclick="window.primeFocusAudio && window.primeFocusAudio()"
+                        class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]"
+                    >
+                        {{ $nextIsBreak ? 'Pause starten' : 'Weiter' }}
+                    </button>
+                    @if ($nextIsBreak)
+                        <button
+                            type="button"
+                            wire:click="skipBreak({{ $focus->id }})"
+                            class="rounded-card px-4 py-1 text-xs text-ink-faint transition hover:text-ink"
+                        >
+                            Überspringen
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @elseif ($phase)
             <div
                 wire:key="focus-ring-{{ $focus->id }}-{{ $phase['phase'] }}-{{ $phase['cycle'] }}"
                 wire:poll.5s.visible
                 class="flex items-center gap-4"
-                x-data="focusTimer({ remaining: {{ $phase['remaining_seconds'] }}, total: {{ $phase['total_seconds'] }}, circ: 263.9 })"
+                x-data="focusTimer({ id: {{ $focus->id }}, remaining: {{ $phase['remaining_seconds'] }}, total: {{ $phase['total_seconds'] }}, circ: 263.9 })"
             >
                 <div class="relative h-16 w-16 flex-none">
                     <svg viewBox="0 0 100 100" class="h-16 w-16 -rotate-90" aria-hidden="true">
@@ -54,14 +106,25 @@
                     @endif
                     <a href="{{ route('schedule') }}" wire:navigate class="truncate text-xs text-ink-soft hover:text-ink">Zeitplan öffnen</a>
                 </div>
-                <button
-                    type="button"
-                    wire:click="stopFocusTimer({{ $focus->id }})"
-                    class="grid h-9 w-9 flex-none place-items-center rounded-card border border-line text-ink-faint transition hover:border-ink-faint/60 hover:text-ink active:scale-95"
-                    aria-label="Timer stoppen"
-                >
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
-                </button>
+                <div class="flex flex-none flex-col items-stretch gap-1.5">
+                    <button
+                        type="button"
+                        wire:click="stopFocusTimer({{ $focus->id }})"
+                        class="grid h-9 w-9 flex-none place-items-center self-center rounded-card border border-line text-ink-faint transition hover:border-ink-faint/60 hover:text-ink active:scale-95"
+                        aria-label="Timer stoppen"
+                    >
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+                    </button>
+                    @if ($isBreak($phase['phase']))
+                        <button
+                            type="button"
+                            wire:click="skipBreak({{ $focus->id }})"
+                            class="rounded-card px-1 text-xs text-ink-faint transition hover:text-ink"
+                        >
+                            Überspringen
+                        </button>
+                    @endif
+                </div>
             </div>
         @else
             <div class="flex items-center gap-4">
@@ -143,3 +206,4 @@
         </div>
     </a>
 @endif
+</div>

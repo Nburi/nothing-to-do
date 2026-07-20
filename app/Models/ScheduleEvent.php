@@ -33,6 +33,8 @@ class ScheduleEvent extends Model
         'end_time',
         'is_cancelled',
         'pomodoro_started_at',
+        'pomodoro_phase',
+        'pomodoro_cycle',
     ];
 
     protected function casts(): array
@@ -41,6 +43,7 @@ class ScheduleEvent extends Model
             'date' => 'date',
             'is_cancelled' => 'boolean',
             'pomodoro_started_at' => 'datetime',
+            'pomodoro_cycle' => 'integer',
         ];
     }
 
@@ -193,32 +196,71 @@ class ScheduleEvent extends Model
     }
 
     /**
-     * The current Pomodoro phase, or null if the timer hasn't been started (a
-     * tap on "Start" is required — reaching the scheduled time never starts it
-     * on its own). Remaining/total are second-precise so the header ring can
-     * count down smoothly even though phase boundaries land on whole minutes.
+     * The current Pomodoro state, or null if the timer has never been started
+     * (a tap on "Start" is required — reaching the scheduled time never starts
+     * it on its own). Remaining/total are second-precise so the header ring
+     * can count down smoothly even though phase boundaries land on whole
+     * minutes.
+     *
+     * Two frozen/running states beyond the obvious "ticking down":
+     *  - `awaiting_next` (autostart disabled): the stored phase finished and
+     *    `pomodoro_started_at` was cleared to freeze the clock — `next_phase`/
+     *    `next_cycle` describe what a manual continue would start.
+     *  - self-healing cascade (autostart enabled): if the client's local timer
+     *    never fired the transition (backgrounded tab, etc.), this walks
+     *    forward through however many phases have fully elapsed since
+     *    `pomodoro_started_at`, so a stale read still reflects reality.
      *
      * @param  array{work:int,short_break:int,long_break:int,long_every:int}  $rhythm
-     * @return array{phase:string,cycle:int,remaining_seconds:int,total_seconds:int}|null
+     * @return array{phase:string,cycle:int,remaining_seconds:int,total_seconds:int,running:bool,awaiting_next:bool,next_phase:?string,next_cycle:?int}|null
      */
-    public function pomodoroPhaseNow(Carbon $now, array $rhythm): ?array
+    public function pomodoroPhaseNow(Carbon $now, array $rhythm, bool $autostart): ?array
     {
-        if ($this->pomodoro_started_at === null) {
+        if ($this->pomodoro_phase === null) {
             return null;
+        }
+
+        $phase = $this->pomodoro_phase;
+        $cycle = $this->pomodoro_cycle;
+        $durationSeconds = PomodoroCycle::durationMinutes($phase, $rhythm) * 60;
+
+        if ($this->pomodoro_started_at === null) {
+            $next = PomodoroCycle::next($phase, $cycle, $rhythm);
+
+            return [
+                'phase' => $phase,
+                'cycle' => $cycle,
+                'remaining_seconds' => 0,
+                'total_seconds' => $durationSeconds,
+                'running' => false,
+                'awaiting_next' => true,
+                'next_phase' => $next['phase'],
+                'next_cycle' => $next['cycle'],
+            ];
         }
 
         // Carbon 3 returns a float; cast so downstream int arithmetic stays exact.
         $elapsedSeconds = max(0, (int) $this->pomodoro_started_at->diffInSeconds($now, false));
-        $phase = PomodoroCycle::at(intdiv($elapsedSeconds, 60), $rhythm);
 
-        $phaseStartSeconds = $phase['phase_start_minute'] * 60;
-        $phaseEndSeconds = $phase['phase_end_minute'] * 60;
+        if ($autostart) {
+            while ($elapsedSeconds >= $durationSeconds) {
+                $elapsedSeconds -= $durationSeconds;
+                $next = PomodoroCycle::next($phase, $cycle, $rhythm);
+                $phase = $next['phase'];
+                $cycle = $next['cycle'];
+                $durationSeconds = PomodoroCycle::durationMinutes($phase, $rhythm) * 60;
+            }
+        }
 
         return [
-            'phase' => $phase['phase'],
-            'cycle' => $phase['cycle'],
-            'remaining_seconds' => max(0, $phaseEndSeconds - $elapsedSeconds),
-            'total_seconds' => max(1, $phaseEndSeconds - $phaseStartSeconds),
+            'phase' => $phase,
+            'cycle' => $cycle,
+            'remaining_seconds' => max(0, $durationSeconds - $elapsedSeconds),
+            'total_seconds' => $durationSeconds,
+            'running' => $elapsedSeconds < $durationSeconds,
+            'awaiting_next' => false,
+            'next_phase' => null,
+            'next_cycle' => null,
         ];
     }
 

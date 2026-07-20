@@ -23,6 +23,8 @@ class Settings extends Component
 
     public int $pLongEvery = 4;
 
+    public bool $pAutostart = false;
+
     // Timezone
     public float $timezoneOffset = 0;
 
@@ -42,6 +44,7 @@ class Settings extends Component
         $this->pShortBreak = $user->pomodoro_short_break ?? 5;
         $this->pLongBreak = $user->pomodoro_long_break ?? 15;
         $this->pLongEvery = $user->pomodoro_long_every ?? 4;
+        $this->pAutostart = $user->pomodoro_autostart ?? false;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
     }
@@ -71,9 +74,28 @@ class Settings extends Component
             'pomodoro_short_break' => $data['pShortBreak'],
             'pomodoro_long_break' => $data['pLongBreak'],
             'pomodoro_long_every' => $data['pLongEvery'],
+            'pomodoro_autostart' => $this->pAutostart,
         ]);
 
         $this->dispatch('schedule-saved');
+    }
+
+    public function toggleNotifyEventStart(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_event_start' => ! $user->notify_event_start]);
+    }
+
+    public function toggleNotifyPomoStart(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_pomo_start' => ! $user->notify_pomo_start]);
+    }
+
+    public function toggleNotifyBreakStart(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_break_start' => ! $user->notify_break_start]);
     }
 
     public function saveTimezone(): void

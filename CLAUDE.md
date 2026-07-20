@@ -102,7 +102,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (193 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (211 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -126,7 +126,12 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **`User`** (Breeze) `hasMany` **`Task`**, **`Project`**, **`ScheduleEvent`**, **`EventTemplate`**,
   **`EventCategory`**. Carries the Pomodoro rhythm settings; `pomodoro()` returns the rhythm array
   (`work/short_break/long_break/long_every`), consumed by `PomodoroCycle` and any category's focus timer.
-  Also carries manual timezone settings — `timezone_offset` (a plain UTC-offset integer entered by the
+  `pomodoro_autostart` (bool, default `false`) governs whether a phase transition *after* the first
+  (always-manual) work session continues on its own or freezes awaiting a manual continue — see
+  `ScheduleEvent::pomodoroPhaseNow()` below. `notify_event_start`/`notify_pomo_start`/`notify_break_start`
+  (bools, default `false`) independently gate the three browser-notification triggers (Settings'
+  Benachrichtigungen card) — see §7 Schedule "Notifications". Also carries manual timezone settings —
+  `timezone_offset` (a plain UTC-offset integer entered by the
   user, e.g. `+1`, not an IANA zone; defaults to `0` so an unconfigured account behaves exactly like the
   server clock) and `timezone_auto_dst` (adds +1 hour automatically while European DST is active, detected
   by borrowing `Europe/Zurich`'s own transition dates via `DateTime::format('I')` rather than hand-rolled
@@ -154,15 +159,23 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (both `nullOnDelete` — deleting a category leaves existing blocks intact, falling back to their stored
   title/colour snapshot). Scopes `forUser`, `ordered`. Managed via **Settings**' Kategorien card.
 - **`ScheduleEvent`** — `user_id, template_id?, category_id?, title?, color, date, start_time, end_time,
-  is_cancelled, pomodoro_started_at?, timestamps`. Every event is either a **Termin** (free-text
-  `title`/`color`, `category_id` null) or a **Kategorie** block (`category_id` set). `isAppointment()` /
-  `isCategory()` branch on that. `displayTitle()`/`colorToken()` prefer the **live** category name/colour,
-  falling back to the `title`/`color` snapshot written at creation time if the category was later deleted.
-  Times are `HH:MM` strings; `toMinutes/fromMinutes/startMinutes/endMinutes/durationMinutes`, `isActive/isPast/
-  progress/secondsRemaining(now)` for the strip + timeline. `pomodoro_started_at` (nullable timestamp) is set
-  only by an explicit user tap — reaching the block's scheduled time never starts it automatically.
-  `pomodoroPhaseNow(now, rhythm)` delegates to `PomodoroCycle::at()` and returns the current phase plus
-  second-precise `remaining_seconds`/`total_seconds` for the live ring, or `null` if not started. Scopes
+  is_cancelled, pomodoro_started_at?, pomodoro_phase?, pomodoro_cycle, timestamps`. Every event is either a
+  **Termin** (free-text `title`/`color`, `category_id` null) or a **Kategorie** block (`category_id` set).
+  `isAppointment()` / `isCategory()` branch on that. `displayTitle()`/`colorToken()` prefer the **live**
+  category name/colour, falling back to the `title`/`color` snapshot written at creation time if the
+  category was later deleted. Times are `HH:MM` strings; `toMinutes/fromMinutes/startMinutes/endMinutes/
+  durationMinutes`, `isActive/isPast/progress/secondsRemaining(now)` for the strip + timeline.
+  `pomodoro_phase`/`pomodoro_cycle` are the **discrete, persisted** current Pomodoro phase — `null` phase
+  means never started (a manual "Start" tap is required for the first session, always — reaching the
+  block's scheduled time never starts it automatically). `pomodoro_started_at` (nullable timestamp) is the
+  start of the *current* phase: non-null while ticking, `null` while frozen awaiting a manual continue
+  (phase/cycle stay put in that frozen state, so `PomodoroCycle::next()` can tell what a continue would
+  start). `pomodoroPhaseNow(now, rhythm, autostart)` reads this state: if frozen, returns
+  `awaiting_next: true` plus `next_phase`/`next_cycle`; if running, returns `remaining_seconds`/
+  `total_seconds`, and — only when `$autostart` is true — self-heals by cascading forward through however
+  many phases have fully elapsed (via `PomodoroCycle::next()` in a loop) in case the client's local timer
+  never fired the transition (backgrounded tab, etc.); with autostart off it never cascades — a finished
+  phase just clamps to `remaining_seconds: 0` until something explicitly writes the next phase. Scopes
   `forUser/visible/forDay/forRange/ordered`. `materializeRange()` fills recurring-template occurrences for a
   date range — **idempotent and delete-safe** (skips any (template,date) that already has a row, including
   an `is_cancelled` tombstone), carrying the template's `category_id` through.
@@ -288,26 +301,72 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **Header strip** — `partials/schedule-strip.blade.php` in the board: a calm **Zeitstrahl** (filled mark =
   past, hollow = upcoming, partial-fill = active, mark length ∝ duration, red "now" line) when nothing is
   due. When a Pomodoro-enabled category block is active or starts within 5 min (`TaskBoard::focusSession`),
-  the strip swaps to a **focus card** with two states: **Bereit** (a Start button — reaching the scheduled
-  time never auto-starts the timer) and **Läuft** (the live countdown ring, fed by `TaskBoard::focusPhase`).
-  The ring's wrapper carries a `wire:key` keyed on `(event, phase, cycle)` plus `wire:poll.5s.visible`, so a
-  poll that detects a phase change (work → break) forces Alpine to tear down and reinitialise the ring with
-  the new phase's config — a plain re-render wouldn't, since Alpine only evaluates `x-data` once per DOM
-  node. `startFocusTimer`/`stopFocusTimer` on `TaskBoard` set/clear `pomodoro_started_at` (ownership- and
-  `pomodoro_enabled`-guarded); a tap before the block's scheduled start begins the cycle immediately.
-- **`App\Services\PomodoroCycle`** — a pure, stateless Pomodoro layout: `at(elapsedMinutes, rhythm)` walks
-  work→break cycles and returns the phase (`work|short_break|long_break`), cycle number, and minute
-  boundaries; a break is long when its preceding work cycle's number is divisible by `long_every`.
-  `ScheduleEvent::pomodoroPhaseNow()` wraps it with second-precision remaining/total time for the ring.
-- **`App\Services\TaskSuggestor`** — "what to work on" for the focus card, tiered by the run's current
-  Pomodoro cycle number (`TaskBoard::taskSuggestion()`, read via `$phase['cycle']`, defaulting to 1 while
-  still in **Bereit** so it previews the session about to start): cycle 1 nudges to clear the ToDos list
-  (falling through if none are open), any cycle then prefers the top active **today** task (board order),
-  and once today's list is empty it falls back to a deterministic pick between a project's next task and
-  another todos/tasks-list task — seeded by `(event id, cycle)` via `crc32()` so the choice stays stable
-  across the ring's 5s poll instead of reshuffling every request. Hidden during a break. Rendered by
-  `partials/schedule-strip-suggestion.blade.php` in both focus-card states; a task suggestion opens the
-  existing inline edit sheet (`startEdit`), a project suggestion links to its project page.
+  the strip swaps to a **focus card** with three states, driven by `TaskBoard::focusPhase()` →
+  `ScheduleEvent::pomodoroPhaseNow()`:
+  - **Bereit** (`$phase === null`, never started) — a Start button. Reaching the block's scheduled time
+    never auto-starts it; the *first* session is always a manual tap, unconditionally (the autostart
+    setting below only governs what happens *after* this).
+  - **Läuft** (`$phase['running']`) — the live countdown ring, fed by `remaining_seconds`/`total_seconds`.
+    The ring's wrapper carries a `wire:key` keyed on `(event, phase, cycle)` plus `wire:poll.5s.visible`, so
+    a poll that detects a phase change forces Alpine to tear down and reinitialise the ring with the new
+    phase's config — a plain re-render wouldn't, since Alpine only evaluates `x-data` once per DOM node.
+    While the running phase is a break, an "Überspringen" button (`skipBreak`) sits next to Stop.
+  - **Bereit, awaiting a continue** (`$phase['awaiting_next']`) — shown when the previous phase finished and
+    `pomodoro_autostart` is off: a static (non-ticking) card naming what's next (`next_phase`), with a
+    continue button (`continuePhase`) and, if `next_phase` is a break, an additional skip button
+    (`skipBreak`) to bypass it and jump straight to the next work session.
+  `startFocusTimer` (ownership- and `pomodoro_enabled`-guarded) always sets `phase=work, cycle=1,
+  started_at=now()` — the one unconditionally-manual entry point. `stopFocusTimer` fully resets
+  (`phase=null, cycle=1, started_at=null`); ending a session always needs a fresh Start tap to resume.
+- **Autostart vs. manual phase transitions** — `users.pomodoro_autostart` (Settings' Pomodoro card, toggle
+  next to the rhythm fields, saved together via `saveSchedule()`). The client's local countdown
+  (`focusTimer` in `app.js`) calls `TaskBoard::handlePhaseComplete($id)` the instant it reaches zero — the
+  server re-checks elapsed time itself before acting (never trusts the client's clock blindly: a premature
+  or duplicate call is a no-op). With autostart **on**, this immediately writes the next phase/cycle and
+  restarts the clock (`transitionToNextPhase()`); with it **off**, it just clears `pomodoro_started_at`,
+  freezing the ring at the just-finished phase until `continuePhase()` (the awaiting-state's button) writes
+  the next phase manually. `TaskBoard::continuePhase()`/`skipBreak()` are the two manual-advance actions —
+  `skipBreak` resolves "what's the current/upcoming phase" first (reading `next_phase` if frozen, else the
+  live `pomodoro_phase`), bails if it isn't a break, then advances **twice** conceptually (break → the work
+  cycle *after* it) so the break is bypassed entirely rather than just ended early.
+- **`App\Services\PomodoroCycle`** — pure, stateless Pomodoro phase math, no elapsed-time cascading of its
+  own (that self-healing loop lives in `ScheduleEvent::pomodoroPhaseNow()`, see above): `durationMinutes
+  (phase, rhythm)` looks up one phase's length; `next(phase, cycle, rhythm)` returns what follows — a break
+  after work (long when the finishing cycle's number is divisible by `long_every`), or work with `cycle+1`
+  after any break. Both `TaskBoard`'s Pomodoro actions and `ScheduleEventController`'s API equivalents
+  (`continue-focus`/`skip-focus-break`) call these directly rather than duplicating the phase-order logic.
+- **`App\Services\TaskSuggestor`** — "what to work on" for the focus card, tiered by the *effective* current
+  Pomodoro cycle number (`TaskBoard::taskSuggestion()` — while frozen awaiting a continue, "effective" means
+  `next_phase`/`next_cycle`, not the just-finished ones, so the preview matches what a continue would
+  start): cycle 1 nudges to clear the ToDos list (falling through if none are open), any cycle then prefers
+  the top active **today** task (board order), and once today's list is empty it falls back to a
+  deterministic pick between a project's next task and another todos/tasks-list task — seeded by
+  `(event id, cycle)` via `crc32()` so the choice stays stable across the ring's 5s poll instead of
+  reshuffling every request. Hidden whenever the effective phase is a break. Rendered by
+  `partials/schedule-strip-suggestion.blade.php` in every focus-card state that has a work-phase context; a
+  task suggestion opens the existing inline edit sheet (`startEdit`), a project suggestion links to its
+  project page.
+- **Notifications** — three independent per-type toggles on `User` (`notify_event_start`, `notify_pomo_start`,
+  `notify_break_start`; Settings' Benachrichtigungen card), all default `false`. Foreground-only: this is the
+  plain browser Notification API (`window.sendAppNotification`/`window.requestAppNotificationPermission` in
+  `app.js`), not Web Push — no service-worker push handler, no VAPID keys, no backend subscription storage,
+  so nothing fires once every tab of the app is closed. Two independent trigger paths:
+  - **Pomodoro phase starts** (`notify_pomo_start`/`notify_break_start`) — `TaskBoard::notifyPhaseStart()`
+    (called from `startFocusTimer`/`transitionToNextPhase`, i.e. every real phase start, manual or auto)
+    checks the matching per-type flag server-side and, only if enabled, `dispatch('browser-notify', title:,
+    body:)`. The client is deliberately dumb: `Livewire.on('browser-notify', ...)` in `app.js` just shows
+    whatever it's handed — all gating already happened server-side, so a stray client bug can't leak a
+    notification the user disabled.
+  - **Any schedule event's start time** (`notify_event_start`) — decoupled from Pomodoro entirely, and from
+    the server round-trip model above: `Alpine.data('eventStartNotifier', ...)` in `app.js`, mounted on
+    `schedule-strip.blade.php`, is seeded once with the day's events (id/title/start-in-seconds) and the
+    server's current local time (**not** the browser's own clock — keeps it correct even if the device
+    timezone doesn't match the user's configured one), then ticks a local counter forward every second and
+    fires the moment "now" crosses an event's start. Scoped to whichever page renders `scheduleToday` —
+    currently just the Dashboard, not e.g. Settings or Cleanup. Because the strip is included **twice**
+    (desktop + mobile layout, both present in the DOM, one merely hidden via CSS), the fired-ids dedupe set
+    lives in a shared `Alpine.store('notifiedEvents')` rather than per-component state — otherwise both
+    mounts would independently notify for the same event.
 - **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by `Schedule`): create/edit/
   delete Termine and Kategorie blocks, drag-to-move (keeps duration), drag-to-resize (min-length guard),
   apply-template. The event form sheet (`partials/schedule-event-form.blade.php`) has a Termin/Kategorie
@@ -324,14 +383,18 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **Gestures** are hand-rolled Alpine pointer components in `resources/js/app.js` (no new deps):
   `scheduleEvent` (move / resize / double-tap edit), `scheduleDraw` (quick-create, above), `focusTimer` (live
   countdown ring — also plays a short synthesised Web Audio chime when a phase's countdown reaches 0, no
-  audio file/package). Desktop uses the hover pencil; mobile uses double-tap. `window.primeFocusAudio()`
+  audio file/package, then calls `handlePhaseComplete` — see "Autostart" above), `eventStartNotifier` (see
+  "Notifications" above). Desktop uses the hover pencil; mobile uses double-tap. `window.primeFocusAudio()`
   initialises/resumes the shared `AudioContext` on the Start button's `onclick` (a real user gesture), so the
   later automatic chime isn't blocked by autoplay policy.
 - **Settings** (`App\Livewire\Settings`) has a Pomodoro section (work / short break / long break /
-  sessions-per-long-break, via `saveSchedule()`) and a **Kategorien** card: add/rename/recolour/toggle-
-  Pomodoro/delete, all ownership-scoped (`ManagesSchedule`'s and `Settings`' colour validation both read
-  `ScheduleEvent::EVENT_COLORS` — a plain class constant, not a trait constant, since PHP forbids accessing
-  a trait's own constant via the trait's name directly).
+  sessions-per-long-break / autostart toggle, all via `saveSchedule()`), a Benachrichtigungen section
+  (three independent toggles — `toggleNotifyEventStart()`/`toggleNotifyPomoStart()`/`toggleNotifyBreakStart()`,
+  each saving immediately like the category Pomodoro toggle below, no separate submit; the card also has a
+  client-only permission-request button gated on `Notification.permission`, not a server field), and a
+  **Kategorien** card: add/rename/recolour/toggle-Pomodoro/delete, all ownership-scoped (`ManagesSchedule`'s
+  and `Settings`' colour validation both read `ScheduleEvent::EVENT_COLORS` — a plain class constant, not a
+  trait constant, since PHP forbids accessing a trait's own constant via the trait's name directly).
 
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
@@ -339,9 +402,11 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   Livewire method, but full CRUD + state coverage (e.g. one `PATCH /tasks/{id}` covers toggle-complete,
   toggle-important, set-today, move-list, and assign/release-project, instead of five separate endpoints).
   Controllers live in `App\Http\Controllers\Api`, one per resource: `TaskController`, `ProjectController`,
-  `ScheduleEventController` (+ `focus`/`start-focus`/`stop-focus` for the Pomodoro timer),
-  `EventCategoryController`, `EventTemplateController`, `MeController` (account info, rhythm/timezone
-  settings, board counts). Responses are shaped by `App\Http\Resources\*Resource` classes.
+  `ScheduleEventController` (+ `focus`/`start-focus`/`stop-focus`/`continue-focus`/`skip-focus-break` for the
+  Pomodoro timer — the latter two mirror `TaskBoard`'s `continuePhase()`/`skipBreak()` for the same
+  manual-advance/skip-a-break behavior over the API), `EventCategoryController`, `EventTemplateController`,
+  `MeController` (account info, rhythm/autostart/notification/timezone settings, board counts). Responses
+  are shaped by `App\Http\Resources\*Resource` classes.
 - **Auth:** Laravel Sanctum personal access tokens, managed from **Settings → Shortcuts & API**
   (`App\Livewire\Settings::createApiToken()`/`revokeApiToken()`) — the plaintext token is shown exactly
   once at creation, never stored/re-displayed; revoke uses the same armed double-click pattern as every
@@ -494,6 +559,18 @@ in-memory attribute bag until the row is reloaded.
 **Fix:** every API `store()` (and any other action that serialises a just-created model) must return
 `$model->fresh()`, not `$model` itself. PHPUnit didn't catch this — `assertDatabaseHas`/`fresh()` calls in
 the test itself masked it — an end-to-end curl smoke test against a running `php artisan serve` did.
+
+### The same fresh-model gotcha also breaks a strictly-typed `bool` parameter, not just JSON output
+**Symptom:** `TypeError: ...pomodoroPhaseNow(): Argument #3 ($autostart) must be of type bool, null given`,
+thrown from a Blade view, immediately after a brand-new `User` was created in the same request/test.
+**Cause:** the same root cause as the `store()`/`fresh()` issue above (a DB-level `->default(...)` column is
+absent from a freshly-`create()`d model's in-memory attributes until reload) — but this time the caller
+passed the raw attribute straight into a strictly-typed `bool` parameter instead of into a loosely-typed
+JSON response, so PHP throws immediately instead of silently rendering `null`/`false`.
+**Fix:** cast at the call site — `(bool) auth()->user()->pomodoro_autostart` — anywhere a boolean
+user/model setting with a DB default feeds a typed parameter. `(bool) null` is `false`, matching the
+column's actual default, so this is correct even for the one request where the model genuinely hasn't been
+reloaded yet. (See `TaskBoard::focusPhase()`.)
 
 ### Destructive actions must never use `confirm()` / `wire:confirm`
 **Rule:** blocking browser dialogs (`confirm()`, `window.confirm()`, Livewire's `wire:confirm`) are banned
