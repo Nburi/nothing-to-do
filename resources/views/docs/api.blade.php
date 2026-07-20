@@ -71,16 +71,12 @@
             <div class="space-y-4 text-sm">
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /me</p>
-                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today/projects).</p>
+                    <p class="mt-1 text-ink-soft">Name, E-Mail, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today/projects).</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /me</p>
                     <p class="mt-1 text-ink-soft">
                         Felder (alle optional): <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_reset_time</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_work</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_short_break</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_break</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_every</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_offset</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_auto_dst</code>.
                     </p>
@@ -187,7 +183,7 @@
         {{-- Zeitplan --}}
         <section id="schedule" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-1 text-base font-medium text-ink">Zeitplan</h2>
-            <p class="mb-4 text-sm text-ink-soft">Termine, Kategorie-Blöcke und der Pomodoro-Fokus-Timer.</p>
+            <p class="mb-4 text-sm text-ink-soft">Termine und Kategorie-Blöcke.</p>
 
             <div class="space-y-4 text-sm">
                 <div>
@@ -226,21 +222,6 @@
                     <p class="font-mono text-xs text-overprint">DELETE /schedule-events/{id}</p>
                     <p class="mt-1 text-ink-soft">Einzeltermin: gelöscht. Serien-Vorkommen: nur dieses eine Vorkommen abgesagt.</p>
                 </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/start-focus</p>
-                    <p class="mt-1 text-ink-soft">Startet den Pomodoro-Timer eines Kategorie-Blocks (nur wenn dessen Kategorie Pomodoro aktiviert hat).</p>
-                </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/stop-focus</p>
-                </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">GET /schedule-events/focus</p>
-                    <p class="mt-1 text-ink-soft">
-                        Der Fokus-Header von jetzt: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code> (der aktive/bald startende
-                        Pomodoro-Block, oder <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code>), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">phase</code>
-                        (Work/Pause + Restsekunden) und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">suggestion</code> ("was jetzt tun").
-                    </p>
-                </div>
             </div>
         </section>
 
@@ -253,7 +234,7 @@
                 <div><p class="font-mono text-xs text-overprint">GET /event-categories</p></div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /event-categories</p>
-                    <p class="mt-1 text-ink-soft"><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">color</code>, optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_enabled</code>.</p>
+                    <p class="mt-1 text-ink-soft"><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">color</code>.</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /event-categories/{id}</p>
@@ -329,17 +310,7 @@
                 </div>
 
                 <div>
-                    <h3 class="mb-2 text-sm font-medium text-ink">④ Fokus-Timer starten</h3>
-                    <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events/focus</code></li>
-                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code>) → (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">id</code>)</li>
-                        <li><span class="font-medium text-ink">Hat einen Wert?</span> → wenn ja: <span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events/&lt;id&gt;/start-focus</code></li>
-                        <li>Sonst: <span class="font-medium text-ink">Warnung anzeigen</span> — "Gerade kein Fokus-Block."</li>
-                    </ol>
-                </div>
-
-                <div>
-                    <h3 class="mb-2 text-sm font-medium text-ink">⑤ Pause im Zeitplan eintragen</h3>
+                    <h3 class="mb-2 text-sm font-medium text-ink">④ Pause im Zeitplan eintragen</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
                         <li><span class="font-medium text-ink">Aktuelles Datum</span> formatiert als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code></li>
                         <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events</code>,

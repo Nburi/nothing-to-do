@@ -35,13 +35,11 @@ class EventCategoryApiTest extends TestCase
         $this->patchJson("/api/event-categories/{$category->id}", [
             'name' => 'Mobility',
             'color' => 'signal',
-            'pomodoro_enabled' => true,
         ])->assertOk();
 
         $category->refresh();
         $this->assertSame('Mobility', $category->name);
         $this->assertSame('signal', $category->color);
-        $this->assertTrue($category->pomodoro_enabled);
     }
 
     public function test_it_deletes_a_category(): void

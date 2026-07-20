@@ -13,69 +13,13 @@ class ScheduleSettingsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_settings_show_pomodoro_and_categories(): void
+    public function test_settings_show_categories(): void
     {
         $this->actingAs(User::factory()->create());
 
         Livewire::test(Settings::class)
             ->assertOk()
-            ->assertSee('Pomodoro')
             ->assertSee('Kategorien');
-    }
-
-    public function test_it_saves_pomodoro_settings(): void
-    {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-
-        Livewire::test(Settings::class)
-            ->set('pWork', 50)
-            ->set('pShortBreak', 10)
-            ->set('pLongBreak', 20)
-            ->set('pLongEvery', 3)
-            ->call('saveSchedule')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('users', [
-            'id' => $user->id,
-            'pomodoro_work' => 50,
-            'pomodoro_short_break' => 10,
-            'pomodoro_long_break' => 20,
-            'pomodoro_long_every' => 3,
-        ]);
-    }
-
-    public function test_it_rejects_non_positive_pomodoro_values(): void
-    {
-        $this->actingAs(User::factory()->create());
-
-        Livewire::test(Settings::class)
-            ->set('pWork', 0)
-            ->set('pLongEvery', -1)
-            ->call('saveSchedule')
-            ->assertHasErrors(['pWork', 'pLongEvery']);
-    }
-
-    public function test_it_accepts_any_positive_pomodoro_value(): void
-    {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-
-        Livewire::test(Settings::class)
-            ->set('pWork', 1)
-            ->set('pShortBreak', 1)
-            ->set('pLongBreak', 1)
-            ->set('pLongEvery', 99)
-            ->call('saveSchedule')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('users', [
-            'id' => $user->id,
-            'pomodoro_work' => 1,
-            'pomodoro_short_break' => 1,
-            'pomodoro_long_break' => 1,
-            'pomodoro_long_every' => 99,
-        ]);
     }
 
     public function test_it_saves_a_fractional_timezone_offset(): void
@@ -107,7 +51,6 @@ class ScheduleSettingsTest extends TestCase
             'user_id' => $user->id,
             'name' => 'Lesen',
             'color' => 'forest',
-            'pomodoro_enabled' => false,
         ]);
     }
 
@@ -142,19 +85,6 @@ class ScheduleSettingsTest extends TestCase
         Livewire::test(Settings::class)->call('setCategoryColor', $category->id, 'not-a-color');
 
         $this->assertSame('contour', $category->refresh()->color);
-    }
-
-    public function test_it_toggles_the_pomodoro_flag(): void
-    {
-        $user = User::factory()->create();
-        $this->actingAs($user);
-        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => false]);
-
-        Livewire::test(Settings::class)->call('toggleCategoryPomodoro', $category->id);
-        $this->assertTrue($category->refresh()->pomodoro_enabled);
-
-        Livewire::test(Settings::class)->call('toggleCategoryPomodoro', $category->id);
-        $this->assertFalse($category->refresh()->pomodoro_enabled);
     }
 
     public function test_it_deletes_a_category(): void

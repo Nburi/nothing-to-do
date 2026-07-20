@@ -24,23 +24,20 @@ class MeApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('name', 'Nico')
             ->assertJsonPath('counts.inbox', 1)
-            ->assertJsonPath('counts.today', 1)
-            ->assertJsonStructure(['pomodoro' => ['work', 'short_break', 'long_break', 'long_every']]);
+            ->assertJsonPath('counts.today', 1);
     }
 
-    public function test_it_updates_pomodoro_and_timezone_settings(): void
+    public function test_it_updates_timezone_settings(): void
     {
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
         $this->patchJson('/api/me', [
-            'pomodoro_work' => 50,
             'timezone_offset' => 1,
             'timezone_auto_dst' => true,
-        ])->assertOk()->assertJsonPath('pomodoro.work', 50);
+        ])->assertOk();
 
         $user->refresh();
-        $this->assertSame(50, $user->pomodoro_work);
         $this->assertTrue((bool) $user->timezone_auto_dst);
     }
 }
