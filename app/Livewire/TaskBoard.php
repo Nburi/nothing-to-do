@@ -6,7 +6,6 @@ use App\Livewire\Concerns\ManagesTasks;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
-use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -166,64 +165,6 @@ class TaskBoard extends Component
             ->get();
     }
 
-    /**
-     * The Pomodoro-enabled category block that is running now, starts within 5
-     * minutes, or already has a timer running on it — the trigger that swaps
-     * the header strip for the focus card/ring. A running timer keeps its
-     * event as the focus session even past the block's own scheduled window,
-     * so the ring never disappears mid-cycle.
-     */
-    #[Computed]
-    public function focusSession(): ?ScheduleEvent
-    {
-        $now = auth()->user()->localNow();
-        $nowMin = $now->hour * 60 + $now->minute;
-
-        return $this->scheduleToday->first(function (ScheduleEvent $e) use ($now, $nowMin) {
-            if (! $e->category?->pomodoro_enabled) {
-                return false;
-            }
-
-            if ($e->pomodoro_started_at !== null) {
-                return true;
-            }
-
-            $untilStart = $e->startMinutes() - $nowMin;
-
-            return $e->isActive($now) || ($untilStart >= 0 && $untilStart <= 5);
-        });
-    }
-
-    /** The focus session's current Pomodoro phase, or null if not started yet. */
-    #[Computed]
-    public function focusPhase(): ?array
-    {
-        return $this->focusSession?->pomodoroPhaseNow(now(), auth()->user()->pomodoro());
-    }
-
-    /**
-     * "What to work on" for the focus session — null once it's not the focus
-     * session, or during a break. Before the timer is started ("Bereit") this
-     * previews cycle 1's suggestion, since that's the session about to begin.
-     */
-    #[Computed]
-    public function taskSuggestion(): ?array
-    {
-        $session = $this->focusSession;
-
-        if ($session === null) {
-            return null;
-        }
-
-        $phase = $this->focusPhase;
-
-        if ($phase !== null && $phase['phase'] !== 'work') {
-            return null;
-        }
-
-        return TaskSuggestor::suggest(auth()->user(), $phase['cycle'] ?? 1, $session->id);
-    }
-
     /** Active-task counts only — completed tasks don't inflate the badges. */
     #[Computed]
     public function counts(): array
@@ -377,32 +318,6 @@ class TaskBoard extends Component
             'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
             default => null,
         };
-    }
-
-    protected function userScheduleEvent(int $id): ScheduleEvent
-    {
-        return auth()->user()->scheduleEvents()->findOrFail($id);
-    }
-
-    /**
-     * Start the Pomodoro focus timer on a category block. A tap before the
-     * block's scheduled start (inside the lead-in window) starts the cycle
-     * now, not at the scheduled time — reaching the time never auto-starts it.
-     */
-    public function startFocusTimer(int $id): void
-    {
-        $event = $this->userScheduleEvent($id);
-
-        if (! $event->category?->pomodoro_enabled) {
-            return;
-        }
-
-        $event->update(['pomodoro_started_at' => now()]);
-    }
-
-    public function stopFocusTimer(int $id): void
-    {
-        $this->userScheduleEvent($id)->update(['pomodoro_started_at' => null]);
     }
 
     public function render()

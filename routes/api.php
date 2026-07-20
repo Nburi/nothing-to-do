@@ -37,14 +37,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/projects/{project}', [ProjectController::class, 'update']);
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
 
-    Route::get('/schedule-events/focus', [ScheduleEventController::class, 'focus']);
     Route::get('/schedule-events', [ScheduleEventController::class, 'index']);
     Route::post('/schedule-events', [ScheduleEventController::class, 'store']);
     Route::get('/schedule-events/{event}', [ScheduleEventController::class, 'show']);
     Route::patch('/schedule-events/{event}', [ScheduleEventController::class, 'update']);
     Route::delete('/schedule-events/{event}', [ScheduleEventController::class, 'destroy']);
-    Route::post('/schedule-events/{event}/start-focus', [ScheduleEventController::class, 'startFocus']);
-    Route::post('/schedule-events/{event}/stop-focus', [ScheduleEventController::class, 'stopFocus']);
 
     Route::get('/event-categories', [EventCategoryController::class, 'index']);
     Route::post('/event-categories', [EventCategoryController::class, 'store']);

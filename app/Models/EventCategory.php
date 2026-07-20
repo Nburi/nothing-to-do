@@ -13,8 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A reusable, user-configured category (e.g. "Schule", "Training", "Arbeiten").
  * A schedule event or template can point to one instead of carrying its own
  * free-text title/colour — renaming or recolouring a category live-updates
- * every block that references it, past and future. Optionally drives the
- * dashboard's Pomodoro focus timer.
+ * every block that references it, past and future.
  */
 class EventCategory extends Model
 {
@@ -24,14 +23,12 @@ class EventCategory extends Model
     protected $fillable = [
         'name',
         'color',
-        'pomodoro_enabled',
         'sort_order',
     ];
 
     protected function casts(): array
     {
         return [
-            'pomodoro_enabled' => 'boolean',
             'sort_order' => 'integer',
         ];
     }

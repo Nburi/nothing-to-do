@@ -17,12 +17,12 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
         ]);
 
-        // Default schedule categories — Arbeiten drives the dashboard's Pomodoro timer.
+        // Default schedule categories.
         $user->eventCategories()->createMany([
-            ['name' => 'Schule', 'color' => 'contour', 'pomodoro_enabled' => false, 'sort_order' => 0],
-            ['name' => 'Training', 'color' => 'forest', 'pomodoro_enabled' => false, 'sort_order' => 1],
-            ['name' => 'Arbeiten', 'color' => 'overprint', 'pomodoro_enabled' => true, 'sort_order' => 2],
-            ['name' => 'Abmachen', 'color' => 'signal', 'pomodoro_enabled' => false, 'sort_order' => 3],
+            ['name' => 'Schule', 'color' => 'contour', 'sort_order' => 0],
+            ['name' => 'Training', 'color' => 'forest', 'sort_order' => 1],
+            ['name' => 'Arbeiten', 'color' => 'overprint', 'sort_order' => 2],
+            ['name' => 'Abmachen', 'color' => 'signal', 'sort_order' => 3],
         ]);
 
         // Inbox — freshly captured, untriaged.

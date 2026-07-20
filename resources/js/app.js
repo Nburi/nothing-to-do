@@ -17,18 +17,6 @@ if ('serviceWorker' in navigator) {
 }
 
 /**
- * Primes the shared focus-timer AudioContext on the "Start" tap — a genuine
- * user gesture, required so the chime that later fires automatically (when a
- * phase ends) isn't blocked by the browser's autoplay policy.
- */
-window.primeFocusAudio = function () {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    if (!window._focusAudioCtx) window._focusAudioCtx = new AudioCtx();
-    if (window._focusAudioCtx.state === 'suspended') window._focusAudioCtx.resume();
-};
-
-/**
  * Drag & drop for a board zone (a column, or a column's Today area).
  * On drop we read the DESTINATION zone (evt.to) and persist its full id order
  * plus its list/today, so cross-column moves and in-column reordering both work.
@@ -692,71 +680,6 @@ document.addEventListener('alpine:init', () => {
             // CSS vars use plain token names: --forest, --contour, --ink-faint, etc.
             const v = token === 'ink' ? '--ink-faint' : `--${token}`;
             return `background: rgb(var(${v}) / 0.25); outline: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
-        },
-    }));
-
-    /**
-     * focusTimer — a live, client-side Pomodoro countdown for the header ring.
-     * Seeded with the seconds left + the phase length; ticks each second and
-     * exposes the mm:ss label and the SVG stroke-dashoffset for the ring fill.
-     * Chimes when it reaches 0 — the poll-driven re-render that follows swaps
-     * in the next phase's fresh config (see wire:key on the ring in
-     * schedule-strip.blade.php).
-     *
-     * cfg: { remaining, total, circ }
-     */
-    window.Alpine.data('focusTimer', (cfg = {}) => ({
-        remaining: Math.max(0, cfg.remaining ?? 0),
-        total: Math.max(1, cfg.total ?? 1),
-        circ: cfg.circ ?? 264,
-        timer: null,
-
-        init() {
-            this.timer = setInterval(() => {
-                if (this.remaining > 0) {
-                    this.remaining--;
-                    if (this.remaining === 0) {
-                        this.chime();
-                        clearInterval(this.timer);
-                    }
-                }
-            }, 1000);
-        },
-        destroy() {
-            clearInterval(this.timer);
-        },
-        get mmss() {
-            const m = Math.floor(this.remaining / 60);
-            const s = this.remaining % 60;
-            return `${m}:${String(s).padStart(2, '0')}`;
-        },
-        get offset() {
-            return this.circ * (this.remaining / this.total);
-        },
-        /** A few short synthesised pulses — no audio file, no new package. */
-        chime() {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
-            if (!window._focusAudioCtx) window._focusAudioCtx = new AudioCtx();
-            const ctx = window._focusAudioCtx;
-            if (ctx.state === 'suspended') ctx.resume();
-
-            [0, 0.7, 1.4].forEach((offset) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.value = 880;
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-
-                const start = ctx.currentTime + offset;
-                gain.gain.setValueAtTime(0, start);
-                gain.gain.linearRampToValueAtTime(0.2, start + 0.02);
-                gain.gain.linearRampToValueAtTime(0, start + 0.3);
-
-                osc.start(start);
-                osc.stop(start + 0.35);
-            });
         },
     }));
 });
