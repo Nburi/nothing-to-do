@@ -17,7 +17,13 @@ class EventCategoryFactory extends Factory
             'user_id' => User::factory(),
             'name' => fake()->randomElement(['Schule', 'Training', 'Arbeiten', 'Abmachen']),
             'color' => fake()->randomElement(['contour', 'overprint', 'forest', 'signal']),
+            'pomodoro_enabled' => false,
             'sort_order' => 0,
         ];
+    }
+
+    public function pomodoro(): static
+    {
+        return $this->state(['pomodoro_enabled' => true]);
     }
 }

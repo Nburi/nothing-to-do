@@ -153,7 +153,8 @@
         <h2 class="mb-1 text-base font-medium text-ink">Kategorien</h2>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Wiederverwendbare Kategorien für den Zeitplan — z. B. Schule oder Training. Umbenennen oder Umfärben
-            wirkt sich sofort auf alle ihre Termine aus.
+            wirkt sich sofort auf alle ihre Termine aus. Kategorien mit aktivierter Funktion zeigen im Dashboard
+            einen Pomodoro-Fokus-Timer.
         </p>
 
         <div class="space-y-2">
@@ -180,6 +181,24 @@
                         wire:change="renameCategory({{ $category->id }}, $event.target.value)"
                         class="min-w-0 flex-1 rounded-card border-transparent bg-transparent px-1 text-sm text-ink focus:border-overprint focus:bg-paper focus:ring-0"
                     />
+
+                    <button
+                        type="button"
+                        wire:click="toggleCategoryPomodoro({{ $category->id }})"
+                        @class([
+                            'relative h-6 w-10 flex-none rounded-full transition',
+                            'bg-forest' => $category->pomodoro_enabled,
+                            'bg-line' => ! $category->pomodoro_enabled,
+                        ])
+                        aria-label="Pomodoro-Fokus-Timer {{ $category->pomodoro_enabled ? 'deaktivieren' : 'aktivieren' }}"
+                        title="Pomodoro-Fokus-Timer"
+                    >
+                        <span @class([
+                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                            'left-[1.125rem]' => $category->pomodoro_enabled,
+                            'left-0.5' => ! $category->pomodoro_enabled,
+                        ])></span>
+                    </button>
 
                     <button
                         type="button"
@@ -227,6 +246,59 @@
         </form>
         @error('newCategoryName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
     </div>
+
+    {{-- Pomodoro --}}
+    <form
+        wire:submit="saveSchedule"
+        x-data="{ saved: false }"
+        @schedule-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
+        class="space-y-5"
+    >
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Pomodoro</h2>
+            <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+                Der Rhythmus, mit dem der Fokus-Timer einer Kategorie Arbeits- und Pausenphasen abwechselt.
+            </p>
+
+            <div class="grid max-w-md grid-cols-2 gap-4">
+                @php
+                    $fields = [
+                        'pWork' => 'Work-Session (Min)',
+                        'pShortBreak' => 'Kurze Pause (Min)',
+                        'pLongBreak' => 'Lange Pause (Min)',
+                        'pLongEvery' => 'Sessions bis lange Pause',
+                    ];
+                @endphp
+                @foreach ($fields as $model => $label)
+                    <div>
+                        <label for="{{ $model }}" class="mb-1.5 block text-xs font-medium text-ink-soft">{{ $label }}</label>
+                        <input id="{{ $model }}" type="number" min="1" wire:model="{{ $model }}" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                        @error($model) <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-5 flex items-center gap-3">
+                <button type="submit" class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
+                    Speichern
+                </button>
+                <span
+                    x-show="saved"
+                    x-transition:enter="transition duration-150"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition duration-300"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
+                    style="display: none;"
+                >
+                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Gespeichert
+                </span>
+            </div>
+        </div>
+    </form>
 
     {{-- Shortcuts & API --}}
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">

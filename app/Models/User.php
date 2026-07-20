@@ -15,6 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
     'name', 'email', 'password', 'task_reset_time',
+    'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every',
     'timezone_offset', 'timezone_auto_dst',
 ])]
 #[Hidden(['password', 'remember_token'])]
@@ -51,6 +52,17 @@ class User extends Authenticatable
     public function eventCategories(): HasMany
     {
         return $this->hasMany(EventCategory::class);
+    }
+
+    /** The Pomodoro rhythm (minutes / count) driving each category's focus timer. */
+    public function pomodoro(): array
+    {
+        return [
+            'work' => (int) ($this->pomodoro_work ?? 25),
+            'short_break' => (int) ($this->pomodoro_short_break ?? 5),
+            'long_break' => (int) ($this->pomodoro_long_break ?? 15),
+            'long_every' => (int) ($this->pomodoro_long_every ?? 4),
+        ];
     }
 
     /**

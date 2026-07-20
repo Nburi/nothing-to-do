@@ -124,14 +124,19 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 
 ### Models
 - **`User`** (Breeze) `hasMany` **`Task`**, **`Project`**, **`ScheduleEvent`**, **`EventTemplate`**,
-  **`EventCategory`**. Also carries manual timezone settings — `timezone_offset` (a plain UTC-offset integer entered by the
+  **`EventCategory`**. Carries the Pomodoro rhythm settings; `pomodoro()` returns the rhythm array
+  (`work/short_break/long_break/long_every`), consumed by `PomodoroCycle` and any category's focus timer.
+  Also carries manual timezone settings — `timezone_offset` (a plain UTC-offset integer entered by the
   user, e.g. `+1`, not an IANA zone; defaults to `0` so an unconfigured account behaves exactly like the
   server clock) and `timezone_auto_dst` (adds +1 hour automatically while European DST is active, detected
   by borrowing `Europe/Zurich`'s own transition dates via `DateTime::format('I')` rather than hand-rolled
   EU rules). `localNow()`/`localToday()` return the shifted "now"/calendar day; every wall-clock-sensitive
   read (task/project deadline buckets, the Zeitplan's "today", the completed-task reset window) goes
   through these instead of a bare `now()`/`Carbon::today()` (which read the server's UTC clock and would
-  otherwise silently misplace "today" near midnight local time). Configured in **Settings**' Zeitzone card (`saveTimezone()`).
+  otherwise silently misplace "today" near midnight local time). The Pomodoro countdown itself
+  (`pomodoroPhaseNow`) deliberately keeps using the raw, unshifted `now()` — it's a pure elapsed-time diff
+  against `pomodoro_started_at`, so a timezone shift would cancel out at best and corrupt the countdown at
+  worst if applied inconsistently. Configured in **Settings**' Zeitzone card (`saveTimezone()`).
 - **`Project`** — `user_id, name, brainstorm, external_url, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
   uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
   Scopes: `forUser`, `ordered`.
@@ -144,17 +149,20 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
     `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
   - Today focus is plain `is_today` — no decoupled planning field.
-- **`EventCategory`** — `user_id, name, color, sort_order`. A reusable, user-configured
+- **`EventCategory`** — `user_id, name, color, pomodoro_enabled, sort_order`. A reusable, user-configured
   category (Schule/Training/Arbeiten/Abmachen by default). `hasMany` `ScheduleEvent` and `EventTemplate`
   (both `nullOnDelete` — deleting a category leaves existing blocks intact, falling back to their stored
   title/colour snapshot). Scopes `forUser`, `ordered`. Managed via **Settings**' Kategorien card.
 - **`ScheduleEvent`** — `user_id, template_id?, category_id?, title?, color, date, start_time, end_time,
-  is_cancelled, timestamps`. Every event is either a **Termin** (free-text
+  is_cancelled, pomodoro_started_at?, timestamps`. Every event is either a **Termin** (free-text
   `title`/`color`, `category_id` null) or a **Kategorie** block (`category_id` set). `isAppointment()` /
   `isCategory()` branch on that. `displayTitle()`/`colorToken()` prefer the **live** category name/colour,
   falling back to the `title`/`color` snapshot written at creation time if the category was later deleted.
   Times are `HH:MM` strings; `toMinutes/fromMinutes/startMinutes/endMinutes/durationMinutes`, `isActive/isPast/
-  progress/secondsRemaining(now)` for the strip + timeline. Scopes
+  progress/secondsRemaining(now)` for the strip + timeline. `pomodoro_started_at` (nullable timestamp) is set
+  only by an explicit user tap — reaching the block's scheduled time never starts it automatically.
+  `pomodoroPhaseNow(now, rhythm)` delegates to `PomodoroCycle::at()` and returns the current phase plus
+  second-precise `remaining_seconds`/`total_seconds` for the live ring, or `null` if not started. Scopes
   `forUser/visible/forDay/forRange/ordered`. `materializeRange()` fills recurring-template occurrences for a
   date range — **idempotent and delete-safe** (skips any (template,date) that already has a row, including
   an `is_cancelled` tombstone), carrying the template's `category_id` through.
@@ -275,9 +283,31 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   resolved **live** (renaming/recolouring it in Settings repaints every block, past and future), a Termin's
   colour is fixed at creation. Recurring series are materialised on read.
 - Every event is exactly one of two kinds: a **Termin** (free-text title + a fixed colour) or a **Kategorie**
-  block (references an `EventCategory`; name/colour follow the category live).
+  block (references an `EventCategory`; name/colour follow the category live). A category can optionally
+  carry a **Pomodoro focus timer** (`pomodoro_enabled`).
 - **Header strip** — `partials/schedule-strip.blade.php` in the board: a calm **Zeitstrahl** (filled mark =
-  past, hollow = upcoming, partial-fill = active, mark length ∝ duration, red "now" line).
+  past, hollow = upcoming, partial-fill = active, mark length ∝ duration, red "now" line) when nothing is
+  due. When a Pomodoro-enabled category block is active or starts within 5 min (`TaskBoard::focusSession`),
+  the strip swaps to a **focus card** with two states: **Bereit** (a Start button — reaching the scheduled
+  time never auto-starts the timer) and **Läuft** (the live countdown ring, fed by `TaskBoard::focusPhase`).
+  The ring's wrapper carries a `wire:key` keyed on `(event, phase, cycle)` plus `wire:poll.5s.visible`, so a
+  poll that detects a phase change (work → break) forces Alpine to tear down and reinitialise the ring with
+  the new phase's config — a plain re-render wouldn't, since Alpine only evaluates `x-data` once per DOM
+  node. `startFocusTimer`/`stopFocusTimer` on `TaskBoard` set/clear `pomodoro_started_at` (ownership- and
+  `pomodoro_enabled`-guarded); a tap before the block's scheduled start begins the cycle immediately.
+- **`App\Services\PomodoroCycle`** — a pure, stateless Pomodoro layout: `at(elapsedMinutes, rhythm)` walks
+  work→break cycles and returns the phase (`work|short_break|long_break`), cycle number, and minute
+  boundaries; a break is long when its preceding work cycle's number is divisible by `long_every`.
+  `ScheduleEvent::pomodoroPhaseNow()` wraps it with second-precision remaining/total time for the ring.
+- **`App\Services\TaskSuggestor`** — "what to work on" for the focus card, tiered by the run's current
+  Pomodoro cycle number (`TaskBoard::taskSuggestion()`, read via `$phase['cycle']`, defaulting to 1 while
+  still in **Bereit** so it previews the session about to start): cycle 1 nudges to clear the ToDos list
+  (falling through if none are open), any cycle then prefers the top active **today** task (board order),
+  and once today's list is empty it falls back to a deterministic pick between a project's next task and
+  another todos/tasks-list task — seeded by `(event id, cycle)` via `crc32()` so the choice stays stable
+  across the ring's 5s poll instead of reshuffling every request. Hidden during a break. Rendered by
+  `partials/schedule-strip-suggestion.blade.php` in both focus-card states; a task suggestion opens the
+  existing inline edit sheet (`startEdit`), a project suggestion links to its project page.
 - **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by `Schedule`): create/edit/
   delete Termine and Kategorie blocks, drag-to-move (keeps duration), drag-to-resize (min-length guard),
   apply-template. The event form sheet (`partials/schedule-event-form.blade.php`) has a Termin/Kategorie
@@ -292,10 +322,14 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   the existing `applyTemplate()` — no drawing needed, since a template already carries its own time/duration.
   The full "+ Termin" button/modal remains the precision path (exact date, custom colour, recurring series).
 - **Gestures** are hand-rolled Alpine pointer components in `resources/js/app.js` (no new deps):
-  `scheduleEvent` (move / resize / double-tap edit), `scheduleDraw` (quick-create, above). Desktop uses the
-  hover pencil; mobile uses double-tap.
-- **Settings** (`App\Livewire\Settings`) has a **Kategorien** card: add/rename/recolour/delete, all
-  ownership-scoped (`ManagesSchedule`'s and `Settings`' colour validation both read
+  `scheduleEvent` (move / resize / double-tap edit), `scheduleDraw` (quick-create, above), `focusTimer` (live
+  countdown ring — also plays a short synthesised Web Audio chime when a phase's countdown reaches 0, no
+  audio file/package). Desktop uses the hover pencil; mobile uses double-tap. `window.primeFocusAudio()`
+  initialises/resumes the shared `AudioContext` on the Start button's `onclick` (a real user gesture), so the
+  later automatic chime isn't blocked by autoplay policy.
+- **Settings** (`App\Livewire\Settings`) has a Pomodoro section (work / short break / long break /
+  sessions-per-long-break, via `saveSchedule()`) and a **Kategorien** card: add/rename/recolour/toggle-
+  Pomodoro/delete, all ownership-scoped (`ManagesSchedule`'s and `Settings`' colour validation both read
   `ScheduleEvent::EVENT_COLORS` — a plain class constant, not a trait constant, since PHP forbids accessing
   a trait's own constant via the trait's name directly).
 
@@ -305,15 +339,16 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   Livewire method, but full CRUD + state coverage (e.g. one `PATCH /tasks/{id}` covers toggle-complete,
   toggle-important, set-today, move-list, and assign/release-project, instead of five separate endpoints).
   Controllers live in `App\Http\Controllers\Api`, one per resource: `TaskController`, `ProjectController`,
-  `ScheduleEventController`, `EventCategoryController`, `EventTemplateController`, `MeController` (account
-  info, timezone settings, board counts). Responses are shaped by `App\Http\Resources\*Resource` classes.
+  `ScheduleEventController` (+ `focus`/`start-focus`/`stop-focus` for the Pomodoro timer),
+  `EventCategoryController`, `EventTemplateController`, `MeController` (account info, rhythm/timezone
+  settings, board counts). Responses are shaped by `App\Http\Resources\*Resource` classes.
 - **Auth:** Laravel Sanctum personal access tokens, managed from **Settings → Shortcuts & API**
   (`App\Livewire\Settings::createApiToken()`/`revokeApiToken()`) — the plaintext token is shown exactly
   once at creation, never stored/re-displayed; revoke uses the same armed double-click pattern as every
   other destructive action in the app.
 - **Docs:** `/docs/api` (`resources/views/docs/api.blade.php`, auth-gated, linked from Settings) — full
   endpoint reference plus a walkthrough for building Apple Shortcuts against it (the "Get Contents of URL"
-  action's config, and four worked example Shortcuts).
+  action's config, and five worked example Shortcuts).
 - **Gotcha:** a controller's `store()` must return `$model->fresh()`, not the just-created in-memory model —
   columns with a DB-level `->default(...)` (e.g. `is_today`, `is_completed`, `is_cancelled`) are absent from
   the in-memory attribute bag until reloaded, so the first JSON response after creation would otherwise show
@@ -415,7 +450,8 @@ required version before assuming whichever one resolves first is the right one.
 **Symptom:** day-bucket logic using `=== 0` / `=== 1` silently never matches (e.g. "heute"/"morgen"); or a
 strict `assertSame(int, ...)` test fails with "900.0 is identical to 900" on downstream int arithmetic.
 **Fix:** cast to int at the call site: `(int) $today->diffInDays($date)` / `(int) $start->diffInSeconds($now,
-false)`. Check overdue separately with `lessThan()`. (See `Task::effectiveDateLabel`.)
+false)`. Check overdue separately with `lessThan()`. (See `Task::effectiveDateLabel`,
+`ScheduleEvent::pomodoroPhaseNow`.)
 
 ### PHP 8.2+ forbids accessing a trait's own constant via the trait's name
 **Symptom:** `Cannot access trait constant App\Livewire\Concerns\X::FOO directly` — thrown at the call site,

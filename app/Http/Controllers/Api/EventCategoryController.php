@@ -23,11 +23,13 @@ class EventCategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'color' => ['required', Rule::in(ScheduleEvent::EVENT_COLORS)],
+            'pomodoro_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $category = $request->user()->eventCategories()->create([
             'name' => trim($data['name']),
             'color' => $data['color'],
+            'pomodoro_enabled' => $data['pomodoro_enabled'] ?? false,
             'sort_order' => $request->user()->eventCategories()->count(),
         ]);
 
@@ -41,6 +43,7 @@ class EventCategoryController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'color' => ['sometimes', Rule::in(ScheduleEvent::EVENT_COLORS)],
+            'pomodoro_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $updates = [];
@@ -50,6 +53,9 @@ class EventCategoryController extends Controller
         }
         if (array_key_exists('color', $data)) {
             $updates['color'] = $data['color'];
+        }
+        if (array_key_exists('pomodoro_enabled', $data)) {
+            $updates['pomodoro_enabled'] = $data['pomodoro_enabled'];
         }
 
         $category->update($updates);

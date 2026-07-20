@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ScheduleEventResource;
 use App\Models\ScheduleEvent;
+use App\Services\TaskSuggestor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -232,5 +233,78 @@ class ScheduleEventController extends Controller
         }
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * Start the Pomodoro focus timer on a category block. A tap before the
+     * block's scheduled start begins the cycle now — reaching the scheduled
+     * time never auto-starts it.
+     */
+    public function startFocus(Request $request, int $id): JsonResponse
+    {
+        $event = $this->userEvent($request, $id);
+
+        if (! $event->category?->pomodoro_enabled) {
+            return response()->json(['message' => 'This block has no Pomodoro timer enabled.'], 422);
+        }
+
+        $event->update(['pomodoro_started_at' => now()]);
+
+        return (new ScheduleEventResource($event->fresh('category')))->response();
+    }
+
+    public function stopFocus(Request $request, int $id): JsonResponse
+    {
+        $event = $this->userEvent($request, $id);
+        $event->update(['pomodoro_started_at' => null]);
+
+        return (new ScheduleEventResource($event->fresh('category')))->response();
+    }
+
+    /**
+     * The header strip's "what's happening right now": the active/imminent
+     * Pomodoro-enabled block (if any), its current phase, and a task
+     * suggestion for the running focus cycle.
+     */
+    public function focus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $today = $user->localToday();
+
+        ScheduleEvent::materializeRange($user, $today, $today->copy());
+
+        $events = ScheduleEvent::forUser($user)->visible()->forDay($today)->ordered()->with('category')->get();
+
+        $now = $user->localNow();
+        $nowMin = $now->hour * 60 + $now->minute;
+
+        $session = $events->first(function (ScheduleEvent $e) use ($now, $nowMin) {
+            if (! $e->category?->pomodoro_enabled) {
+                return false;
+            }
+            if ($e->pomodoro_started_at !== null) {
+                return true;
+            }
+            $untilStart = $e->startMinutes() - $nowMin;
+
+            return $e->isActive($now) || ($untilStart >= 0 && $untilStart <= 5);
+        });
+
+        if ($session === null) {
+            return response()->json(['focus_session' => null, 'phase' => null, 'suggestion' => null]);
+        }
+
+        $phase = $session->pomodoroPhaseNow(now(), $user->pomodoro());
+        $suggestion = null;
+
+        if ($phase === null || $phase['phase'] === 'work') {
+            $suggestion = TaskSuggestor::suggest($user, $phase['cycle'] ?? 1, $session->id);
+        }
+
+        return response()->json([
+            'focus_session' => (new ScheduleEventResource($session))->toArray($request),
+            'phase' => $phase,
+            'suggestion' => $suggestion,
+        ]);
     }
 }

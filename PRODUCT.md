@@ -10,8 +10,8 @@ One user: a Swiss upper-secondary student and competitive orienteering athlete m
 work. He uses the app every day, often quickly between school, training, and homework — on his
 phone on the go, on desktop at his desk. The job: capture incoming items fast, triage them into
 the "3 Things" framework (To-Do / Task / Project), pick today's focus, and see at a glance what
-is urgent. Secondary surfaces: a daily schedule (Zeitplan), and per-project pages with task lists
-and a Markdown brainstorm space.
+is urgent. Secondary surfaces: a daily schedule (Zeitplan) with Pomodoro focus sessions, and
+per-project pages with task lists and a Markdown brainstorm space.
 
 ## Product Purpose
 

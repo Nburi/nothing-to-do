@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PomodoroCycle;
 use Database\Factories\ScheduleEventFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,7 @@ class ScheduleEvent extends Model
         'start_time',
         'end_time',
         'is_cancelled',
+        'pomodoro_started_at',
     ];
 
     protected function casts(): array
@@ -38,6 +40,7 @@ class ScheduleEvent extends Model
         return [
             'date' => 'date',
             'is_cancelled' => 'boolean',
+            'pomodoro_started_at' => 'datetime',
         ];
     }
 
@@ -187,6 +190,36 @@ class ScheduleEvent extends Model
         $end = $this->date->copy()->startOfDay()->addMinutes($this->endMinutes());
 
         return max(0, $now->diffInSeconds($end, false));
+    }
+
+    /**
+     * The current Pomodoro phase, or null if the timer hasn't been started (a
+     * tap on "Start" is required — reaching the scheduled time never starts it
+     * on its own). Remaining/total are second-precise so the header ring can
+     * count down smoothly even though phase boundaries land on whole minutes.
+     *
+     * @param  array{work:int,short_break:int,long_break:int,long_every:int}  $rhythm
+     * @return array{phase:string,cycle:int,remaining_seconds:int,total_seconds:int}|null
+     */
+    public function pomodoroPhaseNow(Carbon $now, array $rhythm): ?array
+    {
+        if ($this->pomodoro_started_at === null) {
+            return null;
+        }
+
+        // Carbon 3 returns a float; cast so downstream int arithmetic stays exact.
+        $elapsedSeconds = max(0, (int) $this->pomodoro_started_at->diffInSeconds($now, false));
+        $phase = PomodoroCycle::at(intdiv($elapsedSeconds, 60), $rhythm);
+
+        $phaseStartSeconds = $phase['phase_start_minute'] * 60;
+        $phaseEndSeconds = $phase['phase_end_minute'] * 60;
+
+        return [
+            'phase' => $phase['phase'],
+            'cycle' => $phase['cycle'],
+            'remaining_seconds' => max(0, $phaseEndSeconds - $elapsedSeconds),
+            'total_seconds' => max(1, $phaseEndSeconds - $phaseStartSeconds),
+        ];
     }
 
     /**

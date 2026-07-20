@@ -49,6 +49,9 @@
 
     <div class="overflow-hidden pl-1.5 {{ $compact ? '' : 'pr-6' }}">
         <p class="flex items-center gap-1 truncate text-[12px] font-medium text-ink">
+            @if ($event->category?->pomodoro_enabled)
+                <svg class="h-3 w-3 flex-none {{ $styles['tx'] }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/></svg>
+            @endif
             <span class="truncate">{{ $event->displayTitle() }}</span>
         </p>
         @unless ($compact)

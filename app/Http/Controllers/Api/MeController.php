@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class MeController extends Controller
 {
-    /** Account info, timezone settings, and board counts — one call to orient a Shortcut. */
+    /** Account info, rhythm/timezone settings, and board counts — one call to orient a Shortcut. */
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -19,6 +19,7 @@ class MeController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'task_reset_time' => $user->task_reset_time ?? '01:00',
+            'pomodoro' => $user->pomodoro(),
             'timezone_offset' => $user->timezoneOffsetHours(),
             'timezone_auto_dst' => (bool) $user->timezone_auto_dst,
             'local_now' => $user->localNow()->toIso8601String(),
@@ -32,13 +33,17 @@ class MeController extends Controller
         ]);
     }
 
-    /** Update account-level settings: daily reset time, timezone. */
+    /** Update account-level settings: daily reset time, Pomodoro rhythm, timezone. */
     public function update(Request $request): JsonResponse
     {
         $user = $request->user();
 
         $data = $request->validate([
             'task_reset_time' => ['sometimes', 'date_format:H:i'],
+            'pomodoro_work' => ['sometimes', 'integer', 'min:1'],
+            'pomodoro_short_break' => ['sometimes', 'integer', 'min:1'],
+            'pomodoro_long_break' => ['sometimes', 'integer', 'min:1'],
+            'pomodoro_long_every' => ['sometimes', 'integer', 'min:1'],
             'timezone_offset' => ['sometimes', 'numeric', 'between:-12,14'],
             'timezone_auto_dst' => ['sometimes', 'boolean'],
         ]);

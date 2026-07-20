@@ -15,6 +15,7 @@ class EventCategoryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'color' => $this->color,
+            'pomodoro_enabled' => $this->pomodoro_enabled,
             'sort_order' => $this->sort_order,
         ];
     }

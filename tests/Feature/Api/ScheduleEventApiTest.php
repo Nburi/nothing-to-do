@@ -142,4 +142,39 @@ class ScheduleEventApiTest extends TestCase
         $this->deleteJson("/api/schedule-events/{$recurring->id}")->assertNoContent();
         $this->assertDatabaseHas('schedule_events', ['id' => $recurring->id, 'is_cancelled' => true]);
     }
+
+    public function test_start_focus_requires_a_pomodoro_enabled_category(): void
+    {
+        $user = User::factory()->create();
+        $plainCategory = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => false]);
+        $event = ScheduleEvent::factory()->for($user)->create(['category_id' => $plainCategory->id]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/schedule-events/{$event->id}/start-focus")->assertStatus(422);
+        $this->assertNull($event->fresh()->pomodoro_started_at);
+    }
+
+    public function test_start_and_stop_focus_timer(): void
+    {
+        $user = User::factory()->create();
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->create(['category_id' => $category->id]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/schedule-events/{$event->id}/start-focus")->assertOk();
+        $this->assertNotNull($event->fresh()->pomodoro_started_at);
+
+        $this->postJson("/api/schedule-events/{$event->id}/stop-focus")->assertOk();
+        $this->assertNull($event->fresh()->pomodoro_started_at);
+    }
+
+    public function test_focus_endpoint_returns_null_session_when_nothing_is_running(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/schedule-events/focus')
+            ->assertOk()
+            ->assertJson(['focus_session' => null, 'phase' => null, 'suggestion' => null]);
+    }
 }
