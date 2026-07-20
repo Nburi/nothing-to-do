@@ -69,8 +69,16 @@ I say so, with reasoning.
 ## 4. Technical context
 
 - **Local development:** Windows (Claude Code runs locally on Windows).
-  - Toolchain is provided by **Laravel Herd** (PHP 8.4, Composer, the `laravel` installer, nginx).
-    These live on the **PowerShell** PATH (`~/.config/herd/bin`), **not** the Bash PATH.
+  - PHP is a standalone install at **`C:\php\php.exe`** (currently 8.5.8), with `C:\php\php.ini`
+    hand-configured (copied from `php.ini-development`; `extension_dir` set to `C:\php\ext`;
+    `curl/fileinfo/gd/intl/mbstring/openssl/pdo_sqlite/sqlite3/zip` enabled — none are on by default
+    in a fresh Windows PHP build, and Laravel needs all of them). Composer lives as `composer.phar`
+    under `~/.config/herd-lite/bin` — run it through the standalone PHP above, not herd-lite's own
+    bundled PHP (that one's stuck on 8.4.0, too old for this project's locked deps; see *Known
+    Issues*). Node/npm are at `C:\Program Files\nodejs\`.
+  - None of these are reliably on a fresh shell's live PATH (a just-installed tool needs a process
+    restart to pick up its PATH entry) — prefer full paths over bare `php`/`composer`/`npm`/`node`
+    until confirmed with `Get-Command`.
   - Run PHP/Composer/Artisan/npm commands via **PowerShell**; use Bash for git.
 - **Production server:** Linux.
 - **Deployment:** the user pushes source to GitHub and pulls it onto the Linux server. Any change to the
@@ -94,7 +102,10 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (181 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (193 tests).
+- **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
+  via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
+  with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
 
 > Note: Breeze converted the project from Laravel 13's default Tailwind v4 to v3 (config files + v3
 > package). We standardized on v3 (its working setup). `@tailwindcss/vite@4` lingers unused in
@@ -397,20 +408,43 @@ Windows. Keep only the PHP server + Vite. Pail/queue still work fine on the Linu
 
 ### Composer / Laravel installer not on the Bash PATH
 **Symptom:** `composer: command not found` in the Bash tool.
-**Cause:** the toolchain is installed via **Laravel Herd** and only registered on the **PowerShell** PATH
-(`C:\Users\<user>\.config\herd\bin`).
+**Cause:** the toolchain isn't registered on the Bash PATH at all.
 **Fix:** run Composer/Laravel/Artisan via the PowerShell tool. Avoid `2>&1` on native commands in
 PowerShell 5.1 — it wraps stderr as an error record even on success.
+
+### Fresh PHP/Node installs aren't on PATH until the session restarts, and a plain PHP zip ships with no php.ini
+**Symptom:** `php`/`node`/`npm`/`composer` are "not recognized" even right after installing them; a
+freshly installed PHP has almost no extensions loaded (`php -m` is nearly empty) and `php --ini` shows
+no loaded configuration file at all.
+**Cause:** an installer updates the User/Machine `Path` registry value, but any process already
+running — including whatever spawned a shell tool session — keeps its stale copy of `PATH` until
+relaunched. Separately, a plain downloaded PHP-for-Windows zip ships with **no active `php.ini`**
+(only `php.ini-development`/`php.ini-production` templates) and every extension commented out —
+unlike Herd, which preconfigures both.
+**Fix:** don't rely on bare `php`/`node`/`npm`/`composer` resolving in a shell tool session — call the
+full path (e.g. `C:\php\php.exe`, `C:\Program Files\nodejs\node.exe`) until `Get-Command` confirms it's
+on PATH. For a fresh PHP install: `Copy-Item php.ini-development php.ini`, set `extension_dir` to the
+install's `ext` folder, and uncomment at least `curl`/`fileinfo`/`gd`/`intl`/`mbstring`/`openssl`/
+`pdo_sqlite`/`sqlite3`/`zip` — all required somewhere in this project (`gd` specifically powers
+`icons:generate`, see §7 PWA).
+
+### `composer install` fails with "requires php >= 8.4.1" even though *a* working PHP is on PATH
+**Symptom:** `composer install` reports a wall of `symfony/* v8.1.0 requires php >=8.4.1 -> your php
+version (8.4.0) does not satisfy that requirement` errors.
+**Cause:** more than one PHP binary can exist on the machine at once (e.g. herd-lite's own bundled
+`php.exe`, stuck at 8.4.0, alongside a separately installed standalone PHP). `composer.lock` is pinned
+against whatever PHP version last generated it; an older PHP fails the platform check even though
+`php -v` on *some* binary "works" and Composer itself (`composer.phar`) is just a PHP script that can
+be run under any interpreter you point at it.
+**Fix:** run Composer through the newest available PHP explicitly — e.g.
+`& "C:\php\php.exe" "$env:USERPROFILE\.config\herd-lite\bin\composer.phar" install` (standalone PHP
+interpreting herd-lite's `composer.phar`). Check every PHP binary's `-v` against `composer.lock`'s
+required version before assuming whichever one resolves first is the right one.
 
 ### `composer create-project` needs an empty target directory
 **Symptom:** it refuses to scaffold into a non-empty directory.
 **Fix:** scaffold into a temporary subdirectory, then move the contents up into the repo root (preserving
 `.git`).
-
-### Only Herd PHP (8.4.13) runs the app — Bash `php` (8.4.0) fails the platform check
-**Symptom:** `php artisan …` from the Bash tool dies with "Composer dependencies require PHP >= 8.4.1".
-**Cause:** Composer locked deps against Herd's PHP 8.4.13; the separate Bash `php` is 8.4.0.
-**Fix:** run **all** PHP/artisan/composer through PowerShell (Herd). Use Bash only for git.
 
 ### Carbon 3 `diffIn*()` methods return a float
 **Symptom:** day-bucket logic using `=== 0` / `=== 1` silently never matches (e.g. "heute"/"morgen"); or a
@@ -535,7 +569,7 @@ will silently keep serving the values from first mount.
 ## 11. Key commands
 
 ```powershell
-# (run in PowerShell — Herd toolchain)
+# (run in PowerShell — see §4 for full paths if these aren't resolving on PATH)
 composer install            # PHP dependencies
 npm install                 # JS dependencies
 php artisan migrate         # run migrations
