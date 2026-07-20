@@ -4,7 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="theme-color" content="#1f6b3b">
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.pwa-head')
 
         <title>{{ config('app.name', 'nothing-to-do') }}</title>
 

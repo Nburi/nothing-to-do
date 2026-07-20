@@ -5,6 +5,17 @@ import Sortable from 'sortablejs';
 // Livewire owns Alpine; we register data/helpers on top of it.
 window.Sortable = Sortable;
 
+// Register the service worker for offline resilience (app-shell caching + a calm
+// custom offline page). Guarded for browsers/contexts without SW support; failure
+// here has no functional impact on the app itself, only on the offline fallback.
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((error) => {
+            console.error('Service worker registration failed:', error);
+        });
+    });
+}
+
 /**
  * Primes the shared focus-timer AudioContext on the "Start" tap — a genuine
  * user gesture, required so the chime that later fires automatically (when a
