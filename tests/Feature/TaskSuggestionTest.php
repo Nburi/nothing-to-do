@@ -26,6 +26,10 @@ class TaskSuggestionTest extends TestCase
     {
         return User::factory()->create([
             'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+            // Autostart on so a session's phase keeps cascading purely from
+            // elapsed time, matching how these tests seed a single start
+            // timestamp and jump straight to a later "now".
+            'pomodoro_autostart' => true,
         ]);
     }
 
@@ -65,7 +69,7 @@ class TaskSuggestionTest extends TestCase
         $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
         ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->on('2026-06-26')->at('14:00', '16:00')
-            ->create(['pomodoro_started_at' => '2026-06-26 14:00:00']);
+            ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
 
         $instance = Livewire::test(TaskBoard::class)->instance();
 
@@ -84,7 +88,7 @@ class TaskSuggestionTest extends TestCase
         $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
         ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->on('2026-06-26')->at('14:00', '16:00')
-            ->create(['pomodoro_started_at' => '2026-06-26 14:00:00']);
+            ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
 
         $instance = Livewire::test(TaskBoard::class)->instance();
 

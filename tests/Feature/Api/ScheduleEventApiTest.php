@@ -162,10 +162,75 @@ class ScheduleEventApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $this->postJson("/api/schedule-events/{$event->id}/start-focus")->assertOk();
-        $this->assertNotNull($event->fresh()->pomodoro_started_at);
+        $event->refresh();
+        $this->assertNotNull($event->pomodoro_started_at);
+        $this->assertSame('work', $event->pomodoro_phase);
+        $this->assertSame(1, $event->pomodoro_cycle);
 
         $this->postJson("/api/schedule-events/{$event->id}/stop-focus")->assertOk();
-        $this->assertNull($event->fresh()->pomodoro_started_at);
+        $event->refresh();
+        $this->assertNull($event->pomodoro_started_at);
+        $this->assertNull($event->pomodoro_phase);
+    }
+
+    public function test_continue_focus_manually_advances_a_frozen_session(): void
+    {
+        $user = User::factory()->create([
+            'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+        ]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->create([
+            'category_id' => $category->id,
+            'pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => null,
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/schedule-events/{$event->id}/continue-focus")->assertOk();
+
+        $event->refresh();
+        $this->assertSame('short_break', $event->pomodoro_phase);
+        $this->assertNotNull($event->pomodoro_started_at);
+    }
+
+    public function test_continue_focus_requires_a_started_session(): void
+    {
+        $user = User::factory()->create();
+        $event = ScheduleEvent::factory()->for($user)->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/schedule-events/{$event->id}/continue-focus")->assertStatus(422);
+    }
+
+    public function test_skip_focus_break_jumps_to_the_next_work_cycle(): void
+    {
+        $user = User::factory()->create([
+            'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+        ]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->create([
+            'category_id' => $category->id,
+            'pomodoro_phase' => 'short_break', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => now(),
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/schedule-events/{$event->id}/skip-focus-break")->assertOk();
+
+        $event->refresh();
+        $this->assertSame('work', $event->pomodoro_phase);
+        $this->assertSame(2, $event->pomodoro_cycle);
+    }
+
+    public function test_skip_focus_break_rejects_when_the_upcoming_phase_is_not_a_break(): void
+    {
+        $user = User::factory()->create(['pomodoro_work' => 25]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->create([
+            'category_id' => $category->id,
+            'pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => now(),
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/schedule-events/{$event->id}/skip-focus-break")->assertStatus(422);
     }
 
     public function test_focus_endpoint_returns_null_session_when_nothing_is_running(): void

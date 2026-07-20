@@ -13,77 +13,57 @@ class PomodoroCycleTest extends TestCase
         return ['work' => $work, 'short_break' => $short, 'long_break' => $long, 'long_every' => $every];
     }
 
-    public function test_starts_in_the_first_work_phase_at_zero_elapsed(): void
+    public function test_duration_minutes_reads_the_matching_rhythm_field(): void
     {
-        $phase = PomodoroCycle::at(0, $this->rhythm());
+        $rhythm = $this->rhythm(work: 25, short: 5, long: 15, every: 4);
 
-        $this->assertSame('work', $phase['phase']);
-        $this->assertSame(1, $phase['cycle']);
-        $this->assertSame(0, $phase['phase_start_minute']);
-        $this->assertSame(25, $phase['phase_end_minute']);
+        $this->assertSame(25, PomodoroCycle::durationMinutes(PomodoroCycle::WORK, $rhythm));
+        $this->assertSame(5, PomodoroCycle::durationMinutes(PomodoroCycle::SHORT_BREAK, $rhythm));
+        $this->assertSame(15, PomodoroCycle::durationMinutes(PomodoroCycle::LONG_BREAK, $rhythm));
     }
 
-    public function test_mid_work_phase_stays_in_the_same_cycle(): void
+    public function test_work_is_followed_by_a_short_break_on_ordinary_cycles(): void
     {
-        $phase = PomodoroCycle::at(10, $this->rhythm());
+        $next = PomodoroCycle::next(PomodoroCycle::WORK, 1, $this->rhythm());
 
-        $this->assertSame('work', $phase['phase']);
-        $this->assertSame(1, $phase['cycle']);
+        $this->assertSame(PomodoroCycle::SHORT_BREAK, $next['phase']);
+        $this->assertSame(1, $next['cycle']); // the break belongs to the cycle that just finished
     }
 
-    public function test_the_exact_end_minute_of_work_already_belongs_to_the_break(): void
+    public function test_work_is_followed_by_a_long_break_every_nth_cycle(): void
     {
-        $phase = PomodoroCycle::at(25, $this->rhythm());
+        $next = PomodoroCycle::next(PomodoroCycle::WORK, 4, $this->rhythm(every: 4));
 
-        $this->assertSame('short_break', $phase['phase']);
-        $this->assertSame(1, $phase['cycle']);
-        $this->assertSame(25, $phase['phase_start_minute']);
-        $this->assertSame(30, $phase['phase_end_minute']);
+        $this->assertSame(PomodoroCycle::LONG_BREAK, $next['phase']);
+        $this->assertSame(4, $next['cycle']);
     }
 
-    public function test_second_work_cycle_starts_right_after_the_short_break(): void
+    public function test_a_short_break_is_followed_by_the_next_work_cycle(): void
     {
-        $phase = PomodoroCycle::at(30, $this->rhythm());
+        $next = PomodoroCycle::next(PomodoroCycle::SHORT_BREAK, 1, $this->rhythm());
 
-        $this->assertSame('work', $phase['phase']);
-        $this->assertSame(2, $phase['cycle']);
-        $this->assertSame(30, $phase['phase_start_minute']);
-        $this->assertSame(55, $phase['phase_end_minute']);
+        $this->assertSame(PomodoroCycle::WORK, $next['phase']);
+        $this->assertSame(2, $next['cycle']);
     }
 
-    public function test_a_long_break_follows_the_fourth_work_cycle(): void
+    public function test_a_long_break_is_followed_by_the_next_work_cycle(): void
     {
-        // 4 work + 3 short breaks = 4*25 + 3*5 = 115 minutes before the long break starts.
-        $phase = PomodoroCycle::at(115, $this->rhythm());
+        $next = PomodoroCycle::next(PomodoroCycle::LONG_BREAK, 4, $this->rhythm(every: 4));
 
-        $this->assertSame('long_break', $phase['phase']);
-        $this->assertSame(4, $phase['cycle']);
-        $this->assertSame(115, $phase['phase_start_minute']);
-        $this->assertSame(130, $phase['phase_end_minute']); // 15' long break
-    }
-
-    public function test_fifth_work_cycle_starts_after_the_long_break(): void
-    {
-        $phase = PomodoroCycle::at(130, $this->rhythm());
-
-        $this->assertSame('work', $phase['phase']);
-        $this->assertSame(5, $phase['cycle']);
-        $this->assertSame(130, $phase['phase_start_minute']);
-        $this->assertSame(155, $phase['phase_end_minute']);
+        $this->assertSame(PomodoroCycle::WORK, $next['phase']);
+        $this->assertSame(5, $next['cycle']);
     }
 
     public function test_respects_a_custom_rhythm(): void
     {
         $rhythm = $this->rhythm(work: 50, short: 10, long: 20, every: 2);
 
-        $shortBreak = PomodoroCycle::at(50, $rhythm);
-        $this->assertSame('short_break', $shortBreak['phase']);
-        $this->assertSame(1, $shortBreak['cycle']);
-        $this->assertSame(60, $shortBreak['phase_end_minute']);
+        $this->assertSame(50, PomodoroCycle::durationMinutes(PomodoroCycle::WORK, $rhythm));
 
-        $longBreak = PomodoroCycle::at(110, $rhythm);
-        $this->assertSame('long_break', $longBreak['phase']);
-        $this->assertSame(2, $longBreak['cycle']);
-        $this->assertSame(130, $longBreak['phase_end_minute']);
+        $afterCycle1 = PomodoroCycle::next(PomodoroCycle::WORK, 1, $rhythm);
+        $this->assertSame(PomodoroCycle::SHORT_BREAK, $afterCycle1['phase']);
+
+        $afterCycle2 = PomodoroCycle::next(PomodoroCycle::WORK, 2, $rhythm);
+        $this->assertSame(PomodoroCycle::LONG_BREAK, $afterCycle2['phase']);
     }
 }

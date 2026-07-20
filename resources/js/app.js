@@ -29,6 +29,40 @@ window.primeFocusAudio = function () {
 };
 
 /**
+ * Shows a browser Notification if permission was already granted — silently a
+ * no-op otherwise (unsupported browser, permission not yet asked, or denied).
+ * Foreground-only: this is the plain Notification API, not Web Push, so it
+ * only fires while a tab of the app is open.
+ */
+window.sendAppNotification = function (title, body) {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    try {
+        new Notification(title, { body, icon: '/icons/icon-192.png' });
+    } catch (e) {
+        // Some mobile browsers reject the plain `new Notification()` constructor
+        // outside a service-worker registration — fail silently, non-critical.
+    }
+};
+
+/** Requests browser notification permission — call only from a user gesture (e.g. a button click). */
+window.requestAppNotificationPermission = function () {
+    if (typeof Notification === 'undefined') return Promise.resolve('unsupported');
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+        return Promise.resolve(Notification.permission);
+    }
+    return Notification.requestPermission();
+};
+
+document.addEventListener('livewire:init', () => {
+    // Server-gated: TaskBoard only dispatches this after checking the user's
+    // per-type notify_* preference, so the client just has to show it.
+    Livewire.on('browser-notify', (event) => {
+        const payload = Array.isArray(event) ? event[0] : event;
+        if (payload && payload.title) window.sendAppNotification(payload.title, payload.body ?? '');
+    });
+});
+
+/**
  * Drag & drop for a board zone (a column, or a column's Today area).
  * On drop we read the DESTINATION zone (evt.to) and persist its full id order
  * plus its list/today, so cross-column moves and in-column reordering both work.
@@ -699,13 +733,17 @@ document.addEventListener('alpine:init', () => {
      * focusTimer — a live, client-side Pomodoro countdown for the header ring.
      * Seeded with the seconds left + the phase length; ticks each second and
      * exposes the mm:ss label and the SVG stroke-dashoffset for the ring fill.
-     * Chimes when it reaches 0 — the poll-driven re-render that follows swaps
-     * in the next phase's fresh config (see wire:key on the ring in
-     * schedule-strip.blade.php).
+     * Chimes when it reaches 0 and calls the server's handlePhaseComplete —
+     * which either continues into the next phase (autostart enabled) or
+     * freezes awaiting a manual continue (disabled). Either way, the
+     * server-driven re-render that follows swaps in fresh state (see wire:key
+     * on the ring in schedule-strip.blade.php, keyed on phase+cycle so a
+     * transition always reinitialises this component with a fresh seed).
      *
-     * cfg: { remaining, total, circ }
+     * cfg: { id, remaining, total, circ }
      */
     window.Alpine.data('focusTimer', (cfg = {}) => ({
+        id: cfg.id,
         remaining: Math.max(0, cfg.remaining ?? 0),
         total: Math.max(1, cfg.total ?? 1),
         circ: cfg.circ ?? 264,
@@ -718,6 +756,7 @@ document.addEventListener('alpine:init', () => {
                     if (this.remaining === 0) {
                         this.chime();
                         clearInterval(this.timer);
+                        this.$wire.call('handlePhaseComplete', this.id);
                     }
                 }
             }, 1000);
@@ -757,6 +796,48 @@ document.addEventListener('alpine:init', () => {
                 osc.start(start);
                 osc.stop(start + 0.35);
             });
+        },
+    }));
+
+    /**
+     * Shared dedupe set for eventStartNotifier below — a global Alpine store
+     * (not per-component state) because the dashboard mounts the strip twice
+     * (desktop + mobile layout, one hidden via CSS but both present in the
+     * DOM), which would otherwise double-fire every notification.
+     */
+    window.Alpine.store('notifiedEvents', { ids: new Set() });
+
+    /**
+     * eventStartNotifier — ticks a server-seeded clock forward once a second
+     * and fires a notification the moment "now" crosses a today-event's start
+     * time. Seeded from the server's local-time seconds-since-midnight rather
+     * than reading the browser's own clock, so it stays correct even if the
+     * device's timezone doesn't match the user's configured one (same
+     * source-of-truth pattern as the rest of the app's server-driven time).
+     *
+     * cfg: { enabled, events: [{id, title, startSeconds}], nowSeconds }
+     */
+    window.Alpine.data('eventStartNotifier', (cfg = {}) => ({
+        enabled: cfg.enabled ?? false,
+        events: cfg.events ?? [],
+        nowSeconds: cfg.nowSeconds ?? 0,
+        timer: null,
+
+        init() {
+            if (!this.enabled || this.events.length === 0) return;
+            this.timer = setInterval(() => {
+                this.nowSeconds++;
+                const notified = this.$store.notifiedEvents.ids;
+                this.events.forEach((e) => {
+                    if (!notified.has(e.id) && this.nowSeconds >= e.startSeconds) {
+                        notified.add(e.id);
+                        window.sendAppNotification('Zeitplan', `${e.title} beginnt jetzt`);
+                    }
+                });
+            }, 1000);
+        },
+        destroy() {
+            clearInterval(this.timer);
         },
     }));
 });

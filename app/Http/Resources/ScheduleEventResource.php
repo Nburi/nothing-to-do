@@ -25,6 +25,8 @@ class ScheduleEventResource extends JsonResource
             'is_recurring' => $this->template_id !== null,
             'is_cancelled' => $this->is_cancelled,
             'pomodoro_enabled' => (bool) $this->category?->pomodoro_enabled,
+            'pomodoro_phase' => $this->pomodoro_phase,
+            'pomodoro_cycle' => $this->pomodoro_cycle,
             'pomodoro_started_at' => $this->pomodoro_started_at?->toIso8601String(),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),

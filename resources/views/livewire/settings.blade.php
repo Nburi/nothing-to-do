@@ -278,6 +278,32 @@
                 @endforeach
             </div>
 
+            <div class="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+                <div>
+                    <p class="text-sm font-medium text-ink">Automatisch weiterlaufen</p>
+                    <p class="text-xs text-ink-soft">
+                        Die erste Session startest du immer selbst. Danach: Sessions und Pausen automatisch
+                        weiterlaufen lassen, statt jedes Mal manuell zu bestätigen.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="$set('pAutostart', {{ $pAutostart ? 'false' : 'true' }})"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $pAutostart,
+                        'bg-line' => ! $pAutostart,
+                    ])
+                    aria-label="Automatisch weiterlaufen {{ $pAutostart ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $pAutostart,
+                        'left-0.5' => ! $pAutostart,
+                    ])></span>
+                </button>
+            </div>
+
             <div class="mt-5 flex items-center gap-3">
                 <button type="submit" class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
                     Speichern
@@ -299,6 +325,67 @@
             </div>
         </div>
     </form>
+
+    {{-- Benachrichtigungen --}}
+    <div
+        class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8"
+        x-data="{ permission: (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported') }"
+    >
+        <h2 class="mb-1 text-base font-medium text-ink">Benachrichtigungen</h2>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Browser-Benachrichtigungen für ausgewählte Momente — funktionieren nur, solange die App in einem
+            Tab geöffnet ist.
+        </p>
+
+        <div x-show="permission !== 'granted'" class="mb-5 flex items-center justify-between gap-3 rounded-card border border-line bg-paper/60 px-3 py-2.5" style="display: none;">
+            <div class="min-w-0">
+                <p class="text-sm text-ink" x-show="permission === 'denied'" style="display: none;">Benachrichtigungen sind im Browser blockiert — in den Browser-Einstellungen erlauben.</p>
+                <p class="text-sm text-ink" x-show="permission !== 'denied'">Berechtigung nötig, bevor Benachrichtigungen ankommen.</p>
+            </div>
+            <button
+                type="button"
+                x-show="permission !== 'denied'"
+                @click="window.requestAppNotificationPermission().then((p) => permission = p)"
+                class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]"
+            >
+                Erlauben
+            </button>
+        </div>
+
+        <div class="space-y-1">
+            @php
+                $notifyRows = [
+                    ['key' => 'notify_event_start', 'action' => 'toggleNotifyEventStart', 'label' => 'Beginn von Terminen & Kategorien', 'hint' => 'Jeder Zeitplan-Block, sobald seine Startzeit erreicht ist.'],
+                    ['key' => 'notify_pomo_start', 'action' => 'toggleNotifyPomoStart', 'label' => 'Start einer Pomodoro-Session', 'hint' => 'Die erste Session und jede automatisch/manuell folgende.'],
+                    ['key' => 'notify_break_start', 'action' => 'toggleNotifyBreakStart', 'label' => 'Start einer Pause', 'hint' => 'Kurze und lange Pausen.'],
+                ];
+            @endphp
+            @foreach ($notifyRows as $row)
+                <div class="flex items-center justify-between gap-3 py-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-ink">{{ $row['label'] }}</p>
+                        <p class="text-xs text-ink-soft">{{ $row['hint'] }}</p>
+                    </div>
+                    <button
+                        type="button"
+                        wire:click="{{ $row['action'] }}"
+                        @class([
+                            'relative h-6 w-10 flex-none rounded-full transition',
+                            'bg-forest' => auth()->user()->{$row['key']},
+                            'bg-line' => ! auth()->user()->{$row['key']},
+                        ])
+                        aria-label="{{ $row['label'] }} {{ auth()->user()->{$row['key']} ? 'deaktivieren' : 'aktivieren' }}"
+                    >
+                        <span @class([
+                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                            'left-[1.125rem]' => auth()->user()->{$row['key']},
+                            'left-0.5' => ! auth()->user()->{$row['key']},
+                        ])></span>
+                    </button>
+                </div>
+            @endforeach
+        </div>
+    </div>
 
     {{-- Shortcuts & API --}}
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">

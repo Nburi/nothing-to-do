@@ -33,6 +33,7 @@ class ScheduleSettingsTest extends TestCase
             ->set('pShortBreak', 10)
             ->set('pLongBreak', 20)
             ->set('pLongEvery', 3)
+            ->set('pAutostart', true)
             ->call('saveSchedule')
             ->assertHasNoErrors();
 
@@ -42,7 +43,16 @@ class ScheduleSettingsTest extends TestCase
             'pomodoro_short_break' => 10,
             'pomodoro_long_break' => 20,
             'pomodoro_long_every' => 3,
+            'pomodoro_autostart' => true,
         ]);
+    }
+
+    public function test_it_loads_the_saved_autostart_setting_on_mount(): void
+    {
+        $user = User::factory()->create(['pomodoro_autostart' => true]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->assertSet('pAutostart', true);
     }
 
     public function test_it_rejects_non_positive_pomodoro_values(): void
@@ -180,5 +190,35 @@ class ScheduleSettingsTest extends TestCase
         $this->assertSame('Original', $other->refresh()->name);
         $this->assertSame('contour', $other->color);
         $this->assertDatabaseHas('event_categories', ['id' => $other->id]);
+    }
+
+    public function test_it_toggles_the_event_start_notification_setting(): void
+    {
+        $user = User::factory()->create(['notify_event_start' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('toggleNotifyEventStart');
+        $this->assertTrue($user->refresh()->notify_event_start);
+
+        Livewire::test(Settings::class)->call('toggleNotifyEventStart');
+        $this->assertFalse($user->refresh()->notify_event_start);
+    }
+
+    public function test_it_toggles_the_pomo_start_notification_setting(): void
+    {
+        $user = User::factory()->create(['notify_pomo_start' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('toggleNotifyPomoStart');
+        $this->assertTrue($user->refresh()->notify_pomo_start);
+    }
+
+    public function test_it_toggles_the_break_start_notification_setting(): void
+    {
+        $user = User::factory()->create(['notify_break_start' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('toggleNotifyBreakStart');
+        $this->assertTrue($user->refresh()->notify_break_start);
     }
 }

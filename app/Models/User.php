@@ -15,7 +15,8 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
     'name', 'email', 'password', 'task_reset_time',
-    'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every',
+    'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
+    'notify_event_start', 'notify_pomo_start', 'notify_break_start',
     'timezone_offset', 'timezone_auto_dst',
 ])]
 #[Hidden(['password', 'remember_token'])]
@@ -143,6 +144,10 @@ class User extends Authenticatable
             'password' => 'hashed',
             'timezone_offset' => 'float',
             'timezone_auto_dst' => 'boolean',
+            'pomodoro_autostart' => 'boolean',
+            'notify_event_start' => 'boolean',
+            'notify_pomo_start' => 'boolean',
+            'notify_break_start' => 'boolean',
         ];
     }
 }

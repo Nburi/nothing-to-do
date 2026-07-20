@@ -20,6 +20,10 @@ class MeController extends Controller
             'email' => $user->email,
             'task_reset_time' => $user->task_reset_time ?? '01:00',
             'pomodoro' => $user->pomodoro(),
+            'pomodoro_autostart' => (bool) $user->pomodoro_autostart,
+            'notify_event_start' => (bool) $user->notify_event_start,
+            'notify_pomo_start' => (bool) $user->notify_pomo_start,
+            'notify_break_start' => (bool) $user->notify_break_start,
             'timezone_offset' => $user->timezoneOffsetHours(),
             'timezone_auto_dst' => (bool) $user->timezone_auto_dst,
             'local_now' => $user->localNow()->toIso8601String(),
@@ -33,7 +37,7 @@ class MeController extends Controller
         ]);
     }
 
-    /** Update account-level settings: daily reset time, Pomodoro rhythm, timezone. */
+    /** Update account-level settings: daily reset time, Pomodoro rhythm/autostart, notifications, timezone. */
     public function update(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -44,6 +48,10 @@ class MeController extends Controller
             'pomodoro_short_break' => ['sometimes', 'integer', 'min:1'],
             'pomodoro_long_break' => ['sometimes', 'integer', 'min:1'],
             'pomodoro_long_every' => ['sometimes', 'integer', 'min:1'],
+            'pomodoro_autostart' => ['sometimes', 'boolean'],
+            'notify_event_start' => ['sometimes', 'boolean'],
+            'notify_pomo_start' => ['sometimes', 'boolean'],
+            'notify_break_start' => ['sometimes', 'boolean'],
             'timezone_offset' => ['sometimes', 'numeric', 'between:-12,14'],
             'timezone_auto_dst' => ['sometimes', 'boolean'],
         ]);

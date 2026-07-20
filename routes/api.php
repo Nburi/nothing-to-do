@@ -45,6 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/schedule-events/{event}', [ScheduleEventController::class, 'destroy']);
     Route::post('/schedule-events/{event}/start-focus', [ScheduleEventController::class, 'startFocus']);
     Route::post('/schedule-events/{event}/stop-focus', [ScheduleEventController::class, 'stopFocus']);
+    Route::post('/schedule-events/{event}/continue-focus', [ScheduleEventController::class, 'continueFocus']);
+    Route::post('/schedule-events/{event}/skip-focus-break', [ScheduleEventController::class, 'skipFocusBreak']);
 
     Route::get('/event-categories', [EventCategoryController::class, 'index']);
     Route::post('/event-categories', [EventCategoryController::class, 'store']);

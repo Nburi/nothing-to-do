@@ -25,6 +25,10 @@ class MeApiTest extends TestCase
             ->assertJsonPath('name', 'Nico')
             ->assertJsonPath('counts.inbox', 1)
             ->assertJsonPath('counts.today', 1)
+            ->assertJsonPath('pomodoro_autostart', false)
+            ->assertJsonPath('notify_event_start', false)
+            ->assertJsonPath('notify_pomo_start', false)
+            ->assertJsonPath('notify_break_start', false)
             ->assertJsonStructure(['pomodoro' => ['work', 'short_break', 'long_break', 'long_every']]);
     }
 
@@ -42,5 +46,29 @@ class MeApiTest extends TestCase
         $user->refresh();
         $this->assertSame(50, $user->pomodoro_work);
         $this->assertTrue((bool) $user->timezone_auto_dst);
+    }
+
+    public function test_it_updates_autostart_and_notification_settings(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->patchJson('/api/me', [
+            'pomodoro_autostart' => true,
+            'notify_event_start' => true,
+            'notify_pomo_start' => true,
+            'notify_break_start' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('pomodoro_autostart', true)
+            ->assertJsonPath('notify_event_start', true)
+            ->assertJsonPath('notify_pomo_start', true)
+            ->assertJsonPath('notify_break_start', true);
+
+        $user->refresh();
+        $this->assertTrue((bool) $user->pomodoro_autostart);
+        $this->assertTrue((bool) $user->notify_event_start);
+        $this->assertTrue((bool) $user->notify_pomo_start);
+        $this->assertTrue((bool) $user->notify_break_start);
     }
 }
