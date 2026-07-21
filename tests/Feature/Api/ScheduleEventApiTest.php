@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\EventCategory;
 use App\Models\ScheduleEvent;
 use App\Models\User;
+use App\Services\PushNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -241,5 +242,39 @@ class ScheduleEventApiTest extends TestCase
         $this->getJson('/api/schedule-events/focus')
             ->assertOk()
             ->assertJson(['focus_session' => null, 'phase' => null, 'suggestion' => null]);
+    }
+
+    public function test_start_focus_via_api_sends_a_push_notification_when_enabled(): void
+    {
+        $user = User::factory()->create(['notify_pomo_start' => true]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->create(['category_id' => $category->id]);
+        Sanctum::actingAs($user);
+
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once();
+        });
+
+        $this->postJson("/api/schedule-events/{$event->id}/start-focus")->assertOk();
+    }
+
+    public function test_continue_focus_via_api_sends_a_push_notification_when_enabled(): void
+    {
+        $user = User::factory()->create([
+            'notify_break_start' => true,
+            'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+        ]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->create([
+            'category_id' => $category->id,
+            'pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => null,
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->once();
+        });
+
+        $this->postJson("/api/schedule-events/{$event->id}/continue-focus")->assertOk();
     }
 }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ScheduleEventResource;
 use App\Models\ScheduleEvent;
-use App\Services\PomodoroCycle;
+use App\Services\PomodoroSessionService;
 use App\Services\TaskSuggestor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -207,7 +207,7 @@ class ScheduleEventController extends Controller
             }
         }
 
-        $event->update($updates);
+        $event->update($event->withNotifiedReset($updates));
 
         if ($movedFromSeries) {
             $user->scheduleEvents()->create([
@@ -242,7 +242,7 @@ class ScheduleEventController extends Controller
      * time never auto-starts it. Always manual, regardless of the autostart
      * setting (that only governs transitions after this first session).
      */
-    public function startFocus(Request $request, int $id): JsonResponse
+    public function startFocus(Request $request, int $id, PomodoroSessionService $pomodoro): JsonResponse
     {
         $event = $this->userEvent($request, $id);
 
@@ -250,20 +250,16 @@ class ScheduleEventController extends Controller
             return response()->json(['message' => 'This block has no Pomodoro timer enabled.'], 422);
         }
 
-        $event->update([
-            'pomodoro_phase' => PomodoroCycle::WORK,
-            'pomodoro_cycle' => 1,
-            'pomodoro_started_at' => now(),
-        ]);
+        $pomodoro->start($event, $request->user());
 
         return (new ScheduleEventResource($event->fresh('category')))->response();
     }
 
     /** Fully ends the session — a fresh start-focus call is needed to begin again. */
-    public function stopFocus(Request $request, int $id): JsonResponse
+    public function stopFocus(Request $request, int $id, PomodoroSessionService $pomodoro): JsonResponse
     {
         $event = $this->userEvent($request, $id);
-        $event->update(['pomodoro_started_at' => null, 'pomodoro_phase' => null, 'pomodoro_cycle' => 1]);
+        $pomodoro->stop($event);
 
         return (new ScheduleEventResource($event->fresh('category')))->response();
     }
@@ -274,7 +270,7 @@ class ScheduleEventController extends Controller
      * or to skip a break early (see skipFocusBreak below for the dedicated
      * "skip a break I haven't reached yet" case).
      */
-    public function continueFocus(Request $request, int $id): JsonResponse
+    public function continueFocus(Request $request, int $id, PomodoroSessionService $pomodoro): JsonResponse
     {
         $event = $this->userEvent($request, $id);
 
@@ -282,12 +278,7 @@ class ScheduleEventController extends Controller
             return response()->json(['message' => 'No Pomodoro session is running on this block.'], 422);
         }
 
-        $next = PomodoroCycle::next($event->pomodoro_phase, $event->pomodoro_cycle, $request->user()->pomodoro());
-        $event->update([
-            'pomodoro_phase' => $next['phase'],
-            'pomodoro_cycle' => $next['cycle'],
-            'pomodoro_started_at' => now(),
-        ]);
+        $pomodoro->transition($event, $request->user(), $request->user()->pomodoro());
 
         return (new ScheduleEventResource($event->fresh('category')))->response();
     }
@@ -297,7 +288,7 @@ class ScheduleEventController extends Controller
      * next work session — works whether the break is actively running or
      * still frozen awaiting its own manual start.
      */
-    public function skipFocusBreak(Request $request, int $id): JsonResponse
+    public function skipFocusBreak(Request $request, int $id, PomodoroSessionService $pomodoro): JsonResponse
     {
         $event = $this->userEvent($request, $id);
 
@@ -305,26 +296,9 @@ class ScheduleEventController extends Controller
             return response()->json(['message' => 'No Pomodoro session is running on this block.'], 422);
         }
 
-        $rhythm = $request->user()->pomodoro();
-        $phase = $event->pomodoro_phase;
-        $cycle = $event->pomodoro_cycle;
-
-        if ($event->pomodoro_started_at === null) {
-            $next = PomodoroCycle::next($phase, $cycle, $rhythm);
-            $phase = $next['phase'];
-            $cycle = $next['cycle'];
-        }
-
-        if (! in_array($phase, [PomodoroCycle::SHORT_BREAK, PomodoroCycle::LONG_BREAK], true)) {
+        if (! $pomodoro->skipBreak($event, $request->user(), $request->user()->pomodoro())) {
             return response()->json(['message' => 'Nothing to skip — the upcoming phase is not a break.'], 422);
         }
-
-        $next = PomodoroCycle::next($phase, $cycle, $rhythm);
-        $event->update([
-            'pomodoro_phase' => $next['phase'],
-            'pomodoro_cycle' => $next['cycle'],
-            'pomodoro_started_at' => now(),
-        ]);
 
         return (new ScheduleEventResource($event->fresh('category')))->response();
     }

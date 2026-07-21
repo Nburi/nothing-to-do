@@ -82,6 +82,40 @@ class ScheduleEventTest extends TestCase
         $this->assertSame('forest', $event->colorToken());
     }
 
+    public function test_with_notified_reset_clears_the_flag_when_start_time_changes(): void
+    {
+        $event = ScheduleEvent::factory()->make(['start_time' => '08:00', 'notified_at' => now()]);
+
+        $updates = $event->withNotifiedReset(['start_time' => '09:00']);
+
+        $this->assertNull($updates['notified_at']);
+    }
+
+    public function test_with_notified_reset_clears_the_flag_when_only_the_date_changes(): void
+    {
+        $event = ScheduleEvent::factory()->make([
+            'date' => '2026-07-10', 'start_time' => '08:00', 'notified_at' => now(),
+        ]);
+
+        // A drag-to-another-day move that keeps the same clock time must still reset the dedupe
+        // flag, or the event silently never notifies again on its new date.
+        $updates = $event->withNotifiedReset(['date' => '2026-07-11']);
+
+        $this->assertArrayHasKey('notified_at', $updates);
+        $this->assertNull($updates['notified_at']);
+    }
+
+    public function test_with_notified_reset_leaves_the_flag_untouched_when_neither_date_nor_start_time_changes(): void
+    {
+        $event = ScheduleEvent::factory()->make([
+            'date' => '2026-07-10', 'start_time' => '08:00', 'notified_at' => now(),
+        ]);
+
+        $updates = $event->withNotifiedReset(['date' => '2026-07-10', 'start_time' => '08:00', 'color' => 'forest']);
+
+        $this->assertArrayNotHasKey('notified_at', $updates);
+    }
+
     public function test_occurs_on_respects_iso_weekday_mask(): void
     {
         $template = EventTemplate::factory()->recurring('1,3,5')->make(); // Mon, Wed, Fri

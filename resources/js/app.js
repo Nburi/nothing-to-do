@@ -28,39 +28,67 @@ window.primeFocusAudio = function () {
     if (window._focusAudioCtx.state === 'suspended') window._focusAudioCtx.resume();
 };
 
+/** Decodes a VAPID public key (URL-safe base64) into the Uint8Array pushManager.subscribe() expects. */
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
 /**
- * Shows a browser Notification if permission was already granted — silently a
- * no-op otherwise (unsupported browser, permission not yet asked, or denied).
- * Foreground-only: this is the plain Notification API, not Web Push, so it
- * only fires while a tab of the app is open.
+ * Requests notification permission, then subscribes this browser to real Web
+ * Push and returns {endpoint, p256dh, auth} for the caller to persist
+ * server-side — the server decides when to send, so this keeps working even
+ * with every tab (and the whole browser) closed. Returns null if permission
+ * was denied or the browser doesn't support it.
  */
-window.sendAppNotification = function (title, body) {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    try {
-        new Notification(title, { body, icon: '/icons/icon-192.png' });
-    } catch (e) {
-        // Some mobile browsers reject the plain `new Notification()` constructor
-        // outside a service-worker registration — fail silently, non-critical.
+window.subscribeToPush = async function (vapidPublicKey) {
+    if (!('serviceWorker' in navigator) || typeof Notification === 'undefined') return null;
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return null;
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
     }
+
+    const json = subscription.toJSON();
+    return { endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth };
 };
 
-/** Requests browser notification permission — call only from a user gesture (e.g. a button click). */
-window.requestAppNotificationPermission = function () {
-    if (typeof Notification === 'undefined') return Promise.resolve('unsupported');
-    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
-        return Promise.resolve(Notification.permission);
-    }
-    return Notification.requestPermission();
+/** Unsubscribes this browser from Web Push. Returns the removed endpoint, or null if it wasn't subscribed. */
+window.unsubscribeFromPush = async function () {
+    if (!('serviceWorker' in navigator)) return null;
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return null;
+
+    const endpoint = subscription.endpoint;
+    await subscription.unsubscribe();
+    return endpoint;
 };
 
-document.addEventListener('livewire:init', () => {
-    // Server-gated: TaskBoard only dispatches this after checking the user's
-    // per-type notify_* preference, so the client just has to show it.
-    Livewire.on('browser-notify', (event) => {
-        const payload = Array.isArray(event) ? event[0] : event;
-        if (payload && payload.title) window.sendAppNotification(payload.title, payload.body ?? '');
-    });
-});
+/** This browser's current push subscription endpoint, or null if not subscribed. */
+window.currentPushSubscription = async function () {
+    if (!('serviceWorker' in navigator)) return null;
+
+    const registration = await navigator.serviceWorker.ready.catch(() => null);
+    if (!registration) return null;
+
+    const subscription = await registration.pushManager.getSubscription();
+    return subscription ? subscription.endpoint : null;
+};
 
 /**
  * Drag & drop for a board zone (a column, or a column's Today area).
@@ -799,45 +827,4 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    /**
-     * Shared dedupe set for eventStartNotifier below — a global Alpine store
-     * (not per-component state) because the dashboard mounts the strip twice
-     * (desktop + mobile layout, one hidden via CSS but both present in the
-     * DOM), which would otherwise double-fire every notification.
-     */
-    window.Alpine.store('notifiedEvents', { ids: new Set() });
-
-    /**
-     * eventStartNotifier — ticks a server-seeded clock forward once a second
-     * and fires a notification the moment "now" crosses a today-event's start
-     * time. Seeded from the server's local-time seconds-since-midnight rather
-     * than reading the browser's own clock, so it stays correct even if the
-     * device's timezone doesn't match the user's configured one (same
-     * source-of-truth pattern as the rest of the app's server-driven time).
-     *
-     * cfg: { enabled, events: [{id, title, startSeconds}], nowSeconds }
-     */
-    window.Alpine.data('eventStartNotifier', (cfg = {}) => ({
-        enabled: cfg.enabled ?? false,
-        events: cfg.events ?? [],
-        nowSeconds: cfg.nowSeconds ?? 0,
-        timer: null,
-
-        init() {
-            if (!this.enabled || this.events.length === 0) return;
-            this.timer = setInterval(() => {
-                this.nowSeconds++;
-                const notified = this.$store.notifiedEvents.ids;
-                this.events.forEach((e) => {
-                    if (!notified.has(e.id) && this.nowSeconds >= e.startSeconds) {
-                        notified.add(e.id);
-                        window.sendAppNotification('Zeitplan', `${e.title} beginnt jetzt`);
-                    }
-                });
-            }, 1000);
-        },
-        destroy() {
-            clearInterval(this.timer);
-        },
-    }));
 });

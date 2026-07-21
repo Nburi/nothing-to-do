@@ -96,13 +96,16 @@ I say so, with reasoning.
 - **Auth:** Laravel Breeze (Blade stack), fully restyled.
 - **API auth:** Laravel Sanctum (personal access tokens) — powers the token-authenticated JSON API used by
   Apple Shortcuts and other integrations; see §7 "API (Apple Shortcuts)".
+- **Push notifications:** Web Push (VAPID) via `minishlink/web-push` — a `push_subscriptions` table, a
+  service-worker `push`/`notificationclick` handler, and two per-minute scheduled commands drive
+  notifications that arrive even with the browser fully closed; see §7 Schedule "Notifications".
 - **Drag & drop:** SortableJS (`window.boardSortable`).
 - **Swipe gestures:** hand-rolled Pointer-Events Alpine component (`swipeCard`) — no library.
 - **Styling:** Tailwind CSS **v3** (PostCSS). Topografie tokens are CSS custom properties (space-separated
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (211 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (261 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -346,27 +349,52 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   `partials/schedule-strip-suggestion.blade.php` in every focus-card state that has a work-phase context; a
   task suggestion opens the existing inline edit sheet (`startEdit`), a project suggestion links to its
   project page.
-- **Notifications** — three independent per-type toggles on `User` (`notify_event_start`, `notify_pomo_start`,
-  `notify_break_start`; Settings' Benachrichtigungen card), all default `false`. Foreground-only: this is the
-  plain browser Notification API (`window.sendAppNotification`/`window.requestAppNotificationPermission` in
-  `app.js`), not Web Push — no service-worker push handler, no VAPID keys, no backend subscription storage,
-  so nothing fires once every tab of the app is closed. Two independent trigger paths:
-  - **Pomodoro phase starts** (`notify_pomo_start`/`notify_break_start`) — `TaskBoard::notifyPhaseStart()`
-    (called from `startFocusTimer`/`transitionToNextPhase`, i.e. every real phase start, manual or auto)
-    checks the matching per-type flag server-side and, only if enabled, `dispatch('browser-notify', title:,
-    body:)`. The client is deliberately dumb: `Livewire.on('browser-notify', ...)` in `app.js` just shows
-    whatever it's handed — all gating already happened server-side, so a stray client bug can't leak a
-    notification the user disabled.
-  - **Any schedule event's start time** (`notify_event_start`) — decoupled from Pomodoro entirely, and from
-    the server round-trip model above: `Alpine.data('eventStartNotifier', ...)` in `app.js`, mounted on
-    `schedule-strip.blade.php`, is seeded once with the day's events (id/title/start-in-seconds) and the
-    server's current local time (**not** the browser's own clock — keeps it correct even if the device
-    timezone doesn't match the user's configured one), then ticks a local counter forward every second and
-    fires the moment "now" crosses an event's start. Scoped to whichever page renders `scheduleToday` —
-    currently just the Dashboard, not e.g. Settings or Cleanup. Because the strip is included **twice**
-    (desktop + mobile layout, both present in the DOM, one merely hidden via CSS), the fired-ids dedupe set
-    lives in a shared `Alpine.store('notifiedEvents')` rather than per-component state — otherwise both
-    mounts would independently notify for the same event.
+- **Notifications** — real **Web Push** (VAPID), delivered by the OS/browser even with the app's tab, and
+  the whole browser, fully closed. Three independent per-type toggles still gate *which* moments push
+  (`notify_event_start`, `notify_pomo_start`, `notify_break_start` on `User`; Settings' Benachrichtigungen
+  card), all default `false` — but delivery itself no longer depends on any tab being open, since the
+  server decides when to send.
+  - **Subscribing** — Settings' Benachrichtigungen card has an Aktivieren/Deaktivieren control
+    (`resources/js/app.js`'s `window.subscribeToPush(vapidPublicKey)` requests Notification permission,
+    then `navigator.serviceWorker.ready` → `pushManager.subscribe({applicationServerKey: ...})`) that POSTs
+    the resulting `{endpoint, p256dh, auth}` to two new Livewire actions on `App\Livewire\Settings` —
+    `subscribeToPush()`/`unsubscribeFromPush()` — backed by **`App\Models\PushSubscription`**
+    (`push_subscriptions` table: `endpoint`(text) + `endpoint_hash`(sha256, unique — MySQL can't uniquely
+    index a raw `text` column) + `p256dh`/`auth_token`, `belongsTo User`, one row per device/browser).
+    `PushSubscription::storeFor()` upserts by `endpoint_hash`, so re-subscribing the same browser refreshes
+    its row instead of duplicating.
+  - **Sending** — **`App\Services\PushNotifier`** wraps a config-driven `Minishlink\WebPush\WebPush`
+    singleton (bound in `AppServiceProvider`, VAPID keys from `config/webpush.php`/`.env`): `notify(User,
+    payload)` pushes to every subscription the user has and prunes any the push service reports as expired
+    (410/404). Delivery is synchronous, no queue worker — this app's volume (a handful of subscriptions per
+    user) doesn't warrant one.
+  - **Pomodoro phase starts** (`notify_pomo_start`/`notify_break_start`) — the transition logic that used to
+    be duplicated between `TaskBoard` (Livewire) and `ScheduleEventController` (API) is now consolidated in
+    **`App\Services\PomodoroSessionService`** (`start`/`stop`/`transition`/`skipBreak`/`handleTick`, all
+    persist via the existing `PomodoroCycle` math and notify through `PushNotifier`, gated on the matching
+    per-type flag). Both `TaskBoard` (resolved via `app(PomodoroSessionService::class)` — Livewire action
+    methods are called positionally by Livewire's own dispatcher, not container method injection) and
+    `ScheduleEventController` (real constructor/method injection) call through it, so Shortcuts-driven
+    Pomodoro actions notify identically to tab-driven ones. Critically, a phase used to only ever advance
+    because the client's local JS timer called `handlePhaseComplete()` — with no tab open, nothing did that.
+    The scheduled command **`app:advance-pomodoro-phases`** (every minute, `bootstrap/app.php`'s
+    `withSchedule()`) now ticks every active session server-side via `PomodoroSessionService::handleTick()`,
+    which — unlike a single-step advance — **cascades** through however many phases have fully elapsed
+    (carrying the real elapsed time forward, mirroring `ScheduleEvent::pomodoroPhaseNow()`'s own read-side
+    self-heal loop), so a session left running unattended across a cron gap doesn't have its durations
+    silently compressed. With `pomodoro_autostart` off it still just freezes (no notification), same as
+    before.
+  - **Any schedule event's start time** (`notify_event_start`) — also now fully server-driven: the scheduled
+    command **`app:send-event-start-notifications`** (every minute) finds, per opted-in user, today's (in
+    *that user's* local day) visible events with `notified_at IS NULL` whose absolute start instant —
+    `ScheduleEvent::startInstantUtc(User)`, the inverse of `User::localNow()` (`utc = local − offset`) —
+    has passed, sends a push, and stamps `notified_at`. Dedup is "already notified", not a sliding time
+    window, so a delayed/missed cron tick still fires on the next run instead of losing the notification.
+    `ScheduleEvent::withNotifiedReset(array $updates)` clears `notified_at` whenever `start_time` changes,
+    wired into every write path that can move one (`ManagesSchedule::saveEventForm/moveEvent/resizeEvent`,
+    `ScheduleEventController::update()`), so a rescheduled event is eligible to notify again at its new time.
+  - **`public/sw.js`** has `push` (shows the OS notification) and `notificationclick` (focuses/opens the app)
+    listeners alongside its pre-existing offline-caching handlers.
 - **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by `Schedule`): create/edit/
   delete Termine and Kategorie blocks, drag-to-move (keeps duration), drag-to-resize (min-length guard),
   apply-template. The event form sheet (`partials/schedule-event-form.blade.php`) has a Termin/Kategorie
@@ -442,10 +470,16 @@ This is a **full rebuild** (old Node.js app → Laravel). The first deploy is a 
 3. `cp .env.example .env` and set: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://…`,
    and the **MySQL** `DB_*` vars (or keep SQLite and create `database/database.sqlite`).
 4. `php artisan key:generate`
-5. `php artisan migrate --force`
-6. `npm ci && npm run build`  *(Linux has `pcntl`, so the full `composer run dev` also works there.)*
-7. `php artisan config:cache route:cache view:cache`
-8. Point the web root at `public/`; ensure `storage/` and `bootstrap/cache/` are writable.
+5. Generate a VAPID key pair for Web Push (once — reuse the same pair on every future deploy, never
+   regenerate) and set `VAPID_SUBJECT` (a `mailto:` address or URL), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+   in `.env`. Easiest: a throwaway PHP script calling `Minishlink\WebPush\VAPID::createVapidKeys()` (see
+   *Known Issues* if `openssl_pkey_new()` fails with a missing-config-file error).
+6. `php artisan migrate --force`
+7. `npm ci && npm run build`  *(Linux has `pcntl`, so the full `composer run dev` also works there.)*
+8. `php artisan config:cache route:cache view:cache`
+9. Point the web root at `public/`; ensure `storage/` and `bootstrap/cache/` are writable.
+10. **Add a cron entry** (new requirement — see below): `* * * * * cd /path/to/app && php artisan
+    schedule:run >> /dev/null 2>&1`.
 
 ### Every later deploy
 ```bash
@@ -457,11 +491,25 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 # restart php-fpm / your process manager
 ```
 
-No cron jobs or queue workers are required for the current feature set.
+**Cron is required** as of the Web Push feature: `php artisan schedule:run` must run every minute (a
+single crontab line, see step 10 above) — it drives `app:advance-pomodoro-phases` and
+`app:send-event-start-notifications`, the two commands that make Pomodoro/event-start push notifications
+fire even with no tab open. No separate queue worker is needed (notifications send synchronously inline).
 
 ---
 
 ## 10. Known Issues & Solutions
+
+### `openssl_pkey_new()` fails generating VAPID keys on the standalone Windows PHP install
+**Symptom:** `Minishlink\WebPush\VAPID::createVapidKeys()` (or any raw `openssl_pkey_new(['curve_name' =>
+'prime256v1', ...])`) throws `RuntimeException: Unable to create the key`; `openssl_error_string()` reports
+`configuration file routines::no such file`.
+**Cause:** the standalone PHP-for-Windows install (see the next entry) ships an `openssl.cnf` template
+under `extras\ssl\` but never points OpenSSL at it — EC key generation needs a valid config file, and
+without one PHP's `openssl` extension silently has no default to fall back to on Windows.
+**Fix:** set the `OPENSSL_CONF` environment variable to the shipped config before running the script:
+`$env:OPENSSL_CONF = "C:\php\extras\ssl\openssl.cnf"` (PowerShell), then re-run. Only needed for local key
+generation — the production Linux box's system OpenSSL already has a working config.
 
 ### Laravel Pail / `composer run dev` fails on Windows (pcntl)
 **Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag

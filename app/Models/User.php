@@ -55,6 +55,12 @@ class User extends Authenticatable
         return $this->hasMany(EventCategory::class);
     }
 
+    /** @return HasMany<PushSubscription, $this> */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
     /** The Pomodoro rhythm (minutes / count) driving each category's focus timer. */
     public function pomodoro(): array
     {

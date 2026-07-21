@@ -138,7 +138,7 @@ trait ManagesSchedule
             // a duplicate there. Editing it in place keeps the series link.
             $movedFromSeries = $origTemplate !== null && $origDate !== $data['eventDate'];
 
-            $event->update([
+            $event->update($event->withNotifiedReset([
                 'category_id' => $categoryId,
                 'title' => $title,
                 'date' => $data['eventDate'],
@@ -146,7 +146,7 @@ trait ManagesSchedule
                 'end_time' => $data['eventEnd'],
                 'color' => $color,
                 'template_id' => $movedFromSeries ? null : $event->template_id,
-            ]);
+            ]));
 
             if ($movedFromSeries) {
                 auth()->user()->scheduleEvents()->create([
@@ -251,10 +251,10 @@ trait ManagesSchedule
         $duration = $event->durationMinutes();
         $startMin = max(0, min(24 * 60 - $duration, ScheduleEvent::toMinutes($start)));
 
-        $event->update([
+        $event->update($event->withNotifiedReset([
             'start_time' => ScheduleEvent::fromMinutes($startMin),
             'end_time' => ScheduleEvent::fromMinutes($startMin + $duration),
-        ]);
+        ]));
     }
 
     /** Drag-to-resize: set both ends, guarding a minimum length. */
@@ -271,10 +271,11 @@ trait ManagesSchedule
             return;
         }
 
-        $this->userEvent($id)->update([
+        $event = $this->userEvent($id);
+        $event->update($event->withNotifiedReset([
             'start_time' => ScheduleEvent::fromMinutes($startMin),
             'end_time' => ScheduleEvent::fromMinutes($endMin),
-        ]);
+        ]));
     }
 
     /** Drop / tap a template onto a day → a concrete event. */
