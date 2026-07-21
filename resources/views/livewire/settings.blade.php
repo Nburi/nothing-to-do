@@ -329,27 +329,114 @@
     {{-- Benachrichtigungen --}}
     <div
         class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8"
-        x-data="{ permission: (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported') }"
+        x-data="{
+            vapidPublicKey: @js(config('webpush.vapid.public_key')),
+            permission: (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'),
+            subscribed: false,
+            busy: false,
+            async check() {
+                this.subscribed = !!(await window.currentPushSubscription());
+            },
+            async subscribe() {
+                this.busy = true;
+                try {
+                    const sub = await window.subscribeToPush(this.vapidPublicKey);
+                    if (typeof Notification !== 'undefined') this.permission = Notification.permission;
+                    if (!sub) return;
+                    await $wire.subscribeToPush(sub.endpoint, sub.p256dh, sub.auth);
+                    this.subscribed = true;
+                } finally {
+                    this.busy = false;
+                }
+            },
+            async unsubscribe() {
+                this.busy = true;
+                try {
+                    const endpoint = await window.unsubscribeFromPush();
+                    if (endpoint) await $wire.unsubscribeFromPush(endpoint);
+                    this.subscribed = false;
+                } finally {
+                    this.busy = false;
+                }
+            },
+        }"
+        x-init="check()"
     >
         <h2 class="mb-1 text-base font-medium text-ink">Benachrichtigungen</h2>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
-            Browser-Benachrichtigungen für ausgewählte Momente — funktionieren nur, solange die App in einem
-            Tab geöffnet ist.
+            Push-Benachrichtigungen für ausgewählte Momente — funktionieren auch, wenn dieser Browser
+            komplett geschlossen ist.
         </p>
 
-        <div x-show="permission !== 'granted'" class="mb-5 flex items-center justify-between gap-3 rounded-card border border-line bg-paper/60 px-3 py-2.5" style="display: none;">
+        <div x-show="permission === 'denied'" class="mb-5 rounded-card border border-line bg-paper/60 px-3 py-2.5" style="display: none;">
+            <p class="text-sm text-ink">Benachrichtigungen sind im Browser blockiert — in den Browser-Einstellungen erlauben.</p>
+        </div>
+
+        <div x-show="permission !== 'denied'" class="mb-5 flex items-center justify-between gap-3 rounded-card border border-line bg-paper/60 px-3 py-2.5">
             <div class="min-w-0">
-                <p class="text-sm text-ink" x-show="permission === 'denied'" style="display: none;">Benachrichtigungen sind im Browser blockiert — in den Browser-Einstellungen erlauben.</p>
-                <p class="text-sm text-ink" x-show="permission !== 'denied'">Berechtigung nötig, bevor Benachrichtigungen ankommen.</p>
+                <p class="text-sm text-ink" x-show="!subscribed">Auf diesem Gerät noch nicht aktiviert.</p>
+                <p class="text-sm text-ink" x-show="subscribed" style="display: none;">Auf diesem Gerät aktiv.</p>
             </div>
             <button
                 type="button"
-                x-show="permission !== 'denied'"
-                @click="window.requestAppNotificationPermission().then((p) => permission = p)"
-                class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]"
+                x-show="!subscribed"
+                @click="subscribe()"
+                :disabled="busy"
+                class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
             >
-                Erlauben
+                Aktivieren
             </button>
+            <button
+                type="button"
+                x-show="subscribed"
+                style="display: none;"
+                @click="unsubscribe()"
+                :disabled="busy"
+                class="flex-none rounded-card border border-line px-3.5 py-2 text-sm font-medium text-ink-soft transition hover:bg-signal-soft hover:text-signal disabled:opacity-60"
+            >
+                Deaktivieren
+            </button>
+        </div>
+
+        {{-- Debug: sends a real push to every device on this account right now, independent of
+             the notify_* toggles below, to isolate delivery problems (VAPID config, network,
+             a push service rejecting the request) from "which moments should notify". --}}
+        <div class="mb-5 rounded-card border border-line bg-paper/60 px-3 py-2.5">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm text-ink-soft">Testet alle Geräte auf diesem Account, unabhängig von den Reglern unten.</p>
+                <button
+                    type="button"
+                    wire:click="sendTestPush"
+                    wire:loading.attr="disabled"
+                    wire:target="sendTestPush"
+                    class="flex-none rounded-card border border-line px-3.5 py-2 text-sm font-medium text-ink-soft transition hover:bg-signal-soft hover:text-signal disabled:opacity-60"
+                >
+                    <span wire:loading.remove wire:target="sendTestPush">Test-Benachrichtigung senden</span>
+                    <span wire:loading wire:target="sendTestPush">Sende …</span>
+                </button>
+            </div>
+
+            @if ($testPushSent)
+                <div class="mt-3 space-y-1.5">
+                    @forelse ($testPushResults as $result)
+                        <div class="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-3 py-2 text-xs">
+                            <span class="min-w-0 truncate text-ink-soft">{{ $result['user_agent'] ?? 'Unbekanntes Gerät' }}</span>
+                            @if ($result['success'])
+                                <span class="flex-none font-medium text-forest">Zugestellt</span>
+                            @else
+                                <span class="flex-none font-medium text-signal" title="{{ $result['reason'] }}">
+                                    Fehlgeschlagen{{ $result['status'] ? " ({$result['status']})" : '' }}
+                                </span>
+                            @endif
+                        </div>
+                        @if (! $result['success'])
+                            <p class="px-1 text-[11px] text-ink-faint">{{ $result['reason'] }}</p>
+                        @endif
+                    @empty
+                        <p class="text-xs text-ink-soft">Keine Geräte abonniert — zuerst oben aktivieren.</p>
+                    @endforelse
+                </div>
+            @endif
         </div>
 
         <div class="space-y-1">

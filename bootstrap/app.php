@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,4 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
-    })->create();
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        // Both need production cron running `php artisan schedule:run` every
+        // minute — see CLAUDE.md §9 Deployment.
+        $schedule->command('app:advance-pomodoro-phases')->everyMinute()->withoutOverlapping();
+        $schedule->command('app:send-event-start-notifications')->everyMinute()->withoutOverlapping();
+    })
+    ->create();

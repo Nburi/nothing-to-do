@@ -35,6 +35,7 @@ class ScheduleEvent extends Model
         'pomodoro_started_at',
         'pomodoro_phase',
         'pomodoro_cycle',
+        'notified_at',
     ];
 
     protected function casts(): array
@@ -44,6 +45,7 @@ class ScheduleEvent extends Model
             'is_cancelled' => 'boolean',
             'pomodoro_started_at' => 'datetime',
             'pomodoro_cycle' => 'integer',
+            'notified_at' => 'datetime',
         ];
     }
 
@@ -126,6 +128,37 @@ class ScheduleEvent extends Model
     public function durationMinutes(): int
     {
         return max(0, $this->endMinutes() - $this->startMinutes());
+    }
+
+    /**
+     * The absolute UTC instant this event starts — the inverse of
+     * User::localNow() (local = utc + offset, so utc = local − offset).
+     * `date`/`start_time` are stored as the user's local wall-clock time.
+     */
+    public function startInstantUtc(User $user): Carbon
+    {
+        return $this->date->copy()->startOfDay()
+            ->addMinutes($this->startMinutes())
+            ->subMinutes($user->utcOffsetMinutes());
+    }
+
+    /**
+     * Wrap an update payload so a `start_time` OR `date` change also clears
+     * the event-start notification dedupe flag — a rescheduled event should
+     * be eligible to notify again at its new date/time (a date-only move,
+     * e.g. dragging an already-notified event to tomorrow at the same clock
+     * time, must reset it too, or it silently never notifies again).
+     */
+    public function withNotifiedReset(array $updates): array
+    {
+        $startChanged = array_key_exists('start_time', $updates) && $updates['start_time'] !== $this->start_time;
+        $dateChanged = array_key_exists('date', $updates) && $updates['date'] !== $this->date->toDateString();
+
+        if ($startChanged || $dateChanged) {
+            $updates['notified_at'] = null;
+        }
+
+        return $updates;
     }
 
     public function isAppointment(): bool

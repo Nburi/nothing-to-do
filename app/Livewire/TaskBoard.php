@@ -6,7 +6,7 @@ use App\Livewire\Concerns\ManagesTasks;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
-use App\Services\PomodoroCycle;
+use App\Services\PomodoroSessionService;
 use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -410,23 +410,13 @@ class TaskBoard extends Component
             return;
         }
 
-        $event->update([
-            'pomodoro_phase' => PomodoroCycle::WORK,
-            'pomodoro_cycle' => 1,
-            'pomodoro_started_at' => now(),
-        ]);
-
-        $this->notifyPhaseStart(PomodoroCycle::WORK);
+        app(PomodoroSessionService::class)->start($event, auth()->user());
     }
 
     /** Fully ends the session — a fresh tap on "Start" is needed to begin again. */
     public function stopFocusTimer(int $id): void
     {
-        $this->userScheduleEvent($id)->update([
-            'pomodoro_started_at' => null,
-            'pomodoro_phase' => null,
-            'pomodoro_cycle' => 1,
-        ]);
+        app(PomodoroSessionService::class)->stop($this->userScheduleEvent($id));
     }
 
     /**
@@ -434,29 +424,12 @@ class TaskBoard extends Component
      * server-side before acting (never trust the client's clock blindly). With
      * autostart enabled this immediately continues into the next phase; with
      * it disabled, the clock freezes here — `continuePhase()` is needed to
-     * move on.
+     * move on. The same tick is applied by the per-minute scheduled command
+     * regardless of whether any tab is open (see PomodoroSessionService::handleTick).
      */
     public function handlePhaseComplete(int $id): void
     {
-        $event = $this->userScheduleEvent($id);
-
-        if ($event->pomodoro_phase === null || $event->pomodoro_started_at === null) {
-            return;
-        }
-
-        $rhythm = auth()->user()->pomodoro();
-        $durationSeconds = PomodoroCycle::durationMinutes($event->pomodoro_phase, $rhythm) * 60;
-        $elapsedSeconds = max(0, (int) $event->pomodoro_started_at->diffInSeconds(now(), false));
-
-        if ($elapsedSeconds < $durationSeconds) {
-            return; // not actually finished yet — ignore a premature/stray call
-        }
-
-        if (auth()->user()->pomodoro_autostart) {
-            $this->transitionToNextPhase($event, $rhythm);
-        } else {
-            $event->update(['pomodoro_started_at' => null]);
-        }
+        app(PomodoroSessionService::class)->handleTick($this->userScheduleEvent($id), auth()->user());
     }
 
     /** Manually start the next queued phase — the button shown while frozen awaiting a continue. */
@@ -468,7 +441,8 @@ class TaskBoard extends Component
             return;
         }
 
-        $this->transitionToNextPhase($event, auth()->user()->pomodoro());
+        $user = auth()->user();
+        app(PomodoroSessionService::class)->transition($event, $user, $user->pomodoro());
     }
 
     /**
@@ -479,67 +453,9 @@ class TaskBoard extends Component
     public function skipBreak(int $id): void
     {
         $event = $this->userScheduleEvent($id);
-
-        if ($event->pomodoro_phase === null) {
-            return;
-        }
-
-        $rhythm = auth()->user()->pomodoro();
-        $phase = $event->pomodoro_phase;
-        $cycle = $event->pomodoro_cycle;
-
-        // Frozen: the "current" phase for skip purposes is whatever a continue would start.
-        if ($event->pomodoro_started_at === null) {
-            $next = PomodoroCycle::next($phase, $cycle, $rhythm);
-            $phase = $next['phase'];
-            $cycle = $next['cycle'];
-        }
-
-        if (! in_array($phase, [PomodoroCycle::SHORT_BREAK, PomodoroCycle::LONG_BREAK], true)) {
-            return; // nothing to skip
-        }
-
-        $next = PomodoroCycle::next($phase, $cycle, $rhythm);
-        $event->update([
-            'pomodoro_phase' => $next['phase'],
-            'pomodoro_cycle' => $next['cycle'],
-            'pomodoro_started_at' => now(),
-        ]);
-
-        $this->notifyPhaseStart($next['phase']);
-    }
-
-    /** @param  array{work:int,short_break:int,long_break:int,long_every:int}  $rhythm */
-    private function transitionToNextPhase(ScheduleEvent $event, array $rhythm): void
-    {
-        $next = PomodoroCycle::next($event->pomodoro_phase, $event->pomodoro_cycle, $rhythm);
-
-        $event->update([
-            'pomodoro_phase' => $next['phase'],
-            'pomodoro_cycle' => $next['cycle'],
-            'pomodoro_started_at' => now(),
-        ]);
-
-        $this->notifyPhaseStart($next['phase']);
-    }
-
-    /** Dispatches a browser notification event, gated by the user's per-type preference. */
-    private function notifyPhaseStart(string $phase): void
-    {
         $user = auth()->user();
-        $enabled = $phase === PomodoroCycle::WORK ? $user->notify_pomo_start : $user->notify_break_start;
 
-        if (! $enabled) {
-            return;
-        }
-
-        [$title, $body] = match ($phase) {
-            PomodoroCycle::WORK => ['Pomodoro', 'Neue Fokus-Session beginnt'],
-            PomodoroCycle::LONG_BREAK => ['Lange Pause', 'Zeit für eine längere Pause'],
-            default => ['Kurze Pause', 'Zeit für eine kurze Pause'],
-        };
-
-        $this->dispatch('browser-notify', title: $title, body: $body);
+        app(PomodoroSessionService::class)->skipBreak($event, $user, $user->pomodoro());
     }
 
     public function render()

@@ -78,3 +78,35 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
+
+// Real Web Push — delivered by the browser's push service even with every
+// tab (and the whole browser) closed, since the server decides when to send
+// (see App\Services\PushNotifier and the two scheduled commands).
+self.addEventListener('push', (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (e) {
+        data = {};
+    }
+
+    event.waitUntil(self.registration.showNotification(data.title || 'nothing-to-do', {
+        body: data.body || '',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data: { url: data.url || '/app' },
+    }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = event.notification.data?.url || '/app';
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+            const existing = clients.find((c) => c.url.includes(targetUrl));
+            if (existing) return existing.focus();
+            return self.clients.openWindow(targetUrl);
+        })
+    );
+});

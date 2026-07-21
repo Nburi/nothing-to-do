@@ -21,13 +21,7 @@
     $isBreak = fn (?string $p) => in_array($p, ['short_break', 'long_break'], true);
 @endphp
 
-<div
-    x-data="eventStartNotifier({
-        enabled: @js((bool) auth()->user()->notify_event_start),
-        events: @js($events->map(fn ($e) => ['id' => $e->id, 'title' => $e->displayTitle(), 'startSeconds' => $e->startMinutes() * 60])->values()),
-        nowSeconds: {{ $nowMin * 60 + $now->second }},
-    })"
->
+<div>
 @if ($focus)
     {{-- Focus card: a plain div (not the clickable-card <a> below) since it hosts
          its own Start/Stop/Continue/Skip buttons — a button can't sit inside an <a>. --}}
