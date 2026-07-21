@@ -511,6 +511,25 @@ without one PHP's `openssl` extension silently has no default to fall back to on
 `$env:OPENSSL_CONF = "C:\php\extras\ssl\openssl.cnf"` (PowerShell), then re-run. Only needed for local key
 generation — the production Linux box's system OpenSSL already has a working config.
 
+### Push/Pomodoro notifications silently never fire in local dev — nothing runs the scheduler
+**Symptom:** subscribing works (a real row lands in `push_subscriptions`), manually starting/continuing a
+Pomodoro session notifies fine, but an event's start time passes — or a running phase finishes while the
+tab is closed — and no push ever arrives. No error anywhere; `storage/logs/laravel.log` is silent because
+there's nothing to log.
+**Cause:** `app:advance-pomodoro-phases` and `app:send-event-start-notifications` are registered with
+Laravel's scheduler (`bootstrap/app.php`'s `withSchedule()`), but the scheduler itself does *nothing*
+unless something invokes `php artisan schedule:run` on a timer. Production gets that from a cron entry
+(§9). **Windows has no cron**, and `composer run dev` used to only start `php artisan serve` + `npm run
+dev` — so locally, the two scheduled commands never ran at all outside of `php artisan test` and a
+manually-triggered `php artisan schedule:run`. Confirmed live: a real Pomodoro test session sat frozen on
+an elapsed phase for over an hour (46+ cycles reached only via the client's own open-tab timer calling
+`handlePhaseComplete()` directly — never via the scheduler) until `schedule:run` was finally invoked by
+hand.
+**Fix:** `composer.json`'s `dev` script now also starts `php artisan schedule:work` (Laravel's official
+local-dev stand-in for cron — a plain polling loop, no `pcntl` needed, unlike Pail) alongside the server
+and Vite. Run `composer run dev` (not `php artisan serve` on its own) whenever testing anything
+notification-related locally. To force one tick manually instead: `php artisan schedule:run`.
+
 ### Laravel Pail / `composer run dev` fails on Windows (pcntl)
 **Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag
 then tears down the whole dev environment.
