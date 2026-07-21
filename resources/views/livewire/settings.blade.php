@@ -8,16 +8,29 @@
     ];
 @endphp
 
-<div class="mx-auto max-w-3xl space-y-5 px-5 py-10 sm:px-6">
-    <div class="flex items-center gap-3">
+<div class="mx-auto max-w-3xl px-5 py-10 sm:px-6">
+    <div class="mb-5 flex items-center gap-3">
         <a href="{{ url('/app') }}" class="grid h-8 w-8 place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink" aria-label="Zurück zum Board" wire:navigate>
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
         </a>
         <h1 class="text-xl font-medium text-ink">Einstellungen</h1>
     </div>
 
-    <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-        <h2 class="mb-1 text-base font-medium text-ink">Erledigte Aufgaben</h2>
+    <nav aria-label="Einstellungsbereiche" class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm">
+        <a href="#general" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Allgemein</a>
+        <a href="#schedule" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Zeitplan &amp; Fokus</a>
+        <a href="#notifications" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Benachrichtigungen</a>
+        <a href="#developer" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Entwickler</a>
+    </nav>
+
+    <div class="space-y-10 pt-4 sm:space-y-12">
+
+    {{-- Allgemein --}}
+    <section id="general" class="scroll-mt-28 space-y-5">
+        <h2 class="text-lg font-medium tracking-tight text-ink">Allgemein</h2>
+
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Erledigte Aufgaben</h3>
         <p class="mb-5 text-sm text-ink-soft leading-relaxed">
             Erledigte Aufgaben bleiben bis zu dieser Uhrzeit sichtbar — danach verschwinden sie automatisch.
             Standard: <span class="font-medium text-ink">01:00</span>
@@ -66,11 +79,11 @@
                 </span>
             </div>
         </form>
-    </div>
+        </div>
 
-    {{-- Zeitzone --}}
-    <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-        <h2 class="mb-1 text-base font-medium text-ink">Zeitzone</h2>
+        {{-- Zeitzone --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Zeitzone</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Stunden-Versatz zu UTC — z. B. <span class="font-medium text-ink">+1</span> für die Schweizer Winterzeit
             oder <span class="font-medium text-ink">+5.5</span> für halbe/viertel Zeitzonen (z. B. Indien, Nepal).
@@ -146,11 +159,16 @@
                 </span>
             </div>
         </form>
-    </div>
+        </div>
+    </section>
 
-    {{-- Kategorien --}}
-    <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-        <h2 class="mb-1 text-base font-medium text-ink">Kategorien</h2>
+    {{-- Zeitplan & Fokus --}}
+    <section id="schedule" class="scroll-mt-28 space-y-5">
+        <h2 class="text-lg font-medium tracking-tight text-ink">Zeitplan &amp; Fokus</h2>
+
+        {{-- Kategorien --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Kategorien</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Wiederverwendbare Kategorien für den Zeitplan — z. B. Schule oder Training. Umbenennen oder Umfärben
             wirkt sich sofort auf alle ihre Termine aus. Kategorien mit aktivierter Funktion zeigen im Dashboard
@@ -245,17 +263,16 @@
             </button>
         </form>
         @error('newCategoryName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
-    </div>
+        </div>
 
-    {{-- Pomodoro --}}
-    <form
+        {{-- Pomodoro --}}
+        <form
         wire:submit="saveSchedule"
         x-data="{ saved: false }"
         @schedule-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
-        class="space-y-5"
     >
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-            <h2 class="mb-1 text-base font-medium text-ink">Pomodoro</h2>
+            <h3 class="mb-1 text-base font-medium text-ink">Pomodoro</h3>
             <p class="mb-5 text-sm leading-relaxed text-ink-soft">
                 Der Rhythmus, mit dem der Fokus-Timer einer Kategorie Arbeits- und Pausenphasen abwechselt.
             </p>
@@ -324,9 +341,12 @@
                 </span>
             </div>
         </div>
-    </form>
+        </form>
+    </section>
 
     {{-- Benachrichtigungen --}}
+    <section id="notifications" class="scroll-mt-28">
+    <h2 class="sr-only">Benachrichtigungen</h2>
     <div
         class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8"
         x-data="{
@@ -362,7 +382,7 @@
         }"
         x-init="check()"
     >
-        <h2 class="mb-1 text-base font-medium text-ink">Benachrichtigungen</h2>
+        <h3 class="mb-1 text-base font-medium text-ink">Benachrichtigungen</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Push-Benachrichtigungen für ausgewählte Momente — funktionieren auch, wenn dieser Browser
             komplett geschlossen ist.
@@ -473,11 +493,14 @@
             @endforeach
         </div>
     </div>
+    </section>
 
     {{-- Shortcuts & API --}}
+    <section id="developer" class="scroll-mt-28">
+    <h2 class="sr-only">Entwickler</h2>
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <div class="mb-1 flex items-center justify-between gap-3">
-            <h2 class="text-base font-medium text-ink">Shortcuts & API</h2>
+            <h3 class="text-base font-medium text-ink">Shortcuts & API</h3>
             <a href="{{ route('docs.api') }}" class="text-sm font-medium text-overprint hover:underline" wire:navigate>
                 API-Dokumentation →
             </a>
@@ -558,5 +581,8 @@
             </button>
         </form>
         @error('newTokenName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+    </div>
+    </section>
+
     </div>
 </div>
