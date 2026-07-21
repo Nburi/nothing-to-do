@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
+use App\Services\PushNotifier;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -122,6 +123,29 @@ class Settings extends Component
     public function unsubscribeFromPush(string $endpoint): void
     {
         auth()->user()->pushSubscriptions()->where('endpoint_hash', PushSubscription::hashEndpoint($endpoint))->delete();
+    }
+
+    /**
+     * @var list<array{endpoint: string, user_agent: ?string, success: bool, status: ?int, reason: string}>
+     */
+    public array $testPushResults = [];
+
+    public bool $testPushSent = false;
+
+    /**
+     * Sends a real push to every one of the user's devices right now and reports back exactly
+     * what happened per device — independent of the notify_* toggles above, since the point is
+     * diagnosing delivery itself (VAPID config, network/TLS, a push service rejecting the
+     * request), not re-testing which moments are configured to notify.
+     */
+    public function sendTestPush(): void
+    {
+        $this->testPushResults = app(PushNotifier::class)->sendDebug(auth()->user(), [
+            'title' => 'Test-Benachrichtigung',
+            'body' => 'Wenn du das siehst, funktionieren Push-Benachrichtigungen auf diesem Gerät.',
+            'url' => '/app/settings',
+        ]);
+        $this->testPushSent = true;
     }
 
     /**

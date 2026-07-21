@@ -105,7 +105,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (261 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (272 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -367,7 +367,15 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
     singleton (bound in `AppServiceProvider`, VAPID keys from `config/webpush.php`/`.env`): `notify(User,
     payload)` pushes to every subscription the user has and prunes any the push service reports as expired
     (410/404). Delivery is synchronous, no queue worker — this app's volume (a handful of subscriptions per
-    user) doesn't warrant one.
+    user) doesn't warrant one. Any per-subscription failure that isn't a simple expiry (wrong VAPID config,
+    a TLS/network failure, the push service rejecting the request) is logged via `Log::warning` — a
+    completed report is not the same as a delivered notification, and this class of failure previously went
+    completely unnoticed (see *Known Issues*, the Windows CA-bundle gap that caused exactly this).
+  - **Debugging** — Settings' Benachrichtigungen card has a "Test-Benachrichtigung senden" control
+    (`Settings::sendTestPush()` → `PushNotifier::sendDebug()`) that pushes to every device on the account
+    right now, independent of the `notify_*` toggles, and reports success/failure **per device** inline
+    (device label + HTTP status + failure reason) — the fastest way to tell "nothing is subscribed", "it's
+    subscribed but delivery is failing", and "delivery works, so the gap is in the scheduler/timing" apart.
   - **Pomodoro phase starts** (`notify_pomo_start`/`notify_break_start`) — the transition logic that used to
     be duplicated between `TaskBoard` (Livewire) and `ScheduleEventController` (API) is now consolidated in
     **`App\Services\PomodoroSessionService`** (`start`/`stop`/`transition`/`skipBreak`/`handleTick`, all
@@ -529,6 +537,24 @@ hand.
 local-dev stand-in for cron — a plain polling loop, no `pcntl` needed, unlike Pail) alongside the server
 and Vite. Run `composer run dev` (not `php artisan serve` on its own) whenever testing anything
 notification-related locally. To force one tick manually instead: `php artisan schedule:run`.
+
+### Push notifications "send" successfully but never arrive — cURL has no CA bundle on Windows
+**Symptom:** the scheduled commands complete with no error, `PushNotifier` throws nothing, no
+subscription gets pruned as expired — but no notification ever appears on any device. Diagnosed with
+Settings' "Test-Benachrichtigung senden" debug control (see §7): every send reports `success: false`,
+`reason: cURL error 60: SSL certificate ... unable to get local issuer certificate`.
+**Cause:** the standalone PHP-for-Windows install has no CA bundle configured (`curl.cainfo`/
+`openssl.cafile` both empty in `php.ini`), so cURL can't verify the TLS certificate of *any* HTTPS host it
+connects to — including Google's/Microsoft's push endpoints — and the request fails before it ever
+reaches the server. `MessageSentReport::isSuccess()` correctly reflects this failure, but it isn't a
+404/410 "expired" response, so nothing before this fix ever surfaced it: no exception, no pruning, no log
+line — a completed report is not the same as a delivered notification.
+**Fix:** point PHP at an existing CA bundle rather than downloading one — Git for Windows already ships a
+current Mozilla bundle at `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt`. Set both
+`curl.cainfo` and `openssl.cafile` in `C:\php\php.ini` to that path, then restart any running PHP
+process. Also fixed defensively in code: `PushNotifier` now logs (`Log::warning`) any report that isn't
+a success and isn't a simple expiry, so a persistent delivery failure like this one is visible in
+`storage/logs/laravel.log` even without manually testing.
 
 ### Laravel Pail / `composer run dev` fails on Windows (pcntl)
 **Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag

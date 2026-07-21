@@ -398,6 +398,47 @@
             </button>
         </div>
 
+        {{-- Debug: sends a real push to every device on this account right now, independent of
+             the notify_* toggles below, to isolate delivery problems (VAPID config, network,
+             a push service rejecting the request) from "which moments should notify". --}}
+        <div class="mb-5 rounded-card border border-line bg-paper/60 px-3 py-2.5">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm text-ink-soft">Testet alle Geräte auf diesem Account, unabhängig von den Reglern unten.</p>
+                <button
+                    type="button"
+                    wire:click="sendTestPush"
+                    wire:loading.attr="disabled"
+                    wire:target="sendTestPush"
+                    class="flex-none rounded-card border border-line px-3.5 py-2 text-sm font-medium text-ink-soft transition hover:bg-signal-soft hover:text-signal disabled:opacity-60"
+                >
+                    <span wire:loading.remove wire:target="sendTestPush">Test-Benachrichtigung senden</span>
+                    <span wire:loading wire:target="sendTestPush">Sende …</span>
+                </button>
+            </div>
+
+            @if ($testPushSent)
+                <div class="mt-3 space-y-1.5">
+                    @forelse ($testPushResults as $result)
+                        <div class="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-3 py-2 text-xs">
+                            <span class="min-w-0 truncate text-ink-soft">{{ $result['user_agent'] ?? 'Unbekanntes Gerät' }}</span>
+                            @if ($result['success'])
+                                <span class="flex-none font-medium text-forest">Zugestellt</span>
+                            @else
+                                <span class="flex-none font-medium text-signal" title="{{ $result['reason'] }}">
+                                    Fehlgeschlagen{{ $result['status'] ? " ({$result['status']})" : '' }}
+                                </span>
+                            @endif
+                        </div>
+                        @if (! $result['success'])
+                            <p class="px-1 text-[11px] text-ink-faint">{{ $result['reason'] }}</p>
+                        @endif
+                    @empty
+                        <p class="text-xs text-ink-soft">Keine Geräte abonniert — zuerst oben aktivieren.</p>
+                    @endforelse
+                </div>
+            @endif
+        </div>
+
         <div class="space-y-1">
             @php
                 $notifyRows = [

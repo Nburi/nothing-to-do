@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Settings;
 use App\Models\PushSubscription;
 use App\Models\User;
+use App\Services\PushNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -125,5 +126,36 @@ class PushSubscriptionsTest extends TestCase
             ->assertHasErrors(['endpoint']);
 
         $this->assertDatabaseCount('push_subscriptions', 0);
+    }
+
+    public function test_send_test_push_populates_the_results_from_push_notifier(): void
+    {
+        $user = User::factory()->create();
+        PushSubscription::storeFor($user, 'https://push.example.com/abc', 'key', 'auth', 'Mozilla/5.0');
+
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldReceive('sendDebug')->once()->andReturn([
+                ['endpoint' => 'https://push.example.com/abc', 'user_agent' => 'Mozilla/5.0', 'success' => true, 'status' => 201, 'reason' => 'OK'],
+            ]);
+        });
+
+        Livewire::actingAs($user)
+            ->test(Settings::class)
+            ->call('sendTestPush')
+            ->assertSet('testPushSent', true)
+            ->assertSet('testPushResults', [
+                ['endpoint' => 'https://push.example.com/abc', 'user_agent' => 'Mozilla/5.0', 'success' => true, 'status' => 201, 'reason' => 'OK'],
+            ]);
+    }
+
+    public function test_send_test_push_with_no_subscriptions_returns_an_empty_result(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(Settings::class)
+            ->call('sendTestPush')
+            ->assertSet('testPushSent', true)
+            ->assertSet('testPushResults', []);
     }
 }
