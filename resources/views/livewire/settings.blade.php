@@ -378,8 +378,8 @@
     </section>
 
     {{-- Benachrichtigungen --}}
-    <section id="notifications" class="scroll-mt-28">
-    <h2 class="sr-only">Benachrichtigungen</h2>
+    <section id="notifications" class="scroll-mt-28 space-y-5">
+    <h2 class="text-lg font-medium tracking-tight text-ink">Benachrichtigungen</h2>
     <div
         class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8"
         x-data="{
@@ -415,7 +415,6 @@
         }"
         x-init="check()"
     >
-        <h3 class="mb-1 text-base font-medium text-ink">Benachrichtigungen</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Push-Benachrichtigungen für ausgewählte Momente — funktionieren auch, wenn dieser Browser
             komplett geschlossen ist.
@@ -529,8 +528,8 @@
     </section>
 
     {{-- Shortcuts & API --}}
-    <section id="developer" class="scroll-mt-28">
-    <h2 class="sr-only">Entwickler</h2>
+    <section id="developer" class="scroll-mt-28 space-y-5">
+    <h2 class="text-lg font-medium tracking-tight text-ink">Entwickler</h2>
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <div class="mb-1 flex items-center justify-between gap-3">
             <h3 class="text-base font-medium text-ink">Shortcuts & API</h3>
