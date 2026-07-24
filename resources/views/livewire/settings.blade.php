@@ -16,11 +16,44 @@
         <h1 class="text-xl font-medium text-ink">Einstellungen</h1>
     </div>
 
-    <nav aria-label="Einstellungsbereiche" class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm">
-        <a href="#general" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Allgemein</a>
-        <a href="#schedule" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Zeitplan &amp; Fokus</a>
-        <a href="#notifications" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Benachrichtigungen</a>
-        <a href="#developer" class="flex-none rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink">Entwickler</a>
+    <nav
+        aria-label="Einstellungsbereiche"
+        wire:ignore
+        x-data="{
+            active: 'general',
+            init() {
+                const sections = [...document.querySelectorAll('#content section[id]')];
+                const io = new IntersectionObserver(
+                    (entries) => entries.forEach((entry) => {
+                        if (entry.isIntersecting) this.active = entry.target.id;
+                    }),
+                    { rootMargin: '-120px 0px -70% 0px', threshold: 0 }
+                );
+                sections.forEach((section) => io.observe(section));
+
+                // The last section rarely has enough room below it to ever cross the
+                // IntersectionObserver's trigger band — once the page can't scroll any
+                // further, just treat it as active directly.
+                const last = sections[sections.length - 1];
+                window.addEventListener('scroll', () => {
+                    if (last && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+                        this.active = last.id;
+                    }
+                }, { passive: true });
+            },
+        }"
+        class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm"
+    >
+        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
+            <a
+                href="#{{ $id }}"
+                :aria-current="active === '{{ $id }}' ? 'true' : null"
+                :class="active === '{{ $id }}'
+                    ? 'bg-surface text-ink underline decoration-2 underline-offset-4 dark:text-white'
+                    : 'text-ink-soft hover:bg-surface hover:text-ink'"
+                class="flex-none rounded-card px-3 py-1.5 text-sm transition"
+            >{{ $label }}</a>
+        @endforeach
     </nav>
 
     <div class="space-y-10 pt-4 sm:space-y-12">
