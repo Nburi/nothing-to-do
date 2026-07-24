@@ -1,8 +1,8 @@
-{{-- Phase 1 cleanup card: right → To-Dos, left → Tasks, down → später (defer). --}}
+{{-- Phase 1 card: right → To-Dos, left → Tasks, down → später (defer). --}}
 <div
-    wire:key="cl-inbox-{{ $task->id }}"
+    wire:key="prep-inbox-{{ $task->id }}"
     class="relative [grid-area:1/1]"
-    x-data="cleanupSwipeCard({
+    x-data="prepareSwipeCard({
         id: {{ $task->id }},
         phase: 'inbox',
         right: { kind: 'commit', wire: 'assignList', args: [{{ $task->id }}, 'todos'] },
@@ -54,6 +54,8 @@
         :class="{ 'transition-transform duration-200 ease-tactile': !dragging }"
         :style="'transform: translate(' + dx + 'px, ' + dy + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
+        tabindex="0"
+        @keydown="key($event)"
     >
         <button
             type="button"

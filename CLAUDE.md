@@ -105,7 +105,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (272 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (276 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -241,56 +241,79 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
   `setToday` is a no-op for them).
 
-### Cleanup (built)
-- A full-screen swipe-stack triage mode at **`/app/cleanup`** (`route('cleanup')`, linked from the header
-  next to "Zeitplan"): sorts the Inbox into To-Dos/Tasks, then passes over every active To-Do/Task to flag
-  Today, add a deadline, and mark it important — one Tinder-style card at a time, with a full button
-  fallback for every gesture. `App\Livewire\Cleanup` (`#[Layout('layouts.app')]`, `use ManagesTasks`,
-  view `livewire.cleanup`) exposes two computed queues (`inboxQueue()`, `reviewQueue()` — the latter is
-  *every* active on-board To-Do/Task, not just untagged ones) and two small mutation methods,
-  `assignList()` (whitelisted to `todos`/`tasks`) and `markToday()`; `toggleImportant()`/`quickSetDates()`
-  are reused as-is from `ManagesTasks`. "Weiter" (skip, no change) has no PHP method at all — it's a pure
-  no-op by definition.
+### Vorbereitung für morgen (built)
+- A full-screen, three-step end-of-day ritual at **`/app/prepare`** (`route('prepare')`, linked from the
+  header as "Vorbereiten") that fully replaced the old two-step "Aufräumen": empty the Inbox, flag what's
+  on for tomorrow, then lay out tomorrow's time blocks — one guided flow instead of three separate visits.
+  `App\Livewire\PrepareTomorrow` (`#[Layout('layouts.app')]`, `use ManagesTasks, ManagesSchedule`, view
+  `livewire.prepare-tomorrow`) exposes `tomorrow()` (`auth()->user()->localToday()->addDay()`), the two
+  ported Cleanup computed queues (`inboxQueue()`, `reviewQueue()` — the latter still *every* active
+  on-board To-Do/Task, not just untagged ones), `tomorrowFlagged()` (active board tasks with
+  `is_today=true` — the reminder tray on step 3) and `tomorrowEvents()` (tomorrow's timeline, recurring
+  series materialised in `render()` exactly like `Schedule::render()`), plus the same two triage mutations
+  as before — `assignList()` (whitelisted to `todos`/`tasks`) and `markToday()`.
+- **Step 3 needed no new mutation surface at all.** `ManagesSchedule` was already fully date-agnostic —
+  every write (`quickCreateCategoryBlock`, `quickCreateTermin`, `applyTemplate`, `moveEvent`, `resizeEvent`,
+  `saveEventForm`/`openEventForm`, …) already takes its target date as a parameter rather than assuming
+  "today". Step 3 is the *same* `ManagesSchedule` trait and the *same* Blade partials
+  (`partials/schedule-event.blade.php`, `partials/schedule-category-footer.blade.php`,
+  `partials/schedule-event-form.blade.php`) as the standalone Zeitplan page, `@include`d verbatim and just
+  pointed at `$this->tomorrow` instead of `localToday()` — draw-to-create, drag-to-move/resize, templates,
+  and the "+ Termin" precision form all work identically with zero duplicated gesture code.
 - Gesture map — right/left always commit-and-advance, down always defers, up (review only) opens a
-  popover without advancing:
+  popover without advancing; step 3 has no queue to swipe, it's the open-ended timeline:
 
-  | Phase | Right | Left | Down | Up |
+  | Step | Right | Left | Down | Up |
   |---|---|---|---|---|
-  | 1 — Inbox | → `list=todos` | → `list=tasks` | "später": requeue, no DB write | unused |
-  | 2 — Review | `is_today=true` | "weiter": no change | "später": requeue, no DB write | deadline popover |
+  | 1 — Inbox leeren | → `list=todos` | → `list=tasks` | "später": requeue, no DB write | unused |
+  | 2 — Für morgen planen | `is_today=true` | "weiter": no change | "später": requeue, no DB write | deadline popover |
+  | 3 — Zeitplan für morgen | — draw / drag / templates / "+ Termin" (see above) — | | | |
 
-  "Wichtig" is a dedicated star button on the card face (`toggleImportant`), not a swipe direction.
-- **State split**: the server (`inboxQueue`/`reviewQueue`) is the source of truth for task *content*,
-  re-evaluated fresh on every Livewire round trip. Ordering, current phase, and "später" requeueing live
-  entirely client-side in `Alpine.store('cleanup')` (`resources/js/app.js`), seeded once from
-  `@js($this->inboxQueue->pluck('id'))` / `@js(...reviewQueue...)` via `x-init` on the page root
-  (`resources/views/livewire/cleanup.blade.php`). **Gotcha:** Livewire re-morphs the component root on
-  *every* action, which re-runs that `x-init` — without a guard this silently wipes the client-tracked
-  order (and any pending "später" requeues) after every single swipe. The store's `init()` guards against
-  this with a `seeded` flag, and additionally ignores Alpine's own automatic no-argument call to a store's
-  `init()` (which fires once, before `x-init` ever runs, as soon as the store is registered) by checking
-  that `cfg.inbox` is actually defined before treating a call as the real seed.
-- A task committed into Todos/Tasks during phase 1 must reach phase 2's queue in the *same* session even
-  though the review queue was conceptually seeded before phase 1 finished — `enqueueReview()` pushes the
-  id into the client-side review order synchronously at the exact moment phase 1 commits it, not by
+  "Wichtig" is a dedicated star button on the card face (`toggleImportant`), not a swipe direction. Step 3
+  never auto-advances (scheduling is open-ended, unlike a queue that empties) — "Später planen" and
+  "Fertig" both just move on to the done screen (`goDone()`), identical in effect, different only in tone.
+- **State split**: the server (`inboxQueue`/`reviewQueue`/`tomorrowFlagged`/`tomorrowEvents`) is the source
+  of truth for task/event *content*, re-evaluated fresh on every Livewire round trip. Ordering, current
+  step, "später" requeueing, and the two session-only tallies shown on the done screen (`inboxTotal` =
+  "sortiert", `flaggedCount` = "für morgen") live entirely client-side in `Alpine.store('prepare')`
+  (`resources/js/app.js`), seeded once from `@js($this->inboxQueue->pluck('id'))` /
+  `@js(...reviewQueue...)` via `x-init` on the page root (`resources/views/livewire/prepare-tomorrow.blade.php`).
+  The done screen's third stat, "geplant", is deliberately *not* a session tally — it's
+  `$this->tomorrowEvents->count()` read straight from Blade, live at the last server round trip, since
+  "how many blocks does tomorrow have" is more useful than "how many were added this session" and needs no
+  extra client-side bookkeeping. **Gotcha:** Livewire re-morphs the component root on *every* action, which
+  re-runs that `x-init` — without a guard this silently wipes the client-tracked order (and any pending
+  "später" requeues) after every single swipe. The store's `init()` guards against this with a `seeded`
+  flag, and additionally ignores Alpine's own automatic no-argument call to a store's `init()` (which fires
+  once, before `x-init` ever runs, as soon as the store is registered) by checking that `cfg.inbox` is
+  actually defined before treating a call as the real seed. On `init()`, steps 1–2 skip forward when their
+  queue is already empty, but step 3 is always visited — it's the floor `phase` never falls past on init,
+  since it's open-ended and never auto-skipped (a big "Später planen" button covers "nothing to add").
+- A task committed into Todos/Tasks during step 1 must reach step 2's queue in the *same* session even
+  though the review queue was conceptually seeded before step 1 finished — `enqueueReview()` pushes the
+  id into the client-side review order synchronously at the exact moment step 1 commits it, not by
   waiting on a server re-query.
-- **`Alpine.data('cleanupSwipeCard', cfg => {...})`** (`resources/js/app.js`) — one instance per card,
+- **`Alpine.data('prepareSwipeCard', cfg => {...})`** (`resources/js/app.js`) — one instance per card,
   modeled closely on the board's `swipeCard` (same pointer handling, mouse pointers excluded, same
   `threshold = max(64, round(dim*0.38))`/resistance/dead-side-damping math) but generalised from one axis
   to two: the first move past a small deadzone locks to horizontal or vertical, and direction is read from
   whichever of `dx`/`dy` is non-zero (mirroring `swipeCard`'s own simple `dir` getter — the other axis
   stays exactly `0` for the rest of the gesture once locked). Each configured direction resolves via a
-  `kind`: `'commit'` (fly off, call the configured `$wire` method if any, remove from the queue for good),
-  `'defer'` (später — continue off the same edge, no `$wire` call, just requeue to the back),
-  `'popover'` (mirrors `swipeCard`'s existing `intent === 'menu'` case: must reach threshold, then springs
-  back and opens the inline date popover without advancing), or `null` (dead side, resists and never
-  commits). `trigger(dirName)` is the button-fallback entry point — it synthesises a past-threshold
-  gesture and calls the same `resolve()` a real swipe would, so buttons and swipes are always in parity.
-  Stack visuals come from `stackIndex` (`store.stackIndexOf(phase, id)`; `-1` means "not queued yet, hide
-  it" — guards the moment a freshly-bridged id has no matching DOM node) driving `stackStyle` (index 0 =
-  interactive top card; 1–2 = scaled/offset peeking cards, `pointer-events: none`; else hidden). The stack
-  container uses the CSS-grid `[grid-area:1/1]` trick so all cards share one cell and the container
-  auto-sizes to the tallest one.
+  `kind`: `'commit'` (fly off, call the configured `$wire` method if any, remove from the queue for good;
+  a step-2 `right` commit also increments the store's `flaggedCount`), `'defer'` (später — continue off the
+  same edge, no `$wire` call, just requeue to the back), `'popover'` (mirrors `swipeCard`'s existing
+  `intent === 'menu'` case: must reach threshold, then springs back and opens the inline date popover
+  without advancing), or `null` (dead side, resists and never commits). `trigger(dirName)` is the
+  button-fallback entry point — it synthesises a past-threshold gesture and calls the same `resolve()` a
+  real swipe would, so buttons and swipes are always in parity. **`key(e)`** is a new desktop fast-path with
+  no Cleanup equivalent: since `down()` deliberately excludes mouse pointers (swipe is touch-only, exactly
+  like the board's `swipeCard`), desktop previously had *only* the button row — a click-to-focus card
+  (`tabindex="0"`) now also accepts arrow keys (← → ↓ ↑), routed through the same `trigger()`/`resolve()`
+  path so keyboard, buttons, and touch swipes are always in parity. Stack visuals come from `stackIndex`
+  (`store.stackIndexOf(phase, id)`; `-1` means "not queued yet, hide it" — guards the moment a
+  freshly-bridged id has no matching DOM node) driving `stackStyle` (index 0 = interactive top card; 1–2 =
+  scaled/offset peeking cards, `pointer-events: none`; else hidden). The stack container uses the CSS-grid
+  `[grid-area:1/1]` trick so all cards share one cell and the container auto-sizes to the tallest one.
 
 ### Schedule (Zeitplan) (built)
 - **Zeitplan page** — `App\Livewire\Schedule` (`/app/schedule`, `route('schedule')`): a time-scaled vertical
@@ -694,7 +717,7 @@ fires anywhere on the page — not just actions related to that store.
 **Cause:** Livewire re-morphs the whole component root on every request, and that re-morph re-runs
 `x-init` on the root element every time, not just once at first mount (confirmed empirically — traced via
 a `new Error().stack` dropped inside the store's `init()`, see git history of `resources/js/app.js` around
-the `cleanup` store). Relying on "`x-init` only runs once" (true for a plain Alpine page, false once
+the `prepare` store). Relying on "`x-init` only runs once" (true for a plain Alpine page, false once
 Livewire is morphing that element) will quietly wipe any state the client was tracking independently of
 the server (manual ordering, a locally-deferred/skipped item, etc.) on the very next unrelated Livewire
 round trip. Separately, Alpine also auto-calls a *store's* own `init()` method once with **no arguments**
@@ -714,7 +737,7 @@ window.Alpine.store('foo', {
     },
 });
 ```
-See the `cleanup` store in `resources/js/app.js` for the reference implementation.
+See the `prepare` store in `resources/js/app.js` for the reference implementation.
 
 ### An un-keyed `x-data` element frozen across a Livewire morph reads stale server data
 **Symptom:** on the Zeitplan page, navigating to a different week (or a different day on mobile) and then
