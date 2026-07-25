@@ -32,6 +32,13 @@ class Settings extends Component
 
     public bool $timezoneAutoDst = false;
 
+    // Vorbereitung
+    public string $prepareTimeOfDay = 'evening';
+
+    public string $prepareReminderMode = 'off';
+
+    public ?string $prepareReminderTime = null;
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -49,6 +56,9 @@ class Settings extends Component
         $this->pAutostart = $user->pomodoro_autostart ?? false;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
+        $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
+        $this->prepareReminderMode = $user->prepare_reminder_mode ?? 'off';
+        $this->prepareReminderTime = $user->prepare_reminder_time;
     }
 
     public function save(): void
@@ -80,6 +90,38 @@ class Settings extends Component
         ]);
 
         $this->dispatch('schedule-saved');
+    }
+
+    /** Which day the Vorbereitung ritual targets — an immediate-save choice, like a category's colour swatch. */
+    public function setPrepareTimeOfDay(string $value): void
+    {
+        if (! in_array($value, ['morning', 'evening'], true)) {
+            return;
+        }
+
+        $this->prepareTimeOfDay = $value;
+        auth()->user()->update(['prepare_time_of_day' => $value]);
+    }
+
+    /** off | automatic | fixed — also an immediate-save choice. */
+    public function setPrepareReminderMode(string $value): void
+    {
+        if (! in_array($value, ['off', 'automatic', 'fixed'], true)) {
+            return;
+        }
+
+        $this->prepareReminderMode = $value;
+        auth()->user()->update(['prepare_reminder_mode' => $value]);
+    }
+
+    /** Only relevant in "fixed" reminder mode — saves on change, no separate submit button. */
+    public function savePrepareReminderTime(): void
+    {
+        $data = $this->validate([
+            'prepareReminderTime' => ['nullable', 'date_format:H:i'],
+        ]);
+
+        auth()->user()->update(['prepare_reminder_time' => $data['prepareReminderTime']]);
     }
 
     public function toggleNotifyEventStart(): void

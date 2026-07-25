@@ -235,6 +235,30 @@ class TaskBoard extends Component
         return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id);
     }
 
+    /**
+     * The automatic-reminder in-app banner: only in "automatic" reminder
+     * mode, only during the relevant half of the day for the user's
+     * morning/evening setting, only if today's Vorbereitung isn't done yet,
+     * and only if it hasn't already been dismissed today. "fixed" mode has no
+     * in-app banner — it's push-only, exactly at the chosen time.
+     */
+    #[Computed]
+    public function showPreparePrompt(): bool
+    {
+        $user = auth()->user();
+
+        return $user->prepare_reminder_mode === 'automatic'
+            && ! $user->hasPreparedToday()
+            && $user->prepare_prompt_dismissed_on?->toDateString() !== $user->localToday()->toDateString()
+            && $user->isWithinPrepareWindow();
+    }
+
+    /** Hides the banner for the rest of the user's local day — reappears tomorrow if still relevant. */
+    public function dismissPreparePrompt(): void
+    {
+        auth()->user()->update(['prepare_prompt_dismissed_on' => auth()->user()->localToday()->toDateString()]);
+    }
+
     /** Active-task counts only — completed tasks don't inflate the badges. */
     #[Computed]
     public function counts(): array

@@ -44,7 +44,7 @@
         }"
         class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm"
     >
-        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
+        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'prepare' => 'Vorbereitung', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
             <a
                 href="#{{ $id }}"
                 :aria-current="active === '{{ $id }}' ? 'true' : null"
@@ -375,6 +375,76 @@
             </div>
         </div>
         </form>
+    </section>
+
+    {{-- Vorbereitung --}}
+    <section id="prepare" class="scroll-mt-28 space-y-5">
+        <h2 class="text-lg font-medium tracking-tight text-ink">Vorbereitung</h2>
+
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Wann bereitest du dich vor?</h3>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Morgens planst du den bereits laufenden Tag, abends den nächsten — bestimmt, worauf
+            „Vorbereiten" im Header zielt.
+        </p>
+
+        <div class="inline-flex rounded-card border border-line bg-paper p-0.5">
+            @foreach (['morning' => 'Morgens · für heute', 'evening' => 'Abends · für morgen'] as $value => $label)
+                <button
+                    type="button"
+                    wire:click="setPrepareTimeOfDay('{{ $value }}')"
+                    @class([
+                        'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                        'bg-forest text-white shadow-sm' => $prepareTimeOfDay === $value,
+                        'text-ink-soft hover:text-ink' => $prepareTimeOfDay !== $value,
+                    ])
+                >{{ $label }}</button>
+            @endforeach
+        </div>
+        </div>
+
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Erinnerung</h3>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Ein Stups, falls du deine Vorbereitung noch nicht gemacht hast.
+        </p>
+
+        <div class="inline-flex rounded-card border border-line bg-paper p-0.5">
+            @foreach (['off' => 'Aus', 'automatic' => 'Automatisch', 'fixed' => 'Feste Zeit'] as $value => $label)
+                <button
+                    type="button"
+                    wire:click="setPrepareReminderMode('{{ $value }}')"
+                    @class([
+                        'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                        'bg-forest text-white shadow-sm' => $prepareReminderMode === $value,
+                        'text-ink-soft hover:text-ink' => $prepareReminderMode !== $value,
+                    ])
+                >{{ $label }}</button>
+            @endforeach
+        </div>
+
+        @if ($prepareReminderMode === 'automatic')
+            <p class="mt-4 text-sm leading-relaxed text-ink-soft">
+                Ein Banner im Board fragt nach, sobald du die App
+                {{ $prepareTimeOfDay === 'morning' ? 'morgens' : 'abends' }} öffnest und noch nicht
+                vorbereitet hast. Hast du die App nicht geöffnet, kommt um
+                <span class="font-medium text-ink">{{ $prepareTimeOfDay === 'morning' ? '10:00' : '21:00' }}</span>
+                eine Push-Erinnerung.
+            </p>
+        @elseif ($prepareReminderMode === 'fixed')
+            <div class="mt-4 max-w-[10rem]">
+                <label for="prepareReminderTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
+                <input
+                    id="prepareReminderTime"
+                    type="time"
+                    wire:model="prepareReminderTime"
+                    wire:change="savePrepareReminderTime"
+                    class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                />
+                @error('prepareReminderTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+            </div>
+        @endif
+        </div>
     </section>
 
     {{-- Benachrichtigungen --}}

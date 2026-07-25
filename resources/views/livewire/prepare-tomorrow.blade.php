@@ -1,6 +1,7 @@
 @php
     $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     $span = $dayEnd - $dayStart;
+    $targetWord = $this->targetWord; // 'heute' | 'morgen'
 @endphp
 
 <div
@@ -35,27 +36,27 @@
         </div>
     </div>
 
-    {{-- Phase 2: Für morgen planen --}}
+    {{-- Phase 2: Für heute/morgen planen --}}
     <div x-cloak x-show="$store.prepare.phase === 'review'">
-        <h1 class="mb-5 text-center text-xs font-medium uppercase tracking-wide text-ink-faint">Für morgen planen</h1>
+        <h1 class="mb-5 text-center text-xs font-medium uppercase tracking-wide text-ink-faint">Für {{ $targetWord }} planen</h1>
         <div class="relative grid" style="min-height: 260px">
             @forelse ($this->reviewQueue as $task)
-                @include('livewire.partials.prepare-card-review', ['task' => $task])
+                @include('livewire.partials.prepare-card-review', ['task' => $task, 'targetWord' => $targetWord])
             @empty
             @endforelse
         </div>
     </div>
 
-    {{-- Phase 3: Zeitplan für morgen — the existing Zeitplan timeline, pointed at tomorrow. --}}
+    {{-- Phase 3: Zeitplan für heute/morgen — the existing Zeitplan timeline, pointed at targetDate. --}}
     <div x-cloak x-show="$store.prepare.phase === 'schedule'">
         <div class="mb-3 flex items-center justify-between gap-3">
             <div>
-                <h1 class="text-xs font-medium uppercase tracking-wide text-ink-faint">Zeitplan für morgen</h1>
-                <p class="text-sm text-ink-soft">Morgen · {{ $wd[$this->tomorrow->dayOfWeekIso - 1] }}, {{ $this->tomorrow->isoFormat('D.M.') }}</p>
+                <h1 class="text-xs font-medium uppercase tracking-wide text-ink-faint">Zeitplan für {{ $targetWord }}</h1>
+                <p class="text-sm text-ink-soft">{{ ucfirst($targetWord) }} · {{ $wd[$this->targetDate->dayOfWeekIso - 1] }}, {{ $this->targetDate->isoFormat('D.M.') }}</p>
             </div>
             <button
                 type="button"
-                wire:click="openEventForm('{{ $this->tomorrow->toDateString() }}')"
+                wire:click="openEventForm('{{ $this->targetDate->toDateString() }}')"
                 class="grid h-10 w-10 flex-none place-items-center rounded-card bg-forest text-white transition hover:brightness-110 active:scale-95"
                 aria-label="Termin hinzufügen"
             >
@@ -63,10 +64,10 @@
             </button>
         </div>
 
-        @if ($this->tomorrowFlagged->isNotEmpty())
+        @if ($this->targetFlagged->isNotEmpty())
             <div class="mb-3 flex items-center gap-2 overflow-x-auto">
-                <span class="flex-none text-[11px] text-ink-faint">Für morgen:</span>
-                @foreach ($this->tomorrowFlagged as $t)
+                <span class="flex-none text-[11px] text-ink-faint">Für {{ $targetWord }}:</span>
+                @foreach ($this->targetFlagged as $t)
                     <span class="flex-none whitespace-nowrap rounded-full bg-forest-soft px-2.5 py-1 text-xs text-ink">{{ $t->title }}</span>
                 @endforeach
             </div>
@@ -76,7 +77,7 @@
             <div class="mb-3 flex items-center gap-2 overflow-x-auto">
                 <span class="flex-none text-[11px] text-ink-faint">Vorlagen:</span>
                 @foreach ($this->templates as $t)
-                    <button wire:click="applyTemplate({{ $t->id }}, '{{ $this->tomorrow->toDateString() }}')" class="flex-none whitespace-nowrap rounded-card border border-line bg-surface px-2.5 py-1 text-xs text-ink-soft transition active:scale-95 hover:text-ink">
+                    <button wire:click="applyTemplate({{ $t->id }}, '{{ $this->targetDate->toDateString() }}')" class="flex-none whitespace-nowrap rounded-card border border-line bg-surface px-2.5 py-1 text-xs text-ink-soft transition active:scale-95 hover:text-ink">
                         + {{ $t->displayName() }}
                     </button>
                 @endforeach
@@ -91,12 +92,12 @@
                     @endfor
                 </div>
                 <div
-                    wire:key="prep-draw-grid-{{ $this->tomorrow->toDateString() }}"
+                    wire:key="prep-draw-grid-{{ $this->targetDate->toDateString() }}"
                     class="relative flex-1 border-l border-line/60"
                     data-grid
                     data-span="{{ $span }}"
                     data-day-start="{{ $dayStart }}"
-                    x-data="scheduleDraw({ date: '{{ $this->tomorrow->toDateString() }}' })"
+                    x-data="scheduleDraw({ date: '{{ $this->targetDate->toDateString() }}' })"
                     @pointerdown.self="beginDraw"
                     @pointermove="moveDraw"
                     @pointerup="finishDraw"
@@ -107,11 +108,11 @@
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
                     @endfor
 
-                    @forelse ($this->tomorrowEvents as $event)
+                    @forelse ($this->targetEvents as $event)
                         @include('livewire.partials.schedule-event', ['event' => $event, 'compact' => false])
                     @empty
                         <div class="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center">
-                            <p class="text-sm text-ink-faint">Noch kein Termin für morgen.</p>
+                            <p class="text-sm text-ink-faint">Noch kein Termin für {{ $targetWord }}.</p>
                             <p class="mt-1 text-xs text-ink-faint">Kategorie unten wählen und auf dem Zeitstrahl ziehen.</p>
                         </div>
                     @endforelse
@@ -132,10 +133,10 @@
         </div>
 
         <div class="mt-5 flex items-center gap-3">
-            <button type="button" @click="$store.prepare.goDone()" class="flex-1 rounded-card border border-line bg-surface py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink">
+            <button type="button" wire:click="finish" @click="$store.prepare.goDone()" class="flex-1 rounded-card border border-line bg-surface py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink">
                 Später planen
             </button>
-            <button type="button" @click="$store.prepare.goDone()" class="flex-1 rounded-card bg-forest py-2.5 text-sm font-medium text-white transition hover:brightness-95">
+            <button type="button" wire:click="finish" @click="$store.prepare.goDone()" class="flex-1 rounded-card bg-forest py-2.5 text-sm font-medium text-white transition hover:brightness-95">
                 Fertig
             </button>
         </div>
@@ -146,7 +147,7 @@
         <div class="grid h-14 w-14 place-items-center rounded-full bg-forest-soft text-forest">
             <svg class="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <h1 class="text-lg font-medium text-ink">Bereit für morgen!</h1>
+        <h1 class="text-lg font-medium text-ink">Bereit für {{ $targetWord }}!</h1>
 
         <div class="flex items-center gap-7">
             <div class="text-center">
@@ -155,10 +156,10 @@
             </div>
             <div class="text-center">
                 <p class="tnum text-xl font-medium text-ink" x-text="$store.prepare.flaggedCount"></p>
-                <p class="text-[11px] text-ink-faint">für morgen</p>
+                <p class="text-[11px] text-ink-faint">für {{ $targetWord }}</p>
             </div>
             <div class="text-center">
-                <p class="tnum text-xl font-medium text-ink">{{ $this->tomorrowEvents->count() }}</p>
+                <p class="tnum text-xl font-medium text-ink">{{ $this->targetEvents->count() }}</p>
                 <p class="text-[11px] text-ink-faint">geplant</p>
             </div>
         </div>

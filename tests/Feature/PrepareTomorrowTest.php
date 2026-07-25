@@ -141,16 +141,27 @@ class PrepareTomorrowTest extends TestCase
         ]);
     }
 
-    public function test_tomorrow_is_one_day_after_the_users_local_today(): void
+    public function test_target_date_is_tomorrow_in_evening_mode_by_default(): void
     {
         $user = User::factory()->create(['timezone_offset' => 0]);
 
         $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
 
-        $this->assertTrue($component->instance()->tomorrow->isSameDay(Carbon::tomorrow()));
+        $this->assertSame('morgen', $component->instance()->targetWord);
+        $this->assertTrue($component->instance()->targetDate->isSameDay(Carbon::tomorrow()));
     }
 
-    public function test_tomorrow_events_only_shows_visible_events_on_tomorrows_date(): void
+    public function test_target_date_is_today_in_morning_mode(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0, 'prepare_time_of_day' => 'morning']);
+
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
+
+        $this->assertSame('heute', $component->instance()->targetWord);
+        $this->assertTrue($component->instance()->targetDate->isSameDay(Carbon::today()));
+    }
+
+    public function test_target_events_only_shows_visible_events_on_the_target_date(): void
     {
         $user = User::factory()->create(['timezone_offset' => 0]);
         $tomorrow = Carbon::tomorrow()->toDateString();
@@ -161,10 +172,10 @@ class PrepareTomorrowTest extends TestCase
 
         $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
 
-        $this->assertSame([$onTomorrow->id], $component->instance()->tomorrowEvents->pluck('id')->all());
+        $this->assertSame([$onTomorrow->id], $component->instance()->targetEvents->pluck('id')->all());
     }
 
-    public function test_tomorrow_flagged_shows_active_board_tasks_already_marked_for_todays_focus(): void
+    public function test_target_flagged_shows_active_board_tasks_already_marked_for_todays_focus(): void
     {
         $user = User::factory()->create();
 
@@ -174,7 +185,16 @@ class PrepareTomorrowTest extends TestCase
 
         $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
 
-        $this->assertSame([$flagged->id], $component->instance()->tomorrowFlagged->pluck('id')->all());
+        $this->assertSame([$flagged->id], $component->instance()->targetFlagged->pluck('id')->all());
+    }
+
+    public function test_finish_stamps_today_as_prepared(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0]);
+
+        Livewire::actingAs($user)->test(PrepareTomorrow::class)->call('finish');
+
+        $this->assertTrue($user->fresh()->hasPreparedToday());
     }
 
     public function test_apply_template_places_a_block_on_tomorrows_date_via_the_shared_managesschedule_trait(): void

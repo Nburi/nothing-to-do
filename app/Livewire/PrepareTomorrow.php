@@ -13,14 +13,16 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * The end-of-day ritual that replaced "Aufräumen": three steps run back to
- * back — empty the inbox, flag what's on for tomorrow, then lay out
- * tomorrow's time blocks. Steps 1–2 keep Cleanup's exact swipe-stack
- * mechanics (ordering/phase/"später" still live client-side, see the
- * `prepare` Alpine store in app.js); step 3 is the existing Zeitplan
- * timeline verbatim (ManagesSchedule is fully date-agnostic — every mutation
- * already takes the target date as a parameter), just pointed at tomorrow
- * instead of today.
+ * The "Vorbereitung" ritual that replaced "Aufräumen": three steps run back
+ * to back — empty the inbox, flag what's on for the target day, then lay out
+ * that day's time blocks. Which day is "the target day" is a per-user setting
+ * (`prepare_time_of_day`, Settings' Vorbereitung card): "evening" (default)
+ * targets tomorrow, "morning" targets today — see `User::prepareTargetDate()`.
+ * Steps 1–2 keep Cleanup's exact swipe-stack mechanics (ordering/phase/
+ * "später" still live client-side, see the `prepare` Alpine store in app.js);
+ * step 3 is the existing Zeitplan timeline verbatim (ManagesSchedule is fully
+ * date-agnostic — every mutation already takes the target date as a
+ * parameter), just pointed at `targetDate` instead of always tomorrow.
  */
 #[Layout('layouts.app')]
 class PrepareTomorrow extends Component
@@ -34,9 +36,16 @@ class PrepareTomorrow extends Component
     public const DAY_END = 23 * 60;
 
     #[Computed]
-    public function tomorrow(): Carbon
+    public function targetDate(): Carbon
     {
-        return auth()->user()->localToday()->addDay();
+        return auth()->user()->prepareTargetDate();
+    }
+
+    /** 'heute' or 'morgen' — drives every "für ..." label in the view. */
+    #[Computed]
+    public function targetWord(): string
+    {
+        return auth()->user()->prepare_time_of_day === 'morning' ? 'heute' : 'morgen';
     }
 
     #[Computed]
@@ -61,9 +70,9 @@ class PrepareTomorrow extends Component
             ->get();
     }
 
-    /** Tasks already flagged for tomorrow's focus — the reminder tray on the schedule step. */
+    /** Tasks already flagged for the target day's focus — the reminder tray on the schedule step. */
     #[Computed]
-    public function tomorrowFlagged(): Collection
+    public function targetFlagged(): Collection
     {
         return auth()->user()->tasks()
             ->onBoard()
@@ -73,13 +82,13 @@ class PrepareTomorrow extends Component
             ->get();
     }
 
-    /** Tomorrow's timeline — recurring series materialised on read, same as Schedule::render(). */
+    /** The target day's timeline — recurring series materialised on read, same as Schedule::render(). */
     #[Computed]
-    public function tomorrowEvents(): Collection
+    public function targetEvents(): Collection
     {
         return ScheduleEvent::forUser(auth()->user())
             ->visible()
-            ->forDay($this->tomorrow)
+            ->forDay($this->targetDate)
             ->ordered()
             ->with('category')
             ->get();
@@ -95,7 +104,7 @@ class PrepareTomorrow extends Component
         $this->userTask($id)->update(['list' => $list]);
     }
 
-    /** Review pass: flag a task for tomorrow's focus. */
+    /** Review pass: flag a task for the target day's focus. */
     public function markToday(int $id): void
     {
         $task = $this->userTask($id);
@@ -107,9 +116,21 @@ class PrepareTomorrow extends Component
         $task->update(['is_today' => true]);
     }
 
+    /**
+     * Stamps today as "prepared" — called once, when the wizard actually
+     * reaches the done screen (both "Später planen" and "Fertig" fire this),
+     * never just from visiting the page. This is the one signal the
+     * automatic-reminder system (in-app banner + push fallback) reads to know
+     * whether today's ritual still needs doing.
+     */
+    public function finish(): void
+    {
+        auth()->user()->update(['prepared_on' => auth()->user()->localToday()->toDateString()]);
+    }
+
     public function render()
     {
-        ScheduleEvent::materializeRange(auth()->user(), $this->tomorrow, $this->tomorrow->copy());
+        ScheduleEvent::materializeRange(auth()->user(), $this->targetDate, $this->targetDate->copy());
 
         return view('livewire.prepare-tomorrow', [
             'dayStart' => self::DAY_START,

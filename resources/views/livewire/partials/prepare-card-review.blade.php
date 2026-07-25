@@ -1,4 +1,4 @@
-{{-- Phase 2 card: right → für morgen, left → weiter (skip), down → später (defer), up → Termin popover. --}}
+{{-- Phase 2 card: right → für heute/morgen, left → weiter (skip), down → später (defer), up → Termin popover. --}}
 <div
     wire:key="prep-review-{{ $task->id }}"
     class="relative [grid-area:1/1]"
@@ -14,7 +14,7 @@
     })"
     :style="stackStyle"
 >
-    {{-- swipe-right reveal: für morgen --}}
+    {{-- swipe-right reveal: für heute/morgen --}}
     <div
         class="pointer-events-none absolute inset-0 flex items-center justify-start gap-2 rounded-card bg-forest pl-6 text-sm font-medium text-white"
         x-show="dir === 'right'" :style="{ opacity: progress }" style="display: none;"
@@ -22,7 +22,7 @@
         <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
-        Für morgen
+        Für {{ $targetWord }}
     </div>
 
     {{-- swipe-left reveal: weiter (no change) --}}
@@ -89,7 +89,7 @@
         @if ($task->is_today)
             <span class="mb-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-forest">
                 <span class="inline-block h-1.5 w-1.5 rounded-full bg-forest" aria-hidden="true"></span>
-                Für morgen
+                Für {{ $targetWord }}
             </span>
         @endif
 
@@ -155,7 +155,7 @@
         <button type="button" @click="trigger('up')" class="grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-contour shadow-map transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-contour" aria-label="Termin setzen: {{ $task->title }}">
             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
         </button>
-        <button type="button" @click="trigger('right')" class="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface text-forest shadow-map transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest" aria-label="Für morgen markieren: {{ $task->title }}">
+        <button type="button" @click="trigger('right')" class="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface text-forest shadow-map transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest" aria-label="Für {{ $targetWord }} markieren: {{ $task->title }}">
             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
     </div>
