@@ -295,19 +295,23 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
-     * cleanup store — the ordered id queues driving the swipe-stack triage
-     * page (see cleanupSwipeCard below). Seeded once per page mount from the
-     * server's computed task lists; from then on ordering/phase/"später"
-     * requeueing is entirely client-side, so a phase emptying out never needs
-     * a Livewire round trip. Re-seeded fresh on every wire:navigate visit —
-     * that's what makes deferred order genuinely session-local.
+     * prepare store — the ordered id queues driving the "Vorbereitung für
+     * morgen" swipe-stack (see prepareSwipeCard below). Seeded once per page
+     * mount from the server's computed task lists; from then on ordering/
+     * phase/"später" requeueing is entirely client-side, so a phase emptying
+     * out never needs a Livewire round trip. Re-seeded fresh on every
+     * wire:navigate visit — that's what makes deferred order genuinely
+     * session-local. Step 3 (schedule) has no queue of its own — it's the
+     * open-ended Zeitplan timeline, so it only ever advances to 'done' via an
+     * explicit "Später planen"/"Fertig" tap (goDone()), never automatically.
      */
-    window.Alpine.store('cleanup', {
-        phase: 'inbox', // 'inbox' | 'review' | 'done'
+    window.Alpine.store('prepare', {
+        phase: 'inbox', // 'inbox' | 'review' | 'schedule' | 'done'
         inboxOrder: [],
         reviewOrder: [],
         inboxTotal: 0,
         reviewTotal: 0,
+        flaggedCount: 0, // tasks swiped right ("für morgen") during phase 2 — the Done screen's tally
         seeded: false,
 
         // Livewire re-morphs the component root on every action, which re-runs
@@ -323,9 +327,13 @@ document.addEventListener('alpine:init', () => {
             this.reviewOrder = [...(cfg.review ?? [])];
             this.inboxTotal = this.inboxOrder.length;
             this.reviewTotal = this.reviewOrder.length;
+            this.flaggedCount = 0;
+            // Steps 1–2 skip forward when their queue is already empty; step 3
+            // is always visited (it's open-ended, never auto-skipped) — it's
+            // the floor this never falls past on init.
             this.phase = this.inboxOrder.length
                 ? 'inbox'
-                : (this.reviewOrder.length ? 'review' : 'done');
+                : (this.reviewOrder.length ? 'review' : 'schedule');
         },
 
         order(phase) {
@@ -363,10 +371,19 @@ document.addEventListener('alpine:init', () => {
 
         advanceIfEmpty() {
             if (this.phase === 'inbox' && this.inboxOrder.length === 0) {
-                this.phase = this.reviewOrder.length ? 'review' : 'done';
+                this.phase = this.reviewOrder.length ? 'review' : 'schedule';
             } else if (this.phase === 'review' && this.reviewOrder.length === 0) {
-                this.phase = 'done';
+                this.phase = 'schedule';
             }
+        },
+
+        /** Manual, explicit advance out of the open-ended schedule step — "Später planen" and "Fertig" both just move on. */
+        goDone() {
+            this.phase = 'done';
+        },
+
+        get stepIndex() {
+            return { inbox: 0, review: 1, schedule: 2, done: 3 }[this.phase] ?? 0;
         },
 
         get remainingLabel() {
@@ -377,13 +394,14 @@ document.addEventListener('alpine:init', () => {
     });
 
     /**
-     * cleanupSwipeCard — 4-directional swipe for the Cleanup triage stack.
-     * Same pointer handling / threshold / resistance / dead-side-damping math
-     * as swipeCard above, generalised from one axis (dx) to two (dx and dy):
-     * the first move past a small deadzone locks the gesture to the
-     * horizontal or vertical axis, exactly like swipeCard already does — the
-     * difference here is the vertical axis drives an action instead of
-     * ceding to page scroll (there is no scrolling list of cards to protect).
+     * prepareSwipeCard — 4-directional swipe for the "Vorbereitung für
+     * morgen" triage stack (steps 1–2). Same pointer handling / threshold /
+     * resistance / dead-side-damping math as swipeCard above, generalised
+     * from one axis (dx) to two (dx and dy): the first move past a small
+     * deadzone locks the gesture to the horizontal or vertical axis, exactly
+     * like swipeCard already does — the difference here is the vertical axis
+     * drives an action instead of ceding to page scroll (there is no
+     * scrolling list of cards to protect).
      *
      * Each configured direction resolves via a `kind`:
      *   'commit'  — fly off screen, then call the configured $wire method (if
@@ -396,10 +414,14 @@ document.addEventListener('alpine:init', () => {
      *   null / unconfigured — dead side, resists and never commits, exactly
      *               like swipeCard's unconfigured sides.
      *
+     * Desktop fast-path: arrow keys (← → ↓ ↑) resolve the top card exactly
+     * like a completed drag — see key() below — so a mouse user never has to
+     * reach for the button row at all.
+     *
      * cfg: { id, phase, deadline, dueDate, right, left, down, up }
      * each direction is null or { kind, wire?, args? }
      */
-    window.Alpine.data('cleanupSwipeCard', (cfg = {}) => ({
+    window.Alpine.data('prepareSwipeCard', (cfg = {}) => ({
         id: cfg.id,
         phase: cfg.phase,
         dirs: {
@@ -427,7 +449,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         get stackIndex() {
-            return this.$store.cleanup.stackIndexOf(this.phase, this.id);
+            return this.$store.prepare.stackIndexOf(this.phase, this.id);
         },
         get isTop() {
             return this.stackIndex === 0;
@@ -524,6 +546,20 @@ document.addEventListener('alpine:init', () => {
             this.resolve(dirName, cfgDir);
         },
 
+        /**
+         * Desktop keyboard fast-path: focus the card (tab or click) then use
+         * arrow keys — same resolution as a completed drag or a button tap.
+         * A key with no configured direction (e.g. ArrowUp on an inbox card)
+         * is simply ignored, exactly like a dead-side drag never commits.
+         */
+        key(e) {
+            const map = { ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up' };
+            const dirName = map[e.key];
+            if (!dirName) return;
+            e.preventDefault();
+            this.trigger(dirName);
+        },
+
         resolve(dirName, cfgDir) {
             if (cfgDir.kind === 'popover') {
                 this.spring();
@@ -535,7 +571,7 @@ document.addEventListener('alpine:init', () => {
                 this.flying = true;
                 this.dy = (this.$el.offsetHeight || 220) + 60;
                 setTimeout(() => {
-                    this.$store.cleanup.requeue(this.phase, this.id);
+                    this.$store.prepare.requeue(this.phase, this.id);
                     this.flying = false;
                     this.dx = 0;
                     this.dy = 0;
@@ -544,13 +580,14 @@ document.addEventListener('alpine:init', () => {
             }
 
             // 'commit' — right/left only in this feature.
+            if (this.phase === 'review' && dirName === 'right') this.$store.prepare.flaggedCount++;
             this.flying = true;
             const w = this.$el.offsetWidth || 320;
             this.dx = dirName === 'right' ? w + 24 : -(w + 24);
             setTimeout(() => {
                 if (cfgDir.wire) this.$wire[cfgDir.wire](...(cfgDir.args ?? []));
-                if (this.phase === 'inbox') this.$store.cleanup.enqueueReview(this.id);
-                this.$store.cleanup.remove(this.phase, this.id);
+                if (this.phase === 'inbox') this.$store.prepare.enqueueReview(this.id);
+                this.$store.prepare.remove(this.phase, this.id);
             }, 150);
         },
 

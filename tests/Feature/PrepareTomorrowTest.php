@@ -2,22 +2,25 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Cleanup;
+use App\Livewire\PrepareTomorrow;
+use App\Models\EventCategory;
 use App\Models\Project;
+use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-class CleanupTest extends TestCase
+class PrepareTomorrowTest extends TestCase
 {
     use RefreshDatabase;
 
     public function test_guests_are_redirected_to_login(): void
     {
-        $this->get('/app/cleanup')->assertRedirect('/login');
+        $this->get('/app/prepare')->assertRedirect('/login');
     }
 
     public function test_inbox_queue_only_contains_the_users_active_board_inbox_tasks(): void
@@ -31,7 +34,7 @@ class CleanupTest extends TestCase
         Task::factory()->for($user)->create(['list' => 'inbox', 'project_id' => $project->id]);
         Task::factory()->for($other)->inbox()->create();
 
-        $component = Livewire::actingAs($user)->test(Cleanup::class);
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
 
         $this->assertSame([$visible->id], $component->instance()->inboxQueue->pluck('id')->all());
     }
@@ -47,7 +50,7 @@ class CleanupTest extends TestCase
         Task::factory()->for($user)->todos()->completed()->create();
         Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id]);
 
-        $component = Livewire::actingAs($user)->test(Cleanup::class);
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
 
         $this->assertEqualsCanonicalizing(
             [$plain->id, $tagged->id],
@@ -61,7 +64,7 @@ class CleanupTest extends TestCase
         $task = Task::factory()->for($user)->inbox()->create();
 
         Livewire::actingAs($user)
-            ->test(Cleanup::class)
+            ->test(PrepareTomorrow::class)
             ->call('assignList', $task->id, 'todos');
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'list' => 'todos']);
@@ -73,7 +76,7 @@ class CleanupTest extends TestCase
         $task = Task::factory()->for($user)->inbox()->create();
 
         Livewire::actingAs($user)
-            ->test(Cleanup::class)
+            ->test(PrepareTomorrow::class)
             ->call('assignList', $task->id, 'projects');
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'list' => 'inbox']);
@@ -87,7 +90,7 @@ class CleanupTest extends TestCase
 
         try {
             Livewire::actingAs($user)
-                ->test(Cleanup::class)
+                ->test(PrepareTomorrow::class)
                 ->call('assignList', $task->id, 'todos');
             $this->fail('Expected a ModelNotFoundException for the foreign task.');
         } catch (ModelNotFoundException) {
@@ -97,13 +100,13 @@ class CleanupTest extends TestCase
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'list' => 'inbox']);
     }
 
-    public function test_mark_today_flags_a_todo_or_task(): void
+    public function test_mark_today_flags_a_todo_or_task_for_tomorrows_focus(): void
     {
         $user = User::factory()->create();
         $task = Task::factory()->for($user)->todos()->create();
 
         Livewire::actingAs($user)
-            ->test(Cleanup::class)
+            ->test(PrepareTomorrow::class)
             ->call('markToday', $task->id);
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'is_today' => true]);
@@ -115,7 +118,7 @@ class CleanupTest extends TestCase
         $task = Task::factory()->for($user)->inbox()->create();
 
         Livewire::actingAs($user)
-            ->test(Cleanup::class)
+            ->test(PrepareTomorrow::class)
             ->call('markToday', $task->id);
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'is_today' => false]);
@@ -127,7 +130,7 @@ class CleanupTest extends TestCase
         $task = Task::factory()->for($user)->todos()->create();
 
         Livewire::actingAs($user)
-            ->test(Cleanup::class)
+            ->test(PrepareTomorrow::class)
             ->call('toggleImportant', $task->id)
             ->call('quickSetDates', $task->id, '2026-08-01', null);
 
@@ -135,6 +138,85 @@ class CleanupTest extends TestCase
             'id' => $task->id,
             'is_important' => true,
             'deadline' => '2026-08-01 00:00:00',
+        ]);
+    }
+
+    public function test_target_date_is_tomorrow_in_evening_mode_by_default(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0]);
+
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
+
+        $this->assertSame('morgen', $component->instance()->targetWord);
+        $this->assertTrue($component->instance()->targetDate->isSameDay(Carbon::tomorrow()));
+    }
+
+    public function test_target_date_is_today_in_morning_mode(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0, 'prepare_time_of_day' => 'morning']);
+
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
+
+        $this->assertSame('heute', $component->instance()->targetWord);
+        $this->assertTrue($component->instance()->targetDate->isSameDay(Carbon::today()));
+    }
+
+    public function test_target_events_only_shows_visible_events_on_the_target_date(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $tomorrow = Carbon::tomorrow()->toDateString();
+
+        $onTomorrow = ScheduleEvent::factory()->for($user)->on($tomorrow)->create();
+        ScheduleEvent::factory()->for($user)->on(Carbon::today()->toDateString())->create();
+        ScheduleEvent::factory()->for($user)->on($tomorrow)->cancelled()->create();
+
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
+
+        $this->assertSame([$onTomorrow->id], $component->instance()->targetEvents->pluck('id')->all());
+    }
+
+    public function test_target_flagged_shows_active_board_tasks_already_marked_for_todays_focus(): void
+    {
+        $user = User::factory()->create();
+
+        $flagged = Task::factory()->for($user)->todos()->today()->create();
+        Task::factory()->for($user)->todos()->create(); // not flagged
+        Task::factory()->for($user)->todos()->today()->completed()->create(); // completed, excluded
+
+        $component = Livewire::actingAs($user)->test(PrepareTomorrow::class);
+
+        $this->assertSame([$flagged->id], $component->instance()->targetFlagged->pluck('id')->all());
+    }
+
+    public function test_finish_stamps_today_as_prepared(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0]);
+
+        Livewire::actingAs($user)->test(PrepareTomorrow::class)->call('finish');
+
+        $this->assertTrue($user->fresh()->hasPreparedToday());
+    }
+
+    public function test_apply_template_places_a_block_on_tomorrows_date_via_the_shared_managesschedule_trait(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $category = EventCategory::factory()->for($user)->create();
+        $template = \App\Models\EventTemplate::factory()->for($user)->create([
+            'category_id' => $category->id,
+            'default_start' => '08:00',
+            'duration' => 60,
+        ]);
+        $tomorrow = Carbon::tomorrow()->toDateString();
+
+        Livewire::actingAs($user)
+            ->test(PrepareTomorrow::class)
+            ->call('applyTemplate', $template->id, $tomorrow);
+
+        $this->assertDatabaseHas('schedule_events', [
+            'user_id' => $user->id,
+            'date' => $tomorrow.' 00:00:00',
+            'start_time' => '08:00',
+            'end_time' => '09:00',
         ]);
     }
 }

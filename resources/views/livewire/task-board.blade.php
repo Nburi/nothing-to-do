@@ -5,6 +5,7 @@
             <div class="mb-6">
                 @include('livewire.partials.schedule-strip')
             </div>
+            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
             <form
                 wire:submit="addTask"
                 x-data="{ exp: false }"
@@ -239,6 +240,7 @@
             <div class="mb-4">
                 @include('livewire.partials.schedule-strip')
             </div>
+            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
             @if ($mobileTab === 'projects')
                 <form
                     wire:submit="addProject"
