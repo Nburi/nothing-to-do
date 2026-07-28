@@ -38,6 +38,15 @@
                 </button>
             </div>
 
+            <button
+                type="button"
+                @click="$wire.createProjectFromTask($store.projectPicker.taskId); $store.projectPicker.taskId = null"
+                class="mb-3 flex w-full items-center gap-2 rounded-card border border-dashed border-line px-3 py-2.5 text-left text-sm font-medium text-signal transition hover:bg-signal-soft"
+            >
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span class="min-w-0 flex-1 truncate">Neues Projekt aus dieser Aufgabe</span>
+            </button>
+
             @if ($this->projects->isEmpty())
                 <p class="rounded-card border border-line bg-paper/60 p-3 text-sm leading-relaxed text-ink-soft">
                     Noch keine Projekte angelegt.

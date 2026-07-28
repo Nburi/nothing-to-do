@@ -348,6 +348,26 @@ class TaskBoard extends Component
         ]);
     }
 
+    /**
+     * Long-press "Neues Projekt" entry: creates a project named after the task
+     * and moves the task into it as its first active task.
+     */
+    public function createProjectFromTask(int $taskId): void
+    {
+        $task = $this->userTask($taskId);
+
+        $project = auth()->user()->projects()->create([
+            'name' => $task->title,
+            'sort_order' => 0,
+        ]);
+
+        $task->update([
+            'project_id' => $project->id,
+            'list' => 'projects',
+            'is_today' => false,
+        ]);
+    }
+
     /** Set/clear the Today focus. Inbox & project tasks can never be Today. */
     public function setToday(int $id, bool $value): void
     {
