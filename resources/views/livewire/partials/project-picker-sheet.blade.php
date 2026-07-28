@@ -44,7 +44,7 @@
                 class="mb-3 flex w-full items-center gap-2 rounded-card border border-dashed border-line px-3 py-2.5 text-left text-sm font-medium text-signal transition hover:bg-signal-soft"
             >
                 <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                <span class="min-w-0 flex-1 truncate">Neues Projekt aus dieser Aufgabe</span>
+                <span class="min-w-0 flex-1 truncate">Neues Projekt mit diesem Namen</span>
             </button>
 
             @if ($this->projects->isEmpty())
