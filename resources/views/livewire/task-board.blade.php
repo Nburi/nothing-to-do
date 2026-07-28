@@ -218,9 +218,10 @@
                             @endif
                         </div>
                     @else
-                        {{-- Invisible drop target so tasks can always be dragged here --}}
+                        {{-- Drop target so tasks can still be dragged here even with none
+                             yet — only takes up space while a task is being dragged. --}}
                         <div
-                            class="mb-2.5 min-h-[2.5rem] rounded-card border border-dashed border-line/40 transition-colors [body.dragging-task_&]:border-line [body.dragging-task_&]:bg-surface/60"
+                            class="mb-0 max-h-0 overflow-hidden rounded-card border border-dashed border-line/40 transition-all duration-200 [body.dragging-task_&]:mb-2.5 [body.dragging-task_&]:max-h-16 [body.dragging-task_&]:border-line [body.dragging-task_&]:bg-surface/60"
                             data-list="projects"
                             data-today="false"
                             x-data
