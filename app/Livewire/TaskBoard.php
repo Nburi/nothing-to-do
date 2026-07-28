@@ -350,7 +350,7 @@ class TaskBoard extends Component
 
     /**
      * Long-press "Neues Projekt" entry: creates a project named after the task,
-     * leaving the task itself untouched on the board.
+     * then deletes the task — it's replaced by the project, not duplicated.
      */
     public function createProjectFromTask(int $taskId): void
     {
@@ -360,6 +360,8 @@ class TaskBoard extends Component
             'name' => $task->title,
             'sort_order' => 0,
         ]);
+
+        $task->delete();
     }
 
     /** Set/clear the Today focus. Inbox & project tasks can never be Today. */
