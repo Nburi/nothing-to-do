@@ -180,6 +180,19 @@
                         @error('newProjectName') <p class="mt-1.5 px-1 text-xs text-signal">{{ $message }}</p> @enderror
                     </form>
 
+                    {{-- Drop a task here to spin it into its own new project. Only
+                         takes up space while a task is actually being dragged. --}}
+                    <div
+                        class="mb-0 max-h-0 overflow-hidden opacity-0 transition-all duration-200 [body.dragging-task_&]:mb-3 [body.dragging-task_&]:max-h-16 [body.dragging-task_&]:opacity-100"
+                        x-data
+                        x-init="window.newProjectDropZone($el, $wire)"
+                    >
+                        <div class="flex h-16 items-center justify-center gap-2 rounded-card border border-dashed border-forest/60 bg-forest-soft/50 text-xs font-medium text-forest">
+                            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            Ablegen für neues Projekt
+                        </div>
+                    </div>
+
                     {{-- Standalone project tasks (list=projects, no project_id) --}}
                     @php
                         $projectTasksActive = $this->projectTasks->where('is_completed', false)->values();

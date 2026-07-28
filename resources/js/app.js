@@ -144,6 +144,30 @@ window.projectDropZone = function (el, wire) {
     return el._sortable;
 };
 
+/**
+ * The "drop here for a new project" zone at the top of the desktop Projekte
+ * column — only visually shown while dragging (see body.dragging-task in the
+ * Blade), but always mounted so Sortable can accept a drop the moment one
+ * starts. Desktop's drag-and-drop equivalent of the mobile long-press ->
+ * "Neues Projekt mit diesem Namen" entry: same createProjectFromTask() action.
+ */
+window.newProjectDropZone = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: { name: 'board', pull: false, put: true },
+        sort: false,
+        draggable: '[data-id]',
+        onAdd: (evt) => {
+            const taskId = evt.item.dataset.id;
+            evt.item.remove();
+            if (taskId) {
+                wire.createProjectFromTask(parseInt(taskId, 10));
+            }
+        },
+    });
+    return el._sortable;
+};
+
 document.addEventListener('alpine:init', () => {
     /**
      * Shared draw state: which category chip — or typed Termin title — is
