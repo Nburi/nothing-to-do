@@ -44,6 +44,19 @@
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
                             Zeitplan
                         </a>
+                        <a href="{{ route('emergency') }}" wire:navigate @class([
+                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
+                            'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
+                            'bg-surface text-ink' => !auth()->user()->isInEmergencyMode() && request()->routeIs('emergency'),
+                            'text-ink-soft hover:bg-surface hover:text-ink' => !auth()->user()->isInEmergencyMode() && !request()->routeIs('emergency'),
+                        ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="10" cy="14" r="1" fill="currentColor"/>
+                            </svg>
+                            Notfall
+                        </a>
                         <div x-data="{ open: false }" class="relative">
                             <button
                                 @click="open = !open"
@@ -74,6 +87,9 @@
                                 </a>
                                 <a href="{{ route('schedule') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Zeitplan
+                                </a>
+                                <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                    Notfall
                                 </a>
                                 <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Profil

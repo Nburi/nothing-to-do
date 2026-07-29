@@ -23,6 +23,9 @@
     <div class="flex items-start justify-between gap-2">
         <h3 class="min-w-0 break-words text-sm font-medium text-ink">{{ $project->name }}</h3>
         <div class="mt-0.5 flex flex-none items-center gap-1.5">
+            @if ($project->id === auth()->user()->emergency_project_id)
+                <span class="tnum rounded-full bg-signal-soft px-2 py-0.5 text-[10px] font-medium leading-tight text-signal">Notfall</span>
+            @endif
             @if ($project->deadline)
                 <span
                     class="tnum rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight"

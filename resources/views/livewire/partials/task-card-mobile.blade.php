@@ -60,6 +60,9 @@
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
     >
+        @isset($orderNumber)
+            <span class="tnum mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full border border-line text-[10px] text-ink-soft" aria-hidden="true">{{ $orderNumber }}</span>
+        @endisset
 
         <button
             type="button"
