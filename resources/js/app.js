@@ -122,6 +122,31 @@ window.boardSortable = function (el, wire) {
 };
 
 /**
+ * Drag & drop for the emergency-mode arrange screen — a single, isolated
+ * list (its own group name, never 'board') so it can never accept a drop
+ * from, or be dragged into, the main board's columns. On drop we persist
+ * the whole list's order in one shot, same as boardSortable.
+ */
+window.emergencySortable = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: 'emergency-sequence',
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: '[data-id] > span:first-child',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const ids = Array.from(evt.to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderTasks(ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * A project card as a drop target: receive-only member of the 'board' group.
  * Dropping a task here assigns it to the project (server is the source of truth),
  * so we pull the moved node straight back out and let Livewire re-render.

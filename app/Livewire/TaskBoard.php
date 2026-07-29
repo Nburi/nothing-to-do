@@ -134,6 +134,60 @@ class TaskBoard extends Component
         return $this->boardTasks('projects');
     }
 
+    /** The project currently in "emergency mode", or null if not active. */
+    #[Computed]
+    public function emergencyProject(): ?Project
+    {
+        $id = auth()->user()->emergency_project_id;
+
+        return $id ? auth()->user()->projects()->find($id) : null;
+    }
+
+    /**
+     * All of the emergency project's active tasks, in the sequence order set
+     * up on the arrange screen — sliced per board column below. Empty when
+     * emergency mode isn't active.
+     *
+     * @return Collection<int, Task>
+     */
+    #[Computed]
+    public function emergencyActiveTasks(): Collection
+    {
+        $project = $this->emergencyProject;
+
+        if ($project === null) {
+            return collect();
+        }
+
+        return $project->tasks()->active()->orderBy('sort_order')->orderBy('created_at')->get();
+    }
+
+    /** Emergency-project tasks tagged for one board column, in sequence order. */
+    public function emergencyTasksFor(string $list): Collection
+    {
+        return $this->emergencyActiveTasks->where('emergency_list', $list)->values();
+    }
+
+    /** Progress + "what's next" for the dashboard banner — null when not active. */
+    #[Computed]
+    public function emergencyProgress(): ?array
+    {
+        $project = $this->emergencyProject;
+
+        if ($project === null) {
+            return null;
+        }
+
+        $active = $this->emergencyActiveTasks;
+        $done = $project->tasks()->where('is_completed', true)->count();
+
+        return [
+            'done' => $done,
+            'total' => $done + $active->count(),
+            'next' => $active->first(),
+        ];
+    }
+
     /**
      * Projects with their working set: every active task (ordered) for the
      * card preview + open count, plus a completed count for the progress label.
@@ -259,14 +313,24 @@ class TaskBoard extends Component
         auth()->user()->update(['prepare_prompt_dismissed_on' => auth()->user()->localToday()->toDateString()]);
     }
 
-    /** Active-task counts only — completed tasks don't inflate the badges. */
+    /** Ends emergency mode — the project and its task order are left exactly as arranged. */
+    public function endEmergencyMode(): void
+    {
+        auth()->user()->update(['emergency_project_id' => null]);
+    }
+
+    /**
+     * Active-task counts only — completed tasks don't inflate the badges.
+     * Includes the emergency project's tasks pinned into each column, since
+     * those are genuinely visible there too.
+     */
     #[Computed]
     public function counts(): array
     {
         return [
-            'inbox'    => $this->inbox->where('is_completed', false)->count(),
-            'todos'    => $this->todosAll->where('is_completed', false)->count(),
-            'tasks'    => $this->tasksAll->where('is_completed', false)->count(),
+            'inbox'    => $this->inbox->where('is_completed', false)->count() + $this->emergencyTasksFor('inbox')->count(),
+            'todos'    => $this->todosAll->where('is_completed', false)->count() + $this->emergencyTasksFor('todos')->count(),
+            'tasks'    => $this->tasksAll->where('is_completed', false)->count() + $this->emergencyTasksFor('tasks')->count(),
             'today'    => $this->today->count(),
             'projects' => $this->projects->count() + $this->projectTasks->where('is_completed', false)->count(),
         ];

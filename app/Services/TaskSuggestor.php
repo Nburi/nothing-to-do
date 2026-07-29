@@ -31,6 +31,16 @@ class TaskSuggestor
      */
     public static function suggest(User $user, int $cycle, int $seedKey): ?array
     {
+        if ($user->emergency_project_id !== null) {
+            $emergency = self::emergencySuggestion($user);
+
+            if ($emergency !== null) {
+                return $emergency;
+            }
+
+            // Nothing left in the emergency project — fall through to normal tiers.
+        }
+
         if ($cycle === 1) {
             $openTodos = Task::forUser($user)->active()->inList('todos')->count();
 
@@ -57,6 +67,29 @@ class TaskSuggestor
         }
 
         return self::randomFallback($user, $seedKey, $cycle);
+    }
+
+    /** The next un-done step in the active emergency project's arranged sequence, if any is left. */
+    private static function emergencySuggestion(User $user): ?array
+    {
+        $project = Project::forUser($user)->find($user->emergency_project_id);
+
+        if ($project === null) {
+            return null;
+        }
+
+        $next = $project->tasks()->active()->orderBy('sort_order')->orderBy('created_at')->first();
+
+        if ($next === null) {
+            return null;
+        }
+
+        return [
+            'kind' => 'emergency',
+            'title' => $next->title,
+            'subtitle' => $project->name,
+            'task_id' => $next->id,
+        ];
     }
 
     /** A stable-per-(session,cycle) pick between a project's next task and another task. */

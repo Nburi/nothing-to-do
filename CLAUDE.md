@@ -105,7 +105,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (310 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (330 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -240,6 +240,54 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
   `setToday` is a no-op for them).
+
+### Notfallmodus (built)
+- For the "I forgot about this project and it's due very soon" moment: pick one project, sequence its
+  tasks in the order you'll actually do them, and the main board temporarily narrows down to just that
+  project (plus anything already important) instead of the full inbox/todos/tasks noise.
+- **`App\Livewire\EmergencyMode`** (`/app/emergency`, `route('emergency')`) is the picker + arrange
+  screen. `mount()` preselects a project from `?project=` (a project-page menu link) or, failing that,
+  the currently-active emergency project — so re-opening the screen always lands on the right one.
+  `selectProject()` bulk-defaults any of that project's active tasks with `emergency_list IS NULL` to
+  `'tasks'` (skips already-categorized ones) so every row starts with a concrete pill state.
+  `reorderTasks()`/`setTaskList()`/`addTask()` are all scoped to the currently-selected project — a
+  stray id from elsewhere is silently ignored, never trusted. `start()`/`end()` just flip
+  `users.emergency_project_id` and redirect to the board; nothing about the tasks themselves changes,
+  so ending emergency mode is always non-destructive and instantly reversible.
+- **The sequence *is* the project's own `sort_order`** — deliberately reused rather than adding a second
+  ordering concept. The project page's own task list was never manually reorderable before this (no
+  drag-and-drop existed there), so the arrange screen is incidentally the first place a project's tasks
+  get a real manual order at all; that order persists as the project's normal order after emergency mode
+  ends. `tasks.emergency_list` (nullable `inbox`/`todos`/`tasks`) is a separate, orthogonal tag saying
+  *which board column* a task surfaces under while its project is the active emergency project — it's
+  never consulted otherwise, so nothing needs to reset it when emergency mode ends.
+- **Dashboard integration** (`TaskBoard`) — `emergencyProject()` (nullable, from
+  `users.emergency_project_id`) and `emergencyTasksFor(list)` (that project's active tasks tagged for
+  one column, in sequence order) are additive: every existing computed property and query is untouched,
+  so nothing changes when emergency mode is off. `partials/emergency-banner.blade.php` (signal-toned,
+  mirrors `prepare-prompt.blade.php`'s shell) shows progress + the next step + Verwalten/Beenden, and
+  swaps to a congratulatory forest-toned variant once the project's tasks are all done. Each board
+  column (`partials/column.blade.php`, and the mobile switch cases via the shared
+  `partials/emergency-mobile-section.blade.php`) pins the emergency project's tasks for that list on top
+  (numbered via an optional `$orderNumber` badge on `task-card`/`task-card-mobile`, **read-only on the
+  dashboard** — reordering only happens on the arrange screen, deliberately, since these cards live
+  outside any `boardSortable` zone and dragging them would otherwise fight over the same `sort_order`
+  the arrange screen just set up), then independently-important tasks (still just the normal
+  onboard-and-important ones — a project's own important tasks don't otherwise surface on the board
+  either way), then collapses everything else behind a client-only (`x-data="{ showAll }"`, no
+  round-trip) "N weitere · Alle anzeigen" disclosure — rendered but CSS-hidden, not omitted, so revealing
+  it is instant. `counts()` includes the emergency tasks pinned into each column, since those are
+  genuinely visible there, not just the "real" board tasks.
+- **Focus-timer suggestion** — `TaskSuggestor::suggest()` checks `user.emergency_project_id` *before*
+  its normal cycle-tiered logic and returns the first incomplete task in the project's sequence
+  (`kind: 'emergency'`, rendered in `schedule-strip-suggestion.blade.php` in signal colour) regardless of
+  Pomodoro cycle number — the point of emergency mode is that this project outranks everything else.
+  Falls through to the normal tiers once the emergency project has nothing active left, rather than
+  suggesting nothing just because the user hasn't gotten around to ending emergency mode yet.
+- Entry points: a header nav item (`layouts/app.blade.php`, signal-toned whenever emergency mode is
+  active, from anywhere in the app), a project's `…` menu ("Notfallmodus starten"/"verwalten", jumps
+  straight to the arrange screen via `?project=`), and the dashboard banner's own "Verwalten" link.
+  `project-card.blade.php` shows a small "Notfall" badge on whichever project is currently active.
 
 ### Vorbereitung für morgen (built)
 - A full-screen, three-step end-of-day ritual at **`/app/prepare`** (`route('prepare')`, linked from the

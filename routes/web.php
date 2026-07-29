@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Livewire\EmergencyMode;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
@@ -21,6 +22,10 @@ Route::get('/app', TaskBoard::class)
 Route::get('/app/projects/{project}', ProjectPage::class)
     ->middleware('auth')
     ->name('project.show');
+
+Route::get('/app/emergency', EmergencyMode::class)
+    ->middleware('auth')
+    ->name('emergency');
 
 Route::get('/app/schedule', Schedule::class)
     ->middleware('auth')

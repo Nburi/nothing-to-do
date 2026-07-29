@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -20,6 +21,7 @@ use Laravel\Sanctum\HasApiTokens;
     'timezone_offset', 'timezone_auto_dst',
     'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
+    'emergency_project_id',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -61,6 +63,17 @@ class User extends Authenticatable
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    /** The project currently in "emergency mode", or null if not active. */
+    public function emergencyProject(): BelongsTo
+    {
+        return $this->belongsTo(Project::class, 'emergency_project_id');
+    }
+
+    public function isInEmergencyMode(): bool
+    {
+        return $this->emergency_project_id !== null;
     }
 
     /** The Pomodoro rhythm (minutes / count) driving each category's focus timer. */
