@@ -30,6 +30,7 @@ class Task extends Model
         'title',
         'list',
         'project_id',
+        'emergency_list',
         'is_today',
         'is_important',
         'deadline',
@@ -83,6 +84,12 @@ class Task extends Model
     public function scopeInList(Builder $query, string $list): Builder
     {
         return $query->where('list', $list);
+    }
+
+    /** The board column (inbox/todos/tasks) a project task surfaces under during emergency mode. */
+    public function scopeInEmergencyList(Builder $query, string $list): Builder
+    {
+        return $query->where('emergency_list', $list);
     }
 
     /**
