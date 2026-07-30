@@ -95,8 +95,13 @@ window.currentPushSubscription = async function () {
  * On drop we read the DESTINATION zone (evt.to) and persist its full id order
  * plus its list/today, so cross-column moves and in-column reordering both work.
  * Guarded so Livewire re-renders never double-initialise an element.
+ *
+ * `handle` restricts the drag-initiating target to a selector (e.g. a grip icon)
+ * instead of the whole card — used on mobile, where the card body is already
+ * claimed by swipeCard's horizontal-swipe/long-press gestures. Desktop cards
+ * have no such gesture, so they're left draggable from anywhere (handle = null).
  */
-window.boardSortable = function (el, wire) {
+window.boardSortable = function (el, wire, handle = null) {
     if (el._sortable) return el._sortable;
     el._sortable = Sortable.create(el, {
         group: 'board',
@@ -104,6 +109,7 @@ window.boardSortable = function (el, wire) {
         easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
         ghostClass: 'board-ghost',
         chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
         delay: 60,
         delayOnTouchOnly: true,
         // Mark the page as dragging so project cards can show a drop affordance.

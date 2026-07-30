@@ -357,33 +357,15 @@
                             $importantRest = $emergencyProject ? $inboxActive->where('is_important', true)->values() : collect();
                             $normalRest = $emergencyProject ? $inboxActive->where('is_important', false)->values() : $inboxActive;
                         @endphp
-                        @include('livewire.partials.emergency-mobile-section', compact('emergencyProject', 'emergencyTasks', 'importantRest'))
-                        @if ($emergencyProject && $normalRest->isNotEmpty())
-                            <div x-data="{ showAll: false }">
-                                <button type="button" x-show="!showAll" @click="showAll = true" class="mb-1.5 px-1 py-1 text-left text-xs text-ink-faint">{{ $normalRest->count() }} {{ $normalRest->count() === 1 ? 'weitere Aufgabe' : 'weitere Aufgaben' }} ausgeblendet · Alle anzeigen</button>
-                                <div x-show="showAll" style="display:none" class="flex flex-col gap-2.5">
-                                    @foreach ($normalRest as $task)
-                                        @include('livewire.partials.task-card-mobile', ['task' => $task])
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            @forelse ($normalRest as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @empty
-                                @if ($inboxDone->isEmpty() && $emergencyTasks->isEmpty() && $importantRest->isEmpty())
-                                    <x-board-empty>Posteingang leer. Saubere Ausgangslage.</x-board-empty>
-                                @endif
-                            @endforelse
-                        @endif
-                        @if ($inboxDone->isNotEmpty())
-                            <div class="mt-0.5 border-t border-line/50 pt-1">
-                                <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
-                            </div>
-                            @foreach ($inboxDone as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @endforeach
-                        @endif
+                        @include('livewire.partials.mobile-task-list', [
+                            'list' => 'inbox',
+                            'normalRest' => $normalRest,
+                            'done' => $inboxDone,
+                            'emergencyProject' => $emergencyProject,
+                            'emergencyTasks' => $emergencyTasks,
+                            'importantRest' => $importantRest,
+                            'emptyMessage' => 'Posteingang leer. Saubere Ausgangslage.',
+                        ])
                         @break
 
                     @case('todos')
@@ -394,40 +376,16 @@
                             $importantRest = $emergencyProject ? $this->todosRest->where('is_important', true)->values() : collect();
                             $normalRest = $emergencyProject ? $this->todosRest->where('is_important', false)->values() : $this->todosRest;
                         @endphp
-                        @if ($this->todosToday->isNotEmpty())
-                            <p class="px-1 pt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest">Heute</p>
-                            @foreach ($this->todosToday as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @endforeach
-                            <div class="my-1 border-t border-line"></div>
-                        @endif
-                        @include('livewire.partials.emergency-mobile-section', compact('emergencyProject', 'emergencyTasks', 'importantRest'))
-                        @if ($emergencyProject && $normalRest->isNotEmpty())
-                            <div x-data="{ showAll: false }">
-                                <button type="button" x-show="!showAll" @click="showAll = true" class="mb-1.5 px-1 py-1 text-left text-xs text-ink-faint">{{ $normalRest->count() }} {{ $normalRest->count() === 1 ? 'weitere Aufgabe' : 'weitere Aufgaben' }} ausgeblendet · Alle anzeigen</button>
-                                <div x-show="showAll" style="display:none" class="flex flex-col gap-2.5">
-                                    @foreach ($normalRest as $task)
-                                        @include('livewire.partials.task-card-mobile', ['task' => $task])
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            @forelse ($normalRest as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @empty
-                                @if ($this->todosToday->isEmpty() && $todosDone->isEmpty() && $emergencyTasks->isEmpty() && $importantRest->isEmpty())
-                                    <x-board-empty>Keine To-Dos. Wisch eine Inbox-Aufgabe nach rechts.</x-board-empty>
-                                @endif
-                            @endforelse
-                        @endif
-                        @if ($todosDone->isNotEmpty())
-                            <div class="mt-0.5 border-t border-line/50 pt-1">
-                                <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
-                            </div>
-                            @foreach ($todosDone as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @endforeach
-                        @endif
+                        @include('livewire.partials.mobile-task-list', [
+                            'list' => 'todos',
+                            'today' => $this->todosToday,
+                            'normalRest' => $normalRest,
+                            'done' => $todosDone,
+                            'emergencyProject' => $emergencyProject,
+                            'emergencyTasks' => $emergencyTasks,
+                            'importantRest' => $importantRest,
+                            'emptyMessage' => 'Keine To-Dos. Wisch eine Inbox-Aufgabe nach rechts.',
+                        ])
                         @break
 
                     @case('tasks')
@@ -438,40 +396,16 @@
                             $importantRest = $emergencyProject ? $this->tasksRest->where('is_important', true)->values() : collect();
                             $normalRest = $emergencyProject ? $this->tasksRest->where('is_important', false)->values() : $this->tasksRest;
                         @endphp
-                        @if ($this->tasksToday->isNotEmpty())
-                            <p class="px-1 pt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest">Heute</p>
-                            @foreach ($this->tasksToday as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @endforeach
-                            <div class="my-1 border-t border-line"></div>
-                        @endif
-                        @include('livewire.partials.emergency-mobile-section', compact('emergencyProject', 'emergencyTasks', 'importantRest'))
-                        @if ($emergencyProject && $normalRest->isNotEmpty())
-                            <div x-data="{ showAll: false }">
-                                <button type="button" x-show="!showAll" @click="showAll = true" class="mb-1.5 px-1 py-1 text-left text-xs text-ink-faint">{{ $normalRest->count() }} {{ $normalRest->count() === 1 ? 'weitere Aufgabe' : 'weitere Aufgaben' }} ausgeblendet · Alle anzeigen</button>
-                                <div x-show="showAll" style="display:none" class="flex flex-col gap-2.5">
-                                    @foreach ($normalRest as $task)
-                                        @include('livewire.partials.task-card-mobile', ['task' => $task])
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            @forelse ($normalRest as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @empty
-                                @if ($this->tasksToday->isEmpty() && $tasksDone->isEmpty() && $emergencyTasks->isEmpty() && $importantRest->isEmpty())
-                                    <x-board-empty>Keine Tasks. Grössere Brocken landen hier.</x-board-empty>
-                                @endif
-                            @endforelse
-                        @endif
-                        @if ($tasksDone->isNotEmpty())
-                            <div class="mt-0.5 border-t border-line/50 pt-1">
-                                <p class="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">Erledigt</p>
-                            </div>
-                            @foreach ($tasksDone as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @endforeach
-                        @endif
+                        @include('livewire.partials.mobile-task-list', [
+                            'list' => 'tasks',
+                            'today' => $this->tasksToday,
+                            'normalRest' => $normalRest,
+                            'done' => $tasksDone,
+                            'emergencyProject' => $emergencyProject,
+                            'emergencyTasks' => $emergencyTasks,
+                            'importantRest' => $importantRest,
+                            'emptyMessage' => 'Keine Tasks. Grössere Brocken landen hier.',
+                        ])
                         @break
 
                     @case('today')
@@ -488,9 +422,15 @@
                             $mobileProjectTasksDone   = $this->projectTasks->where('is_completed', true)->values();
                         @endphp
                         @if ($mobileProjectTasksActive->isNotEmpty())
-                            @foreach ($mobileProjectTasksActive as $task)
-                                @include('livewire.partials.task-card-mobile', ['task' => $task])
-                            @endforeach
+                            <div
+                                class="flex flex-col gap-2.5"
+                                data-list="projects" data-today="false"
+                                x-data x-init="window.boardSortable($el, $wire, '[data-drag-handle]')"
+                            >
+                                @foreach ($mobileProjectTasksActive as $task)
+                                    @include('livewire.partials.task-card-mobile', ['task' => $task])
+                                @endforeach
+                            </div>
                             @if ($this->projects->isNotEmpty())
                                 <div class="my-1 border-t border-line"></div>
                             @endif

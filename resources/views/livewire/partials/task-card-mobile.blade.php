@@ -16,6 +16,7 @@
 
 <div
     wire:key="m-task-{{ $task->id }}"
+    @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" @endunless
     class="relative select-none"
     x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}' })"
 >
@@ -129,8 +130,25 @@
                 @endif
             </div>
 
-            {{-- Inline edit + delete actions (always visible on mobile) --}}
+            {{-- Inline drag handle + edit + delete actions (always visible on mobile) --}}
             <div class="flex flex-none items-center gap-0.5">
+                @unless($task->is_completed || isset($orderNumber))
+                    {{-- Reorder handle: dragging is scoped to this icon so it never fights
+                         swipeCard's horizontal-swipe/long-press gestures on the rest of the card. --}}
+                    <button
+                        type="button"
+                        data-drag-handle
+                        @click.stop
+                        class="grid h-7 w-7 flex-none touch-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink active:cursor-grabbing"
+                        aria-label="Ziehen zum Sortieren: {{ $task->title }}"
+                    >
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <circle cx="5.5" cy="3.5" r="1.25" /><circle cx="10.5" cy="3.5" r="1.25" />
+                            <circle cx="5.5" cy="8" r="1.25" /><circle cx="10.5" cy="8" r="1.25" />
+                            <circle cx="5.5" cy="12.5" r="1.25" /><circle cx="10.5" cy="12.5" r="1.25" />
+                        </svg>
+                    </button>
+                @endunless
                 <button
                     type="button"
                     wire:click="startEdit({{ $task->id }})"
