@@ -543,6 +543,29 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   saves on `wire:change` with no separate submit button since it's only ever touched in "fixed" mode) — see
   "Vorbereitung für morgen" below for what these settings actually drive.
 
+### Agenda — Hausaufgaben & Prüfungen (built)
+- A deliberately standalone page (`/app/agenda`, `route('agenda')`) for school deadlines — homework and
+  exams — kept fully isolated from Task/Project/Schedule for now: no FK/relation, and it doesn't surface
+  on the board, in Vorbereitung, or in Notfallmodus. A later integration isn't ruled out, just not part of
+  this pass.
+- **`App\Models\AgendaEntry`** — `user_id, type(homework|exam), subject, title, notes, date, is_done,
+  timestamps`. `subject` is free text (e.g. "Mathematik") — no separate Subject model yet. `dateLabel()`/
+  `isOverdue()` mirror `Task::effectiveDateLabel()`/`Project::deadlineLabel()` (heute/morgen/Wochentag/
+  d.m./überfällig), deliberately duplicated rather than shared, the same way those two already are with
+  each other. Scopes `forUser/ofType/open/ordered`.
+- **`App\Livewire\Agenda`** (class-based, `#[Layout('layouts.app')]`) — its own component, no shared trait
+  with `ManagesTasks`/`ManagesSchedule`. One form (`partials/agenda-entry-form.blade.php`) handles both
+  create and edit (`editingId` null vs set), the same bottom-sheet/modal shell as
+  `schedule-event-form.blade.php`, with the same kind of Hausaufgabe/Prüfung pill toggle. Every mutation
+  resolves through a private `userEntry()` helper (`auth()->user()->agendaEntries()->findOrFail($id)`),
+  mirroring `TaskBoard::userTask()` — a foreign id is simply invisible, never trusted.
+- List view (`partials/agenda-entry.blade.php`): sorted by date ascending, a type badge (Hausaufgabe =
+  forest, Prüfung = overprint) and a date badge (contour, signal once overdue) per row, completed entries
+  collapsed behind a client-only Alpine disclosure ("N erledigt · anzeigen"). Delete uses the armed
+  double-click pattern (never `confirm()`), same as everywhere else in the app.
+- Nav entry in `layouts/app.blade.php`, same pill/mobile-dropdown treatment as Vorbereiten/Zeitplan/Notfall.
+- No push notifications, no API endpoint (Sanctum) yet — purely a standalone Livewire page in this pass.
+
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
   exposes, so it can be driven from Apple Shortcuts or any other automation — not a 1:1 mirror of every

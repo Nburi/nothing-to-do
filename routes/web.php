@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Livewire\Agenda;
 use App\Livewire\EmergencyMode;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
@@ -38,6 +39,10 @@ Route::get('/app/prepare', PrepareTomorrow::class)
 Route::get('/app/settings', Settings::class)
     ->middleware('auth')
     ->name('settings');
+
+Route::get('/app/agenda', Agenda::class)
+    ->middleware('auth')
+    ->name('agenda');
 
 Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
     ->middleware('auth')
