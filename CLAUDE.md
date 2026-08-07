@@ -559,6 +559,18 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   `schedule-event-form.blade.php`, with the same kind of Hausaufgabe/Prüfung pill toggle. Every mutation
   resolves through a private `userEntry()` helper (`auth()->user()->agendaEntries()->findOrFail($id)`),
   mirroring `TaskBoard::userTask()` — a foreign id is simply invisible, never trusted.
+- **Fach combobox** — the Fach field is free text with suggestions, not a fixed picker: a
+  `#[Computed] existingSubjects()` (distinct subjects already used, `forUser`-scoped, sorted) feeds an
+  Alpine dropdown under the input. Typing filters the suggestions client-side (no round trip per
+  keystroke); picking one calls `$wire.set('formSubject', s)`; typing something that matches nothing just
+  shows a "Neues Fach — einfach weitertippen" hint and free text is used as-is — there's no separate
+  "neues Fach" step. The filter reads `$wire.formSubject` directly inside an Alpine getter (reactive
+  without `.entangle()`, same pattern as `edit-sheet.blade.php`'s `x-show="$wire.editList === ...'"`)
+  instead of a local Alpine copy, and the wrapper carries `wire:key="agenda-subject-field-{{
+  $this->existingSubjects->count() }}"` — without that key, the `subjects: @js(...)` array baked into
+  `x-data` would freeze at first mount (the un-keyed-`x-data`-frozen-across-a-morph trap, see *Known
+  Issues*) and a subject added in one save would never appear in the dropdown until a full page reload;
+  keying on the count forces Alpine to remount and re-read a fresh array exactly when the list changed.
 - List view (`partials/agenda-entry.blade.php`): sorted by date ascending, a type badge (Hausaufgabe =
   forest, Prüfung = overprint) and a date badge (contour, signal once overdue) per row, completed entries
   collapsed behind a client-only Alpine disclosure ("N erledigt · anzeigen"). Delete uses the armed

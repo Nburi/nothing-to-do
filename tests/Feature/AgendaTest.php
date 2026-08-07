@@ -149,4 +149,43 @@ class AgendaTest extends TestCase
             ->assertSee('EXAM-ENTRY')
             ->assertDontSee('HOMEWORK-ENTRY');
     }
+
+    public function test_existing_subjects_are_distinct_sorted_and_scoped_to_the_user(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Physik']);
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Mathematik']);
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Physik']); // duplicate, should collapse
+        AgendaEntry::factory()->for($other)->create(['subject' => 'Chemie']); // another user, must not leak
+
+        $subjects = Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->instance()
+            ->existingSubjects;
+
+        $this->assertSame(['Mathematik', 'Physik'], $subjects->values()->all());
+    }
+
+    public function test_picking_a_suggested_subject_fills_the_form_field(): void
+    {
+        $user = User::factory()->create();
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Mathematik']);
+
+        Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->call('openCreateForm')
+            ->set('formTitle', 'Kapitel 5')
+            ->set('formDate', now()->addDay()->toDateString())
+            ->set('formSubject', 'Mathematik')
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('agenda_entries', [
+            'user_id' => $user->id,
+            'subject' => 'Mathematik',
+            'title' => 'Kapitel 5',
+        ]);
+    }
 }

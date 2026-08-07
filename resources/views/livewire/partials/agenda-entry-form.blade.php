@@ -42,16 +42,53 @@
                     @endforeach
                 </div>
 
-                <div>
+                <div
+                    x-data="{
+                        open: false,
+                        subjects: @js($this->existingSubjects),
+                        get filtered() {
+                            const q = ($wire.formSubject || '').trim().toLowerCase();
+                            return q === '' ? this.subjects : this.subjects.filter(s => s.toLowerCase().includes(q));
+                        },
+                    }"
+                    wire:key="agenda-subject-field-{{ $this->existingSubjects->count() }}"
+                    @click.outside="open = false"
+                    @keydown.escape.window="open = false"
+                    class="relative"
+                >
                     <label class="mb-1 block text-[12px] font-medium text-ink-faint">Fach</label>
                     <input
                         type="text"
                         wire:model="formSubject"
+                        @focus="open = true"
+                        @input="open = true"
+                        autocomplete="off"
                         placeholder="z. B. Mathematik"
                         autofocus
                         class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
                     />
                     @error('formSubject') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+
+                    <div
+                        x-show="open && subjects.length > 0"
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="opacity-0 scale-95"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        class="absolute inset-x-0 z-10 mt-1 max-h-40 overflow-y-auto rounded-card border border-line bg-surface p-1 shadow-map"
+                        style="display: none;"
+                    >
+                        <template x-if="filtered.length === 0">
+                            <p class="px-2.5 py-1.5 text-sm text-ink-faint">Neues Fach — einfach weitertippen</p>
+                        </template>
+                        <template x-for="s in filtered" :key="s">
+                            <button
+                                type="button"
+                                @click="$wire.set('formSubject', s); open = false"
+                                class="block w-full truncate rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink"
+                                x-text="s"
+                            ></button>
+                        </template>
+                    </div>
                 </div>
 
                 <div>

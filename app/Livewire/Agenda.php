@@ -49,6 +49,17 @@ class Agenda extends Component
         return $this->baseQuery()->where('is_done', true)->ordered()->get();
     }
 
+    /** Distinct subjects already used, for the Fach combobox suggestions. */
+    #[Computed]
+    public function existingSubjects(): Collection
+    {
+        return auth()->user()->agendaEntries()
+            ->select('subject')
+            ->distinct()
+            ->orderBy('subject')
+            ->pluck('subject');
+    }
+
     private function baseQuery()
     {
         $query = auth()->user()->agendaEntries();
