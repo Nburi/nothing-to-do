@@ -50,6 +50,16 @@
                             const q = ($wire.formSubject || '').trim().toLowerCase();
                             return q === '' ? this.subjects : this.subjects.filter(s => s.toLowerCase().includes(q));
                         },
+                        handleTab(event) {
+                            if (!this.open || event.shiftKey) return;
+                            event.preventDefault();
+                            const query = ($wire.formSubject || '').trim();
+                            if (query !== '' && this.filtered.length > 0) {
+                                $wire.set('formSubject', this.filtered[0]);
+                            }
+                            this.open = false;
+                            this.$nextTick(() => document.getElementById('agenda-form-title')?.focus());
+                        },
                     }"
                     wire:key="agenda-subject-field-{{ $this->existingSubjects->count() }}"
                     @click.outside="open = false"
@@ -62,6 +72,7 @@
                         wire:model="formSubject"
                         @focus="open = true"
                         @input="open = true"
+                        @keydown.tab="handleTab($event)"
                         autocomplete="off"
                         placeholder="z. B. Mathematik"
                         autofocus
@@ -80,13 +91,19 @@
                         <template x-if="filtered.length === 0">
                             <p class="px-2.5 py-1.5 text-sm text-ink-faint">Neues Fach — einfach weitertippen</p>
                         </template>
-                        <template x-for="s in filtered" :key="s">
+                        <template x-for="(s, i) in filtered" :key="s">
                             <button
                                 type="button"
                                 @click="$wire.set('formSubject', s); open = false"
-                                class="block w-full truncate rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink"
-                                x-text="s"
-                            ></button>
+                                class="flex w-full items-center justify-between gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink"
+                            >
+                                <span class="truncate" x-text="s"></span>
+                                <span
+                                    x-show="i === 0 && ($wire.formSubject || '').trim() !== ''"
+                                    class="flex-none rounded border border-line px-1 py-0.5 text-[10px] font-medium text-ink-faint"
+                                    style="display: none;"
+                                >Tab</span>
+                            </button>
                         </template>
                     </div>
                 </div>
@@ -95,6 +112,7 @@
                     <label class="mb-1 block text-[12px] font-medium text-ink-faint">Titel</label>
                     <input
                         type="text"
+                        id="agenda-form-title"
                         wire:model="formTitle"
                         placeholder="z. B. Kapitel 5, Aufgaben 1–10"
                         class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"

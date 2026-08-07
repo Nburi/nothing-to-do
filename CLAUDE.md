@@ -571,6 +571,15 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   `x-data` would freeze at first mount (the un-keyed-`x-data`-frozen-across-a-morph trap, see *Known
   Issues*) and a subject added in one save would never appear in the dropdown until a full page reload;
   keying on the count forces Alpine to remount and re-read a fresh array exactly when the list changed.
+  **Tab** accepts the top suggestion: a `@keydown.tab` handler on the Fach input (skipped when
+  `shift.key` — backward tabbing is untouched) always `preventDefault()`s while the dropdown is open,
+  fills `formSubject` with `filtered[0]` only if there's a non-empty query with a match (an empty field
+  or a no-match query just advances focus, nothing is force-picked), then focuses `#agenda-form-title`
+  directly via `document.getElementById` — `$refs` doesn't reach across the sibling field's separate
+  `x-data` scope, so a plain id lookup is simpler than trying to thread a ref through. Always taking
+  control of Tab (not just when autocompleting) avoids a race against Alpine's reactive close of the
+  dropdown, since a still-visible suggestion button would otherwise sit earlier in native tab order than
+  Titel.
 - List view (`partials/agenda-entry.blade.php`): sorted by date ascending, a type badge (Hausaufgabe =
   forest, Prüfung = overprint) and a date badge (contour, signal once overdue) per row, completed entries
   collapsed behind a client-only Alpine disclosure ("N erledigt · anzeigen"). Delete uses the armed
