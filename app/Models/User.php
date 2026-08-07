@@ -65,6 +65,12 @@ class User extends Authenticatable
         return $this->hasMany(PushSubscription::class);
     }
 
+    /** @return HasMany<AgendaEntry, $this> */
+    public function agendaEntries(): HasMany
+    {
+        return $this->hasMany(AgendaEntry::class);
+    }
+
     /** The project currently in "emergency mode", or null if not active. */
     public function emergencyProject(): BelongsTo
     {
