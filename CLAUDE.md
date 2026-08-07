@@ -543,6 +543,50 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   saves on `wire:change` with no separate submit button since it's only ever touched in "fixed" mode) — see
   "Vorbereitung für morgen" below for what these settings actually drive.
 
+### Agenda — Hausaufgaben & Prüfungen (built)
+- A deliberately standalone page (`/app/agenda`, `route('agenda')`) for school deadlines — homework and
+  exams — kept fully isolated from Task/Project/Schedule for now: no FK/relation, and it doesn't surface
+  on the board, in Vorbereitung, or in Notfallmodus. A later integration isn't ruled out, just not part of
+  this pass.
+- **`App\Models\AgendaEntry`** — `user_id, type(homework|exam), subject, title, notes, date, is_done,
+  timestamps`. `subject` is free text (e.g. "Mathematik") — no separate Subject model yet. `dateLabel()`/
+  `isOverdue()` mirror `Task::effectiveDateLabel()`/`Project::deadlineLabel()` (heute/morgen/Wochentag/
+  d.m./überfällig), deliberately duplicated rather than shared, the same way those two already are with
+  each other. Scopes `forUser/ofType/open/ordered`.
+- **`App\Livewire\Agenda`** (class-based, `#[Layout('layouts.app')]`) — its own component, no shared trait
+  with `ManagesTasks`/`ManagesSchedule`. One form (`partials/agenda-entry-form.blade.php`) handles both
+  create and edit (`editingId` null vs set), the same bottom-sheet/modal shell as
+  `schedule-event-form.blade.php`, with the same kind of Hausaufgabe/Prüfung pill toggle. Every mutation
+  resolves through a private `userEntry()` helper (`auth()->user()->agendaEntries()->findOrFail($id)`),
+  mirroring `TaskBoard::userTask()` — a foreign id is simply invisible, never trusted.
+- **Fach combobox** — the Fach field is free text with suggestions, not a fixed picker: a
+  `#[Computed] existingSubjects()` (distinct subjects already used, `forUser`-scoped, sorted) feeds an
+  Alpine dropdown under the input. Typing filters the suggestions client-side (no round trip per
+  keystroke); picking one calls `$wire.set('formSubject', s)`; typing something that matches nothing just
+  shows a "Neues Fach — einfach weitertippen" hint and free text is used as-is — there's no separate
+  "neues Fach" step. The filter reads `$wire.formSubject` directly inside an Alpine getter (reactive
+  without `.entangle()`, same pattern as `edit-sheet.blade.php`'s `x-show="$wire.editList === ...'"`)
+  instead of a local Alpine copy, and the wrapper carries `wire:key="agenda-subject-field-{{
+  $this->existingSubjects->count() }}"` — without that key, the `subjects: @js(...)` array baked into
+  `x-data` would freeze at first mount (the un-keyed-`x-data`-frozen-across-a-morph trap, see *Known
+  Issues*) and a subject added in one save would never appear in the dropdown until a full page reload;
+  keying on the count forces Alpine to remount and re-read a fresh array exactly when the list changed.
+  **Tab** accepts the top suggestion: a `@keydown.tab` handler on the Fach input (skipped when
+  `shift.key` — backward tabbing is untouched) always `preventDefault()`s while the dropdown is open,
+  fills `formSubject` with `filtered[0]` only if there's a non-empty query with a match (an empty field
+  or a no-match query just advances focus, nothing is force-picked), then focuses `#agenda-form-title`
+  directly via `document.getElementById` — `$refs` doesn't reach across the sibling field's separate
+  `x-data` scope, so a plain id lookup is simpler than trying to thread a ref through. Always taking
+  control of Tab (not just when autocompleting) avoids a race against Alpine's reactive close of the
+  dropdown, since a still-visible suggestion button would otherwise sit earlier in native tab order than
+  Titel.
+- List view (`partials/agenda-entry.blade.php`): sorted by date ascending, a type badge (Hausaufgabe =
+  forest, Prüfung = overprint) and a date badge (contour, signal once overdue) per row, completed entries
+  collapsed behind a client-only Alpine disclosure ("N erledigt · anzeigen"). Delete uses the armed
+  double-click pattern (never `confirm()`), same as everywhere else in the app.
+- Nav entry in `layouts/app.blade.php`, same pill/mobile-dropdown treatment as Vorbereiten/Zeitplan/Notfall.
+- No push notifications, no API endpoint (Sanctum) yet — purely a standalone Livewire page in this pass.
+
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
   exposes, so it can be driven from Apple Shortcuts or any other automation — not a 1:1 mirror of every

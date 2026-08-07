@@ -44,6 +44,14 @@
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
                             Zeitplan
                         </a>
+                        <a href="{{ route('agenda') }}" wire:navigate @class([
+                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
+                            'bg-surface text-ink' => request()->routeIs('agenda'),
+                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('agenda'),
+                        ]) @if(request()->routeIs('agenda')) aria-current="page" @endif>
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
+                            Agenda
+                        </a>
                         <a href="{{ route('emergency') }}" wire:navigate @class([
                             'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
                             'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
@@ -87,6 +95,9 @@
                                 </a>
                                 <a href="{{ route('schedule') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Zeitplan
+                                </a>
+                                <a href="{{ route('agenda') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                    Agenda
                                 </a>
                                 <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Notfall
