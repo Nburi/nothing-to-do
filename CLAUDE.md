@@ -239,11 +239,20 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   the Blade: Livewire re-runs a component root's `x-init` on every action (see *Known Issues*), so a watcher
   registered there would be re-registered after every single capture.
 - **Opening it:** the `N` key from anywhere (a plain `document` keydown listener at the bottom of `app.js`,
-  guarded against `INPUT`/`TEXTAREA`/`SELECT`/`contenteditable` and against any modifier), or the `+` button
-  in the header. The header button shows at **every** width — a floating action button was tried first and
-  reverted: it covered the Zeitplan's "Zeichnen:" category row, and a bottom-right float will collide with
-  whatever any page puts in that corner. `Esc` and click-outside close it, `x-trap.noscroll` traps focus, and
-  `hide()` returns focus to whatever opened it.
+  guarded against `INPUT`/`TEXTAREA`/`SELECT`/`contenteditable` and against any modifier), or a `+` button.
+  `Esc` and click-outside close it, `x-trap.noscroll` traps focus, and `hide()` returns focus to whatever
+  opened it.
+- **Where the `+` sits** is decided by `$showCaptureFab` in `layouts/app.blade.php` (`routeIs('app')` or
+  `routeIs('crafts')`). On touch those two pages get a **floating button bottom-right** — the position
+  phones have trained everyone to look in, and a header button there is genuinely hard to find. Every other
+  page keeps the header button, because their bottom-right corner isn't free: the Zeitplan pins its
+  "Zeichnen:" category row to the bottom of a viewport-height grid, which **no amount of page padding can
+  scroll clear** (page padding only helps when the thing underneath scrolls). Those pages also have their
+  own prominent add buttons, so global capture is a utility action there and the header is the right home
+  for it. On touch the header button hides wherever the floating one takes over, so exactly one `+` is ever
+  on screen; desktop only ever has the header button. Both pages with the floating button reserve matching
+  bottom padding (the board already had `pb-28` for its nav; `craft-ideas.blade.php` got `pb-28 sm:pb-16`)
+  so the last card can always be scrolled out from under it.
 - **Choosing a target:** chips, or **↑/↓ while typing**. Deliberately *not* number keys, even though the
   design mockup implied them — the digits belong to the title field, and every modifier+digit combination in
   range is already claimed by the browser (Alt/Ctrl+1–9 switch tabs). ↑/↓ do nothing useful in a
