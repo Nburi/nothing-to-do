@@ -21,7 +21,14 @@
         // a viewport-height grid, which no amount of page padding can scroll clear —
         // and those pages have their own prominent add buttons anyway, so the global
         // capture is a utility action there and belongs in the header.
-        $showCaptureFab = request()->routeIs('app') || request()->routeIs('crafts');
+        $showCaptureFab = request()->routeIs('app')
+            || request()->routeIs('crafts')
+            || request()->routeIs('agenda');
+
+        // The panel opens on Inbox by default. On a page that is about one specific
+        // kind of thing, opening it there should mean that thing — otherwise the
+        // button sitting on the Bastelideen page quietly files an Inbox task.
+        $captureTarget = request()->routeIs('crafts') ? 'craft' : null;
     @endphp
     <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">
@@ -90,7 +97,7 @@
                         <button
                             type="button"
                             x-data
-                            @click="$store.quickCapture.show($event.currentTarget)"
+                            @click="$store.quickCapture.show($event.currentTarget, @js($captureTarget))"
                             @class([
                                 'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
                                 'hidden sm:grid' => $showCaptureFab,
@@ -178,7 +185,7 @@
                 <button
                     type="button"
                     x-data
-                    @click="$store.quickCapture.show($event.currentTarget)"
+                    @click="$store.quickCapture.show($event.currentTarget, @js($captureTarget))"
                     @class([
                         'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
                         'bottom-[84px]' => request()->routeIs('app'),

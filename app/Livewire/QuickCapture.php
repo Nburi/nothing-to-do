@@ -84,14 +84,22 @@ class QuickCapture extends Component
 
     /**
      * Clears everything, including the confirmation line. Fired by the Alpine
-     * store the moment the panel opens, so every session starts clean (and back
-     * at Inbox) rather than showing the last session's leftovers.
+     * store the moment the panel opens, so every session starts clean rather
+     * than showing the last one's leftovers.
+     *
+     * `$target` lets the trigger open the panel on a chip other than Inbox —
+     * a page about one specific kind of thing should capture that thing. An
+     * unknown value falls back to the Inbox default rather than being trusted.
      */
     #[On('quick-capture-opened')]
-    public function resetPanel(): void
+    public function resetPanel(?string $target = null): void
     {
         $this->reset(['title', 'target', 'deadline', 'dueDate', 'whereToBegin', 'captured']);
         $this->resetValidation();
+
+        if ($target !== null && in_array($target, self::TARGETS, true)) {
+            $this->target = $target;
+        }
     }
 
     /**

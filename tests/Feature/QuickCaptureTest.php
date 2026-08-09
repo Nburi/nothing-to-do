@@ -206,6 +206,27 @@ class QuickCaptureTest extends TestCase
             ->assertSet('captured', null);
     }
 
+    public function test_opening_the_panel_can_preselect_a_target(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->dispatch('quick-capture-opened', target: 'craft')
+            ->assertSet('target', 'craft');
+    }
+
+    public function test_an_unknown_preselected_target_falls_back_to_inbox(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'tasks')
+            ->dispatch('quick-capture-opened', target: 'nonsense')
+            ->assertSet('target', 'inbox');
+    }
+
     public function test_a_capture_dispatches_the_refresh_event(): void
     {
         $user = User::factory()->create();

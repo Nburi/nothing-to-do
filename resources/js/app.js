@@ -226,14 +226,16 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.store('quickCapture', {
         open: false,
         returnFocusTo: null,
-        show(trigger = null) {
+        show(trigger = null, target = null) {
             if (this.open) return;
             this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
             this.open = true;
             // Wipe whatever the last session left behind (title, dates, the
             // confirmation line, validation errors) — the round trip lands
-            // while the panel is still animating in.
-            window.Livewire?.dispatch('quick-capture-opened');
+            // while the panel is still animating in. `target` lets a page whose
+            // subject matches one of the chips open straight on that chip;
+            // null means the usual Inbox default.
+            window.Livewire?.dispatch('quick-capture-opened', { target });
             requestAnimationFrame(() => document.getElementById('quick-capture-title')?.focus());
         },
         hide() {
