@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\CraftIdeas;
-use App\Livewire\TaskBoard;
 use App\Models\CraftIdea;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -14,56 +13,6 @@ use Tests\TestCase;
 class CraftIdeasTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_an_idea_can_be_captured_from_the_dashboard(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newIdeaTitle', '  Kerzen giessen  ')
-            ->set('newIdeaWhereToBegin', '  Sojawachs bestellen  ')
-            ->call('addCraftIdea')
-            ->assertHasNoErrors()
-            ->assertSet('newIdeaTitle', '');
-
-        $this->assertDatabaseHas('craft_ideas', [
-            'user_id' => $user->id,
-            'title' => 'Kerzen giessen',
-            'where_to_begin' => 'Sojawachs bestellen',
-            'is_done' => false,
-        ]);
-    }
-
-    public function test_where_to_begin_is_optional(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newIdeaTitle', 'Fotobuch gestalten')
-            ->call('addCraftIdea')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('craft_ideas', [
-            'user_id' => $user->id,
-            'title' => 'Fotobuch gestalten',
-            'where_to_begin' => null,
-        ]);
-    }
-
-    public function test_a_blank_title_is_rejected(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newIdeaTitle', '')
-            ->call('addCraftIdea')
-            ->assertHasErrors(['newIdeaTitle' => 'required']);
-
-        $this->assertDatabaseCount('craft_ideas', 0);
-    }
 
     public function test_the_page_suggests_a_hero_idea_when_ideas_exist(): void
     {

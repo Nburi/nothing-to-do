@@ -74,6 +74,7 @@
                              the panel is never a hidden-only feature. --}}
                         <button
                             type="button"
+                            x-data
                             @click="$store.quickCapture.show($event.currentTarget)"
                             class="hidden h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest sm:grid"
                             aria-label="Schnellerfassung öffnen (Taste N)"
@@ -151,8 +152,12 @@
             {{-- Mobile counterpart to the header's "+" — a hardware keyboard isn't
                  a given on touch, so capture always has a visible entry point.
                  Sits clear of the board's fixed bottom nav, which only that page has. --}}
+            {{-- x-data is required, not decorative: Alpine only processes @click on an
+                 element that is itself inside an Alpine component, and both triggers
+                 sit outside every other x-data scope on the page. --}}
             <button
                 type="button"
+                x-data
                 @click="$store.quickCapture.show($event.currentTarget)"
                 @class([
                     'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',

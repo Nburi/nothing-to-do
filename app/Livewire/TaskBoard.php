@@ -11,6 +11,7 @@ use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
@@ -18,27 +19,20 @@ class TaskBoard extends Component
 {
     use ManagesTasks;
 
-    /** Quick-add. */
-    public string $newTitle = '';
-
-    public string $newList = 'inbox';
-
-    public ?string $newDeadline = null;
-
-    public ?string $newDueDate = null;
-
-    /** Add-project (Projects column / tab). */
-    public string $newProjectName = '';
-
-    public ?string $newProjectDeadline = null;
-
-    /** Bastelideen quick-capture. */
-    public string $newIdeaTitle = '';
-
-    public string $newIdeaWhereToBegin = '';
-
     /** Active mobile page: inbox | todos | tasks | today | projects. */
     public string $mobileTab = 'inbox';
+
+    /**
+     * Capture happens in the app-wide QuickCapture panel now, which is a
+     * separate component — so a new entry doesn't re-render this one on its
+     * own. Listening for its event is what keeps the board in sync.
+     */
+    #[On('captured')]
+    public function refreshBoard(): void
+    {
+        // No body needed: handling the event is itself a re-render, and every
+        // read is a computed property that re-evaluates on the way out.
+    }
 
     // ── Reads (computed, cached per request) ──────────────────────────
 
@@ -350,75 +344,6 @@ class TaskBoard extends Component
         }
 
         $this->mobileTab = $tab;
-
-        // Quick-add on a board-list tab targets that list. Today & Projects
-        // don't feed the task quick-add, so leave the target untouched.
-        if (in_array($tab, Task::BOARD_LISTS, true)) {
-            $this->newList = $tab;
-        }
-    }
-
-    public function addTask(): void
-    {
-        // Trim first so a whitespace-only title fails the required rule.
-        $this->newTitle = trim($this->newTitle);
-
-        $data = $this->validate([
-            'newTitle' => ['required', 'string', 'max:255'],
-            'newList' => ['required', 'in:inbox,todos,tasks'],
-            'newDeadline' => ['nullable', 'date'],
-            'newDueDate' => ['nullable', 'date'],
-        ]);
-
-        auth()->user()->tasks()->create([
-            'title' => $data['newTitle'],
-            'list' => $data['newList'],
-            'deadline' => $data['newDeadline'] ?: null,
-            'due_date' => $data['newDueDate'] ?: null,
-            'sort_order' => 0,
-        ]);
-
-        $this->reset(['newTitle', 'newDeadline', 'newDueDate']);
-        $this->dispatch('task-added');
-    }
-
-    public function addProject(): void
-    {
-        $this->newProjectName = trim($this->newProjectName);
-
-        $data = $this->validate([
-            'newProjectName' => ['required', 'string', 'max:255'],
-            'newProjectDeadline' => ['nullable', 'date'],
-        ]);
-
-        auth()->user()->projects()->create([
-            'name' => $data['newProjectName'],
-            'deadline' => $data['newProjectDeadline'] ?: null,
-            'sort_order' => 0,
-        ]);
-
-        $this->reset(['newProjectName', 'newProjectDeadline']);
-        $this->dispatch('project-added');
-    }
-
-    /** Bastelideen live on their own standalone page (/app/crafts) — this only captures. */
-    public function addCraftIdea(): void
-    {
-        $this->newIdeaTitle = trim($this->newIdeaTitle);
-        $this->newIdeaWhereToBegin = trim($this->newIdeaWhereToBegin);
-
-        $data = $this->validate([
-            'newIdeaTitle' => ['required', 'string', 'max:255'],
-            'newIdeaWhereToBegin' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        auth()->user()->craftIdeas()->create([
-            'title' => $data['newIdeaTitle'],
-            'where_to_begin' => $data['newIdeaWhereToBegin'] !== '' ? $data['newIdeaWhereToBegin'] : null,
-        ]);
-
-        $this->reset(['newIdeaTitle', 'newIdeaWhereToBegin']);
-        $this->dispatch('idea-added');
     }
 
     /**

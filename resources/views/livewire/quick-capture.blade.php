@@ -151,11 +151,14 @@
                     </span>
                 @endif
 
+                {{-- Keyboard hints only where there is a keyboard; on touch the same
+                     row explains why the panel stays open instead of sitting empty. --}}
                 <span class="ml-auto hidden flex-none items-center gap-2 text-ink-faint sm:flex">
                     <span>↑↓ Ziel</span>
                     <span>↵ Erfassen</span>
                     <span>Esc schliessen</span>
                 </span>
+                <span class="ml-auto flex-none text-ink-faint sm:hidden">Bleibt offen für den nächsten Eintrag</span>
             </div>
         </form>
     </div>
