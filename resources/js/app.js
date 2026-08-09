@@ -215,6 +215,38 @@ document.addEventListener('alpine:init', () => {
     /** Which task id (if any) the mobile long-press project-picker sheet is open for. */
     window.Alpine.store('projectPicker', { taskId: null });
     /**
+     * Open/closed state of the app-wide capture panel (see QuickCapture). This is
+     * ephemeral UI state, so it lives here rather than on the Livewire component —
+     * opening the panel then costs no round trip at all.
+     *
+     * Focus is handled imperatively here instead of via x-init/$watch in the Blade:
+     * Livewire re-runs a component root's x-init on every action (see CLAUDE.md §10),
+     * so a watcher registered there would be re-registered after every capture.
+     */
+    window.Alpine.store('quickCapture', {
+        open: false,
+        returnFocusTo: null,
+        show(trigger = null) {
+            if (this.open) return;
+            this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
+            this.open = true;
+            // Wipe whatever the last session left behind (title, dates, the
+            // confirmation line, validation errors) — the round trip lands
+            // while the panel is still animating in.
+            window.Livewire?.dispatch('quick-capture-opened');
+            requestAnimationFrame(() => document.getElementById('quick-capture-title')?.focus());
+        },
+        hide() {
+            if (!this.open) return;
+            this.open = false;
+            const el = this.returnFocusTo;
+            this.returnFocusTo = null;
+            // Hand focus back to whatever opened the panel, but only if it's
+            // still on the page (a Livewire morph may have replaced it).
+            if (el && document.body.contains(el)) el.focus();
+        },
+    });
+    /**
      * swipeCard — native-feeling horizontal swipe for mobile task cards.
      * Tracks the finger 1:1, locks to the horizontal axis (vertical scroll still
      * works), resists past the threshold, springs back if abandoned. Visual action
@@ -919,4 +951,28 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+});
+
+/**
+ * "N" opens the capture panel from anywhere in the app. Deliberately a bare key
+ * (no modifier): every modifier combination in the 1–9/letter range is already
+ * spoken for by the browser itself. The guards below are what make that safe —
+ * the shortcut never fires while the user is actually typing somewhere.
+ */
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'n' && event.key !== 'N') return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.defaultPrevented) return;
+
+    const el = event.target;
+    if (el instanceof HTMLElement) {
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) return;
+    }
+
+    const store = window.Alpine?.store('quickCapture');
+    if (!store || store.open) return;
+
+    event.preventDefault();
+    store.show(el instanceof HTMLElement ? el : null);
 });

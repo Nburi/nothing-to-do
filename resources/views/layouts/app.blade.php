@@ -52,27 +52,35 @@
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
                             Agenda
                         </a>
-                        <a href="{{ route('crafts') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-surface text-ink' => request()->routeIs('crafts'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('crafts'),
-                        ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a7 7 0 1 0 0 14h1a1.5 1.5 0 0 0 1.06-2.56 1.5 1.5 0 0 1 1.06-2.56H14a3 3 0 0 0 3-3 7 7 0 0 0-7-6Z"/><circle cx="7" cy="9" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="7" r=".8" fill="currentColor" stroke="none"/><circle cx="13" cy="9" r=".8" fill="currentColor" stroke="none"/></svg>
-                            Bastelideen
-                        </a>
-                        <a href="{{ route('emergency') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
-                            'bg-surface text-ink' => !auth()->user()->isInEmergencyMode() && request()->routeIs('emergency'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !auth()->user()->isInEmergencyMode() && !request()->routeIs('emergency'),
-                        ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                                <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                <circle cx="10" cy="14" r="1" fill="currentColor"/>
-                            </svg>
-                            Notfall
-                        </a>
+                        {{-- Notfall is a mode, not a place: the pill only exists while the
+                             mode is actually running (or while its own screen is open).
+                             Otherwise it lives in the avatar menu, next to Bastelideen. --}}
+                        @if (auth()->user()->isInEmergencyMode() || request()->routeIs('emergency'))
+                            <a href="{{ route('emergency') }}" wire:navigate @class([
+                                'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
+                                'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
+                                'bg-surface text-ink' => !auth()->user()->isInEmergencyMode(),
+                            ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
+                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                    <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                    <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <circle cx="10" cy="14" r="1" fill="currentColor"/>
+                                </svg>
+                                Notfall
+                            </a>
+                        @endif
+
+                        {{-- Quick capture: the visible counterpart to the "N" shortcut, so
+                             the panel is never a hidden-only feature. --}}
+                        <button
+                            type="button"
+                            @click="$store.quickCapture.show($event.currentTarget)"
+                            class="hidden h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest sm:grid"
+                            aria-label="Schnellerfassung öffnen (Taste N)"
+                            title="Schnellerfassung — Taste N"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
                         <div x-data="{ open: false }" class="relative">
                             <button
                                 @click="open = !open"
@@ -107,10 +115,12 @@
                                 <a href="{{ route('agenda') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Agenda
                                 </a>
-                                <a href="{{ route('crafts') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                {{-- Bastelideen and Notfall have no permanent desktop pill
+                                     any more, so they stay in the menu at every width. --}}
+                                <a href="{{ route('crafts') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Bastelideen
                                 </a>
-                                <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Notfall
                                 </a>
                                 <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
@@ -136,6 +146,26 @@
                 {{ $slot }}
             </main>
         </div>
+
+        @auth
+            {{-- Mobile counterpart to the header's "+" — a hardware keyboard isn't
+                 a given on touch, so capture always has a visible entry point.
+                 Sits clear of the board's fixed bottom nav, which only that page has. --}}
+            <button
+                type="button"
+                @click="$store.quickCapture.show($event.currentTarget)"
+                @class([
+                    'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
+                    'bottom-[84px]' => request()->routeIs('app'),
+                    'bottom-5' => !request()->routeIs('app'),
+                ])
+                aria-label="Schnellerfassung öffnen"
+            >
+                <svg class="h-6 w-6" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+
+            <livewire:quick-capture />
+        @endauth
 
         @livewireScripts
     </body>
