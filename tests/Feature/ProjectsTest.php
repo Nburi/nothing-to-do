@@ -16,36 +16,6 @@ class ProjectsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_project_can_be_created_from_the_board(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newProjectName', '  Maturaarbeit  ')
-            ->call('addProject')
-            ->assertHasNoErrors()
-            ->assertSet('newProjectName', '');
-
-        $this->assertDatabaseHas('projects', [
-            'user_id' => $user->id,
-            'name' => 'Maturaarbeit',
-        ]);
-    }
-
-    public function test_a_blank_project_name_is_rejected(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newProjectName', '   ')
-            ->call('addProject')
-            ->assertHasErrors(['newProjectName' => 'required']);
-
-        $this->assertDatabaseCount('projects', 0);
-    }
-
     public function test_project_tasks_are_not_rendered_as_board_task_cards(): void
     {
         $user = User::factory()->create();

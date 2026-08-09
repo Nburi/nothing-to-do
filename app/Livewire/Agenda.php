@@ -6,6 +6,7 @@ use App\Models\AgendaEntry;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
@@ -154,6 +155,17 @@ class Agenda extends Component
         if ($this->editingId === $id) {
             $this->cancelForm();
         }
+    }
+
+    /**
+     * An entry captured through the app-wide QuickCapture panel has to appear
+     * here right away — that panel is a separate component, so its write
+     * doesn't re-render this one on its own.
+     */
+    #[On('captured')]
+    public function refreshEntries(): void
+    {
+        // Handling the event is the re-render; every read is a computed property.
     }
 
     public function render()

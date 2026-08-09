@@ -105,7 +105,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (330 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (372 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -220,6 +220,76 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
     timer, cancelled by any directional swipe lock) opens `partials/project-picker-sheet.blade.php` via the
     `Alpine.store('projectPicker')` store, calling the existing `TaskBoard::assignTaskToProject()` — the
     touch equivalent of desktop's drag-onto-a-project-card, since neither swipe direction was free to reuse.
+
+### Schnellerfassung (quick capture) (built)
+- **The dashboard has no input fields at all.** It used to carry three — the task quick-add bar, the
+  Bastelideen bar, and the "Neues Projekt" field in the Projekte column — which pushed the first task card
+  **309 px** down the page (34 % of a 900 px viewport) and, worse, gave the rarely-used Bastelideen bar
+  (50 px) exactly the same visual weight as the app's core capture action (52 px): same card, same shadow,
+  same green button in the same place. All three are gone; the first card now starts at **159 px**.
+- **`App\Livewire\QuickCapture`** replaces them with one panel, included in `layouts/app.blade.php` inside
+  `@auth` rather than in `TaskBoard` — being reachable from *every* page is the whole point, and a component
+  living in the board could not be. It writes to `tasks`, `projects` or `craft_ideas` depending on the chosen
+  target (`QuickCapture::TARGETS` = `inbox|todos|tasks|project|craft|agenda`), always through the owner
+  relation.
+- **Per-target fields**, revealed progressively: the optional ones appear as soon as the title has content,
+  rather than waiting for the "Mehr" toggle (which still overrides in both directions). `wire:model` is
+  deferred, so `$wire.title` does *not* change per keystroke — the trigger is a **local Alpine mirror**
+  (`typed`, fed by `@input`), reset on `captured` and on `quick-capture-opened`. Tasks get deadline +
+  Wunschtermin, a project gets a deadline, a Bastelidee gets "Wo anfangen".
+- **Agenda is the one target whose extras are required**, not optional — type, Fach and date, mirroring
+  `Agenda::save()`'s own rules. Those rules are therefore added to `validate()` **only** when `agenda` is the
+  chosen target, and its section can't be folded away (the "Mehr" button hides). Fach autocompletes from
+  `existingSubjects()` through a native `<datalist>` — the same source as the Agenda page's Alpine combobox,
+  without duplicating it. Fach, date and type survive a save the way the target does: several homework items
+  for one subject on one day is the normal case, not the exception.
+- **The title placeholder follows the target** ("Wie heisst das Projekt?", "Was ist aufgegeben?") — "Was
+  steht an?" reads wrong for half of them.
+- **Open/closed is Alpine, not Livewire** — ephemeral UI state, same as `draw`/`projectPicker`. The
+  `quickCapture` store (`resources/js/app.js`) owns `open`, `show(trigger)` and `hide()`, so opening the
+  panel costs no round trip. `show()` also dispatches `quick-capture-opened`, which the component's
+  `resetPanel()` listens for — every session starts clean and back at Inbox rather than showing the last
+  one's leftovers. Focus is moved imperatively **in the store**, deliberately not via `x-init`/`$watch` in
+  the Blade: Livewire re-runs a component root's `x-init` on every action (see *Known Issues*), so a watcher
+  registered there would be re-registered after every single capture.
+- **Opening it:** the `N` key from anywhere (a plain `document` keydown listener at the bottom of `app.js`,
+  guarded against `INPUT`/`TEXTAREA`/`SELECT`/`contenteditable` and against any modifier), or a `+` button.
+  `Esc` and click-outside close it, `x-trap.noscroll` traps focus, and `hide()` returns focus to whatever
+  opened it.
+- **Where the `+` sits** is decided by `$showCaptureFab` in `layouts/app.blade.php` (`routeIs('app')`,
+  `routeIs('crafts')` or `routeIs('agenda')`). On touch those pages get a **floating button bottom-right** — the position
+  phones have trained everyone to look in, and a header button there is genuinely hard to find. Every other
+  page keeps the header button, because their bottom-right corner isn't free: the Zeitplan pins its
+  "Zeichnen:" category row to the bottom of a viewport-height grid, which **no amount of page padding can
+  scroll clear** (page padding only helps when the thing underneath scrolls). Those pages also have their
+  own prominent add buttons, so global capture is a utility action there and the header is the right home
+  for it. On touch the header button hides wherever the floating one takes over, so exactly one `+` is ever
+  on screen; desktop only ever has the header button. Both pages with the floating button reserve matching
+  bottom padding (the board already had `pb-28` for its nav; `craft-ideas.blade.php` got `pb-28 sm:pb-16`;
+  `agenda.blade.php` already had it) so the last card can always be scrolled out from under it.
+- **`$captureTarget`** (same `@php` block) opens the panel on the chip matching the page's own subject —
+  `crafts` → Bastelidee, `agenda` → Agenda, everywhere else the Inbox default. Without it a `+` in the
+  bottom-right corner of a page about one kind of thing quietly files something else: on Bastelideen it
+  created an Inbox task, and on Agenda it advertised an entry the panel couldn't create at all. That was the
+  reason Agenda became a target rather than losing its button.
+- **Choosing a target:** chips, or **↑/↓ while typing**. Deliberately *not* number keys, even though the
+  design mockup implied them — the digits belong to the title field, and every modifier+digit combination in
+  range is already claimed by the browser (Alt/Ctrl+1–9 switch tabs). ↑/↓ do nothing useful in a
+  single-line input, so hijacking them costs nothing.
+- **After saving, the panel stays open** with the title cleared and the target kept, echoing back what was
+  just captured ("„Postenbeschreibung studieren" → Inbox"). Dumping several things in a row is the point, and
+  the old inline bars behaved the same way. Closing is always explicit.
+- **Keeping other components in sync:** `QuickCapture` is a *separate* component, so its writes don't
+  re-render anything else on their own. It dispatches `captured`; `TaskBoard` and `CraftIdeas` listen via
+  `#[On('captured')]` with empty method bodies — handling the event *is* the re-render, and every read is a
+  computed property that re-evaluates on the way out.
+- **In-context capture still exists where it earns its place:** `ProjectPage`, `EmergencyMode` and (new)
+  `CraftIdeas` keep their own inline add forms. A page entirely about one kind of thing shouldn't send you
+  through a global panel to add one. The Bastelideen page had *no* capture at all before this — the
+  dashboard bar was its only entry point.
+- **Header diet shipped with it:** Notfall's nav pill only renders while the mode is actually active (or its
+  own screen is open) — it's a mode, not a place, and an active emergency already shows a large banner.
+  Bastelideen moved into the avatar menu. Five pills became three plus the `+`.
 
 ### Projects (built)
 - A fourth **Projekte** column (desktop) / 5th bottom-nav tab (mobile) lists `Project` cards
@@ -871,6 +941,24 @@ window.Alpine.store('foo', {
 });
 ```
 See the `prepare` store in `resources/js/app.js` for the reference implementation.
+
+### Alpine silently ignores `@click` on an element that isn't inside an Alpine component
+**Symptom:** a button with `@click="$store.something.doThing()"` does nothing at all — no error, no console
+warning, no network request. Clicking it in the browser, and dispatching a real bubbling `MouseEvent` at it
+from the console, both do nothing.
+**Cause:** Alpine only walks and binds directives on elements **inside an `x-data` scope**. A `@click` on an
+element with no `x-data` ancestor is never registered as a listener — the attribute just sits in the HTML.
+This is easy to hit in `layouts/app.blade.php` specifically, because the layout chrome (header actions,
+anything appended near `@livewireScripts`) usually sits outside every `x-data` on the page — unlike partials
+inside a Livewire component, which are almost always nested in one already. Referencing a *store* rather than
+local state makes it look like no component should be needed, which is exactly the trap.
+**Fix:** put a bare `x-data` on the element itself. It costs nothing and makes it an Alpine component so its
+own directives are processed:
+```html
+<button type="button" x-data @click="$store.quickCapture.show($event.currentTarget)">…</button>
+```
+Both quick-capture triggers in `layouts/app.blade.php` carry this, with a comment saying why — it reads like
+a stray attribute otherwise and is an obvious thing for a later cleanup to "tidy away".
 
 ### An un-keyed `x-data` element frozen across a Livewire morph reads stale server data
 **Symptom:** on the Zeitplan page, navigating to a different week (or a different day on mobile) and then

@@ -6,6 +6,7 @@ use App\Models\CraftIdea;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
@@ -16,6 +17,57 @@ class CraftIdeas extends Component
 
     /** Excluded from the pool on the next shuffle, so it doesn't repeat immediately. */
     public ?int $lastHeroId = null;
+
+    /**
+     * In-context capture. The app-wide QuickCapture panel can create ideas from
+     * anywhere, but a page that is entirely about ideas shouldn't send you
+     * through a global panel to add one — the same reasoning ProjectPage and
+     * EmergencyMode already follow with their own inline add forms.
+     */
+    public string $newTitle = '';
+
+    public string $newWhereToBegin = '';
+
+    public function addIdea(): void
+    {
+        // Trim first so a whitespace-only title fails the required rule.
+        $this->newTitle = trim($this->newTitle);
+        $this->newWhereToBegin = trim($this->newWhereToBegin);
+
+        $data = $this->validate([
+            'newTitle' => ['required', 'string', 'max:255'],
+            'newWhereToBegin' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        auth()->user()->craftIdeas()->create([
+            'title' => $data['newTitle'],
+            'where_to_begin' => $data['newWhereToBegin'] !== '' ? $data['newWhereToBegin'] : null,
+        ]);
+
+        $this->reset(['newTitle', 'newWhereToBegin']);
+        $this->dispatch('idea-added');
+    }
+
+    /**
+     * An idea captured through the global panel while this page is open must
+     * show up here too — render() re-runs ensureHero(), so an empty page picks
+     * the new idea up as its hero straight away.
+     */
+    #[On('captured')]
+    public function refreshIdeas(): void
+    {
+        // Handling the event is the re-render; every read is a computed property.
+    }
+
+    /** @return array<string, string> */
+    protected function messages(): array
+    {
+        return [
+            'newTitle.required' => 'Ohne Titel geht es nicht.',
+            'newTitle.max' => 'Höchstens 255 Zeichen.',
+            'newWhereToBegin.max' => 'Das ist zu lang — höchstens 2000 Zeichen.',
+        ];
+    }
 
     /** Always re-resolve through the owner relationship — never trust a frontend id alone. */
     private function userIdea(int $id): CraftIdea

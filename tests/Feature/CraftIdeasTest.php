@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\CraftIdeas;
-use App\Livewire\TaskBoard;
 use App\Models\CraftIdea;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -15,17 +14,18 @@ class CraftIdeasTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_an_idea_can_be_captured_from_the_dashboard(): void
+    public function test_an_idea_can_be_captured_on_the_ideas_page(): void
     {
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newIdeaTitle', '  Kerzen giessen  ')
-            ->set('newIdeaWhereToBegin', '  Sojawachs bestellen  ')
-            ->call('addCraftIdea')
+            ->test(CraftIdeas::class)
+            ->set('newTitle', '  Kerzen giessen  ')
+            ->set('newWhereToBegin', '  Sojawachs bestellen  ')
+            ->call('addIdea')
             ->assertHasNoErrors()
-            ->assertSet('newIdeaTitle', '');
+            ->assertSet('newTitle', '')
+            ->assertSet('newWhereToBegin', '');
 
         $this->assertDatabaseHas('craft_ideas', [
             'user_id' => $user->id,
@@ -35,34 +35,47 @@ class CraftIdeasTest extends TestCase
         ]);
     }
 
-    public function test_where_to_begin_is_optional(): void
+    public function test_where_to_begin_is_optional_on_the_ideas_page(): void
     {
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newIdeaTitle', 'Fotobuch gestalten')
-            ->call('addCraftIdea')
+            ->test(CraftIdeas::class)
+            ->set('newTitle', 'Fotobuch gestalten')
+            ->call('addIdea')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('craft_ideas', [
-            'user_id' => $user->id,
             'title' => 'Fotobuch gestalten',
             'where_to_begin' => null,
         ]);
     }
 
-    public function test_a_blank_title_is_rejected(): void
+    public function test_a_blank_title_is_rejected_on_the_ideas_page(): void
     {
         $user = User::factory()->create();
 
         Livewire::actingAs($user)
-            ->test(TaskBoard::class)
-            ->set('newIdeaTitle', '')
-            ->call('addCraftIdea')
-            ->assertHasErrors(['newIdeaTitle' => 'required']);
+            ->test(CraftIdeas::class)
+            ->set('newTitle', '   ')
+            ->call('addIdea')
+            ->assertHasErrors(['newTitle' => 'required']);
 
         $this->assertDatabaseCount('craft_ideas', 0);
+    }
+
+    /** The first idea added to an empty page becomes the hero immediately. */
+    public function test_capturing_on_an_empty_page_promotes_the_new_idea_to_hero(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)->test(CraftIdeas::class);
+        $this->assertNull($component->instance()->heroId);
+
+        $component->set('newTitle', 'Regal bauen')->call('addIdea');
+
+        $this->assertNotNull($component->instance()->heroId);
+        $component->assertSee('Regal bauen');
     }
 
     public function test_the_page_suggests_a_hero_idea_when_ideas_exist(): void

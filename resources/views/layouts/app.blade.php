@@ -13,6 +13,28 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
     </head>
+    @php
+        // A floating "+" belongs where capture is the page's own main action and the
+        // bottom-right corner is nothing but scrollable content: the board (it floats
+        // above that page's bottom nav) and Bastelideen. Everywhere else the corner is
+        // spoken for — the Zeitplan pins its "Zeichnen:" category row to the bottom of
+        // a viewport-height grid, which no amount of page padding can scroll clear —
+        // and those pages have their own prominent add buttons anyway, so the global
+        // capture is a utility action there and belongs in the header.
+        $showCaptureFab = request()->routeIs('app')
+            || request()->routeIs('crafts')
+            || request()->routeIs('agenda');
+
+        // The panel opens on Inbox by default. On a page that is about one specific
+        // kind of thing, opening it there should mean that thing — otherwise the
+        // button sitting on the Bastelideen page quietly files an Inbox task, and
+        // the one on Agenda promises an entry it wouldn't create.
+        $captureTarget = match (true) {
+            request()->routeIs('crafts') => 'craft',
+            request()->routeIs('agenda') => 'agenda',
+            default => null,
+        };
+    @endphp
     <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">
             Zum Inhalt springen
@@ -52,27 +74,45 @@
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
                             Agenda
                         </a>
-                        <a href="{{ route('crafts') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-surface text-ink' => request()->routeIs('crafts'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('crafts'),
-                        ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a7 7 0 1 0 0 14h1a1.5 1.5 0 0 0 1.06-2.56 1.5 1.5 0 0 1 1.06-2.56H14a3 3 0 0 0 3-3 7 7 0 0 0-7-6Z"/><circle cx="7" cy="9" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="7" r=".8" fill="currentColor" stroke="none"/><circle cx="13" cy="9" r=".8" fill="currentColor" stroke="none"/></svg>
-                            Bastelideen
-                        </a>
-                        <a href="{{ route('emergency') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
-                            'bg-surface text-ink' => !auth()->user()->isInEmergencyMode() && request()->routeIs('emergency'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !auth()->user()->isInEmergencyMode() && !request()->routeIs('emergency'),
-                        ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                                <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                <circle cx="10" cy="14" r="1" fill="currentColor"/>
-                            </svg>
-                            Notfall
-                        </a>
+                        {{-- Notfall is a mode, not a place: the pill only exists while the
+                             mode is actually running (or while its own screen is open).
+                             Otherwise it lives in the avatar menu, next to Bastelideen. --}}
+                        @if (auth()->user()->isInEmergencyMode() || request()->routeIs('emergency'))
+                            <a href="{{ route('emergency') }}" wire:navigate @class([
+                                'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
+                                'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
+                                'bg-surface text-ink' => !auth()->user()->isInEmergencyMode(),
+                            ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
+                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                    <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                    <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <circle cx="10" cy="14" r="1" fill="currentColor"/>
+                                </svg>
+                                Notfall
+                            </a>
+                        @endif
+
+                        {{-- Quick capture: the visible counterpart to the "N" shortcut, so
+                             the panel is never a hidden-only feature. On touch it hides
+                             wherever the floating button below takes over, so only one "+"
+                             is ever on screen at a time.
+                             x-data is required, not decorative — Alpine only processes
+                             @click inside an Alpine component, and this button sits outside
+                             every other x-data scope on the page. --}}
+                        <button
+                            type="button"
+                            x-data
+                            @click="$store.quickCapture.show($event.currentTarget, @js($captureTarget))"
+                            @class([
+                                'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
+                                'hidden sm:grid' => $showCaptureFab,
+                                'grid' => !$showCaptureFab,
+                            ])
+                            aria-label="Schnellerfassung öffnen (Taste N)"
+                            title="Schnellerfassung — Taste N"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
                         <div x-data="{ open: false }" class="relative">
                             <button
                                 @click="open = !open"
@@ -107,10 +147,12 @@
                                 <a href="{{ route('agenda') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Agenda
                                 </a>
-                                <a href="{{ route('crafts') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                {{-- Bastelideen and Notfall have no permanent desktop pill
+                                     any more, so they stay in the menu at every width. --}}
+                                <a href="{{ route('crafts') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Bastelideen
                                 </a>
-                                <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Notfall
                                 </a>
                                 <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
@@ -136,6 +178,32 @@
                 {{ $slot }}
             </main>
         </div>
+
+        @auth
+            @if ($showCaptureFab)
+                {{-- Touch-only: bottom-right is where a "+" is expected on a phone, and
+                     the header button is genuinely hard to find there. On the board this
+                     clears the fixed bottom nav; on Bastelideen nothing is pinned, so it
+                     sits at the normal inset. Both pages reserve matching bottom padding
+                     so the last card can always be scrolled out from under it.
+                     x-data as above: without it Alpine never binds the @click. --}}
+                <button
+                    type="button"
+                    x-data
+                    @click="$store.quickCapture.show($event.currentTarget, @js($captureTarget))"
+                    @class([
+                        'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
+                        'bottom-[84px]' => request()->routeIs('app'),
+                        'bottom-5' => !request()->routeIs('app'),
+                    ])
+                    aria-label="Schnellerfassung öffnen"
+                >
+                    <svg class="h-6 w-6" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            @endif
+
+            <livewire:quick-capture />
+        @endauth
 
         @livewireScripts
     </body>
