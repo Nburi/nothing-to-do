@@ -32,6 +32,11 @@ class TaskBoard extends Component
 
     public ?string $newProjectDeadline = null;
 
+    /** Bastelideen quick-capture. */
+    public string $newIdeaTitle = '';
+
+    public string $newIdeaWhereToBegin = '';
+
     /** Active mobile page: inbox | todos | tasks | today | projects. */
     public string $mobileTab = 'inbox';
 
@@ -328,10 +333,10 @@ class TaskBoard extends Component
     public function counts(): array
     {
         return [
-            'inbox'    => $this->inbox->where('is_completed', false)->count() + $this->emergencyTasksFor('inbox')->count(),
-            'todos'    => $this->todosAll->where('is_completed', false)->count() + $this->emergencyTasksFor('todos')->count(),
-            'tasks'    => $this->tasksAll->where('is_completed', false)->count() + $this->emergencyTasksFor('tasks')->count(),
-            'today'    => $this->today->count(),
+            'inbox' => $this->inbox->where('is_completed', false)->count() + $this->emergencyTasksFor('inbox')->count(),
+            'todos' => $this->todosAll->where('is_completed', false)->count() + $this->emergencyTasksFor('todos')->count(),
+            'tasks' => $this->tasksAll->where('is_completed', false)->count() + $this->emergencyTasksFor('tasks')->count(),
+            'today' => $this->today->count(),
             'projects' => $this->projects->count() + $this->projectTasks->where('is_completed', false)->count(),
         ];
     }
@@ -359,15 +364,15 @@ class TaskBoard extends Component
         $this->newTitle = trim($this->newTitle);
 
         $data = $this->validate([
-            'newTitle'    => ['required', 'string', 'max:255'],
-            'newList'     => ['required', 'in:inbox,todos,tasks'],
+            'newTitle' => ['required', 'string', 'max:255'],
+            'newList' => ['required', 'in:inbox,todos,tasks'],
             'newDeadline' => ['nullable', 'date'],
-            'newDueDate'  => ['nullable', 'date'],
+            'newDueDate' => ['nullable', 'date'],
         ]);
 
         auth()->user()->tasks()->create([
-            'title'    => $data['newTitle'],
-            'list'     => $data['newList'],
+            'title' => $data['newTitle'],
+            'list' => $data['newList'],
             'deadline' => $data['newDeadline'] ?: null,
             'due_date' => $data['newDueDate'] ?: null,
             'sort_order' => 0,
@@ -382,18 +387,38 @@ class TaskBoard extends Component
         $this->newProjectName = trim($this->newProjectName);
 
         $data = $this->validate([
-            'newProjectName'     => ['required', 'string', 'max:255'],
+            'newProjectName' => ['required', 'string', 'max:255'],
             'newProjectDeadline' => ['nullable', 'date'],
         ]);
 
         auth()->user()->projects()->create([
-            'name'     => $data['newProjectName'],
+            'name' => $data['newProjectName'],
             'deadline' => $data['newProjectDeadline'] ?: null,
             'sort_order' => 0,
         ]);
 
         $this->reset(['newProjectName', 'newProjectDeadline']);
         $this->dispatch('project-added');
+    }
+
+    /** Bastelideen live on their own standalone page (/app/crafts) — this only captures. */
+    public function addCraftIdea(): void
+    {
+        $this->newIdeaTitle = trim($this->newIdeaTitle);
+        $this->newIdeaWhereToBegin = trim($this->newIdeaWhereToBegin);
+
+        $data = $this->validate([
+            'newIdeaTitle' => ['required', 'string', 'max:255'],
+            'newIdeaWhereToBegin' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        auth()->user()->craftIdeas()->create([
+            'title' => $data['newIdeaTitle'],
+            'where_to_begin' => $data['newIdeaWhereToBegin'] !== '' ? $data['newIdeaWhereToBegin'] : null,
+        ]);
+
+        $this->reset(['newIdeaTitle', 'newIdeaWhereToBegin']);
+        $this->dispatch('idea-added');
     }
 
     /**
@@ -451,7 +476,7 @@ class TaskBoard extends Component
     public function reorder(string $list, bool $today, array $ids): void
     {
         // Board columns + standalone project list are valid drag targets.
-        if (! in_array($list, [... Task::BOARD_LISTS, 'projects'], true)) {
+        if (! in_array($list, [...Task::BOARD_LISTS, 'projects'], true)) {
             return;
         }
 
@@ -466,8 +491,8 @@ class TaskBoard extends Component
             }
 
             $updates = [
-                'list'       => $list,
-                'is_today'   => $today,
+                'list' => $list,
+                'is_today' => $today,
                 'sort_order' => $position,
             ];
 

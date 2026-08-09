@@ -71,6 +71,12 @@ class User extends Authenticatable
         return $this->hasMany(AgendaEntry::class);
     }
 
+    /** @return HasMany<CraftIdea, $this> */
+    public function craftIdeas(): HasMany
+    {
+        return $this->hasMany(CraftIdea::class);
+    }
+
     /** The project currently in "emergency mode", or null if not active. */
     public function emergencyProject(): BelongsTo
     {
