@@ -113,6 +113,8 @@
                 @error('newTitle') <p class="mt-1.5 px-1 text-xs text-signal">{{ $message }}</p> @enderror
             </form>
 
+            @include('livewire.partials.craft-idea-capture', ['spacing' => 'mb-6'])
+
             <div class="grid grid-cols-4 gap-5">
                 @include('livewire.partials.column', [
                     'list' => 'inbox', 'title' => 'Inbox', 'count' => $this->counts['inbox'],
@@ -345,6 +347,8 @@
                     @error('newTitle') <p class="mt-1.5 px-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </form>
             @endif
+
+            @include('livewire.partials.craft-idea-capture', ['spacing' => 'mb-4'])
 
             <div class="flex flex-col gap-2.5">
                 @switch($mobileTab)

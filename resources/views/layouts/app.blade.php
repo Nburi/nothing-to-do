@@ -52,6 +52,14 @@
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
                             Agenda
                         </a>
+                        <a href="{{ route('crafts') }}" wire:navigate @class([
+                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
+                            'bg-surface text-ink' => request()->routeIs('crafts'),
+                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('crafts'),
+                        ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a7 7 0 1 0 0 14h1a1.5 1.5 0 0 0 1.06-2.56 1.5 1.5 0 0 1 1.06-2.56H14a3 3 0 0 0 3-3 7 7 0 0 0-7-6Z"/><circle cx="7" cy="9" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="7" r=".8" fill="currentColor" stroke="none"/><circle cx="13" cy="9" r=".8" fill="currentColor" stroke="none"/></svg>
+                            Bastelideen
+                        </a>
                         <a href="{{ route('emergency') }}" wire:navigate @class([
                             'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
                             'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
@@ -98,6 +106,9 @@
                                 </a>
                                 <a href="{{ route('agenda') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Agenda
+                                </a>
+                                <a href="{{ route('crafts') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
+                                    Bastelideen
                                 </a>
                                 <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
                                     Notfall

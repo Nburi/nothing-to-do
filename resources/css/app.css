@@ -216,6 +216,26 @@
         cursor: grabbing;
     }
 
+    /* Bastelideen pinboard: each card's resting tilt comes from an inline rotate(); a
+       plain class rule (not a Tailwind rotate utility, which would fight the inline
+       transform) straightens it on hover/focus. !important is required to beat the
+       inline style — see CLAUDE.md's cascade note if this ever looks like it "does
+       nothing". */
+    .pin-card {
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    }
+    .pin-card:hover,
+    .pin-card:focus-within {
+        transform: translateY(-2px) rotate(0deg) !important;
+        box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+    }
+    @media (prefers-color-scheme: dark) {
+        .pin-card:hover,
+        .pin-card:focus-within {
+            box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+        }
+    }
+
     /* While a task is being dragged, project cards hint that they accept a drop. */
     body.dragging-task .project-drop {
         outline: 1.5px dashed rgb(var(--line));
