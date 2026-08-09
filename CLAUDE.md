@@ -105,7 +105,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (365 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (372 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -230,7 +230,21 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **`App\Livewire\QuickCapture`** replaces them with one panel, included in `layouts/app.blade.php` inside
   `@auth` rather than in `TaskBoard` — being reachable from *every* page is the whole point, and a component
   living in the board could not be. It writes to `tasks`, `projects` or `craft_ideas` depending on the chosen
-  target (`QuickCapture::TARGETS` = `inbox|todos|tasks|project|craft`), always through the owner relation.
+  target (`QuickCapture::TARGETS` = `inbox|todos|tasks|project|craft|agenda`), always through the owner
+  relation.
+- **Per-target fields**, revealed progressively: the optional ones appear as soon as the title has content,
+  rather than waiting for the "Mehr" toggle (which still overrides in both directions). `wire:model` is
+  deferred, so `$wire.title` does *not* change per keystroke — the trigger is a **local Alpine mirror**
+  (`typed`, fed by `@input`), reset on `captured` and on `quick-capture-opened`. Tasks get deadline +
+  Wunschtermin, a project gets a deadline, a Bastelidee gets "Wo anfangen".
+- **Agenda is the one target whose extras are required**, not optional — type, Fach and date, mirroring
+  `Agenda::save()`'s own rules. Those rules are therefore added to `validate()` **only** when `agenda` is the
+  chosen target, and its section can't be folded away (the "Mehr" button hides). Fach autocompletes from
+  `existingSubjects()` through a native `<datalist>` — the same source as the Agenda page's Alpine combobox,
+  without duplicating it. Fach, date and type survive a save the way the target does: several homework items
+  for one subject on one day is the normal case, not the exception.
+- **The title placeholder follows the target** ("Wie heisst das Projekt?", "Was ist aufgegeben?") — "Was
+  steht an?" reads wrong for half of them.
 - **Open/closed is Alpine, not Livewire** — ephemeral UI state, same as `draw`/`projectPicker`. The
   `quickCapture` store (`resources/js/app.js`) owns `open`, `show(trigger)` and `hide()`, so opening the
   panel costs no round trip. `show()` also dispatches `quick-capture-opened`, which the component's
@@ -242,8 +256,8 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   guarded against `INPUT`/`TEXTAREA`/`SELECT`/`contenteditable` and against any modifier), or a `+` button.
   `Esc` and click-outside close it, `x-trap.noscroll` traps focus, and `hide()` returns focus to whatever
   opened it.
-- **Where the `+` sits** is decided by `$showCaptureFab` in `layouts/app.blade.php` (`routeIs('app')` or
-  `routeIs('crafts')`). On touch those two pages get a **floating button bottom-right** — the position
+- **Where the `+` sits** is decided by `$showCaptureFab` in `layouts/app.blade.php` (`routeIs('app')`,
+  `routeIs('crafts')` or `routeIs('agenda')`). On touch those pages get a **floating button bottom-right** — the position
   phones have trained everyone to look in, and a header button there is genuinely hard to find. Every other
   page keeps the header button, because their bottom-right corner isn't free: the Zeitplan pins its
   "Zeichnen:" category row to the bottom of a viewport-height grid, which **no amount of page padding can
@@ -251,8 +265,13 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   own prominent add buttons, so global capture is a utility action there and the header is the right home
   for it. On touch the header button hides wherever the floating one takes over, so exactly one `+` is ever
   on screen; desktop only ever has the header button. Both pages with the floating button reserve matching
-  bottom padding (the board already had `pb-28` for its nav; `craft-ideas.blade.php` got `pb-28 sm:pb-16`)
-  so the last card can always be scrolled out from under it.
+  bottom padding (the board already had `pb-28` for its nav; `craft-ideas.blade.php` got `pb-28 sm:pb-16`;
+  `agenda.blade.php` already had it) so the last card can always be scrolled out from under it.
+- **`$captureTarget`** (same `@php` block) opens the panel on the chip matching the page's own subject —
+  `crafts` → Bastelidee, `agenda` → Agenda, everywhere else the Inbox default. Without it a `+` in the
+  bottom-right corner of a page about one kind of thing quietly files something else: on Bastelideen it
+  created an Inbox task, and on Agenda it advertised an entry the panel couldn't create at all. That was the
+  reason Agenda became a target rather than losing its button.
 - **Choosing a target:** chips, or **↑/↓ while typing**. Deliberately *not* number keys, even though the
   design mockup implied them — the digits belong to the title field, and every modifier+digit combination in
   range is already claimed by the browser (Alt/Ctrl+1–9 switch tabs). ↑/↓ do nothing useful in a
