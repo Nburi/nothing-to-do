@@ -1,4 +1,5 @@
-<div class="mx-auto max-w-2xl px-4 pb-16 pt-5 sm:px-6">
+{{-- pb-28 on touch: room to scroll the last pinboard card clear of the floating "+". --}}
+<div class="mx-auto max-w-2xl px-4 pb-28 pt-5 sm:px-6 sm:pb-16">
     <h1 class="text-xl font-medium tracking-tight text-ink">Bastelideen</h1>
     <p class="mt-1 text-[13px] text-ink-faint">Für wenn dir langweilig ist — geschnappt, nicht sortiert.</p>
 

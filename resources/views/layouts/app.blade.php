@@ -13,6 +13,16 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
     </head>
+    @php
+        // A floating "+" belongs where capture is the page's own main action and the
+        // bottom-right corner is nothing but scrollable content: the board (it floats
+        // above that page's bottom nav) and Bastelideen. Everywhere else the corner is
+        // spoken for — the Zeitplan pins its "Zeichnen:" category row to the bottom of
+        // a viewport-height grid, which no amount of page padding can scroll clear —
+        // and those pages have their own prominent add buttons anyway, so the global
+        // capture is a utility action there and belongs in the header.
+        $showCaptureFab = request()->routeIs('app') || request()->routeIs('crafts');
+    @endphp
     <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">
             Zum Inhalt springen
@@ -71,10 +81,9 @@
                         @endif
 
                         {{-- Quick capture: the visible counterpart to the "N" shortcut, so
-                             the panel is never a hidden-only feature. Deliberately in the
-                             (sticky) header at every width rather than a floating button:
-                             a floating one covers whatever sits in the bottom-right corner,
-                             which on the Zeitplan is the category row you draw with.
+                             the panel is never a hidden-only feature. On touch it hides
+                             wherever the floating button below takes over, so only one "+"
+                             is ever on screen at a time.
                              x-data is required, not decorative — Alpine only processes
                              @click inside an Alpine component, and this button sits outside
                              every other x-data scope on the page. --}}
@@ -82,7 +91,11 @@
                             type="button"
                             x-data
                             @click="$store.quickCapture.show($event.currentTarget)"
-                            class="grid h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                            @class([
+                                'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
+                                'hidden sm:grid' => $showCaptureFab,
+                                'grid' => !$showCaptureFab,
+                            ])
                             aria-label="Schnellerfassung öffnen (Taste N)"
                             title="Schnellerfassung — Taste N"
                         >
@@ -155,6 +168,28 @@
         </div>
 
         @auth
+            @if ($showCaptureFab)
+                {{-- Touch-only: bottom-right is where a "+" is expected on a phone, and
+                     the header button is genuinely hard to find there. On the board this
+                     clears the fixed bottom nav; on Bastelideen nothing is pinned, so it
+                     sits at the normal inset. Both pages reserve matching bottom padding
+                     so the last card can always be scrolled out from under it.
+                     x-data as above: without it Alpine never binds the @click. --}}
+                <button
+                    type="button"
+                    x-data
+                    @click="$store.quickCapture.show($event.currentTarget)"
+                    @class([
+                        'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
+                        'bottom-[84px]' => request()->routeIs('app'),
+                        'bottom-5' => !request()->routeIs('app'),
+                    ])
+                    aria-label="Schnellerfassung öffnen"
+                >
+                    <svg class="h-6 w-6" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            @endif
+
             <livewire:quick-capture />
         @endauth
 
