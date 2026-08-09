@@ -2,7 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Models\AgendaEntry;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -23,7 +26,7 @@ class QuickCapture extends Component
      * are also the task `list` value they write; the last two go to entirely
      * different tables, which is why this isn't just Task::BOARD_LISTS.
      */
-    public const TARGETS = ['inbox', 'todos', 'tasks', 'project', 'craft'];
+    public const TARGETS = ['inbox', 'todos', 'tasks', 'project', 'craft', 'agenda'];
 
     /** Targets that create a Task — the value doubles as the `list` column. */
     public const TASK_TARGETS = ['inbox', 'todos', 'tasks'];
@@ -37,6 +40,18 @@ class QuickCapture extends Component
     public ?string $dueDate = null;
 
     public string $whereToBegin = '';
+
+    /**
+     * Agenda fields. Unlike every other target's extras these are *required*,
+     * not optional — an AgendaEntry has no meaning without a subject and a date
+     * (see Agenda::save()). The panel mirrors that page's rules rather than
+     * inventing looser ones.
+     */
+    public string $agendaType = 'homework';
+
+    public string $subject = '';
+
+    public ?string $date = null;
 
     /**
      * The thing captured last, echoed back as a confirmation line so the panel
@@ -55,8 +70,20 @@ class QuickCapture extends Component
             'tasks' => 'Task',
             'project' => 'Projekt',
             'craft' => 'Bastelidee',
+            'agenda' => 'Agenda',
             default => 'Inbox',
         };
+    }
+
+    /** Distinct subjects already used — same suggestion source as the Agenda page's Fach field. */
+    #[Computed]
+    public function existingSubjects(): Collection
+    {
+        return auth()->user()->agendaEntries()
+            ->select('subject')
+            ->distinct()
+            ->orderBy('subject')
+            ->pluck('subject');
     }
 
     public function setTarget(string $target): void
@@ -79,6 +106,14 @@ class QuickCapture extends Component
             $this->deadline = null;
         }
 
+        if ($target !== 'agenda') {
+            $this->subject = '';
+            $this->date = null;
+            $this->agendaType = 'homework';
+        } else {
+            $this->deadline = null;
+        }
+
         $this->resetValidation();
     }
 
@@ -94,7 +129,7 @@ class QuickCapture extends Component
     #[On('quick-capture-opened')]
     public function resetPanel(?string $target = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'whereToBegin', 'captured']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date']);
         $this->resetValidation();
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
@@ -111,14 +146,25 @@ class QuickCapture extends Component
     {
         $this->title = trim($this->title);
         $this->whereToBegin = trim($this->whereToBegin);
+        $this->subject = trim($this->subject);
 
-        $this->validate([
+        $rules = [
             'title' => ['required', 'string', 'max:255'],
             'target' => ['required', Rule::in(self::TARGETS)],
             'deadline' => ['nullable', 'date'],
             'dueDate' => ['nullable', 'date'],
             'whereToBegin' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ];
+
+        // Agenda's extras are required, so they're only enforced when that's the
+        // chosen target — otherwise every other capture would demand a Fach.
+        if ($this->target === 'agenda') {
+            $rules['agendaType'] = ['required', Rule::in(array_keys(AgendaEntry::TYPES))];
+            $rules['subject'] = ['required', 'string', 'max:100'];
+            $rules['date'] = ['required', 'date'];
+        }
+
+        $this->validate($rules);
 
         $user = auth()->user();
         $title = $this->title;
@@ -133,6 +179,12 @@ class QuickCapture extends Component
                 'title' => $title,
                 'where_to_begin' => $this->whereToBegin !== '' ? $this->whereToBegin : null,
             ]),
+            'agenda' => $user->agendaEntries()->create([
+                'type' => $this->agendaType,
+                'subject' => $this->subject,
+                'title' => $title,
+                'date' => $this->date,
+            ]),
             default => $user->tasks()->create([
                 'title' => $title,
                 'list' => $this->target,
@@ -145,7 +197,9 @@ class QuickCapture extends Component
         $this->captured = ['title' => $title, 'label' => self::labelFor($this->target)];
 
         // The target deliberately survives: capturing three To-Dos in a row
-        // shouldn't mean re-picking the chip every time.
+        // shouldn't mean re-picking the chip every time. Agenda's Fach, date and
+        // type survive for the same reason — several homework items for the same
+        // subject on the same day is the normal case, not the exception.
         $this->reset(['title', 'deadline', 'dueDate', 'whereToBegin']);
 
         $this->dispatch('captured');
@@ -160,6 +214,10 @@ class QuickCapture extends Component
             'deadline.date' => 'Das ist kein gültiges Datum.',
             'dueDate.date' => 'Das ist kein gültiges Datum.',
             'whereToBegin.max' => 'Das ist zu lang — höchstens 2000 Zeichen.',
+            'subject.required' => 'Für die Agenda fehlt noch das Fach.',
+            'subject.max' => 'Das Fach ist zu lang — höchstens 100 Zeichen.',
+            'date.required' => 'Für die Agenda fehlt noch das Datum.',
+            'date.date' => 'Das ist kein gültiges Datum.',
         ];
     }
 

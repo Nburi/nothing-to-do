@@ -27,8 +27,13 @@
 
         // The panel opens on Inbox by default. On a page that is about one specific
         // kind of thing, opening it there should mean that thing — otherwise the
-        // button sitting on the Bastelideen page quietly files an Inbox task.
-        $captureTarget = request()->routeIs('crafts') ? 'craft' : null;
+        // button sitting on the Bastelideen page quietly files an Inbox task, and
+        // the one on Agenda promises an entry it wouldn't create.
+        $captureTarget = match (true) {
+            request()->routeIs('crafts') => 'craft',
+            request()->routeIs('agenda') => 'agenda',
+            default => null,
+        };
     @endphp
     <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">

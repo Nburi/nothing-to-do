@@ -6,13 +6,25 @@
 @endphp
 <div
     x-data="{
-        showExtra: false,
+        /* Mirrors the title input locally. wire:model is deferred, so $wire.title
+           does not change per keystroke — this does, without a round trip. */
+        typed: '',
+        /* null = follow typing; true/false = the user overrode it with the button. */
+        forced: null,
         targets: @js($targets),
+        /* Optional fields appear as soon as there is something to attach them to.
+           Agenda is always open: its fields are required, not optional. */
+        get showExtra() {
+            if ($wire.target === 'agenda') return true;
+            return this.forced !== null ? this.forced : this.typed.trim().length > 0;
+        },
         cycle(dir) {
             const i = this.targets.indexOf($wire.target);
             $wire.setTarget(this.targets[(i + dir + this.targets.length) % this.targets.length]);
         },
     }"
+    @captured.window="typed = ''; forced = null"
+    @quick-capture-opened.window="typed = ''; forced = null"
     x-show="$store.quickCapture.open"
     x-cloak
     class="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
@@ -47,7 +59,13 @@
                     type="text"
                     wire:model="title"
                     placeholder="Was steht an?"
+                    :placeholder="{
+                        project: 'Wie heisst das Projekt?',
+                        craft: 'Was möchtest du basteln?',
+                        agenda: 'Was ist aufgegeben?',
+                    }[$wire.target] ?? 'Was steht an?'"
                     autocomplete="off"
+                    @input="typed = $event.target.value"
                     @keydown.down.prevent="cycle(1)"
                     @keydown.up.prevent="cycle(-1)"
                     class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0"
@@ -77,9 +95,11 @@
                     </button>
                 @endforeach
 
+                {{-- Hidden for Agenda: its fields are required, so there is nothing to fold away. --}}
                 <button
                     type="button"
-                    @click="showExtra = !showExtra"
+                    x-show="$wire.target !== 'agenda'"
+                    @click="forced = !showExtra"
                     class="ml-auto flex items-center gap-1 rounded-card px-1.5 py-1 text-xs text-ink-faint transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
                 >
@@ -127,6 +147,50 @@
                         class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
                     />
                 </div>
+
+                {{-- Agenda: type, Fach and date are all required (mirrors Agenda::save()). --}}
+                <div x-show="$wire.target === 'agenda'" style="display: none;" class="flex flex-col gap-3">
+                    <div class="flex items-center gap-1.5">
+                        @foreach (App\Models\AgendaEntry::TYPES as $value => $label)
+                            <button
+                                type="button"
+                                wire:click="$set('agendaType', '{{ $value }}')"
+                                @class([
+                                    'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                    'border-forest bg-forest text-white' => $agendaType === $value,
+                                    'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $agendaType !== $value,
+                                ])
+                                aria-pressed="{{ $agendaType === $value ? 'true' : 'false' }}"
+                            >{{ $label }}</button>
+                        @endforeach
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="qc-subject" class="mb-1 block text-[11px] font-medium text-ink-faint">Fach</label>
+                            {{-- A native datalist rather than the Agenda page's full Alpine
+                                 combobox: it autocompletes from the same source with no extra
+                                 markup, and stays invisible until the field is used. --}}
+                            <input
+                                id="qc-subject"
+                                type="text"
+                                wire:model="subject"
+                                list="qc-subject-options"
+                                placeholder="z. B. Mathematik"
+                                autocomplete="off"
+                                class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                            />
+                            <datalist id="qc-subject-options">
+                                @foreach ($this->existingSubjects as $s)
+                                    <option value="{{ $s }}"></option>
+                                @endforeach
+                            </datalist>
+                        </div>
+                        <div>
+                            <label for="qc-date" class="mb-1 block text-[11px] font-medium text-ink-faint">Datum</label>
+                            <input id="qc-date" type="date" wire:model="date" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- Footer: errors, the "just captured" confirmation, or the key hints. --}}
@@ -141,6 +205,12 @@
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('whereToBegin')
+                    <span class="text-signal">{{ $message }}</span>
+                @enderror
+                @error('subject')
+                    <span class="text-signal">{{ $message }}</span>
+                @enderror
+                @error('date')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
 
