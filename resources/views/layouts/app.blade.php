@@ -71,12 +71,18 @@
                         @endif
 
                         {{-- Quick capture: the visible counterpart to the "N" shortcut, so
-                             the panel is never a hidden-only feature. --}}
+                             the panel is never a hidden-only feature. Deliberately in the
+                             (sticky) header at every width rather than a floating button:
+                             a floating one covers whatever sits in the bottom-right corner,
+                             which on the Zeitplan is the category row you draw with.
+                             x-data is required, not decorative — Alpine only processes
+                             @click inside an Alpine component, and this button sits outside
+                             every other x-data scope on the page. --}}
                         <button
                             type="button"
                             x-data
                             @click="$store.quickCapture.show($event.currentTarget)"
-                            class="hidden h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest sm:grid"
+                            class="grid h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
                             aria-label="Schnellerfassung öffnen (Taste N)"
                             title="Schnellerfassung — Taste N"
                         >
@@ -149,26 +155,6 @@
         </div>
 
         @auth
-            {{-- Mobile counterpart to the header's "+" — a hardware keyboard isn't
-                 a given on touch, so capture always has a visible entry point.
-                 Sits clear of the board's fixed bottom nav, which only that page has. --}}
-            {{-- x-data is required, not decorative: Alpine only processes @click on an
-                 element that is itself inside an Alpine component, and both triggers
-                 sit outside every other x-data scope on the page. --}}
-            <button
-                type="button"
-                x-data
-                @click="$store.quickCapture.show($event.currentTarget)"
-                @class([
-                    'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
-                    'bottom-[84px]' => request()->routeIs('app'),
-                    'bottom-5' => !request()->routeIs('app'),
-                ])
-                aria-label="Schnellerfassung öffnen"
-            >
-                <svg class="h-6 w-6" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-
             <livewire:quick-capture />
         @endauth
 

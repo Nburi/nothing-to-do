@@ -158,7 +158,7 @@
                     <span>↵ Erfassen</span>
                     <span>Esc schliessen</span>
                 </span>
-                <span class="ml-auto flex-none text-ink-faint sm:hidden">Bleibt offen für den nächsten Eintrag</span>
+                <span class="ml-auto flex-none text-ink-faint sm:hidden">Bleibt offen für den nächsten</span>
             </div>
         </form>
     </div>
