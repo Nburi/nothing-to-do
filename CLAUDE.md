@@ -657,6 +657,56 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - Nav entry in `layouts/app.blade.php`, same pill/mobile-dropdown treatment as Vorbereiten/Zeitplan/Notfall.
 - No push notifications, no API endpoint (Sanctum) yet — purely a standalone Livewire page in this pass.
 
+### Bastelideen (built)
+- A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
+  to Task/Project, and it doesn't surface on the board, in Vorbereitung, or in Notfallmodus.
+- **`App\Models\CraftIdea`** — `user_id, title, where_to_begin(nullable), is_done, timestamps`. No date
+  fields at all (unlike Agenda) — these are "someday" ideas, not deadline-driven. Scopes `forUser/open/done`.
+  `User::craftIdeas()` is the standard `hasMany`.
+- **`App\Livewire\CraftIdeas`** (class-based, `/app/crafts`, `route('crafts')`) is a single-purpose "browse
+  and pick one" page, not a form-driven CRUD list like Agenda's:
+  - **Hero suggestion ("Mach doch das")** — `$heroId` (persisted on the component, not the DB) names the
+    one idea currently pushed to the front. `render()` calls a private `ensureHero()` on every request,
+    which self-heals whenever `$heroId` no longer points at a still-open idea belonging to the user (done,
+    deleted, or — since it's re-checked through `auth()->user()->craftIdeas()->open()` — foreign) by
+    rerolling a fresh one. This is what makes `markDone`/`deleteIdea` on the hero itself "just work" without
+    each mutation needing its own explicit reroll call.
+  - **`rerollHero(bool $excludeCurrent)`** picks a random open idea into `$heroId`, tracking the previous
+    pick in `$lastHeroId`. With `$excludeCurrent` (used by the explicit `shuffle()` action, not by the
+    self-heal path), it draws from the open pool minus the current hero so "Andere Idee" never immediately
+    repeats — falling back to the full pool if that would leave no candidates (i.e. only one open idea
+    exists, so "excluding it" is impossible). An empty pool (no open ideas left) clears both ids and the
+    view falls through to its empty state.
+  - **The pinboard** (`otherIdeas` — every open idea except the hero, `orderBy('id')`) renders the rest as
+    rotated "pinned note" cards (`resources/views/livewire/craft-ideas.blade.php`): a small randomised
+    rotation/column-span/pin-colour per card (cycled from fixed arrays keyed on `$loop->index`, purely
+    decorative, no persisted layout) with a drawing-pin dot glued to the top edge. Clicking a card's body
+    calls `promote($id)`, which swaps it straight into the hero slot (scoped through `->open()`, so a
+    done/foreign id 404s the same as every other mutation here) — the deliberate "pick a different one
+    myself" alternative to the random "Andere Idee" shuffle.
+  - **Done ideas** (`doneIdeas`, `orderByDesc('updated_at')`) are collapsed behind a client-only
+    (`x-data="{ show: false }"`, no round-trip) "N erledigt · anzeigen" disclosure at the bottom, each shown
+    as a small pill with a restore button (`restoreIdea`) rather than the row-per-entry layout Agenda uses.
+- **Ownership scoping** — every single-idea mutation resolves through a private `userIdea(int $id)` helper
+  (`auth()->user()->craftIdeas()->findOrFail($id)`), mirroring `TaskBoard::userTask()`/`Agenda::userEntry()`
+  — a foreign id 404s (`ModelNotFoundException`), never silently no-ops or leaks another user's idea.
+  `promote()` additionally scopes through `->open()` directly (not via `userIdea()`) since a done idea must
+  never become the hero. **Delete** (`deleteIdea`) uses the same armed double-click pattern as everywhere
+  else in the app (never `confirm()`) — both on the hero card and on each pinboard card (the latter
+  hover-revealed on desktop via `group-hover/idea:opacity-100`, always-visible-but-dim on mobile since
+  there's no hover there, same convention as the task card's quick-date placeholder).
+- **Capture is not on this page at all.** Unlike Agenda's own inline form, Bastelideen has no add-idea UI
+  on `/app/crafts` itself — new ideas are always captured from a quick-add bar embedded directly in the
+  dashboard, `partials/craft-idea-capture.blade.php`, `@include`d twice in `task-board.blade.php` (the
+  desktop Projekte column and the mobile board section). Its state (`newIdeaTitle`, `newIdeaWhereToBegin`)
+  and its action (`TaskBoard::addCraftIdea()`) live directly on `App\Livewire\TaskBoard` — there's no
+  separate "QuickCapture" component or cross-component event listener; the capture bar is just another
+  facet of the board component, the same way the inline task quick-add is. The optional "Wo anfangen" field
+  is a click/focus-expanded section (`x-data="{ exp: false }"`, collapses again on an `idea-added` window
+  event dispatched by `addCraftIdea()` after a successful save, or on an outside click) — this keeps the bar
+  a single-line input in its resting state, matching the board's other quick-add fields. Ideas themselves
+  are only ever browsed/actioned on the dedicated `/app/crafts` page.
+
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
   exposes, so it can be driven from Apple Shortcuts or any other automation — not a 1:1 mirror of every
