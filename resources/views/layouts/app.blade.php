@@ -91,7 +91,7 @@
                                 x-show="open"
                                 x-transition.opacity.duration.150ms
                                 @click.outside="open = false"
-                                class="absolute left-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
+                                class="absolute right-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
                                 style="display: none;"
                             >
                                 <a href="{{ route('prepare') }}" wire:navigate @class([
