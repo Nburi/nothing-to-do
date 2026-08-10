@@ -49,48 +49,106 @@
                     </a>
 
                     @auth
+                        @php
+                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'agenda', 'emergency', 'crafts']);
+                        @endphp
                         <div class="flex items-center gap-1.5">
-                        <a href="{{ route('prepare') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-surface text-ink' => request()->routeIs('prepare'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('prepare'),
-                        ]) @if(request()->routeIs('prepare')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
-                            Vorbereiten
-                        </a>
-                        <a href="{{ route('schedule') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-surface text-ink' => request()->routeIs('schedule'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('schedule'),
-                        ]) @if(request()->routeIs('schedule')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
-                            Zeitplan
-                        </a>
-                        <a href="{{ route('agenda') }}" wire:navigate @class([
-                            'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                            'bg-surface text-ink' => request()->routeIs('agenda'),
-                            'text-ink-soft hover:bg-surface hover:text-ink' => !request()->routeIs('agenda'),
-                        ]) @if(request()->routeIs('agenda')) aria-current="page" @endif>
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
-                            Agenda
-                        </a>
-                        {{-- Notfall is a mode, not a place: the pill only exists while the
-                             mode is actually running (or while its own screen is open).
-                             Otherwise it lives in the avatar menu, next to Bastelideen. --}}
-                        @if (auth()->user()->isInEmergencyMode() || request()->routeIs('emergency'))
-                            <a href="{{ route('emergency') }}" wire:navigate @class([
-                                'hidden items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition sm:inline-flex',
-                                'bg-signal-soft text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
-                                'bg-surface text-ink' => !auth()->user()->isInEmergencyMode(),
-                            ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
-                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                    <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                                    <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                    <circle cx="10" cy="14" r="1" fill="currentColor"/>
+                        {{-- One "Mehr" dropdown replaces the old per-feature header pills
+                             (Vorbereiten/Zeitplan/Agenda/Notfall) and the mobile-only
+                             duplicate list that used to live inside the avatar menu — a
+                             single control that behaves identically at every breakpoint,
+                             styled like the avatar menu below so it reads as native to the
+                             app rather than a second, differently-built dropdown. Bastelideen
+                             moves in too: it never had a header pill of its own before, but
+                             it's exactly the same kind of "additional feature". --}}
+                        <div x-data="{ open: false }" class="relative">
+                            <button
+                                type="button"
+                                @click="open = !open"
+                                @keydown.escape.window="open = false"
+                                @class([
+                                    'flex items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                    'bg-surface text-ink' => $featuresActive,
+                                    'text-ink-soft hover:bg-surface hover:text-ink' => !$featuresActive,
+                                ])
+                                :aria-expanded="open"
+                                aria-haspopup="true"
+                                aria-label="Weitere Funktionen"
+                            >
+                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                    <rect x="3" y="3" width="6" height="6" rx="1.5"/>
+                                    <rect x="11" y="3" width="6" height="6" rx="1.5"/>
+                                    <rect x="3" y="11" width="6" height="6" rx="1.5"/>
+                                    <rect x="11" y="11" width="6" height="6" rx="1.5"/>
                                 </svg>
-                                Notfall
-                            </a>
-                        @endif
+                                <span class="hidden sm:inline">Mehr</span>
+                                @if (auth()->user()->isInEmergencyMode())
+                                    <span class="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true"></span>
+                                @endif
+                            </button>
+
+                            <div
+                                x-show="open"
+                                x-transition.opacity.duration.150ms
+                                @click.outside="open = false"
+                                class="absolute left-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
+                                style="display: none;"
+                            >
+                                <a href="{{ route('prepare') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('prepare'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('prepare'),
+                                ]) @if(request()->routeIs('prepare')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
+                                    Vorbereiten
+                                </a>
+                                <a href="{{ route('schedule') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('schedule'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('schedule'),
+                                ]) @if(request()->routeIs('schedule')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
+                                    Zeitplan
+                                </a>
+                                <a href="{{ route('agenda') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('agenda'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('agenda'),
+                                ]) @if(request()->routeIs('agenda')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
+                                    Agenda
+                                </a>
+                                <a href="{{ route('crafts') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('crafts'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('crafts'),
+                                ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
+                                    Bastelideen
+                                </a>
+                                {{-- Notfall is always listed here now (no longer conditionally
+                                     hidden from the header) — an "Aktiv" badge communicates the
+                                     running state instead of the item's presence/absence. --}}
+                                <a href="{{ route('emergency') }}" wire:navigate @class([
+                                    'flex items-center justify-between gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-signal-soft font-medium text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
+                                    'bg-paper font-medium text-ink' => !auth()->user()->isInEmergencyMode() && request()->routeIs('emergency'),
+                                    'text-ink-soft hover:text-ink' => !auth()->user()->isInEmergencyMode() && !request()->routeIs('emergency'),
+                                ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                            <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                            <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                            <circle cx="10" cy="14" r="1" fill="currentColor"/>
+                                        </svg>
+                                        Notfall
+                                    </span>
+                                    @if (auth()->user()->isInEmergencyMode())
+                                        <span class="rounded-full bg-signal px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">Aktiv</span>
+                                    @endif
+                                </a>
+                            </div>
+                        </div>
 
                         {{-- Quick capture: the visible counterpart to the "N" shortcut, so
                              the panel is never a hidden-only feature. On touch it hides
@@ -138,23 +196,6 @@
                                     <p class="truncate text-sm font-medium text-ink">{{ auth()->user()->name }}</p>
                                     <p class="truncate text-xs text-ink-faint">{{ auth()->user()->email }}</p>
                                 </div>
-                                <a href="{{ route('prepare') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
-                                    Vorbereiten
-                                </a>
-                                <a href="{{ route('schedule') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
-                                    Zeitplan
-                                </a>
-                                <a href="{{ route('agenda') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden">
-                                    Agenda
-                                </a>
-                                {{-- Bastelideen and Notfall have no permanent desktop pill
-                                     any more, so they stay in the menu at every width. --}}
-                                <a href="{{ route('crafts') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
-                                    Bastelideen
-                                </a>
-                                <a href="{{ route('emergency') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
-                                    Notfall
-                                </a>
                                 <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Profil
                                 </a>
