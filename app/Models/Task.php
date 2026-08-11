@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\Markdown\UnderlineExtension;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class Task extends Model
 {
@@ -220,5 +222,24 @@ class Task extends Model
         $preview = implode(' ', array_slice($parts, 0, $words));
 
         return count($parts) > $words ? $preview.'…' : $preview;
+    }
+
+    /**
+     * Renders notes markdown to safe HTML — shared by every place notes are
+     * written (the task edit sheet, the quick-capture panel) so the safety
+     * options and the custom ++underline++ extension stay in one place.
+     */
+    public static function renderNotesMarkdown(string $text): string
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return '';
+        }
+
+        return Str::markdown($text, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ], [new UnderlineExtension()]);
     }
 }

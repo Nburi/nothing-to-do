@@ -157,20 +157,25 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
     `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
   - Today focus is plain `is_today` — no decoupled planning field.
-  - **`notes`** (nullable text) — free-form notes/comments per task, edited in the shared edit sheet
-    (`ManagesTasks::editNotes`/`editNotesHtml`, `partials/edit-sheet.blade.php`). A small toolbar (Fett/
-    Kursiv/Unterstrichen/Liste/Aufgabe) inserts Markdown syntax into a plain textarea (`wire:model`,
-    deferred like every other edit-sheet field); a "Vorschau aktualisieren" button (`wire:click="$refresh"`)
-    forces a fresh server render into a `prose-topo` preview box below, since a `.blur`-triggered auto-sync
-    turned out to be unreliable in this Livewire 4 setup (see *Known Issues*) — reusing `$refresh` (a core,
-    always-fires Livewire action) sidesteps that instead of chasing the blur modifier further. Rendered via
-    the same `Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false])` safety options
-    as the project brainstorm field, **plus** `App\Support\Markdown\UnderlineExtension` — a small custom
-    CommonMark extension (`app/Support/Markdown/`, modeled on league/commonmark's own bundled Strikethrough
-    extension) adding `++underlined++` inline syntax, since neither CommonMark nor GFM has a native
-    underline syntax of its own. `Task::notesPreview(int $words = 8)` strips all of that formatting back
-    down to plain text (bold/italic/underline markers, list/task-list prefixes) for the one-line snippet
-    shown on the task card face (`task-card.blade.php`/`task-card-mobile.blade.php`/
+  - **`notes`** (nullable text) — free-form notes/comments per task, editable from two places: the shared
+    edit sheet (`ManagesTasks::editNotes`/`editNotesHtml`) and, for task targets only, the quick-capture
+    panel (`QuickCapture::$notes`/`notesHtml` — see §7 Schnellerfassung). Both embed the same
+    **`partials/notes-editor.blade.php`** partial (parameterized by `fieldName`/`htmlProperty`/`idPrefix`,
+    so both instances can exist in the DOM at once without id collisions) — a small toolbar (Fett/Kursiv/
+    Unterstrichen/Liste/Aufgabe) inserts Markdown syntax into a plain textarea (`wire:model`, deferred like
+    every other field on both forms); a "Vorschau aktualisieren" button (`wire:click="$refresh"`) forces a
+    fresh server render into a `prose-topo` preview box below, since a `.blur`-triggered auto-sync turned
+    out to be unreliable in this Livewire 4 setup (see *Known Issues*) — reusing `$refresh` (a core,
+    always-fires Livewire action) sidesteps that instead of chasing the blur modifier further. Both call
+    **`Task::renderNotesMarkdown(string $text): string`** for the actual rendering — one static helper so
+    the safety options (`Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false])`,
+    same as the project brainstorm field) and the extra extension stay in one place rather than drifting
+    across two components. That extra extension is **`App\Support\Markdown\UnderlineExtension`** — a small
+    custom CommonMark extension (`app/Support/Markdown/`, modeled on league/commonmark's own bundled
+    Strikethrough extension) adding `++underlined++` inline syntax, since neither CommonMark nor GFM has a
+    native underline syntax of its own. `Task::notesPreview(int $words = 8)` strips all of that formatting
+    back down to plain text (bold/italic/underline markers, list/task-list prefixes) for the one-line
+    snippet shown on the task card face (`task-card.blade.php`/`task-card-mobile.blade.php`/
     `project-task-card.blade.php`), truncated with `…` past the word limit.
 - **`EventCategory`** — `user_id, name, color, pomodoro_enabled, sort_order`. A reusable, user-configured
   category (Schule/Training/Arbeiten/Abmachen by default). `hasMany` `ScheduleEvent` and `EventTemplate`
@@ -251,7 +256,11 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   rather than waiting for the "Mehr" toggle (which still overrides in both directions). `wire:model` is
   deferred, so `$wire.title` does *not* change per keystroke — the trigger is a **local Alpine mirror**
   (`typed`, fed by `@input`), reset on `captured` and on `quick-capture-opened`. Tasks get deadline +
-  Wunschtermin, a project gets a deadline, a Bastelidee gets "Wo anfangen".
+  Wunschtermin + Notizen, a project gets a deadline, a Bastelidee gets "Wo anfangen". The Notizen field
+  (task targets only) is the same `partials/notes-editor.blade.php` partial the task edit sheet uses
+  (`@include(..., ['fieldName' => 'notes', 'htmlProperty' => 'notesHtml', 'idPrefix' => 'qc'])`) — same
+  toolbar, same `Task::renderNotesMarkdown()` rendering, same "Vorschau aktualisieren" `$refresh` button —
+  so a task can be captured with formatted notes in one step instead of adding them later via the edit sheet.
 - **Agenda is the one target whose extras are required**, not optional — type, Fach and date, mirroring
   `Agenda::save()`'s own rules. Those rules are therefore added to `validate()` **only** when `agenda` is the
   chosen target, and its section can't be folded away (the "Mehr" button hides). Fach autocompletes from

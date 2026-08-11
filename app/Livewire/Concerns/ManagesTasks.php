@@ -3,10 +3,8 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Task;
-use App\Support\Markdown\UnderlineExtension;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
@@ -46,24 +44,11 @@ trait ManagesTasks
         return auth()->user()->projects()->ordered()->get();
     }
 
-    /**
-     * The notes buffer rendered to safe HTML for the edit sheet's preview.
-     * Same safety options as the project brainstorm field, plus the custom
-     * ++underline++ extension (not part of standard/GFM Markdown).
-     */
+    /** The notes buffer rendered to safe HTML for the edit sheet's preview. */
     #[Computed]
     public function editNotesHtml(): string
     {
-        $text = trim($this->editNotes);
-
-        if ($text === '') {
-            return '';
-        }
-
-        return Str::markdown($text, [
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ], [new UnderlineExtension()]);
+        return Task::renderNotesMarkdown($this->editNotes);
     }
 
     public function toggleImportant(int $id): void

@@ -120,14 +120,20 @@
                 class="border-t border-line/60 px-4 py-3"
                 style="display: none;"
             >
-                <div x-show="['inbox','todos','tasks'].includes($wire.target)" class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label for="qc-deadline" class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline · hart</label>
-                        <input id="qc-deadline" type="date" wire:model="deadline" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                <div x-show="['inbox','todos','tasks'].includes($wire.target)" style="display: none;">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="qc-deadline" class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline · hart</label>
+                            <input id="qc-deadline" type="date" wire:model="deadline" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                        </div>
+                        <div>
+                            <label for="qc-due" class="mb-1 block text-[11px] font-medium text-ink-faint">Wunschtermin · weich</label>
+                            <input id="qc-due" type="date" wire:model="dueDate" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                        </div>
                     </div>
-                    <div>
-                        <label for="qc-due" class="mb-1 block text-[11px] font-medium text-ink-faint">Wunschtermin · weich</label>
-                        <input id="qc-due" type="date" wire:model="dueDate" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+
+                    <div class="mt-3">
+                        @include('livewire.partials.notes-editor', ['fieldName' => 'notes', 'htmlProperty' => 'notesHtml', 'idPrefix' => 'qc'])
                     </div>
                 </div>
 
@@ -202,6 +208,9 @@
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('dueDate')
+                    <span class="text-signal">{{ $message }}</span>
+                @enderror
+                @error('notes')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('whereToBegin')

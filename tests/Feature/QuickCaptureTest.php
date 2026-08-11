@@ -72,6 +72,68 @@ class QuickCaptureTest extends TestCase
         ]);
     }
 
+    public function test_it_captures_a_task_with_notes(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'tasks')
+            ->set('title', 'Wettkampfanmeldung absenden')
+            ->set('notes', '  **Wichtig**: vor Freitag  ')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('tasks', [
+            'title' => 'Wettkampfanmeldung absenden',
+            'notes' => '**Wichtig**: vor Freitag',
+        ]);
+    }
+
+    public function test_notes_are_optional_and_blank_notes_stay_null(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'todos')
+            ->set('title', 'Ohne Notizen')
+            ->set('notes', '   ')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('tasks', ['title' => 'Ohne Notizen', 'notes' => null]);
+    }
+
+    public function test_notes_over_the_length_limit_are_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->set('title', 'Zu lange Notiz')
+            ->set('notes', str_repeat('a', 5001))
+            ->call('save')
+            ->assertHasErrors(['notes']);
+
+        $this->assertDatabaseCount('tasks', 0);
+    }
+
+    public function test_notes_html_renders_bold_italic_and_underline(): void
+    {
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->set('notes', '**fett** *kursiv* ++unterstrichen++');
+
+        $html = $component->instance()->notesHtml();
+
+        $this->assertStringContainsString('<strong>fett</strong>', $html);
+        $this->assertStringContainsString('<em>kursiv</em>', $html);
+        $this->assertStringContainsString('<u>unterstrichen</u>', $html);
+    }
+
     public function test_it_captures_a_project(): void
     {
         $user = User::factory()->create();
@@ -253,9 +315,11 @@ class QuickCaptureTest extends TestCase
         Livewire::actingAs($user)
             ->test(QuickCapture::class)
             ->set('dueDate', '2026-08-28')
+            ->set('notes', 'Material besorgen')
             ->set('whereToBegin', 'Material besorgen')
             ->call('setTarget', 'project')
             ->assertSet('dueDate', null)
+            ->assertSet('notes', '')
             ->assertSet('whereToBegin', '')
             ->call('setTarget', 'craft')
             ->assertSet('deadline', null);
@@ -274,9 +338,11 @@ class QuickCaptureTest extends TestCase
             ->call('setTarget', 'todos')
             ->set('title', 'Dehnen & Mobility')
             ->set('deadline', '2026-09-01')
+            ->set('notes', 'Nicht vergessen')
             ->call('save')
             ->assertSet('title', '')
             ->assertSet('deadline', null)
+            ->assertSet('notes', '')
             ->assertSet('target', 'todos')
             ->assertSet('captured', ['title' => 'Dehnen & Mobility', 'label' => 'To-Do']);
     }
