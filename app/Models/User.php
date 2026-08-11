@@ -57,6 +57,12 @@ class User extends Authenticatable
         return $this->hasMany(Project::class);
     }
 
+    /** @return HasMany<TaskGroup, $this> */
+    public function taskGroups(): HasMany
+    {
+        return $this->hasMany(TaskGroup::class);
+    }
+
     /** @return HasMany<ScheduleEvent, $this> */
     public function scheduleEvents(): HasMany
     {
