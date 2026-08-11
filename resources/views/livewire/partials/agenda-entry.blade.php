@@ -63,10 +63,12 @@
     </div>
 
     @if ($entry->isShared() && $memberCount > 0)
-        {{-- How much of the class is through it. Deliberately quiet: it's context,
-             not a leaderboard, and it must never outweigh the due date. --}}
+        {{-- How much of the class is through it. Deliberately quiet — it's context,
+             not a leaderboard, and it must never outweigh the due date — but shown
+             on every width: hiding it on mobile would hide it on the device this
+             actually gets used on. The title column truncates instead. --}}
         <span
-            class="tnum hidden flex-none text-[11.5px] text-ink-faint sm:block"
+            class="tnum flex-none text-[11.5px] text-ink-faint"
             title="{{ $entry->completedCount() }} von {{ $memberCount }} haben das erledigt"
         >{{ $entry->completedCount() }}/{{ $memberCount }}</span>
     @endif
