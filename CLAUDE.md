@@ -723,6 +723,63 @@ else is shared, and a private entry stays private.
   beyond your own list. Fach suggestions now read from every *visible* entry, so a classmate's "Französisch"
   autocompletes for everyone.
 
+### Agenda — Präsenz & Mitgliederverwaltung (built)
+
+Who is in a class, and who is looking at it right now. Both only exist because the agenda is shared; nothing
+here applies to the single-user rest of the app.
+
+- **Presence is polled, not pushed.** `users.last_seen_at` + `POST /app/heartbeat`
+  (`App\Http\Controllers\PresenceController`, `route('presence.heartbeat')`), beaten once a minute by a small
+  block at the bottom of `resources/js/app.js`. Real presence channels would mean **Laravel Reverb plus a
+  long-running daemon** on the production box, and this project has deliberately avoided both — there isn't
+  even a queue worker (§9: cron is the only background requirement). One tiny POST a minute answers the same
+  question for a class of ~25.
+  - **Gated on `document.visibilityState`**, and the interval is torn down when the tab goes to the
+    background. That's the whole point: "online" has to mean *using the app*, not *left a tab open on
+    Tuesday*. A backgrounded tab goes stale by itself.
+  - **`User::PRESENCE_TTL_SECONDS` is 150**, not 60 — deliberately longer than the beat interval so one
+    missed beat plus latency doesn't flicker someone offline mid-look.
+  - **`User::touchPresence()` writes through the query builder** (`->toBase()->update()`), so a beat per
+    minute per open tab fires no model events and does **not** bump `updated_at`. Having recently looked at
+    the app is not a change to the account.
+  - **`isOnline()` compares raw UTC to raw UTC** on purpose. This is elapsed time, not a wall-clock reading,
+    so `timezone_offset` must not enter into it — same reasoning as the Pomodoro countdown above.
+    `lastSeenLabel()` is hand-rolled German ("gerade eben" / "vor 5 Min" / "vor 3 Std" / "vor 2 Tagen")
+    rather than `diffForHumans()`, for the same reason `Task::effectiveDateLabel()` is: the app's locale
+    isn't German and these are UI copy.
+  - **Opting out stops the recording, not just the display.** `users.show_presence` (Settings → Allgemein,
+    rendered only for someone actually in a class — elsewhere it's a switch over nothing);
+    `Settings::toggleShowPresence()` also clears any timestamp already held, and `touchPresence()` returns
+    early. Someone turning this off is asking not to be tracked, not merely not to be shown. Default is
+    **true**: an always-empty presence list reads as a broken feature, and the only people who can see it
+    are classmates in a space the user chose to join.
+  > **`User` declares `protected $attributes = ['show_presence' => true]`** mirroring the DB default, and it
+  > is load-bearing. Without it a freshly created user carries `null` there until reloaded (the fresh-model
+  > gotcha in §10) — `null` is falsy, so the first heartbeat after registration was silently skipped, and
+  > `toggleShowPresence()` computed `! null === true` and switched the setting *on* when the user asked to
+  > turn it off. Caught by tests, but it was a real bug, not a test artifact.
+- **Member management is master/detail inside the existing Klassen sheet**, not a second modal stacked on the
+  first and not a new route: `$managingSpaceId` null = the list of classes, set = that class's members, with
+  a back arrow in the sheet header. `openMembers()` resolves the id through the user's own memberships, so a
+  class you're not in never even opens. Deleting or leaving the class being managed drops back to the list,
+  so the sheet never sits on a view of a space that's gone.
+  - Each class row carries a live **"N online"** count that doubles as the way in. `spaces()` therefore
+    eager-loads `members` — the count is a TTL comparison per member, not something SQL can count.
+  - The member list **sorts online first, then alphabetically** (in PHP, since "online" isn't a column):
+    "who is here right now" is the question the list exists to answer, so it shouldn't need scanning. A
+    member who opted out gets **no label at all** rather than "offline" — printing "offline" would leak the
+    difference between *away* and *asked not to be tracked*.
+  - `wire:poll.30s.visible` keeps it fresh. **The `.visible` is not optional:** the sheet stays in the DOM
+    with `display: none` when closed, so without it a shut panel would keep polling forever.
+  - **`removeMember()` and `transferOwnership()` are owner-only** — unlike editing entries, which any member
+    may. A classmate fixing a typo is routine; one classmate throwing another out of the shared agenda is
+    not. Both go through `ownedSpace()` + `$space->members()->findOrFail()`, so an id for a non-member 404s
+    like every other id in this app (`abort()`'s `HttpException` does *not* propagate out of a Livewire
+    action the way `ModelNotFoundException` does — that's why it isn't `abort_unless`). Removing keeps the
+    entries that person wrote with the class, exactly as leaving does; the owner can't remove themselves
+    (that's "Verlassen", which hands ownership over properly). `transferOwnership()` exists so that leaving
+    isn't the only way to pass on the admin role.
+
 ### Bastelideen (built)
 - A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
   to Task/Project, and it doesn't surface on the board, in Vorbereitung, or in Notfallmodus.
