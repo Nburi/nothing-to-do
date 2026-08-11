@@ -960,6 +960,61 @@ document.addEventListener('alpine:init', () => {
 });
 
 /**
+ * Presence heartbeat — what makes "online" in a class agenda mean *using the
+ * app*, not *left a tab open on Tuesday*.
+ *
+ * Polling rather than websockets on purpose: real presence channels would mean
+ * Reverb plus a long-running daemon on the production box, and this app has
+ * deliberately avoided both (no queue worker either — see CLAUDE.md §9). One
+ * tiny POST a minute, only while the tab is in the foreground, buys the same
+ * answer for a class of ~25 people.
+ *
+ * Gated on visibilityState, and the interval is torn down when the tab goes to
+ * the background — a backgrounded tab must go offline on its own within
+ * User::PRESENCE_TTL_SECONDS rather than beating forever.
+ */
+(() => {
+    const endpoint = document.querySelector('meta[name="presence-url"]')?.content;
+    if (! endpoint) return; // guest — nothing to report
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    const INTERVAL_MS = 60_000;
+    let timer = null;
+
+    const beat = () => {
+        if (document.visibilityState !== 'visible') return;
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': token, Accept: 'application/json' },
+            credentials: 'same-origin',
+            keepalive: true,
+        }).catch(() => {
+            // Offline or a dropped request: the next beat retries, and going
+            // stale is the correct outcome in the meantime.
+        });
+    };
+
+    const start = () => {
+        if (timer !== null) return;
+        beat();
+        timer = setInterval(beat, INTERVAL_MS);
+    };
+
+    const stop = () => {
+        if (timer === null) return;
+        clearInterval(timer);
+        timer = null;
+    };
+
+    document.addEventListener('visibilitychange', () => {
+        document.visibilityState === 'visible' ? start() : stop();
+    });
+
+    if (document.visibilityState === 'visible') start();
+})();
+
+/**
  * "N" opens the capture panel from anywhere in the app. Deliberately a bare key
  * (no modifier): every modifier combination in the 1–9/letter range is already
  * spoken for by the browser itself. The guards below are what make that safe —

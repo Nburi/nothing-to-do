@@ -4,6 +4,11 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        {{-- Only rendered for a signed-in user; its absence is how the heartbeat
+             in app.js knows to stay quiet for guests. --}}
+        @auth
+            <meta name="presence-url" content="{{ route('presence.heartbeat') }}">
+        @endauth
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
         @include('partials.pwa-head')

@@ -124,6 +124,29 @@ class Settings extends Component
         auth()->user()->update(['prepare_reminder_time' => $data['prepareReminderTime']]);
     }
 
+    /** The presence toggle only means something to someone who is in a class. */
+    #[Computed]
+    public function inAnyAgendaSpace(): bool
+    {
+        return auth()->user()->agendaSpaces()->exists();
+    }
+
+    /**
+     * Turning presence off also clears the last recorded timestamp — opting out
+     * means "stop tracking me", not just "stop showing it" (see
+     * User::touchPresence()).
+     */
+    public function toggleShowPresence(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->show_presence;
+
+        $user->update([
+            'show_presence' => $enabled,
+            'last_seen_at' => $enabled ? $user->last_seen_at : null,
+        ]);
+    }
+
     public function toggleNotifyEventStart(): void
     {
         $user = auth()->user();

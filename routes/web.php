@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
@@ -57,6 +58,11 @@ Route::get('/app/agenda/join/{code}', JoinAgendaSpace::class)
 Route::get('/app/crafts', CraftIdeas::class)
     ->middleware('auth')
     ->name('crafts');
+
+// Presence heartbeat — see PresenceController and the heartbeat block in app.js.
+Route::post('/app/heartbeat', PresenceController::class)
+    ->middleware('auth')
+    ->name('presence.heartbeat');
 
 Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
     ->middleware('auth')
