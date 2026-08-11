@@ -234,10 +234,36 @@ class AgendaSpacesTest extends TestCase
         $owner = User::factory()->create();
         $member = User::factory()->create();
         $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
-        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)
+        AgendaEntry::factory()->for($owner)->inSpace($space)
             ->completedByUser($member)->create();
 
-        Livewire::actingAs($owner)->test(Agenda::class)->assertSee('1/2');
+        Livewire::actingAs($owner)->test(Agenda::class)
+            ->assertSee('1/2')
+            // The bar is filled to the same fraction the number states.
+            ->assertSeeHtml('aria-valuenow="1"')
+            ->assertSeeHtml('aria-valuemax="2"')
+            ->assertSeeHtml('width: 50%');
+    }
+
+    public function test_a_private_entry_has_no_progress_bar(): void
+    {
+        $user = User::factory()->create();
+        AgendaEntry::factory()->for($user)->create();
+
+        // Nothing to be "5 of 22" about when exactly one person can finish it.
+        Livewire::actingAs($user)->test(Agenda::class)
+            ->assertDontSeeHtml('role="progressbar"');
+    }
+
+    public function test_the_progress_bar_stays_empty_when_nobody_has_finished(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+        AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+
+        Livewire::actingAs($owner)->test(Agenda::class)
+            ->assertSee('0/1')
+            ->assertSeeHtml('width: 0%');
     }
 
     public function test_any_member_can_edit_and_delete_a_classmates_entry(): void

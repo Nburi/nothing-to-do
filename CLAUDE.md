@@ -706,8 +706,13 @@ else is shared, and a private entry stays private.
   > account follows the invite link" is the normal way people join, so *registration* — not just login —
   > has to hand them back to where they were going. Covered by a test.
 - **List UI** — one date-sorted stream with a class badge per row, `von <name>` when a classmate wrote it,
-  and a quiet `5/22` progress counter (completions vs. member count; hidden below `sm`, because it is
-  context, not a leaderboard, and must never outweigh the due date). A second, quieter chip row filters by
+  and a quiet class-progress indicator: a `h-1` bar (same visual language as `project-card`'s — `bg-line`
+  track, `bg-forest` fill) **stacked over** its `5/22` count rather than beside it. Stacked because this row
+  is a single dense line: side by side costs ~38px of the truncating title column, the stack ~10px and no
+  extra row height (measured at 375px). Shown at every width — hiding it on mobile would hide it on the
+  device this gets used on — and deliberately understated, since it is context, not a leaderboard, and must
+  never outweigh the due date. Private entries get none: there is nothing to be "5 of 22" about when exactly
+  one person can finish it. A second, quieter chip row filters by
   class, with a toggle between sorting by date (default — "what is due next" is the actual question) and
   grouping into one section per class. **The whole row only renders once the user is in a class**, so a solo
   Agenda looks exactly as it did before this feature.

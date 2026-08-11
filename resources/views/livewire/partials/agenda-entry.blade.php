@@ -63,14 +63,33 @@
     </div>
 
     @if ($entry->isShared() && $memberCount > 0)
-        {{-- How much of the class is through it. Deliberately quiet — it's context,
-             not a leaderboard, and it must never outweigh the due date — but shown
-             on every width: hiding it on mobile would hide it on the device this
-             actually gets used on. The title column truncates instead. --}}
-        <span
-            class="tnum flex-none text-[11.5px] text-ink-faint"
-            title="{{ $entry->completedCount() }} von {{ $memberCount }} haben das erledigt"
-        >{{ $entry->completedCount() }}/{{ $memberCount }}</span>
+        @php
+            $classDone = $entry->completedCount();
+            $classPct = $memberCount > 0 ? round(($classDone / $memberCount) * 100) : 0;
+        @endphp
+        {{-- How much of the class is through it. Same visual language as the project
+             card's progress bar (h-1 line track, forest fill), but stacked over its
+             count instead of beside it: this row is a single dense line, and a
+             side-by-side bar would take ~38px off the title column where the stack
+             costs ~10. Deliberately quiet — it's context, not a leaderboard, and it
+             must never outweigh the due date — but shown at every width, since
+             hiding it on mobile would hide it on the device this gets used on. --}}
+        <div
+            class="flex flex-none flex-col items-end gap-1"
+            title="{{ $classDone }} von {{ $memberCount }} haben das erledigt"
+        >
+            <div
+                class="h-1 w-9 overflow-hidden rounded-full bg-line"
+                role="progressbar"
+                aria-valuenow="{{ $classDone }}"
+                aria-valuemin="0"
+                aria-valuemax="{{ $memberCount }}"
+                aria-label="Fortschritt der Klasse: {{ $classDone }} von {{ $memberCount }} erledigt"
+            >
+                <div class="h-full rounded-full bg-forest transition-[width] duration-300" style="width: {{ $classPct }}%"></div>
+            </div>
+            <span class="tnum text-[11px] leading-none text-ink-faint" aria-hidden="true">{{ $classDone }}/{{ $memberCount }}</span>
+        </div>
     @endif
 
     <span @class([
