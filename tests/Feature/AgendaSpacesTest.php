@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Agenda;
 use App\Livewire\JoinAgendaSpace;
+use App\Livewire\QuickCapture;
 use App\Models\AgendaEntry;
 use App\Models\AgendaSpace;
 use App\Models\User;
@@ -341,6 +342,66 @@ class AgendaSpacesTest extends TestCase
         $subjects = Livewire::actingAs($member)->test(Agenda::class)->get('existingSubjects');
 
         $this->assertContains('Italienisch', $subjects->all());
+    }
+
+    // ── QuickCapture ──────────────────────────────────────────────────
+
+    public function test_quick_capture_can_file_an_entry_into_a_class(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create(['name' => 'Klasse 4b']);
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'agenda')
+            ->set('agendaSpaceId', $space->id)
+            ->set('subject', 'Biologie')
+            ->set('title', 'Zellatmung zusammenfassen')
+            ->set('date', now()->addDays(2)->toDateString())
+            ->call('save')
+            ->assertHasNoErrors()
+            // The class is named back, since sharing has a consequence beyond
+            // this user's own list.
+            ->assertSee('Klasse 4b')
+            // …and the class survives, like the Fach and the date do.
+            ->assertSet('agendaSpaceId', $space->id);
+
+        $this->assertDatabaseHas('agenda_entries', [
+            'user_id' => $user->id,
+            'agenda_space_id' => $space->id,
+            'title' => 'Zellatmung zusammenfassen',
+        ]);
+    }
+
+    public function test_quick_capture_rejects_a_class_the_user_is_not_in(): void
+    {
+        $user = User::factory()->create();
+        $foreignSpace = AgendaSpace::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'agenda')
+            ->set('agendaSpaceId', $foreignSpace->id)
+            ->set('subject', 'Mathematik')
+            ->set('title', 'Eingeschmuggelt')
+            ->set('date', now()->addDay()->toDateString())
+            ->call('save')
+            ->assertHasErrors('agendaSpaceId');
+
+        $this->assertDatabaseCount('agenda_entries', 0);
+    }
+
+    public function test_switching_away_from_agenda_clears_the_chosen_class(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'agenda')
+            ->set('agendaSpaceId', $space->id)
+            ->call('setTarget', 'inbox')
+            ->assertSet('agendaSpaceId', null);
     }
 
     // ── Invite link ───────────────────────────────────────────────────

@@ -53,6 +53,9 @@ class QuickCapture extends Component
 
     public ?string $date = null;
 
+    /** Null = "nur ich"; a space id = the whole class sees it. Agenda target only. */
+    public ?int $agendaSpaceId = null;
+
     /**
      * The thing captured last, echoed back as a confirmation line so the panel
      * can stay open for the next entry without leaving any doubt that the
@@ -79,11 +82,19 @@ class QuickCapture extends Component
     #[Computed]
     public function existingSubjects(): Collection
     {
-        return auth()->user()->agendaEntries()
+        return AgendaEntry::query()
+            ->visibleTo(auth()->user())
             ->select('subject')
             ->distinct()
             ->orderBy('subject')
             ->pluck('subject');
+    }
+
+    /** The classes this user can file an agenda entry into. Empty for most users. */
+    #[Computed]
+    public function agendaSpaces(): Collection
+    {
+        return auth()->user()->agendaSpaces()->ordered()->get();
     }
 
     public function setTarget(string $target): void
@@ -110,6 +121,7 @@ class QuickCapture extends Component
             $this->subject = '';
             $this->date = null;
             $this->agendaType = 'homework';
+            $this->agendaSpaceId = null;
         } else {
             $this->deadline = null;
         }
@@ -129,7 +141,7 @@ class QuickCapture extends Component
     #[On('quick-capture-opened')]
     public function resetPanel(?string $target = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId']);
         $this->resetValidation();
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
@@ -162,6 +174,9 @@ class QuickCapture extends Component
             $rules['agendaType'] = ['required', Rule::in(array_keys(AgendaEntry::TYPES))];
             $rules['subject'] = ['required', 'string', 'max:100'];
             $rules['date'] = ['required', 'date'];
+            // Same authorization boundary as Agenda::saveEntry(): a space id is
+            // only acceptable if it's one this user actually belongs to.
+            $rules['agendaSpaceId'] = ['nullable', 'integer', Rule::in($this->agendaSpaces->pluck('id'))];
         }
 
         $this->validate($rules);
@@ -184,6 +199,7 @@ class QuickCapture extends Component
                 'subject' => $this->subject,
                 'title' => $title,
                 'date' => $this->date,
+                'agenda_space_id' => $this->agendaSpaceId,
             ]),
             default => $user->tasks()->create([
                 'title' => $title,
@@ -194,12 +210,21 @@ class QuickCapture extends Component
             ]),
         };
 
-        $this->captured = ['title' => $title, 'label' => self::labelFor($this->target)];
+        // Name the class in the confirmation when one was chosen. Sharing is the
+        // one capture here with a consequence beyond your own list, so "→ Agenda"
+        // alone would hide the part worth double-checking.
+        $label = self::labelFor($this->target);
+
+        if ($this->target === 'agenda' && $this->agendaSpaceId !== null) {
+            $label .= ' · '.$this->agendaSpaces->firstWhere('id', $this->agendaSpaceId)?->name;
+        }
+
+        $this->captured = ['title' => $title, 'label' => $label];
 
         // The target deliberately survives: capturing three To-Dos in a row
-        // shouldn't mean re-picking the chip every time. Agenda's Fach, date and
-        // type survive for the same reason — several homework items for the same
-        // subject on the same day is the normal case, not the exception.
+        // shouldn't mean re-picking the chip every time. Agenda's Fach, date,
+        // type and class survive for the same reason — writing down three things
+        // the teacher just set, all for the same class, is the normal case.
         $this->reset(['title', 'deadline', 'dueDate', 'whereToBegin']);
 
         $this->dispatch('captured');
