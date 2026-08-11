@@ -20,12 +20,26 @@
         style="display: none;"
     >
         <div class="mx-auto max-h-[88dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map md:rounded-card">
-            <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-base font-medium text-ink">Klassen und Gruppen</h2>
-                <button wire:click="closeSpaces" class="grid h-8 w-8 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink" aria-label="Schließen">
+            <div class="mb-4 flex items-center justify-between gap-2">
+                @if ($this->managedSpace)
+                    <button
+                        wire:click="closeMembers"
+                        class="-ml-1 flex min-w-0 items-center gap-1.5 rounded-card px-1 py-0.5 text-base font-medium text-ink transition hover:text-forest"
+                    >
+                        <svg class="h-4 w-4 flex-none text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                        <span class="truncate">{{ $this->managedSpace->name }}</span>
+                    </button>
+                @else
+                    <h2 class="text-base font-medium text-ink">Klassen und Gruppen</h2>
+                @endif
+                <button wire:click="closeSpaces" class="grid h-8 w-8 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink" aria-label="Schließen">
                     <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
             </div>
+
+            @if ($this->managedSpace)
+                @include('livewire.partials.agenda-space-members')
+            @else
 
             @forelse ($this->spaces as $space)
                 @php $isOwner = $space->owner_id === auth()->id(); @endphp
@@ -36,6 +50,22 @@
                             {{ $space->members_count }} {{ $space->members_count === 1 ? 'Mitglied' : 'Mitglieder' }}{{ $isOwner ? ' · du bist Besitzer' : '' }}
                         </span>
                     </div>
+
+                    @php $online = $this->onlineCountFor($space); @endphp
+                    <button
+                        type="button"
+                        wire:click="openMembers({{ $space->id }})"
+                        class="mt-1.5 flex items-center gap-1.5 rounded-card py-0.5 text-[12px] text-ink-soft transition hover:text-forest"
+                    >
+                        @if ($online > 0)
+                            <span class="h-1.5 w-1.5 flex-none rounded-full bg-forest" aria-hidden="true"></span>
+                            <span>{{ $online }} online</span>
+                            <span class="text-ink-faint">· Mitglieder verwalten</span>
+                        @else
+                            <span>Mitglieder verwalten</span>
+                        @endif
+                        <svg class="h-3 w-3 flex-none text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
 
                     {{-- The code is the invite; the link is the same thing, pre-typed. Copying is
                          client-only (navigator.clipboard) so it costs no round trip, with a
@@ -173,6 +203,7 @@
                     @error('newSpaceName') <p class="text-xs text-signal">{{ $message }}</p> @enderror
                 </form>
             </div>
+            @endif
         </div>
     </div>
 </div>
