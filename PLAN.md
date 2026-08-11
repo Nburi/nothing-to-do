@@ -3,7 +3,8 @@
 > Ersetzt den vorherigen Plan (Schnellerfassung, umgesetzt). Der steht weiterhin in der Git-Historie, Commit `5208038`.
 
 > Erstellt: 2026-08-11 · Branch: `feature/agenda-class-spaces` (von `main`)
-> Status: **Schritt 5 — Umsetzung** · Layout: **Variante A + Gruppierungs-Umschalter** (entschieden)
+> Status: **umgesetzt und getestet** · Layout: **Variante A + Gruppierungs-Umschalter**
+> Nicht gemerged, nicht gepusht — wartet auf „fertig".
 
 ---
 

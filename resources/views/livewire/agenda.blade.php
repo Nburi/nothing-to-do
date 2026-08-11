@@ -104,8 +104,13 @@
             <svg class="mx-auto mb-3 h-8 w-8 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>
             </svg>
+            {{-- Three different nothings: everything ticked off, nothing matching
+                 the current filter, and a genuinely empty agenda. "Leg deine erste
+                 Hausaufgabe an" is wrong for the first two. --}}
             <p class="text-sm text-ink-faint">
-                @if ($filterSpace !== 'all' || $filterType !== 'all')
+                @if ($this->doneEntries->isNotEmpty())
+                    Alles erledigt.
+                @elseif ($filterSpace !== 'all' || $filterType !== 'all')
                     Hier ist gerade nichts offen.
                 @else
                     Keine Einträge — leg deine erste Hausaufgabe oder Prüfung an.
