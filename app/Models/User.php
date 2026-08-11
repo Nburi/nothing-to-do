@@ -23,12 +23,27 @@ use Laravel\Sanctum\HasApiTokens;
     'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
     'emergency_project_id',
+    'last_seen_at', 'show_presence',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * Mirrors the DB-level default so a *freshly created* user already has it in
+     * memory. Without this, `show_presence` is null until the row is reloaded
+     * (the fresh-model gotcha in §10), and null is falsy — so `touchPresence()`
+     * would silently skip the first heartbeat after registration and
+     * `toggleShowPresence()` would compute `! null === true` and turn the
+     * setting *on* when the user asked to turn it off.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'show_presence' => true,
+    ];
 
     /** @return HasMany<Task, $this> */
     public function tasks(): HasMany
@@ -88,6 +103,78 @@ class User extends Authenticatable
     public function ownedAgendaSpaces(): HasMany
     {
         return $this->hasMany(AgendaSpace::class, 'owner_id');
+    }
+
+    // ── Presence ──────────────────────────────────────────────────────
+
+    /**
+     * How long a heartbeat keeps someone "online". The client beats once a
+     * minute while the tab is in the foreground, so this deliberately tolerates
+     * one missed beat plus latency rather than flickering people offline
+     * between ticks.
+     */
+    public const PRESENCE_TTL_SECONDS = 150;
+
+    /**
+     * Record that this user's app is open and in the foreground right now.
+     *
+     * Written with a raw query-builder update on purpose: this runs once a
+     * minute per open tab, and it must not fire model events or bump
+     * `updated_at` — "was recently looking at the app" is not a change to the
+     * account.
+     *
+     * Opting out doesn't just hide the timestamp, it stops recording it. Anyone
+     * who turns presence off is asking not to be tracked, not merely not to be
+     * displayed.
+     */
+    public function touchPresence(): void
+    {
+        if (! $this->show_presence) {
+            return;
+        }
+
+        $now = Carbon::now();
+
+        static::query()->whereKey($this->getKey())->toBase()->update(['last_seen_at' => $now]);
+
+        $this->last_seen_at = $now;
+    }
+
+    /**
+     * Is the app open and in the foreground for this person right now?
+     *
+     * Compares raw UTC against raw UTC deliberately — this is elapsed time, not
+     * a wall-clock reading, so the user's `timezone_offset` must not enter into
+     * it (same reasoning as the Pomodoro countdown, see §7).
+     */
+    public function isOnline(): bool
+    {
+        return $this->show_presence
+            && $this->last_seen_at !== null
+            && $this->last_seen_at->greaterThan(Carbon::now()->subSeconds(self::PRESENCE_TTL_SECONDS));
+    }
+
+    /**
+     * "gerade eben" / "vor 5 Min" / "vor 3 Std" / "vor 2 Tagen", or null when
+     * there is nothing to show. Hand-rolled rather than `diffForHumans()` for
+     * the same reason `Task::effectiveDateLabel()` is: the app's locale is not
+     * German, and these labels are part of the UI copy.
+     */
+    public function lastSeenLabel(): ?string
+    {
+        if (! $this->show_presence || $this->last_seen_at === null) {
+            return null;
+        }
+
+        // Carbon 3 returns a float here; cast so the buckets below match.
+        $minutes = (int) $this->last_seen_at->diffInMinutes(Carbon::now());
+
+        return match (true) {
+            $minutes < 1 => 'gerade eben',
+            $minutes < 60 => "vor {$minutes} Min",
+            $minutes < 2880 => 'vor '.intdiv($minutes, 60).' Std',
+            default => 'vor '.intdiv($minutes, 1440).' Tagen',
+        };
     }
 
     /** The project currently in "emergency mode", or null if not active. */
@@ -245,6 +332,8 @@ class User extends Authenticatable
             'prepared_on' => 'date',
             'prepare_reminder_sent_on' => 'date',
             'prepare_prompt_dismissed_on' => 'date',
+            'last_seen_at' => 'datetime',
+            'show_presence' => 'boolean',
         ];
     }
 }

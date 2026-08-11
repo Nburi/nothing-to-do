@@ -32,3 +32,7 @@ old column still holds the pre-migration state.
 - **Push notification for a new class entry.** "Lena hat eine Hausaufgabe für morgen eingetragen" is the
   obvious next step now that entries can arrive from other people. Needs a rate-limit thought first: 22
   people writing into one class could get noisy fast.
+- **Presence on the entries themselves**, not just in the member list — "Lena schaut sich das gerade an"
+  next to a shared entry. Technically almost free (the heartbeat already exists), but hold it until the
+  member-list version has been lived with for a while: on a homework list this could read as surveillance
+  rather than help, and the whole product goal is "speed and calm".

@@ -3,6 +3,7 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\AgendaSpace;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -21,14 +22,68 @@ trait ManagesAgendaSpaces
 
     public string $joinCode = '';
 
+    /**
+     * Null = the sheet lists the user's classes; a space id = the sheet is
+     * showing that class's members. One sheet, two views, rather than a second
+     * modal stacked on the first.
+     */
+    public ?int $managingSpaceId = null;
+
     /** @return Collection<int, AgendaSpace> */
     #[Computed]
     public function spaces(): Collection
     {
         return auth()->user()->agendaSpaces()
+            // Members are eager-loaded because each row shows an online count,
+            // which is a TTL comparison per member rather than something SQL can
+            // count for us — without this it would be a query per class.
+            ->with('members:id,name,last_seen_at,show_presence')
             ->withCount('members')
             ->ordered()
             ->get();
+    }
+
+    /** The class whose members the sheet is currently showing, if any. */
+    #[Computed]
+    public function managedSpace(): ?AgendaSpace
+    {
+        if ($this->managingSpaceId === null) {
+            return null;
+        }
+
+        return auth()->user()->agendaSpaces()->find($this->managingSpaceId);
+    }
+
+    /**
+     * That class's members, online first and then alphabetically — "who is here
+     * right now" is the question this list exists to answer, so it should not
+     * need scanning. Sorted in PHP rather than SQL because "online" is a
+     * computed comparison against a TTL, not a column.
+     *
+     * @return Collection<int, User>
+     */
+    #[Computed]
+    public function managedMembers(): Collection
+    {
+        $space = $this->managedSpace;
+
+        if ($space === null) {
+            return collect();
+        }
+
+        return $space->members()
+            ->get()
+            ->sortBy([
+                fn (User $a, User $b) => ($b->isOnline() <=> $a->isOnline()),
+                fn (User $a, User $b) => mb_strtolower($a->name) <=> mb_strtolower($b->name),
+            ])
+            ->values();
+    }
+
+    /** How many members of a class are online right now. */
+    public function onlineCountFor(AgendaSpace $space): int
+    {
+        return $space->members->filter(fn (User $member) => $member->isOnline())->count();
     }
 
     /**
@@ -67,6 +122,7 @@ trait ManagesAgendaSpaces
     {
         $this->newSpaceName = '';
         $this->joinCode = '';
+        $this->managingSpaceId = null;
         $this->resetValidation();
         $this->showSpaces = true;
     }
@@ -74,6 +130,75 @@ trait ManagesAgendaSpaces
     public function closeSpaces(): void
     {
         $this->showSpaces = false;
+        $this->managingSpaceId = null;
+    }
+
+    // ── Members ───────────────────────────────────────────────────────
+
+    /** Switch the sheet over to one class's member list. */
+    public function openMembers(int $spaceId): void
+    {
+        // Resolved through the user's own memberships, so an id for a class this
+        // user isn't in never even opens the view.
+        $this->managingSpaceId = $this->memberSpace($spaceId)->id;
+
+        unset($this->managedSpace, $this->managedMembers);
+    }
+
+    /** Back to the list of classes. */
+    public function closeMembers(): void
+    {
+        $this->managingSpaceId = null;
+    }
+
+    /**
+     * Remove someone from a class. Owner-only, unlike editing entries — a member
+     * correcting a typo is routine, one classmate throwing another out of the
+     * shared agenda is not.
+     *
+     * Non-destructive in the same way leaving is: entries that person wrote stay
+     * with the class they wrote them for. Their own completions go with them,
+     * since a completion only means anything to the person who ticked it.
+     */
+    public function removeMember(int $spaceId, int $userId): void
+    {
+        $space = $this->ownedSpace($spaceId);
+
+        // The owner leaves via "Verlassen", which hands ownership over properly;
+        // removing yourself here would leave the class without an owner.
+        if ($userId === $space->owner_id) {
+            return;
+        }
+
+        // Resolved through the class's own membership, like every other id in
+        // this app — someone who isn't in it 404s rather than silently no-op'ing.
+        $member = $space->members()->findOrFail($userId);
+
+        $space->members()->detach($member->id);
+
+        unset($this->spaces, $this->managedSpace, $this->managedMembers);
+    }
+
+    /**
+     * Hand the class over to another member. Without this the only way to change
+     * owner would be for the owner to leave, which is a strange thing to have to
+     * do just to pass on the admin role.
+     */
+    public function transferOwnership(int $spaceId, int $userId): void
+    {
+        $space = $this->ownedSpace($spaceId);
+
+        $member = $space->members()->findOrFail($userId);
+
+        $space->update(['owner_id' => $member->id]);
+
+        unset($this->spaces, $this->managedSpace, $this->managedMembers);
+    }
+
+    /** A space this user owns. Anything else 404s rather than silently no-op'ing. */
+    protected function ownedSpace(int $id): AgendaSpace
+    {
+        return auth()->user()->ownedAgendaSpaces()->findOrFail($id);
     }
 
     public function createSpace(): void
@@ -136,6 +261,8 @@ trait ManagesAgendaSpaces
             $space->update(['owner_id' => $successor->id]);
         }
 
+        $this->leaveMemberViewIf($id);
+
         unset($this->spaces);
     }
 
@@ -145,9 +272,25 @@ trait ManagesAgendaSpaces
      */
     public function deleteSpace(int $id): void
     {
-        auth()->user()->ownedAgendaSpaces()->findOrFail($id)->delete();
+        $this->ownedSpace($id)->delete();
+
+        $this->leaveMemberViewIf($id);
 
         unset($this->spaces);
+    }
+
+    /**
+     * Drop back to the class list when the class currently being managed is the
+     * one that just disappeared — otherwise the sheet would sit on a member view
+     * for a space that no longer exists.
+     */
+    private function leaveMemberViewIf(int $spaceId): void
+    {
+        if ($this->managingSpaceId === $spaceId) {
+            $this->managingSpaceId = null;
+        }
+
+        unset($this->managedSpace, $this->managedMembers);
     }
 
     /** Roll a fresh invite code, invalidating any link already handed out. */
