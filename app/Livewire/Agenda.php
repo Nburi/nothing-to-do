@@ -30,24 +30,33 @@ class Agenda extends Component
 
     public string $formNotes = '';
 
-    /** Always re-resolve through the owner relationship — never trust a frontend id alone. */
-    private function userEntry(int $id): AgendaEntry
+    /**
+     * Always re-resolve through the visibility scope — never trust a frontend id
+     * alone. Since entries became shareable this is no longer "mine": it is
+     * "mine, or my class's". Everything outside that (another user's private
+     * entry, a space I never joined) 404s, and every member may edit what their
+     * class posted, which is the agreed rule.
+     */
+    private function visibleEntry(int $id): AgendaEntry
     {
-        return auth()->user()->agendaEntries()->findOrFail($id);
+        return AgendaEntry::query()
+            ->visibleTo(auth()->user())
+            ->withCompletionState(auth()->user())
+            ->findOrFail($id);
     }
 
     /** @return Collection<int, AgendaEntry> */
     #[Computed]
     public function openEntries(): Collection
     {
-        return $this->baseQuery()->open()->ordered()->get();
+        return $this->baseQuery()->openFor(auth()->user())->ordered()->get();
     }
 
     /** @return Collection<int, AgendaEntry> */
     #[Computed]
     public function doneEntries(): Collection
     {
-        return $this->baseQuery()->where('is_done', true)->ordered()->get();
+        return $this->baseQuery()->doneFor(auth()->user())->ordered()->get();
     }
 
     /** Distinct subjects already used, for the Fach combobox suggestions. */
@@ -63,7 +72,9 @@ class Agenda extends Component
 
     private function baseQuery()
     {
-        $query = auth()->user()->agendaEntries();
+        $user = auth()->user();
+
+        $query = AgendaEntry::query()->visibleTo($user)->withCompletionState($user);
 
         if ($this->filterType !== 'all') {
             $query->ofType($this->filterType);
@@ -93,7 +104,7 @@ class Agenda extends Component
 
     public function startEdit(int $id): void
     {
-        $entry = $this->userEntry($id);
+        $entry = $this->visibleEntry($id);
 
         $this->editingId = $entry->id;
         $this->formType = $entry->type;
@@ -133,7 +144,7 @@ class Agenda extends Component
         ];
 
         if ($this->editingId !== null) {
-            $this->userEntry($this->editingId)->update($attributes);
+            $this->visibleEntry($this->editingId)->update($attributes);
         } else {
             auth()->user()->agendaEntries()->create($attributes);
         }
@@ -142,15 +153,18 @@ class Agenda extends Component
         $this->editingId = null;
     }
 
+    /**
+     * Ticks the entry off for *this* person only. On a shared class entry every
+     * member has their own completion — nobody can clear someone else's list.
+     */
     public function toggleDone(int $id): void
     {
-        $entry = $this->userEntry($id);
-        $entry->update(['is_done' => ! $entry->is_done]);
+        $this->visibleEntry($id)->toggleDoneFor(auth()->user());
     }
 
     public function deleteEntry(int $id): void
     {
-        $this->userEntry($id)->delete();
+        $this->visibleEntry($id)->delete();
 
         if ($this->editingId === $id) {
             $this->cancelForm();

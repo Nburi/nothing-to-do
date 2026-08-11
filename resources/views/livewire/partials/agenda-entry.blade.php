@@ -1,10 +1,16 @@
 {{-- One agenda row: checkbox, type badge, subject, title, date badge, edit + delete. --}}
+@php
+    // "Done" is per person since entries became shareable — read it once here
+    // rather than re-asking for every class this row sets. The flag itself is
+    // preloaded by AgendaEntry::scopeWithCompletionState(), so this is free.
+    $done = $entry->isDoneFor(auth()->user());
+@endphp
 <div
     wire:key="agenda-{{ $entry->id }}"
     @class([
         'group/entry flex items-center gap-3 rounded-card border border-line bg-surface p-3 shadow-map transition-colors',
         'border-l-[2.5px] border-l-signal' => $entry->isOverdue(),
-        'opacity-60' => $entry->is_done,
+        'opacity-60' => $done,
     ])
 >
     <button
@@ -12,10 +18,10 @@
         wire:click="toggleDone({{ $entry->id }})"
         @class([
             'grid h-[18px] w-[18px] flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
-            'border-forest bg-forest text-white' => $entry->is_done,
-            'border-line text-transparent hover:border-forest hover:text-forest' => !$entry->is_done,
+            'border-forest bg-forest text-white' => $done,
+            'border-line text-transparent hover:border-forest hover:text-forest' => !$done,
         ])
-        aria-label="{{ $entry->is_done ? 'Als offen markieren' : 'Erledigt markieren' }}: {{ $entry->title }}"
+        aria-label="{{ $done ? 'Als offen markieren' : 'Erledigt markieren' }}: {{ $entry->title }}"
     >
         <svg class="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M2.5 6.4 4.8 8.7 9.5 3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -33,8 +39,8 @@
         </div>
         <p @class([
             'mt-0.5 truncate text-[14.5px]',
-            'font-medium text-ink' => !$entry->is_done,
-            'text-ink-faint line-through' => $entry->is_done,
+            'font-medium text-ink' => !$done,
+            'text-ink-faint line-through' => $done,
         ])>{{ $entry->title }}</p>
     </div>
 
