@@ -155,7 +155,7 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
   Scopes: `forUser`, `ordered`.
 - **`Task`** — `user_id, title, list, project_id, is_today, is_important, deadline(date), due_date(date),
-  is_completed, completed_at, sort_order, timestamps`. See `docs/REQUIREMENTS.md` §2 for field meaning.
+  notes, is_completed, completed_at, sort_order, timestamps`. See `docs/REQUIREMENTS.md` §2 for field meaning.
   - `list` is a **string** (`inbox|todos|tasks|projects`), not a DB enum. `BOARD_LISTS` are the three
     drag/quick-add columns; a task in the `projects` list also carries a `project_id` and lives on its
     project page (never on the main board — see the `onBoard` scope = `project_id IS NULL`).
@@ -163,6 +163,26 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   - Deadline logic lives on the model: `effectiveDate()` = `deadline ?? due_date`, `isUrgent`, `isOverdue`,
     `effectiveDateLabel` (heute/morgen/weekday/d.m./überfällig).
   - Today focus is plain `is_today` — no decoupled planning field.
+  - **`notes`** (nullable text) — free-form notes/comments per task, editable from two places: the shared
+    edit sheet (`ManagesTasks::editNotes`/`editNotesHtml`) and, for task targets only, the quick-capture
+    panel (`QuickCapture::$notes`/`notesHtml` — see §7 Schnellerfassung). Both embed the same
+    **`partials/notes-editor.blade.php`** partial (parameterized by `fieldName`/`htmlProperty`/`idPrefix`,
+    so both instances can exist in the DOM at once without id collisions) — a small toolbar (Fett/Kursiv/
+    Unterstrichen/Liste/Aufgabe) inserts Markdown syntax into a plain textarea (`wire:model`, deferred like
+    every other field on both forms); a "Vorschau aktualisieren" button (`wire:click="$refresh"`) forces a
+    fresh server render into a `prose-topo` preview box below, since a `.blur`-triggered auto-sync turned
+    out to be unreliable in this Livewire 4 setup (see *Known Issues*) — reusing `$refresh` (a core,
+    always-fires Livewire action) sidesteps that instead of chasing the blur modifier further. Both call
+    **`Task::renderNotesMarkdown(string $text): string`** for the actual rendering — one static helper so
+    the safety options (`Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false])`,
+    same as the project brainstorm field) and the extra extension stay in one place rather than drifting
+    across two components. That extra extension is **`App\Support\Markdown\UnderlineExtension`** — a small
+    custom CommonMark extension (`app/Support/Markdown/`, modeled on league/commonmark's own bundled
+    Strikethrough extension) adding `++underlined++` inline syntax, since neither CommonMark nor GFM has a
+    native underline syntax of its own. `Task::notesPreview(int $words = 8)` strips all of that formatting
+    back down to plain text (bold/italic/underline markers, list/task-list prefixes) for the one-line
+    snippet shown on the task card face (`task-card.blade.php`/`task-card-mobile.blade.php`/
+    `project-task-card.blade.php`), truncated with `…` past the word limit.
 - **`EventCategory`** — `user_id, name, color, pomodoro_enabled, sort_order`. A reusable, user-configured
   category (Schule/Training/Arbeiten/Abmachen by default). `hasMany` `ScheduleEvent` and `EventTemplate`
   (both `nullOnDelete` — deleting a category leaves existing blocks intact, falling back to their stored
@@ -242,7 +262,11 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   rather than waiting for the "Mehr" toggle (which still overrides in both directions). `wire:model` is
   deferred, so `$wire.title` does *not* change per keystroke — the trigger is a **local Alpine mirror**
   (`typed`, fed by `@input`), reset on `captured` and on `quick-capture-opened`. Tasks get deadline +
-  Wunschtermin, a project gets a deadline, a Bastelidee gets "Wo anfangen".
+  Wunschtermin + Notizen, a project gets a deadline, a Bastelidee gets "Wo anfangen". The Notizen field
+  (task targets only) is the same `partials/notes-editor.blade.php` partial the task edit sheet uses
+  (`@include(..., ['fieldName' => 'notes', 'htmlProperty' => 'notesHtml', 'idPrefix' => 'qc'])`) — same
+  toolbar, same `Task::renderNotesMarkdown()` rendering, same "Vorschau aktualisieren" `$refresh` button —
+  so a task can be captured with formatted notes in one step instead of adding them later via the edit sheet.
 - **Agenda is the one target whose extras are required**, not optional — type, Fach and date, mirroring
   `Agenda::save()`'s own rules. Those rules are therefore added to `validate()` **only** when `agenda` is the
   chosen target, and its section can't be folded away (the "Mehr" button hides). Fach autocompletes from
@@ -1123,6 +1147,29 @@ window.Alpine.store('foo', {
 });
 ```
 See the `prepare` store in `resources/js/app.js` for the reference implementation.
+
+### `wire:model.blur` did not reliably fire a request in this Livewire 4 setup
+**Symptom:** a textarea bound with `wire:model.blur="foo"` — intended to sync only when the field loses
+focus, to get a "live-ish" server-rendered preview without per-keystroke chatter — never triggered a
+`POST /livewire/update` on blur, whether the blur was caused by a genuine user click on another field,
+a real click via the browser automation tool, or a programmatic `el.blur()` call. Confirmed via
+`read_network_requests`: the request count never changed across several different blur-triggering attempts,
+even though the field's value itself was updating correctly in the DOM the whole time (ruling out an
+event-dispatch problem on the input side).
+**Cause:** not root-caused — Alpine's own model-binding code (`vendor/livewire/livewire/dist/livewire.js`,
+search `hasBlurModifier`) does register a plain `blur` listener that should fire regardless of how the blur
+happened, so this may be specific to a textarea living inside a `wire:submit` form, a version-specific
+Livewire 4 quirk, or something about this app's Alpine/Livewire wiring — not conclusively diagnosed, since
+CLAUDE.md's "two failures = stop" rule applied once multiple different blur-triggering approaches all
+produced the same non-result.
+**Fix:** don't rely on `.blur` (or presumably `.change`/`.lazy`) for a "sync on demand, not every keystroke"
+field. Use a plain deferred `wire:model="foo"` (identical to every other edit-sheet field, e.g. `editTitle`)
+plus an explicit `wire:click="$refresh"` button the user can press to force a fresh server render — `$refresh`
+is a core Livewire action, unconditionally sends a request, and (like any Livewire action) flushes every
+pending deferred model along with it. See the Notizen field's "Vorschau aktualisieren" button in
+`partials/edit-sheet.blade.php` — confirmed working via the same `read_network_requests` check that exposed
+the `.blur` gap. If a future session needs the same "preview my formatted text" pattern, prefer this over
+reaching for `.blur` again.
 
 ### Alpine silently ignores `@click` on an element that isn't inside an Alpine component
 **Symptom:** a button with `@click="$store.something.doThing()"` does nothing at all — no error, no console

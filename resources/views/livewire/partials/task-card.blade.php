@@ -79,6 +79,17 @@
                     Termin
                 </button>
             @endif
+
+            @if ($preview = $task->notesPreview())
+                <button
+                    type="button"
+                    wire:click="startEdit({{ $task->id }})"
+                    @click.stop
+                    class="mt-1 block max-w-full truncate rounded text-left text-[11px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    title="{{ $preview }}"
+                    aria-label="Notizen anzeigen: {{ $task->title }}"
+                >{{ $preview }}</button>
+            @endif
         @endif
     </div>
 

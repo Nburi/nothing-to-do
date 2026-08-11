@@ -25,6 +25,8 @@ trait ManagesTasks
 
     public ?string $editDueDate = null;
 
+    public string $editNotes = '';
+
     public string $editList = 'inbox';
 
     public ?int $editProjectId = null;
@@ -40,6 +42,13 @@ trait ManagesTasks
     public function editableProjects(): Collection
     {
         return auth()->user()->projects()->ordered()->get();
+    }
+
+    /** The notes buffer rendered to safe HTML for the edit sheet's preview. */
+    #[Computed]
+    public function editNotesHtml(): string
+    {
+        return Task::renderNotesMarkdown($this->editNotes);
     }
 
     public function toggleImportant(int $id): void
@@ -66,6 +75,7 @@ trait ManagesTasks
         $this->editTitle = $task->title;
         $this->editDeadline = $task->deadline?->toDateString();
         $this->editDueDate = $task->due_date?->toDateString();
+        $this->editNotes = (string) ($task->notes ?? '');
         $this->editList = $task->list;
         $this->editProjectId = $task->project_id;
     }
@@ -82,16 +92,20 @@ trait ManagesTasks
             'editTitle' => ['required', 'string', 'max:255'],
             'editDeadline' => ['nullable', 'date'],
             'editDueDate' => ['nullable', 'date'],
+            'editNotes' => ['nullable', 'string', 'max:5000'],
             'editList' => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
         ]);
 
         $task = $this->userTask($this->editingId);
 
+        $notes = trim((string) $data['editNotes']);
+
         $updates = [
             'title' => $data['editTitle'],
             'deadline' => $data['editDeadline'] ?: null,
             'due_date' => $data['editDueDate'] ?: null,
+            'notes' => $notes !== '' ? $notes : null,
         ];
 
         // editProjectId takes priority: if a project is selected the task is
@@ -147,7 +161,7 @@ trait ManagesTasks
 
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editList', 'editProjectId']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editNotes', 'editList', 'editProjectId']);
     }
 
     public function deleteTask(int $id): void

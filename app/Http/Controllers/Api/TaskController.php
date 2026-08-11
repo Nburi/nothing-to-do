@@ -70,15 +70,18 @@ class TaskController extends Controller
             'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
             'deadline' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:5000'],
             'is_important' => ['sometimes', 'boolean'],
         ]);
 
         $title = trim($data['title']);
+        $notes = isset($data['notes']) ? trim($data['notes']) : '';
 
         $attributes = [
             'title' => $title,
             'deadline' => $data['deadline'] ?? null,
             'due_date' => $data['due_date'] ?? null,
+            'notes' => $notes !== '' ? $notes : null,
             'is_important' => $data['is_important'] ?? false,
             'sort_order' => 0,
         ];
@@ -108,6 +111,7 @@ class TaskController extends Controller
             'title' => ['sometimes', 'string', 'max:255'],
             'deadline' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['sometimes', 'nullable', 'date'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'is_important' => ['sometimes', 'boolean'],
             'is_completed' => ['sometimes', 'boolean'],
             'is_today' => ['sometimes', 'boolean'],
@@ -125,6 +129,10 @@ class TaskController extends Controller
         }
         if (array_key_exists('due_date', $data)) {
             $updates['due_date'] = $data['due_date'];
+        }
+        if (array_key_exists('notes', $data)) {
+            $notes = $data['notes'] !== null ? trim($data['notes']) : null;
+            $updates['notes'] = $notes !== '' ? $notes : null;
         }
         if (array_key_exists('is_important', $data)) {
             $updates['is_important'] = $data['is_important'];

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\AgendaEntry;
+use App\Models\Task;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -38,6 +39,8 @@ class QuickCapture extends Component
     public ?string $deadline = null;
 
     public ?string $dueDate = null;
+
+    public string $notes = '';
 
     public string $whereToBegin = '';
 
@@ -97,6 +100,13 @@ class QuickCapture extends Component
         return auth()->user()->agendaSpaces()->ordered()->get();
     }
 
+    /** The notes buffer rendered to safe HTML for the panel's preview (task targets only). */
+    #[Computed]
+    public function notesHtml(): string
+    {
+        return Task::renderNotesMarkdown($this->notes);
+    }
+
     public function setTarget(string $target): void
     {
         if (! in_array($target, self::TARGETS, true)) {
@@ -109,6 +119,7 @@ class QuickCapture extends Component
         // along invisibly and written on the next save.
         if (! in_array($target, self::TASK_TARGETS, true)) {
             $this->dueDate = null;
+            $this->notes = '';
         }
 
         if ($target !== 'craft') {
@@ -141,7 +152,7 @@ class QuickCapture extends Component
     #[On('quick-capture-opened')]
     public function resetPanel(?string $target = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId']);
         $this->resetValidation();
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
@@ -165,6 +176,7 @@ class QuickCapture extends Component
             'target' => ['required', Rule::in(self::TARGETS)],
             'deadline' => ['nullable', 'date'],
             'dueDate' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:5000'],
             'whereToBegin' => ['nullable', 'string', 'max:2000'],
         ];
 
@@ -183,6 +195,7 @@ class QuickCapture extends Component
 
         $user = auth()->user();
         $title = $this->title;
+        $notes = trim($this->notes);
 
         match ($this->target) {
             'project' => $user->projects()->create([
@@ -206,6 +219,7 @@ class QuickCapture extends Component
                 'list' => $this->target,
                 'deadline' => $this->deadline ?: null,
                 'due_date' => $this->dueDate ?: null,
+                'notes' => $notes !== '' ? $notes : null,
                 'sort_order' => 0,
             ]),
         };
@@ -225,7 +239,7 @@ class QuickCapture extends Component
         // shouldn't mean re-picking the chip every time. Agenda's Fach, date,
         // type and class survive for the same reason — writing down three things
         // the teacher just set, all for the same class, is the normal case.
-        $this->reset(['title', 'deadline', 'dueDate', 'whereToBegin']);
+        $this->reset(['title', 'deadline', 'dueDate', 'notes', 'whereToBegin']);
 
         $this->dispatch('captured');
     }
@@ -238,6 +252,7 @@ class QuickCapture extends Component
             'title.max' => 'Höchstens 255 Zeichen.',
             'deadline.date' => 'Das ist kein gültiges Datum.',
             'dueDate.date' => 'Das ist kein gültiges Datum.',
+            'notes.max' => 'Das ist zu lang — höchstens 5000 Zeichen.',
             'whereToBegin.max' => 'Das ist zu lang — höchstens 2000 Zeichen.',
             'subject.required' => 'Für die Agenda fehlt noch das Fach.',
             'subject.max' => 'Das Fach ist zu lang — höchstens 100 Zeichen.',

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\Markdown\UnderlineExtension;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class Task extends Model
 {
@@ -35,10 +37,14 @@ class Task extends Model
         'is_important',
         'deadline',
         'due_date',
+        'notes',
         'is_completed',
         'completed_at',
         'sort_order',
     ];
+
+    /** Words shown in the card-face notes preview before truncating with an ellipsis. */
+    public const NOTES_PREVIEW_WORDS = 8;
 
     protected function casts(): array
     {
@@ -187,5 +193,53 @@ class Task extends Model
             $days <= 6 => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][$date->dayOfWeek],
             default => $date->format('d.m.'),
         };
+    }
+
+    /**
+     * The first few words of the notes, stripped of the markdown syntax the
+     * edit sheet's toolbar inserts (bold/italic/underline/bullet/task-list
+     * markers) — a plain-text glance shown on the card face. Null when there
+     * are no notes.
+     */
+    public function notesPreview(int $words = self::NOTES_PREVIEW_WORDS): ?string
+    {
+        $text = trim((string) $this->notes);
+
+        if ($text === '') {
+            return null;
+        }
+
+        $text = preg_replace('/^- \[[ xX]\] /m', '', $text);
+        $text = preg_replace('/^[-*] /m', '', $text);
+        $text = str_replace(['**', '++', '*'], '', $text);
+        $text = trim(preg_replace('/\s+/', ' ', $text));
+
+        if ($text === '') {
+            return null;
+        }
+
+        $parts = explode(' ', $text);
+        $preview = implode(' ', array_slice($parts, 0, $words));
+
+        return count($parts) > $words ? $preview.'…' : $preview;
+    }
+
+    /**
+     * Renders notes markdown to safe HTML — shared by every place notes are
+     * written (the task edit sheet, the quick-capture panel) so the safety
+     * options and the custom ++underline++ extension stay in one place.
+     */
+    public static function renderNotesMarkdown(string $text): string
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return '';
+        }
+
+        return Str::markdown($text, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ], [new UnderlineExtension()]);
     }
 }

@@ -151,6 +151,32 @@ class TaskApiTest extends TestCase
         $this->assertDatabaseMissing('tasks', ['id' => $task->id]);
     }
 
+    public function test_it_creates_a_task_with_notes(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/tasks', ['title' => 'Vokabeln lernen', 'notes' => '  Kapitel 1-3  ']);
+
+        $response->assertCreated()->assertJsonPath('data.notes', 'Kapitel 1-3');
+        $this->assertDatabaseHas('tasks', ['title' => 'Vokabeln lernen', 'notes' => 'Kapitel 1-3']);
+    }
+
+    public function test_it_updates_and_clears_notes_via_patch(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->todos()->create(['notes' => 'Alte Notiz']);
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/tasks/{$task->id}", ['notes' => 'Neue Notiz'])
+            ->assertOk()
+            ->assertJsonPath('data.notes', 'Neue Notiz');
+        $this->assertSame('Neue Notiz', $task->fresh()->notes);
+
+        $this->patchJson("/api/tasks/{$task->id}", ['notes' => null])->assertOk();
+        $this->assertNull($task->fresh()->notes);
+    }
+
     public function test_reorder_persists_list_today_and_order(): void
     {
         $user = User::factory()->create();
