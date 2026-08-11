@@ -150,7 +150,7 @@
 
                 {{-- Agenda: type, Fach and date are all required (mirrors Agenda::save()). --}}
                 <div x-show="$wire.target === 'agenda'" style="display: none;" class="flex flex-col gap-3">
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex flex-wrap items-center gap-1.5">
                         @foreach (App\Models\AgendaEntry::TYPES as $value => $label)
                             <button
                                 type="button"
@@ -163,6 +163,36 @@
                                 aria-pressed="{{ $agendaType === $value ? 'true' : 'false' }}"
                             >{{ $label }}</button>
                         @endforeach
+
+                        {{-- Who it's for. Only rendered for someone actually in a class;
+                             sits on the same row as the type pills because it's the same
+                             kind of choice, and the panel has no room to spare. --}}
+                        @if ($this->agendaSpaces->isNotEmpty())
+                            <span class="mx-0.5 h-4 w-px flex-none bg-line" aria-hidden="true"></span>
+                            <button
+                                type="button"
+                                wire:click="$set('agendaSpaceId', null)"
+                                @class([
+                                    'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                    'border-forest bg-forest text-white' => $agendaSpaceId === null,
+                                    'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $agendaSpaceId !== null,
+                                ])
+                                aria-pressed="{{ $agendaSpaceId === null ? 'true' : 'false' }}"
+                            >Nur ich</button>
+                            @foreach ($this->agendaSpaces as $space)
+                                <button
+                                    type="button"
+                                    wire:key="qc-space-{{ $space->id }}"
+                                    wire:click="$set('agendaSpaceId', {{ $space->id }})"
+                                    @class([
+                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                        'border-contour bg-contour text-white' => $agendaSpaceId === $space->id,
+                                        'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $agendaSpaceId !== $space->id,
+                                    ])
+                                    aria-pressed="{{ $agendaSpaceId === $space->id ? 'true' : 'false' }}"
+                                >{{ $space->shortName() }}</button>
+                            @endforeach
+                        @endif
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>

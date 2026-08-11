@@ -24,6 +24,12 @@ The app should feel reliable and quiet enough to be used every single day.
 
 **Target user:** a Swiss upper-secondary student and competitive orienteering athlete. One account, his own tasks.
 
+**One deliberate exception to "single user":** the **Agenda** (homework & exams) can be shared with a school
+class via an **Agenda Space** — several accounts see one list of class homework, while everything else in the
+app (tasks, projects, Zeitplan, Bastelideen) stays strictly single-user. The app is still a personal
+productivity system, not a team tool; the class agenda is a shared *input*, not shared workspace. See §7
+"Agenda — Klassen teilen" for what that does and does not mean.
+
 ---
 
 ## 2. My role & working standard
@@ -618,11 +624,13 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   exams — kept fully isolated from Task/Project/Schedule for now: no FK/relation, and it doesn't surface
   on the board, in Vorbereitung, or in Notfallmodus. A later integration isn't ruled out, just not part of
   this pass.
-- **`App\Models\AgendaEntry`** — `user_id, type(homework|exam), subject, title, notes, date, is_done,
-  timestamps`. `subject` is free text (e.g. "Mathematik") — no separate Subject model yet. `dateLabel()`/
-  `isOverdue()` mirror `Task::effectiveDateLabel()`/`Project::deadlineLabel()` (heute/morgen/Wochentag/
-  d.m./überfällig), deliberately duplicated rather than shared, the same way those two already are with
-  each other. Scopes `forUser/ofType/open/ordered`.
+- **`App\Models\AgendaEntry`** — `user_id, agenda_space_id?, type(homework|exam), subject, title, notes,
+  date, timestamps`. `subject` is free text (e.g. "Mathematik") — no separate Subject model yet.
+  `dateLabel()`/`isOverdue()` mirror `Task::effectiveDateLabel()`/`Project::deadlineLabel()`
+  (heute/morgen/Wochentag/d.m./überfällig), deliberately duplicated rather than shared, the same way those
+  two already are with each other. `agenda_space_id` null = private (what every entry was before sharing
+  existed); set = visible to that whole class. Scopes `forUser/visibleTo/inSpace/ofType/openFor/doneFor/
+  withCompletionState/ordered` — see "Agenda — Klassen teilen" for why "done" is no longer a column.
 - **`App\Livewire\Agenda`** (class-based, `#[Layout('layouts.app')]`) — its own component, no shared trait
   with `ManagesTasks`/`ManagesSchedule`. One form (`partials/agenda-entry-form.blade.php`) handles both
   create and edit (`editingId` null vs set), the same bottom-sheet/modal shell as
@@ -656,6 +664,64 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   double-click pattern (never `confirm()`), same as everywhere else in the app.
 - Nav entry in `layouts/app.blade.php`, same pill/mobile-dropdown treatment as Vorbereiten/Zeitplan/Notfall.
 - No push notifications, no API endpoint (Sanctum) yet — purely a standalone Livewire page in this pass.
+
+### Agenda — Klassen teilen (built)
+
+The one multi-user surface in the app (see §1). A class shares **one list of homework and exams**; nothing
+else is shared, and a private entry stays private.
+
+- **`App\Models\AgendaSpace`** — `owner_id, name, invite_code, timestamps`. `belongsToMany User` (members,
+  pivot `agenda_space_user`), `hasMany AgendaEntry`. Membership is a pivot, not a column on `users`, because
+  one person can be in several spaces at once (a class plus a study group). `generateInviteCode()` produces
+  6 characters from an alphabet **without `O/0` and `I/1`** — people read these off someone else's screen —
+  and re-rolls on the (vanishingly unlikely) collision rather than letting the unique index throw.
+  `findByInviteCode()` normalises case and punctuation, so `k7m 4xq` finds `K7M4XQ`.
+- **"Done" is per person, not per entry** — `agenda_entry_completions` (`agenda_entry_id, user_id`, unique)
+  holds one row per person who ticked something off. A class entry is finished by 22 people independently
+  and nobody may clear it for anyone else, so it cannot be a column. **Private entries go through the same
+  table** rather than keeping `is_done`: a private entry simply has exactly one person who can complete it,
+  and unifying keeps "what's still open for me" a single `whereDoesntHave` instead of a branch over two
+  mechanisms. `AgendaEntry::isDoneFor(User)` prefers the `done_for_me` flag that
+  `scopeWithCompletionState()` selects alongside the row (`withCount` + `withExists`), so a 40-row list
+  stays 3 queries instead of 80.
+  > **`agenda_entries.is_done` still exists but is dead.** The completions migration backfills it and then
+  > nothing reads it; it is removed from `$fillable` and `casts()` so an accidental write fails loudly.
+  > Dropping the column is a separate, later commit (CLAUDE.md §8: two steps) — tracked in `TODO.md`.
+- **`AgendaEntry::scopeVisibleTo(User)` is the only gate.** Own private entries **or** entries in a space the
+  user belongs to. `Agenda::visibleEntry()` (formerly `userEntry()`) re-resolves every id through it, so a
+  stranger's private entry and a class you never joined are equally invisible — and **every member may edit
+  or delete what their class posted**, which is the agreed rule, and falls out of the scope for free.
+  Writes have their own boundary: `formSpaceId` / `agendaSpaceId` are validated with `Rule::in($spaces)`, so
+  an entry can never be filed into a class you're not in.
+- **`App\Livewire\Concerns\ManagesAgendaSpaces`** — create/join/leave/delete/regenerate, shared by `Agenda`
+  (the whole "Klassen" sheet, `partials/agenda-spaces-sheet.blade.php`) and `JoinAgendaSpace`, so the join
+  rules live in one place. **Leaving is never destructive:** entries stay with the class they were written
+  for; an owner who leaves hands ownership to the longest-standing remaining member; the last member out
+  deletes the space, at which point `nullOnDelete` turns its entries back into private ones rather than
+  discarding them. Deleting a space for everyone is the one owner-only action.
+- **`App\Livewire\JoinAgendaSpace`** (`/app/agenda/join/{code}`, `route('agenda.join')`) — joins on a
+  **button press, never on the GET**: a link pasted into a class chat gets fetched by link previewers long
+  before a human clicks it. Unknown code and already-a-member each get their own state.
+  > **`RegisteredUserController` redirects to `intended()`** because of this page. "Classmate without an
+  > account follows the invite link" is the normal way people join, so *registration* — not just login —
+  > has to hand them back to where they were going. Covered by a test.
+- **List UI** — one date-sorted stream with a class badge per row, `von <name>` when a classmate wrote it,
+  and a quiet class-progress indicator: a `h-1` bar (same visual language as `project-card`'s — `bg-line`
+  track, `bg-forest` fill) **stacked over** its `5/22` count rather than beside it. Stacked because this row
+  is a single dense line: side by side costs ~38px of the truncating title column, the stack ~10px and no
+  extra row height (measured at 375px). Shown at every width — hiding it on mobile would hide it on the
+  device this gets used on — and deliberately understated, since it is context, not a leaderboard, and must
+  never outweigh the due date. Private entries get none: there is nothing to be "5 of 22" about when exactly
+  one person can finish it. A second, quieter chip row filters by
+  class, with a toggle between sorting by date (default — "what is due next" is the actual question) and
+  grouping into one section per class. **The whole row only renders once the user is in a class**, so a solo
+  Agenda looks exactly as it did before this feature.
+- **Creating** — a "Für" pill row (`Nur ich` / each class) in both the entry form and QuickCapture's agenda
+  target, again only rendered for someone actually in a class. `openCreateForm()` pre-selects the class the
+  list is filtered to and otherwise defaults to private, so nothing is shared by accident. QuickCapture's
+  confirmation line names the class (`→ Agenda · Klasse 4b`) — sharing is its one capture with a consequence
+  beyond your own list. Fach suggestions now read from every *visible* entry, so a classmate's "Französisch"
+  autocompletes for everyone.
 
 ### Bastelideen (built)
 - A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
@@ -763,6 +829,15 @@ This is a **full rebuild** (old Node.js app → Laravel). The first deploy is a 
 9. Point the web root at `public/`; ensure `storage/` and `bootstrap/cache/` are writable.
 10. **Add a cron entry** (new requirement — see below): `* * * * * cd /path/to/app && php artisan
     schedule:run >> /dev/null 2>&1`.
+
+### Shared class agenda (one time, when that feature first ships)
+Nothing beyond the standard `php artisan migrate --force` — no new `.env` variable, no new dependency, no
+new cron entry. Two things to be aware of, though:
+1. **Registration must be reachable.** Classmates need their own accounts to join a class agenda. If
+   `/register` was ever blocked off on the production box, unblock it or invite links will dead-end.
+2. **The `is_done` → completions migration backfills data.** It is non-destructive (the old column is left
+   intact), but take the usual DB snapshot before running it, and see `TODO.md` for the follow-up commit
+   that drops the column later.
 
 ### Every later deploy
 ```bash

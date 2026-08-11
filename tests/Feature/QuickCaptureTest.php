@@ -149,7 +149,7 @@ class QuickCaptureTest extends TestCase
             'subject' => 'Mathematik',
             'title' => 'Prüfung Kapitel 4',
             'date' => '2026-09-12 00:00:00',
-            'is_done' => false,
+            'agenda_space_id' => null,
         ]);
     }
 

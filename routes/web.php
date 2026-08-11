@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
+use App\Livewire\JoinAgendaSpace;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
@@ -44,6 +45,14 @@ Route::get('/app/settings', Settings::class)
 Route::get('/app/agenda', Agenda::class)
     ->middleware('auth')
     ->name('agenda');
+
+// Invite link into a shared class agenda. Auth-gated: a guest is sent to login
+// and lands back here afterwards (see RegisteredUserController — registration
+// honours the intended URL too, since "classmate without an account clicks the
+// link" is the normal way people join).
+Route::get('/app/agenda/join/{code}', JoinAgendaSpace::class)
+    ->middleware('auth')
+    ->name('agenda.join');
 
 Route::get('/app/crafts', CraftIdeas::class)
     ->middleware('auth')

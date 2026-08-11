@@ -34,7 +34,7 @@ class AgendaTest extends TestCase
             'type' => 'homework',
             'subject' => 'Mathematik',
             'title' => 'Kapitel 5, Aufgaben 1-10',
-            'is_done' => false,
+            'agenda_space_id' => null,
         ]);
     }
 
@@ -75,16 +75,24 @@ class AgendaTest extends TestCase
         $this->assertDatabaseCount('agenda_entries', 0);
     }
 
-    public function test_toggling_done_flips_the_flag(): void
+    public function test_toggling_done_records_and_clears_this_users_completion(): void
     {
         $user = User::factory()->create();
         $entry = AgendaEntry::factory()->for($user)->homework()->create();
 
-        Livewire::actingAs($user)
-            ->test(Agenda::class)
-            ->call('toggleDone', $entry->id);
+        $component = Livewire::actingAs($user)->test(Agenda::class);
 
-        $this->assertDatabaseHas('agenda_entries', ['id' => $entry->id, 'is_done' => true]);
+        $component->call('toggleDone', $entry->id);
+        $this->assertDatabaseHas('agenda_entry_completions', [
+            'agenda_entry_id' => $entry->id,
+            'user_id' => $user->id,
+        ]);
+
+        $component->call('toggleDone', $entry->id);
+        $this->assertDatabaseMissing('agenda_entry_completions', [
+            'agenda_entry_id' => $entry->id,
+            'user_id' => $user->id,
+        ]);
     }
 
     public function test_an_entry_can_be_edited(): void
@@ -128,10 +136,10 @@ class AgendaTest extends TestCase
             $component->call('toggleDone', $foreignEntry->id);
             $this->fail('Expected a ModelNotFoundException for the foreign entry.');
         } catch (ModelNotFoundException) {
-            // The foreign entry is invisible through the owner relationship.
+            // The foreign entry is invisible through the visibility scope.
         }
 
-        $this->assertDatabaseHas('agenda_entries', ['id' => $foreignEntry->id, 'is_done' => false]);
+        $this->assertDatabaseCount('agenda_entry_completions', 0);
     }
 
     public function test_filter_chips_only_show_the_matching_type(): void

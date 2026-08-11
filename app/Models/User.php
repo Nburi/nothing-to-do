@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -75,6 +76,18 @@ class User extends Authenticatable
     public function craftIdeas(): HasMany
     {
         return $this->hasMany(CraftIdea::class);
+    }
+
+    /** Shared class/group agendas this user belongs to (a class, a study group, …). */
+    public function agendaSpaces(): BelongsToMany
+    {
+        return $this->belongsToMany(AgendaSpace::class)->withTimestamps();
+    }
+
+    /** @return HasMany<AgendaSpace, $this> */
+    public function ownedAgendaSpaces(): HasMany
+    {
+        return $this->hasMany(AgendaSpace::class, 'owner_id');
     }
 
     /** The project currently in "emergency mode", or null if not active. */
