@@ -236,7 +236,11 @@ document.addEventListener('alpine:init', () => {
             // subject matches one of the chips open straight on that chip;
             // null means the usual Inbox default.
             window.Livewire?.dispatch('quick-capture-opened', { target });
-            requestAnimationFrame(() => document.getElementById('quick-capture-title')?.focus());
+            // Alpine.nextTick, not requestAnimationFrame: the panel's x-show has an
+            // x-transition, so Alpine doesn't flip it off display:none synchronously —
+            // nextTick is Alpine's own "wait until my DOM updates are flushed" API,
+            // the earliest point focusing a still-hidden input can actually succeed.
+            window.Alpine.nextTick(() => document.getElementById('quick-capture-title')?.focus());
         },
         hide() {
             if (!this.open) return;
