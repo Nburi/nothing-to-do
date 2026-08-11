@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ManagesAgendaSpaces;
 use App\Models\AgendaEntry;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -17,6 +18,20 @@ class Agenda extends Component
 
     /** 'all' | 'homework' | 'exam' */
     public string $filterType = 'all';
+
+    /**
+     * Which agenda to show: 'all', 'mine' (private only), or a space id as a
+     * string. A string throughout because it comes straight off a wire:click
+     * chip and gets compared against one.
+     */
+    public string $filterSpace = 'all';
+
+    /**
+     * Sort by date (false, the default) or group into one section per class.
+     * Date wins by default because "what is due next" is the actual question;
+     * grouping is there for the times the question is "what does 4b have on".
+     */
+    public bool $groupBySpace = false;
 
     public bool $showForm = false;
 
@@ -32,6 +47,9 @@ class Agenda extends Component
     public string $formDate = '';
 
     public string $formNotes = '';
+
+    /** Null = "nur ich"; a space id = visible to that whole class. */
+    public ?int $formSpaceId = null;
 
     /**
      * Always re-resolve through the visibility scope — never trust a frontend id
@@ -62,25 +80,74 @@ class Agenda extends Component
         return $this->baseQuery()->doneFor(auth()->user())->ordered()->get();
     }
 
+    /**
+     * The open entries grouped into one section per class, private last — the
+     * "nach Raum" view. Derived from the same computed list the flat view
+     * renders, so switching costs no extra query.
+     *
+     * @return Collection<int, array{key: string, label: string, meta: ?string, entries: Collection<int, AgendaEntry>}>
+     */
+    #[Computed]
+    public function openGroups(): Collection
+    {
+        return $this->openEntries
+            ->groupBy(fn (AgendaEntry $entry) => $entry->agenda_space_id ?? 0)
+            ->map(fn (Collection $entries, $spaceId) => [
+                'key' => (string) $spaceId,
+                'label' => $spaceId === 0 ? 'Nur ich' : ($entries->first()->space?->name ?? 'Nur ich'),
+                'meta' => $spaceId === 0 ? null : $this->memberLabel($entries->first()->space?->members_count ?? 0),
+                'entries' => $entries,
+            ])
+            // Private last: it's the fallback bucket, not the headline.
+            ->sortBy(fn (array $group) => $group['key'] === '0' ? "\u{FFFF}" : mb_strtolower($group['label']))
+            ->values();
+    }
+
     /** Distinct subjects already used, for the Fach combobox suggestions. */
     #[Computed]
     public function existingSubjects(): Collection
     {
-        return auth()->user()->agendaEntries()
+        // Everything visible, not just this user's own entries: in a shared
+        // class the Fächer are the class's, so a classmate typing "Französisch"
+        // once should autocomplete for everyone.
+        return AgendaEntry::query()
+            ->visibleTo(auth()->user())
             ->select('subject')
             ->distinct()
             ->orderBy('subject')
             ->pluck('subject');
     }
 
+    private function memberLabel(int $count): string
+    {
+        return $count.' '.($count === 1 ? 'Mitglied' : 'Mitglieder');
+    }
+
     private function baseQuery()
     {
         $user = auth()->user();
 
-        $query = AgendaEntry::query()->visibleTo($user)->withCompletionState($user);
+        $query = AgendaEntry::query()
+            ->visibleTo($user)
+            ->withCompletionState($user)
+            // The row shows who wrote a class entry and how many of the class
+            // have finished it; both eager-loaded so a long list stays 3 queries.
+            ->with(['user:id,name', 'space' => fn ($q) => $q->withCount('members')]);
 
         if ($this->filterType !== 'all') {
             $query->ofType($this->filterType);
+        }
+
+        if ($this->filterSpace === 'mine') {
+            $query->inSpace(null);
+        } elseif ($this->filterSpace !== 'all') {
+            // Guarded against a stale chip: a space id that is no longer one of
+            // mine falls back to showing everything rather than erroring.
+            $spaceId = (int) $this->filterSpace;
+
+            if ($this->spaces->contains('id', $spaceId)) {
+                $query->inSpace($spaceId);
+            }
         }
 
         return $query;
@@ -93,6 +160,18 @@ class Agenda extends Component
         $this->filterType = in_array($type, ['all', 'homework', 'exam'], true) ? $type : 'all';
     }
 
+    public function setSpaceFilter(string $space): void
+    {
+        $this->filterSpace = $space === 'all' || $space === 'mine' || $this->spaces->contains('id', (int) $space)
+            ? $space
+            : 'all';
+    }
+
+    public function toggleGrouping(): void
+    {
+        $this->groupBySpace = ! $this->groupBySpace;
+    }
+
     public function openCreateForm(): void
     {
         $this->editingId = null;
@@ -101,6 +180,12 @@ class Agenda extends Component
         $this->formTitle = '';
         $this->formDate = '';
         $this->formNotes = '';
+        // Follow the filter: with "Klasse 4b" on screen, the entry you're about
+        // to write is almost certainly for 4b. Same idea as QuickCapture's
+        // target following the page you opened it from. Defaults to private
+        // whenever the filter isn't pointed at one specific class, so nothing
+        // is ever shared by accident.
+        $this->formSpaceId = is_numeric($this->filterSpace) ? (int) $this->filterSpace : null;
         $this->resetValidation();
         $this->showForm = true;
     }
@@ -115,6 +200,7 @@ class Agenda extends Component
         $this->formTitle = $entry->title;
         $this->formDate = $entry->date->toDateString();
         $this->formNotes = (string) ($entry->notes ?? '');
+        $this->formSpaceId = $entry->agenda_space_id;
         $this->resetValidation();
         $this->showForm = true;
     }
@@ -136,7 +222,10 @@ class Agenda extends Component
             'formTitle' => ['required', 'string', 'max:255'],
             'formDate' => ['required', 'date'],
             'formNotes' => ['nullable', 'string', 'max:2000'],
-        ]);
+            // Sharing into a class you don't belong to is not a validation
+            // nicety — it's the whole authorization boundary for writes.
+            'formSpaceId' => ['nullable', 'integer', Rule::in($this->spaces->pluck('id'))],
+        ], attributes: ['formSpaceId' => 'Klasse']);
 
         $attributes = [
             'type' => $data['formType'],
@@ -144,6 +233,7 @@ class Agenda extends Component
             'title' => $data['formTitle'],
             'date' => $data['formDate'],
             'notes' => trim($data['formNotes'] ?? '') !== '' ? trim($data['formNotes']) : null,
+            'agenda_space_id' => $data['formSpaceId'],
         ];
 
         if ($this->editingId !== null) {

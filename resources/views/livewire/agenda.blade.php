@@ -56,18 +56,85 @@
         @endforeach
     </div>
 
-    <div class="mt-4 space-y-2">
-        @forelse ($this->openEntries as $entry)
-            @include('livewire.partials.agenda-entry', ['entry' => $entry])
-        @empty
-            <div class="rounded-card border border-dashed border-line p-10 text-center">
-                <svg class="mx-auto mb-3 h-8 w-8 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                    <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>
+    {{-- The whole space row only exists once there is a class to filter by, so
+         a solo user's Agenda looks exactly as it always did. --}}
+    @if ($this->spaces->isNotEmpty())
+        <div class="mt-2.5 flex flex-wrap items-center gap-x-1 gap-y-1.5 px-0.5">
+            @php
+                $spaceChips = collect([['all', 'Alle Räume'], ['mine', 'Nur ich']])
+                    ->concat($this->spaces->map(fn ($s) => [(string) $s->id, $s->shortName()]));
+            @endphp
+            @foreach ($spaceChips as [$val, $lbl])
+                <button
+                    type="button"
+                    wire:click="setSpaceFilter('{{ $val }}')"
+                    wire:key="space-chip-{{ $val }}"
+                    @class([
+                        'rounded-card px-2.5 py-1 text-[12.5px] transition',
+                        'bg-contour-soft font-medium text-contour' => $filterSpace === $val,
+                        'text-ink-faint hover:text-ink-soft' => $filterSpace !== $val,
+                    ])
+                >{{ $lbl }}</button>
+            @endforeach
+
+            <button
+                type="button"
+                wire:click="toggleGrouping"
+                @class([
+                    'ml-auto flex items-center gap-1 rounded-card px-2 py-1 text-[12px] transition',
+                    'text-contour' => $groupBySpace,
+                    'text-ink-faint hover:text-ink-soft' => !$groupBySpace,
+                ])
+                title="{{ $groupBySpace ? 'Nach Datum sortieren' : 'Nach Klasse gruppieren' }}"
+            >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    @if ($groupBySpace)
+                        <path d="M4 6h16M4 12h16M4 18h16"/>
+                    @else
+                        <path d="M4 5h16M4 9h16M4 15h16M4 19h16"/>
+                    @endif
                 </svg>
-                <p class="text-sm text-ink-faint">Keine Einträge — leg deine erste Hausaufgabe oder Prüfung an.</p>
+                {{ $groupBySpace ? 'nach Klasse' : 'nach Datum' }}
+            </button>
+        </div>
+    @endif
+
+    @if ($this->openEntries->isEmpty())
+        <div class="mt-4 rounded-card border border-dashed border-line p-10 text-center">
+            <svg class="mx-auto mb-3 h-8 w-8 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>
+            </svg>
+            <p class="text-sm text-ink-faint">
+                @if ($filterSpace !== 'all' || $filterType !== 'all')
+                    Hier ist gerade nichts offen.
+                @else
+                    Keine Einträge — leg deine erste Hausaufgabe oder Prüfung an.
+                @endif
+            </p>
+        </div>
+    @elseif ($groupBySpace)
+        @foreach ($this->openGroups as $group)
+            <div wire:key="group-{{ $group['key'] }}" class="mt-4">
+                <div class="mb-2 flex items-baseline gap-2 px-0.5">
+                    <h2 class="text-[12px] font-medium uppercase tracking-wide text-ink-faint">{{ $group['label'] }}</h2>
+                    @if ($group['meta'])
+                        <span class="text-[11.5px] text-ink-faint">· {{ $group['meta'] }}</span>
+                    @endif
+                </div>
+                <div class="space-y-2">
+                    @foreach ($group['entries'] as $entry)
+                        @include('livewire.partials.agenda-entry', ['entry' => $entry, 'showSpaceBadge' => false])
+                    @endforeach
+                </div>
             </div>
-        @endforelse
-    </div>
+        @endforeach
+    @else
+        <div class="mt-4 space-y-2">
+            @foreach ($this->openEntries as $entry)
+                @include('livewire.partials.agenda-entry', ['entry' => $entry])
+            @endforeach
+        </div>
+    @endif
 
     @if ($this->doneEntries->isNotEmpty())
         <div x-data="{ show: false }" class="mt-4">

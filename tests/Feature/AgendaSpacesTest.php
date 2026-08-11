@@ -172,6 +172,177 @@ class AgendaSpacesTest extends TestCase
         $this->assertDatabaseHas('agenda_spaces', ['id' => $space->id, 'owner_id' => $owner->id]);
     }
 
+    // ── Shared entries ────────────────────────────────────────────────
+
+    public function test_members_see_each_others_class_entries_but_outsiders_do_not(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        $outsider = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
+
+        $shared = AgendaEntry::factory()->for($owner)->inSpace($space)->create(['title' => 'Kapitel 5 lesen']);
+        $private = AgendaEntry::factory()->for($owner)->create(['title' => 'Mein Geheimplan']);
+
+        Livewire::actingAs($member)->test(Agenda::class)
+            ->assertSee('Kapitel 5 lesen')
+            ->assertDontSee('Mein Geheimplan');
+
+        Livewire::actingAs($outsider)->test(Agenda::class)
+            ->assertDontSee('Kapitel 5 lesen')
+            ->assertDontSee('Mein Geheimplan');
+    }
+
+    public function test_an_outsider_cannot_mutate_a_class_entry(): void
+    {
+        $owner = User::factory()->create();
+        $outsider = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+
+        foreach (['toggleDone', 'startEdit', 'deleteEntry'] as $action) {
+            try {
+                Livewire::actingAs($outsider)->test(Agenda::class)->call($action, $entry->id);
+                $this->fail("A non-member must not be able to call {$action} on a class entry.");
+            } catch (ModelNotFoundException) {
+                // Not in their visibility scope.
+            }
+        }
+
+        $this->assertDatabaseHas('agenda_entries', ['id' => $entry->id]);
+    }
+
+    public function test_ticking_a_class_entry_off_does_not_clear_it_for_anyone_else(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create(['title' => 'Vokabeln lernen']);
+
+        Livewire::actingAs($member)->test(Agenda::class)->call('toggleDone', $entry->id);
+
+        // Done for the one who ticked it…
+        $this->assertTrue($entry->fresh()->isDoneFor($member));
+        // …and untouched for everyone else.
+        $this->assertFalse($entry->fresh()->isDoneFor($owner));
+        Livewire::actingAs($owner)->test(Agenda::class)->assertSee('Vokabeln lernen');
+    }
+
+    public function test_the_progress_counter_counts_completions_against_members(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)
+            ->completedByUser($member)->create();
+
+        Livewire::actingAs($owner)->test(Agenda::class)->assertSee('1/2');
+    }
+
+    public function test_any_member_can_edit_and_delete_a_classmates_entry(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)
+            ->create(['title' => 'Falsch abgeschrieben', 'subject' => 'Mathematik']);
+
+        Livewire::actingAs($member)->test(Agenda::class)
+            ->call('startEdit', $entry->id)
+            ->assertSet('formSpaceId', $space->id)
+            ->set('formTitle', 'Korrigiert')
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('agenda_entries', ['id' => $entry->id, 'title' => 'Korrigiert']);
+
+        Livewire::actingAs($member)->test(Agenda::class)->call('deleteEntry', $entry->id);
+        $this->assertDatabaseMissing('agenda_entries', ['id' => $entry->id]);
+    }
+
+    public function test_an_entry_can_be_created_for_a_class(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+
+        Livewire::actingAs($user)->test(Agenda::class)
+            ->call('openCreateForm')
+            ->set('formSpaceId', $space->id)
+            ->set('formSubject', 'Französisch')
+            ->set('formTitle', 'Unité 7')
+            ->set('formDate', now()->addDays(3)->toDateString())
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('agenda_entries', [
+            'user_id' => $user->id,
+            'agenda_space_id' => $space->id,
+            'title' => 'Unité 7',
+        ]);
+    }
+
+    public function test_an_entry_cannot_be_shared_into_a_space_the_user_is_not_in(): void
+    {
+        $user = User::factory()->create();
+        $foreignSpace = AgendaSpace::factory()->create();
+
+        Livewire::actingAs($user)->test(Agenda::class)
+            ->call('openCreateForm')
+            ->set('formSpaceId', $foreignSpace->id)
+            ->set('formSubject', 'Mathematik')
+            ->set('formTitle', 'Eingeschmuggelt')
+            ->set('formDate', now()->addDay()->toDateString())
+            ->call('saveEntry')
+            ->assertHasErrors('formSpaceId');
+
+        $this->assertDatabaseCount('agenda_entries', 0);
+    }
+
+    public function test_the_create_form_defaults_to_the_filtered_class(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+
+        Livewire::actingAs($user)->test(Agenda::class)
+            ->call('setSpaceFilter', (string) $space->id)
+            ->call('openCreateForm')
+            ->assertSet('formSpaceId', $space->id)
+            // …but never shares by accident when the filter isn't on one class.
+            ->call('setSpaceFilter', 'all')
+            ->call('openCreateForm')
+            ->assertSet('formSpaceId', null);
+    }
+
+    public function test_the_space_filter_narrows_the_list(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+        AgendaEntry::factory()->for($user)->inSpace($space)->create(['title' => 'Klassenaufgabe']);
+        AgendaEntry::factory()->for($user)->create(['title' => 'Privataufgabe']);
+
+        $component = Livewire::actingAs($user)->test(Agenda::class);
+
+        $component->call('setSpaceFilter', 'mine')
+            ->assertSee('Privataufgabe')
+            ->assertDontSee('Klassenaufgabe');
+
+        $component->call('setSpaceFilter', (string) $space->id)
+            ->assertSee('Klassenaufgabe')
+            ->assertDontSee('Privataufgabe');
+    }
+
+    public function test_subject_suggestions_come_from_the_whole_class(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
+        AgendaEntry::factory()->for($owner)->inSpace($space)->create(['subject' => 'Italienisch']);
+
+        $subjects = Livewire::actingAs($member)->test(Agenda::class)->get('existingSubjects');
+
+        $this->assertContains('Italienisch', $subjects->all());
+    }
+
     // ── Invite link ───────────────────────────────────────────────────
 
     public function test_the_invite_link_page_joins_only_on_the_button_press(): void

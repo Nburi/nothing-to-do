@@ -42,6 +42,44 @@
                     @endforeach
                 </div>
 
+                {{-- Who the entry is for. Only rendered once the user is actually in a
+                     class — otherwise every entry is private and the choice is noise. --}}
+                @if ($this->spaces->isNotEmpty())
+                    <div>
+                        <label class="mb-1.5 block text-[12px] font-medium text-ink-faint">Für</label>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button
+                                type="button"
+                                wire:click="$set('formSpaceId', null)"
+                                @class([
+                                    'rounded-card border px-3 py-1.5 text-[13px] transition',
+                                    'border-forest bg-forest text-white' => $formSpaceId === null,
+                                    'border-line text-ink-soft hover:bg-paper hover:text-ink' => $formSpaceId !== null,
+                                ])
+                            >Nur ich</button>
+
+                            @foreach ($this->spaces as $space)
+                                <button
+                                    type="button"
+                                    wire:key="form-space-{{ $space->id }}"
+                                    wire:click="$set('formSpaceId', {{ $space->id }})"
+                                    @class([
+                                        'rounded-card border px-3 py-1.5 text-[13px] transition',
+                                        'border-contour bg-contour text-white' => $formSpaceId === $space->id,
+                                        'border-line text-ink-soft hover:bg-paper hover:text-ink' => $formSpaceId !== $space->id,
+                                    ])
+                                >{{ $space->shortName() }}</button>
+                            @endforeach
+                        </div>
+                        @if ($formSpaceId !== null)
+                            <p class="mt-1.5 text-[11.5px] text-ink-faint">
+                                Alle in dieser Klasse sehen den Eintrag. Abhaken tut jede:r für sich.
+                            </p>
+                        @endif
+                        @error('formSpaceId') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </div>
+                @endif
+
                 <div
                     x-data="{
                         open: false,
