@@ -129,7 +129,13 @@
                     @endif
 
                     @if ($preview = $task->notesPreview())
-                        <p class="mt-1 truncate text-[11px] text-ink-faint" title="{{ $preview }}">{{ $preview }}</p>
+                        <button
+                            type="button"
+                            wire:click="startEdit({{ $task->id }})"
+                            @click.stop
+                            class="mt-1 block max-w-full truncate rounded text-left text-[11px] text-ink-faint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                            aria-label="Notizen anzeigen: {{ $task->title }}"
+                        >{{ $preview }}</button>
                     @endif
                 @endif
             </div>

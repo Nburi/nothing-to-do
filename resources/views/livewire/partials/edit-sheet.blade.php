@@ -2,7 +2,7 @@
 @if ($editingId)
     <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Aufgabe bearbeiten">
         <div class="absolute inset-0 bg-ink/40" wire:click="cancelEdit"></div>
-        <div class="animate-rise relative w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 shadow-map sm:rounded-card" @keydown.escape.window="$wire.cancelEdit()">
+        <div class="animate-rise relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map sm:rounded-card" @keydown.escape.window="$wire.cancelEdit()">
             <form wire:submit="saveEdit" class="space-y-4">
                 <h2 class="text-base font-medium text-ink">Aufgabe bearbeiten</h2>
 

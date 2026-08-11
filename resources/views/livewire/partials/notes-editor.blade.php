@@ -65,7 +65,7 @@
     @error($fieldName) <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
 
     @if ($this->{$htmlProperty} !== '')
-        <div class="prose-topo mt-2 rounded-card border border-line bg-paper/60 px-3 py-2 text-[13px]">
+        <div class="prose-topo mt-2 max-h-48 overflow-y-auto rounded-card border border-line bg-paper/60 px-3 py-2 text-[13px]">
             {!! $this->{$htmlProperty} !!}
         </div>
     @endif
