@@ -217,6 +217,34 @@
         cursor: grabbing;
     }
 
+    /* A card that has been dwelled on long enough to arm "drop here to group"
+       (see groupArm in app.js). It lifts, gets a forest ring and announces
+       itself with a label, so the difference to an ordinary pass-by is
+       impossible to miss — the whole point of a dwell gesture is that it must
+       never fire by accident, and it must be obvious once it has. */
+    .group-arm {
+        position: relative;
+        transform: scale(1.03);
+        border-color: rgb(var(--forest)) !important;
+        box-shadow: 0 0 0 3px rgb(var(--forest) / 0.18), var(--shadow-map);
+        transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 10;
+    }
+    .group-arm::after {
+        content: 'Gruppieren';
+        position: absolute;
+        right: 0.5rem;
+        top: -0.6rem;
+        background: rgb(var(--forest));
+        color: #fff;
+        font-size: 0.6rem;
+        line-height: 1.1rem;
+        padding: 0 0.4rem;
+        border-radius: 999px;
+        letter-spacing: 0.03em;
+        pointer-events: none;
+    }
+
     /* Bastelideen pinboard: each card's resting tilt comes from an inline rotate(); a
        plain class rule (not a Tailwind rotate utility, which would fight the inline
        transform) straightens it on hover/focus. !important is required to beat the

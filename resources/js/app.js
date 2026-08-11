@@ -114,14 +114,102 @@ window.boardSortable = function (el, wire, handle = null) {
         delayOnTouchOnly: true,
         // Mark the page as dragging so project cards can show a drop affordance.
         onStart: () => document.body.classList.add('dragging-task'),
+        // Hovering one card over another for GROUP_ARM_MS arms "drop here to
+        // group these two" (see groupArm below).
+        onMove: (evt) => groupArm.consider(evt.related),
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
+            const armedId = groupArm.disarm();
+            const draggedId = evt.item.dataset.id;
+
+            // An armed grouping wins over the ordinary reorder: the server moves
+            // the task itself, so persisting the destination's order here too
+            // would fight it with a stale picture of the column.
+            if (armedId && draggedId && armedId !== draggedId) {
+                wire.groupTasks(parseInt(draggedId, 10), parseInt(armedId, 10));
+                return;
+            }
+
             const to = evt.to;
-            // A drop onto a project card lands in a zone with no data-list; the
-            // project drop zone's own onAdd handles that. Only persist real columns.
+            // A drop onto a project card or group box lands in a zone with no
+            // data-list; those zones' own onAdd handles it. Only persist real columns.
             if (to.dataset.list === undefined) return;
             const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
             wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
+ * "Hold one card over another to group them" — the desktop gesture for creating
+ * a task group (see TaskBoard::groupTasks).
+ *
+ * Deliberately built on dwell time rather than a hidden drop zone in the middle
+ * of the card: a hidden band makes ordinary reordering feel unpredictable,
+ * because passing *through* a card would sometimes mean something entirely
+ * different. Dwelling is a thing you can only do on purpose — dragging past a
+ * card never arms anything, and any movement to a different card resets the
+ * timer. The armed card marks itself with .group-arm (styled in app.css).
+ */
+const GROUP_ARM_MS = 350;
+
+const groupArm = {
+    el: null,
+    timer: null,
+    armedId: null,
+
+    /** Called on every Sortable onMove with the card currently hovered. */
+    consider(related) {
+        const card = related && related.dataset && related.dataset.id ? related : null;
+
+        if (card === this.el) return; // same card, let the running timer finish
+        this.reset();
+        this.el = card;
+        if (! card) return;
+
+        this.timer = setTimeout(() => {
+            this.armedId = card.dataset.id;
+            card.classList.add('group-arm');
+        }, GROUP_ARM_MS);
+    },
+
+    /** Clear the pending timer and any highlight, keeping nothing armed. */
+    reset() {
+        clearTimeout(this.timer);
+        this.timer = null;
+        if (this.el) this.el.classList.remove('group-arm');
+        this.el = null;
+        this.armedId = null;
+    },
+
+    /** Read out whatever was armed at drop time, then clean up. */
+    disarm() {
+        const id = this.armedId;
+        this.reset();
+        return id;
+    },
+};
+
+/**
+ * A group box as a drop target: receive-only member of the 'board' group, same
+ * shape as projectDropZone. The task keeps its list — dropping an Inbox card on
+ * a group therefore files it in that group's Inbox, which is what "move this
+ * into the group" means from the Inbox's point of view.
+ */
+window.groupDropZone = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: { name: 'board', pull: false, put: true },
+        sort: false,
+        draggable: '[data-id]',
+        onAdd: (evt) => {
+            const taskId = evt.item.dataset.id;
+            const groupId = el.dataset.groupId;
+            evt.item.remove(); // the server decides what the box shows next
+            if (taskId && groupId) {
+                wire.assignTaskToGroup(parseInt(taskId, 10), parseInt(groupId, 10));
+            }
         },
     });
     return el._sortable;
