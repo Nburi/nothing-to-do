@@ -46,6 +46,9 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // intended(), not a bare redirect: someone who followed a class-agenda
+        // invite link has no account yet, so registration — not login — is the
+        // step that has to hand them back to where they were going.
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }

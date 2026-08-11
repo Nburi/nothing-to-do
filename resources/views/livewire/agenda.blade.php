@@ -4,14 +4,43 @@
             <h1 class="text-xl font-medium tracking-tight text-ink">Agenda</h1>
             <p class="mt-1 text-[13px] text-ink-faint">Hausaufgaben &amp; Prüfungen — unabhängig von deinen Listen</p>
         </div>
-        <button
-            type="button"
-            wire:click="openCreateForm"
-            class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]"
-        >
-            + Eintrag
-        </button>
+        <div class="flex flex-none items-center gap-2">
+            <button
+                type="button"
+                wire:click="openSpaces"
+                @class([
+                    'flex items-center gap-1.5 rounded-card border px-3 py-2 text-sm transition',
+                    'border-contour/40 bg-contour-soft text-contour' => $this->spaces->isNotEmpty(),
+                    'border-line text-ink-soft hover:bg-surface hover:text-ink' => $this->spaces->isEmpty(),
+                ])
+            >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16 19v-1.4a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.6V19"/><circle cx="10" cy="8.2" r="3.1"/><path d="M20 19v-1.4a3.4 3.4 0 0 0-2.6-3.3M15.4 5.3a3.4 3.4 0 0 1 0 6"/>
+                </svg>
+                <span class="hidden sm:inline">Klassen</span>
+                @if ($this->spaces->isNotEmpty())
+                    <span class="tnum text-[12px] font-medium">{{ $this->spaces->count() }}</span>
+                @endif
+            </button>
+
+            <button
+                type="button"
+                wire:click="openCreateForm"
+                class="rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]"
+            >
+                + Eintrag
+            </button>
+        </div>
     </div>
+
+    @if (session('agenda-joined'))
+        <div class="mt-4 flex items-center gap-2.5 rounded-card border border-forest/30 bg-forest-soft px-3.5 py-2.5">
+            <svg class="h-4 w-4 flex-none text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m5 12.5 4.5 4.5L19 7.5"/>
+            </svg>
+            <p class="text-[13px] text-forest">Du bist „{{ session('agenda-joined') }}" beigetreten.</p>
+        </div>
+    @endif
 
     <div class="mt-5 inline-flex gap-1 rounded-card border border-line bg-surface p-1">
         @foreach (['all' => 'Alle', 'homework' => 'Hausaufgaben', 'exam' => 'Prüfungen'] as $val => $lbl)
@@ -55,4 +84,5 @@
     @endif
 
     @include('livewire.partials.agenda-entry-form')
+    @include('livewire.partials.agenda-spaces-sheet')
 </div>

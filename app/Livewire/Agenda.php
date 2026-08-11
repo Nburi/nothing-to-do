@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesAgendaSpaces;
 use App\Models\AgendaEntry;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -12,6 +13,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class Agenda extends Component
 {
+    use ManagesAgendaSpaces;
+
     /** 'all' | 'homework' | 'exam' */
     public string $filterType = 'all';
 
