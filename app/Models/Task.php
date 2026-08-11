@@ -35,10 +35,14 @@ class Task extends Model
         'is_important',
         'deadline',
         'due_date',
+        'notes',
         'is_completed',
         'completed_at',
         'sort_order',
     ];
+
+    /** Words shown in the card-face notes preview before truncating with an ellipsis. */
+    public const NOTES_PREVIEW_WORDS = 8;
 
     protected function casts(): array
     {
@@ -187,5 +191,34 @@ class Task extends Model
             $days <= 6 => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][$date->dayOfWeek],
             default => $date->format('d.m.'),
         };
+    }
+
+    /**
+     * The first few words of the notes, stripped of the markdown syntax the
+     * edit sheet's toolbar inserts (bold/italic/underline/bullet/task-list
+     * markers) — a plain-text glance shown on the card face. Null when there
+     * are no notes.
+     */
+    public function notesPreview(int $words = self::NOTES_PREVIEW_WORDS): ?string
+    {
+        $text = trim((string) $this->notes);
+
+        if ($text === '') {
+            return null;
+        }
+
+        $text = preg_replace('/^- \[[ xX]\] /m', '', $text);
+        $text = preg_replace('/^[-*] /m', '', $text);
+        $text = str_replace(['**', '++', '*'], '', $text);
+        $text = trim(preg_replace('/\s+/', ' ', $text));
+
+        if ($text === '') {
+            return null;
+        }
+
+        $parts = explode(' ', $text);
+        $preview = implode(' ', array_slice($parts, 0, $words));
+
+        return count($parts) > $words ? $preview.'…' : $preview;
     }
 }

@@ -138,6 +138,7 @@
     .prose-topo a:hover { text-decoration-thickness: 2px; }
     .prose-topo strong { font-weight: 700; color: rgb(var(--ink)); }
     .prose-topo em { font-style: italic; }
+    .prose-topo u { text-decoration: underline; text-underline-offset: 2px; }
     .prose-topo ul,
     .prose-topo ol {
         margin: 0.7em 0;

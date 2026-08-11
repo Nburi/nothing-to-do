@@ -118,6 +118,7 @@
                         optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Default <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">inbox</code>),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (freier Markdown-Text),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_important</code>.
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X POST {{ $apiBase }}/tasks \
@@ -132,7 +133,7 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_completed</code> (abhaken),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_important</code> (markieren),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_today</code> (Today-Fokus, nur für To-Dos/Tasks ausserhalb eines Projekts),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> zum Entfernen),
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> zum Entfernen),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Spalte wechseln),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code> (einem Projekt zuweisen; <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> gibt den Task zurück in die Inbox).
                     </p>

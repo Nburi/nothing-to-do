@@ -79,6 +79,10 @@
                     Termin
                 </button>
             @endif
+
+            @if ($preview = $task->notesPreview())
+                <p class="mt-1 truncate text-[11px] text-ink-faint" title="{{ $preview }}">{{ $preview }}</p>
+            @endif
         @endif
     </div>
 

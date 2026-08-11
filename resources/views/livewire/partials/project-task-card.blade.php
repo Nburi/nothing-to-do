@@ -71,6 +71,10 @@
                     {{ $label }}
                 </span>
             @endif
+
+            @if (!$task->is_completed && ($preview = $task->notesPreview()))
+                <span class="mt-1 block truncate text-[11px] text-ink-faint" title="{{ $preview }}">{{ $preview }}</span>
+            @endif
         </button>
         </div>
 

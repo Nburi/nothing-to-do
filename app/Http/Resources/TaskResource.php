@@ -20,6 +20,7 @@ class TaskResource extends JsonResource
             'is_important' => $this->is_important,
             'deadline' => $this->deadline?->toDateString(),
             'due_date' => $this->due_date?->toDateString(),
+            'notes' => $this->notes,
             'effective_date' => $this->effectiveDate()?->toDateString(),
             'effective_date_label' => $this->effectiveDateLabel(),
             'is_overdue' => $this->isOverdue(),
