@@ -23,11 +23,11 @@
         style="display: none;"
         role="dialog"
         aria-modal="true"
-        aria-label="Projekt zuweisen"
+        aria-label="Aufgabe einordnen"
     >
         <div class="mx-auto max-h-[70dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map">
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-base font-medium text-ink">Projekt zuweisen</h2>
+                <h2 class="text-base font-medium text-ink">Aufgabe einordnen</h2>
                 <button
                     type="button"
                     @click="$store.projectPicker.taskId = null"
@@ -37,6 +37,31 @@
                     <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
             </div>
+
+            {{-- Groups first: bundling is the lighter, more frequent move, and it
+                 keeps the task on the board. A task dropped into a group keeps
+                 its list, exactly like the desktop drag onto a group box. --}}
+            @if ($this->taskGroups->isNotEmpty())
+                <p class="mb-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Gruppe</p>
+                <div class="mb-4 space-y-1">
+                    @foreach ($this->taskGroups as $group)
+                        <button
+                            type="button"
+                            wire:key="picker-group-{{ $group->id }}"
+                            @click="$wire.assignTaskToGroup($store.projectPicker.taskId, {{ $group->id }}); $store.projectPicker.taskId = null"
+                            class="flex w-full items-center gap-2 rounded-card px-3 py-2.5 text-left text-sm text-ink transition hover:bg-paper"
+                        >
+                            <svg class="h-3.5 w-3.5 flex-none text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <rect x="2" y="4.5" width="12" height="9" rx="1.6" stroke="currentColor" stroke-width="1.3"/>
+                                <path d="M4 2.5h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            </svg>
+                            <span class="min-w-0 flex-1 truncate">{{ $group->name }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+
+            <p class="mb-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Projekt</p>
 
             <button
                 type="button"

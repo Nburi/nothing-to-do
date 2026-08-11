@@ -31,6 +31,9 @@ trait ManagesTasks
 
     public ?int $editProjectId = null;
 
+    /** The task group this task belongs to (board lists only — never together with a project). */
+    public ?int $editGroupId = null;
+
     /** Always resolve a task through the owner relationship — never trust an id alone. */
     protected function userTask(int $id): Task
     {
@@ -42,6 +45,17 @@ trait ManagesTasks
     public function editableProjects(): Collection
     {
         return auth()->user()->projects()->ordered()->get();
+    }
+
+    /**
+     * Task groups available in the edit sheet. This is the touch equivalent of
+     * desktop's drag-onto-a-group-box: on a phone there is no drag, so the edit
+     * sheet is where a task gets bundled or released.
+     */
+    #[Computed]
+    public function editableGroups(): Collection
+    {
+        return auth()->user()->taskGroups()->ordered()->get();
     }
 
     /** The notes buffer rendered to safe HTML for the edit sheet's preview. */
@@ -78,6 +92,7 @@ trait ManagesTasks
         $this->editNotes = (string) ($task->notes ?? '');
         $this->editList = $task->list;
         $this->editProjectId = $task->project_id;
+        $this->editGroupId = $task->group_id;
     }
 
     public function saveEdit(): void
@@ -95,6 +110,7 @@ trait ManagesTasks
             'editNotes' => ['nullable', 'string', 'max:5000'],
             'editList' => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
+            'editGroupId' => ['nullable', 'integer', Rule::exists('task_groups', 'id')->where('user_id', auth()->id())],
         ]);
 
         $task = $this->userTask($this->editingId);
@@ -113,19 +129,26 @@ trait ManagesTasks
         $newProjectId = $data['editProjectId'] ? (int) $data['editProjectId'] : null;
         $newList = $data['editList'];
 
+        // A task belongs to a project or to a group — never to both. Anything
+        // that lands in the Projekte list therefore leaves its group behind.
+        $newGroupId = $data['editGroupId'] ? (int) $data['editGroupId'] : null;
+
         if ($newProjectId !== null) {
             // Assigned to a specific project
             $updates['project_id'] = $newProjectId;
+            $updates['group_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
         } elseif ($newList === 'projects') {
             // Standalone project task (no specific project)
             $updates['project_id'] = null;
+            $updates['group_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
         } else {
             // Regular board list — clear any project assignment
             $updates['project_id'] = null;
+            $updates['group_id'] = $newGroupId;
             $updates['list'] = $newList;
             if (! in_array($newList, Task::TODAY_LISTS, true)) {
                 $updates['is_today'] = false;
@@ -161,7 +184,7 @@ trait ManagesTasks
 
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editNotes', 'editList', 'editProjectId']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editNotes', 'editList', 'editProjectId', 'editGroupId']);
     }
 
     public function deleteTask(int $id): void
