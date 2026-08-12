@@ -36,3 +36,8 @@ old column still holds the pre-migration state.
   next to a shared entry. Technically almost free (the heartbeat already exists), but hold it until the
   member-list version has been lived with for a while: on a homework list this could read as surveillance
   rather than help, and the whole product goal is "speed and calm".
+- **The Zeitplan's deadline/homework/exam strip (`Schedule::deadlineItems()`) could extend into the
+  "Vorbereitung für morgen" step 3** (`PrepareTomorrow`), which has its own, smaller one-day timeline. Not
+  done in the branch that shipped the strip — `PrepareTomorrow` would need its own wiring of the same
+  computed logic (it doesn't share a base class with `Schedule`), which is meaningfully more scope than the
+  original request covered.

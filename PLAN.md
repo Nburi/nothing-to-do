@@ -1,118 +1,62 @@
-# PLAN — Geteilte Klassen-Agenda (Agenda Spaces)
+# PLAN — Fällige Termine im Zeitplan
 
-> Ersetzt den vorherigen Plan (Schnellerfassung, umgesetzt). Der steht weiterhin in der Git-Historie, Commit `5208038`.
+## Ausgangslage (bestätigt im Code)
+- `Task.deadline` = **Deadline · hart**, `Task.due_date` = **Wunschtermin · weich** (beide `date`, keine Uhrzeit).
+- Prüfungen/Hausaufgaben sind `AgendaEntry` (`type` = `exam`|`homework`, Feld `date`), inkl. geteilter Klassen-Einträge.
+- `App\Livewire\Schedule` (`/app/schedule`) ist ein zeitskaliertes Raster 06:00–23:00 (Woche auf Desktop, ein Tag
+  auf Mobile). Diese Einträge haben keine Uhrzeit — sie brauchen eine eigene "Ganztags"-Zone oberhalb des Rasters,
+  nicht einen Platz auf der Zeitachse.
+- Bestehende Farbsprache (aus `task-card.blade.php` / `agenda-entry.blade.php`, wird 1:1 übernommen):
+  Deadline (hart) = **contour**, Wunschtermin (weich) = neutral/`ink-faint`, überfällig = **signal**,
+  Hausaufgabe = **forest**, Prüfung = **overprint**.
 
-> Erstellt: 2026-08-11 · Branch: `feature/agenda-class-spaces` (von `main`)
-> Status: **umgesetzt und getestet** · Layout: **Variante A + Gruppierungs-Umschalter**
-> Nicht gemerged, nicht gepusht — wartet auf „fertig".
+## Entschieden mit dem User
+1. **Vorschau nur für harte Termine** — Deadline, Hausaufgabe, Prüfung. Wunschtermin (weich) erscheint nur am
+   eigenen Tag, nie als Vorschau.
+2. **Klick = direkt abhaken** (Task `toggleComplete` / Agenda `toggleDoneFor`). Ein kleiner Pfeil daneben
+   springt zur Quelle (Board bzw. Agenda-Seite) — kein Deep-Link auf den einzelnen Eintrag.
+3. **Erledigtes wird ausgeblendet**, konsistent mit Board/Agenda.
 
----
+## Produkt
 
-## Anforderungen (Schritt 1)
+Neue "Ganztags-Zone" oberhalb des Stunden-Rasters, in beiden Ansichten (Desktop-Wochen-Raster, Mobile-Tagesansicht):
+pro Tag eine kleine Liste von Chips — Titel + farbiger Punkt je Typ, Checkbox links, Pfeil-Icon rechts (öffnet
+Board/Agenda). Vorschau-Chips (N Tage vorher) sind gestrichelt umrandet und tragen ein kleines "in Nd"-Label
+(Tooltip: "in N Tagen fällig"). Mehr als 2 Einträge an einem Tag → "+N weitere" (Alpine-Disclosure, kein
+Round-Trip), gleiches Muster wie an anderen Stellen der App (Notfallmodus, Bastelideen). Mockup wurde dem User
+gezeigt und bestätigt.
 
-| Kategorie | Anforderung |
-|---|---|
-| **Datenmodell** | `AgendaSpace` (Name, Invite-Code, Besitzer) mit Mitgliedern; `AgendaEntry` bekommt optional eine Raum-Zuordnung — ohne Raum = privat wie bisher |
-| | Ein Nutzer kann **mehreren** Räumen angehören (Klasse + z.B. Lerngruppe) |
-| **Beitreten** | Jedes Mitglied kann einladen: 6-stelliger Code **und** Link (`/agenda/join/{code}`); Beitreten nur eingeloggt |
-| **Sichtbarkeit** | Jedes Mitglied sieht alle Einträge seiner Räume; private Einträge bleiben strikt privat |
-| **Erledigt** | **Pro Person.** Zusätzlich am Klassen-Eintrag sichtbar: „5/22 erledigt" |
-| **Rechte** | Einträge: **jedes Mitglied** darf bearbeiten/löschen. Raum löschen: nur Besitzer |
-| **Erstellen** | Beim Anlegen wählbar: „nur ich" oder ein Raum — auch in QuickCapture |
-| **Sicherheit** | Jeder Zugriff läuft über die Sichtbarkeits-Scope, nie über eine Frontend-ID |
-| **UX** | Klassen- vs. Privateintrag klar unterscheidbar; Ersteller sichtbar; Leerzustände für „noch kein Raum"; Löschen per armed double-click (nie `confirm()`) |
+## Umsetzung
 
-**Entschieden mit dem User (Schritt 1):** erledigt pro Person **mit** sichtbarem Fortschritt · mehrere Räume · jedes Mitglied darf Einträge bearbeiten.
+### Datenmodell
+- Migration: `users.deadline_preview_enabled` (bool, default **true**) + `users.deadline_preview_days`
+  (unsigned tinyint, default **2**).
+- `User`: Fillable-Attribut, Cast, `$attributes` Default `true` für `deadline_preview_enabled` (gleiches Muster
+  wie `show_presence`, wegen des bekannten "fresh model"-Gotchas, siehe CLAUDE.md §10).
 
----
+### Settings
+Neue Karte unter "Zeitplan & Fokus" (`App\Livewire\Settings`): Toggle "Vorschau aktivieren" + Zahlenfeld "Tage
+vorher" (min 0, max 14), gemeinsam gespeichert über `saveDeadlinePreview()` — gleiches Formular-Muster wie die
+Pomodoro-Karte.
 
-## Produkt (Schritt 2)
+### `App\Livewire\Schedule`
+- Neue `#[Computed] deadlineItems()`: liest aktive `Task`s mit `deadline`/`due_date` sowie für den User sichtbare,
+  offene `AgendaEntry`s, baut je Eintrag 1 (Ist-Tag) oder 2 Datensätze (Ist-Tag + Vorschau-Tag, nur bei harten
+  Terminen und aktivierter Vorschau), gruppiert nach Datum, gefiltert auf die sichtbare Woche.
+- Neue Actions `toggleDeadlineTaskDone(int $id)` / `toggleDeadlineAgendaDone(int $id)`, beide über die
+  Owner-/Sichtbarkeits-Relation aufgelöst (kein Vertrauen auf die id allein).
 
-### Layout-Varianten (Entscheidung offen)
+### Views
+- Neue Partials `partials/schedule-deadline-strip.blade.php` (ein Tag) und
+  `partials/schedule-deadline-item.blade.php` (ein Chip), in `schedule.blade.php` sowohl im Desktop- als auch
+  im Mobile-Zweig eingebunden.
 
-**Variante A — ein Strom mit Raum-Filter**
-Alle Einträge chronologisch in einer Liste, jeder Klassen-Eintrag trägt ein Raum-Badge (`4b`), private
-Einträge ein `nur ich`-Badge. Unter der bestehenden Typ-Filterzeile eine zweite, leisere Filterzeile:
-`Alle Räume · Nur ich · Klasse 4b · Bio-Lerngruppe` — erscheint nur, wenn der Nutzer mindestens einen
-Raum hat (ohne Raum sieht die Seite exakt aus wie heute).
+### Tests
+`ScheduleDeadlineItemsTest.php`: Anzeige am eigenen Tag, Vorschau N Tage vorher, keine Vorschau bei
+deaktiviertem Setting, benutzerdefiniertes N, Wunschtermin bekommt nie eine Vorschau, erledigte Einträge werden
+ausgeblendet, Toggle-Actions sind owner-/sichtbarkeits-scoped, Settings-Validierung.
 
-- **Für:** Datum bleibt die einzige Sortierachse — „was ist als Nächstes fällig" ist die eigentliche Frage.
-- **Gegen:** zwei Chip-Zeilen übereinander; pro Zeile ein Badge mehr.
-
-**Variante B — getrennte Sektionen pro Raum**
-Liste in Abschnitte geteilt (`Klasse 4b · 22 Mitglieder`, dann `Nur ich`), keine zweite Filterzeile,
-kein Raum-Badge pro Zeile.
-
-- **Für:** ruhigere Zeilen, Zugehörigkeit ohne Badge lesbar, eine Chip-Zeile weniger.
-- **Gegen:** die Fälligkeits-Reihenfolge zerfällt — eine morgen fällige Privataufgabe steht unter einer
-  Klassenaufgabe in zwei Wochen.
-
-### Gemeinsam in beiden Varianten
-
-- **Header:** neuer „Klassen"-Button neben `+ Eintrag`.
-- **Klassen-Sheet** (gleiche Shell wie `agenda-entry-form`): Liste der Räume mit Mitgliederzahl,
-  Invite-Code + „Link kopieren" + „Neu" (Code rotieren), Verlassen/Löschen; darunter „Code eingeben →
-  Beitreten" und „Neue Klasse benennen → Erstellen".
-- **Eintragsformular:** neue Pill-Reihe „Für: `Nur ich` `Klasse 4b` `Bio-Lerngruppe`" (nur wenn Räume da).
-- **Zeile:** Fortschritts-Zähler `5/22` bei Klassen-Einträgen, `von Lena` wenn nicht selbst erstellt.
-- **Beitreten-Seite** `/agenda/join/{code}`: zeigt Raumnamen + Mitgliederzahl, ein Button „Beitreten".
-  Kein Join per GET — ein Link-Aufruf darf nichts mutieren.
-- **Fach-Vorschläge** kommen ab jetzt aus allen sichtbaren Einträgen (eigene + Räume), nicht nur eigenen.
-
----
-
-## Umsetzung (Schritt 3)
-
-**Kein neuer Stack, keine neue Dependency.** Alles mit Laravel + Livewire 4 + Alpine wie bisher.
-Keine externen Skills nötig — die App hat für jedes Element hier schon ein bestehendes Muster
-(Sheet = `schedule-event-form`, Löschen = armed double-click, Pill-Toggle = Termin/Kategorie-Schalter).
-
-### Migrationen (4, alle nicht-destruktiv)
-
-1. `create_agenda_spaces_table` — `id, owner_id→users, name, invite_code(unique), timestamps`
-2. `create_agenda_space_user_table` — Pivot, `unique(agenda_space_id, user_id)`
-3. `add_agenda_space_id_to_agenda_entries_table` — nullable FK, `nullOnDelete`, Index `(agenda_space_id, date)`
-4. `create_agenda_entry_completions_table` — Pivot `(agenda_entry_id, user_id)`, **+ Backfill**:
-   bestehende `is_done = true`-Einträge bekommen eine Completion-Zeile ihres Besitzers
-
-> **`agenda_entries.is_done` bleibt vorerst stehen** (Rollback-Punkt, CLAUDE.md §8: zweistufig).
-> Nach bestätigtem Produktionsdeploy in einem eigenen Commit entfernen → Eintrag in `TODO.md`.
-
-### Modelle
-
-- **`AgendaSpace`** — `owner()`, `members()` (BelongsToMany User), `entries()`, `hasMember()`,
-  `static generateInviteCode()` (6 Zeichen, Alphabet ohne `O/0/I/1`), Scope `forMember`.
-- **`AgendaEntry`** — `+ agenda_space_id`; `space()`, `completedBy()` (BelongsToMany User über
-  `agenda_entry_completions`), `isShared()`, `isDoneFor(User)`;
-  Scopes `visibleTo(User)` (eigene private **oder** in einem meiner Räume), `openFor(User)`,
-  `doneFor(User)`. Listen laden mit `withCount('completedBy')` +
-  `withExists(['completedBy as done_for_me' => …])` — keine N+1.
-- **`User`** — `agendaSpaces()`, `ownedAgendaSpaces()`.
-
-### Komponenten
-
-- **`Agenda`** — `userEntry()` → `visibleEntry()` (über `visibleTo`, nie über `agendaEntries()`);
-  `$filterSpace`; `$formSpaceId`; Sheet-Actions `createSpace/joinSpace/leaveSpace/deleteSpace/regenerateCode`.
-  Besitzer verlässt Raum → Besitz geht an das längste verbliebene Mitglied; letztes Mitglied raus → Raum weg
-  (Einträge fallen per `nullOnDelete` auf privat zurück, nichts geht verloren).
-- **`JoinAgendaSpace`** — neue Seite `/agenda/join/{code}`, `auth`-middleware.
-- **`QuickCapture`** — Raum-Auswahl für das `agenda`-Target.
-
-### Reihenfolge (ein Commit pro Schritt)
-
-1. Migrationen + Modelle + Factories + Modell-Tests
-2. Klassen-Sheet: erstellen / beitreten / verlassen / Code rotieren + Join-Seite
-3. Geteilte Einträge: „Für"-Auswahl, Sichtbarkeit, Erledigt pro Person, Fortschritt
-4. QuickCapture-Raumauswahl + Fach-Vorschläge aus allen Räumen
-5. Doku: `CLAUDE.md` §1/§7, `CHANGELOG.md`, `TODO.md`, Deployment-Checkliste
-
-### Tests (`tests/Feature/AgendaSpacesTest.php` + Erweiterung `AgendaTest.php`)
-
-Nicht-Mitglied sieht nichts · Beitritt per Code/Link · falscher Code · doppelter Beitritt ·
-Erledigt ist pro Person · Fortschrittszähler stimmt · jedes Mitglied darf bearbeiten ·
-Raum löschen nur als Besitzer · Verlassen macht Einträge nicht kaputt · privater Eintrag bleibt privat.
-
-### Deployment
-
-Nur `php artisan migrate --force` zusätzlich zum Standardablauf (§9) — keine neue `.env`-Variable,
-kein neuer Cron, keine neue Dependency.
+### Bewusst außerhalb des Umfangs
+Die "Vorbereitung für morgen"-Ansicht (`/app/prepare`, Schritt 3) hat ein eigenes, kleineres Tages-Zeitfenster
+und würde eine eigene Verdrahtung derselben Logik brauchen — nicht Teil dieser Anfrage, wird im Abschlussbericht
+als mögliche spätere Erweiterung erwähnt.

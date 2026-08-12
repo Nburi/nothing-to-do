@@ -221,4 +221,47 @@ class ScheduleSettingsTest extends TestCase
         Livewire::test(Settings::class)->call('toggleNotifyBreakStart');
         $this->assertTrue($user->refresh()->notify_break_start);
     }
+
+    public function test_it_saves_the_deadline_preview_setting(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('deadlinePreviewEnabled', false)
+            ->set('deadlinePreviewDays', 5)
+            ->call('saveDeadlinePreview')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'deadline_preview_enabled' => false,
+            'deadline_preview_days' => 5,
+        ]);
+    }
+
+    public function test_it_rejects_an_out_of_range_deadline_preview_days_value(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(Settings::class)
+            ->set('deadlinePreviewDays', 15)
+            ->call('saveDeadlinePreview')
+            ->assertHasErrors(['deadlinePreviewDays']);
+
+        Livewire::test(Settings::class)
+            ->set('deadlinePreviewDays', -1)
+            ->call('saveDeadlinePreview')
+            ->assertHasErrors(['deadlinePreviewDays']);
+    }
+
+    public function test_it_loads_the_saved_deadline_preview_setting_on_mount(): void
+    {
+        $user = User::factory()->create(['deadline_preview_enabled' => false, 'deadline_preview_days' => 7]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->assertSet('deadlinePreviewEnabled', false)
+            ->assertSet('deadlinePreviewDays', 7);
+    }
 }
