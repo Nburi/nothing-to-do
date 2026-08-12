@@ -314,16 +314,22 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.store('quickCapture', {
         open: false,
         returnFocusTo: null,
-        show(trigger = null, target = null) {
+        show(trigger = null, target = null, groupId = null) {
             if (this.open) return;
             this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
             this.open = true;
+            // Page-level defaults, set on <body> by the layout. Read here rather
+            // than passed by each trigger so the N shortcut — which knows nothing
+            // about the page — opens on exactly the same chip the "+" would.
+            const defaults = document.body.dataset;
+            target = target ?? defaults.captureTarget ?? null;
+            groupId = groupId ?? (defaults.captureGroup ? parseInt(defaults.captureGroup, 10) : null);
             // Wipe whatever the last session left behind (title, dates, the
             // confirmation line, validation errors) — the round trip lands
             // while the panel is still animating in. `target` lets a page whose
             // subject matches one of the chips open straight on that chip;
             // null means the usual Inbox default.
-            window.Livewire?.dispatch('quick-capture-opened', { target });
+            window.Livewire?.dispatch('quick-capture-opened', { target, groupId });
             // Alpine.nextTick, not requestAnimationFrame: the panel's x-show has an
             // x-transition, so Alpine doesn't flip it off display:none synchronously —
             // nextTick is Alpine's own "wait until my DOM updates are flushed" API,

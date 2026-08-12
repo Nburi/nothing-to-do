@@ -490,6 +490,29 @@ class TaskGroupsTest extends TestCase
         ]);
     }
 
+    public function test_opening_capture_from_a_group_page_preselects_that_group(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->dispatch('quick-capture-opened', target: 'group', groupId: $group->id)
+            ->assertSet('target', 'group')
+            ->assertSet('groupId', $group->id);
+    }
+
+    public function test_a_foreign_group_is_never_preselected(): void
+    {
+        $user = User::factory()->create();
+        $foreign = TaskGroup::factory()->for(User::factory())->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->dispatch('quick-capture-opened', target: 'group', groupId: $foreign->id)
+            ->assertSet('groupId', null);
+    }
+
     public function test_quick_capture_demands_a_group(): void
     {
         $user = User::factory()->create();

@@ -37,10 +37,23 @@
         $captureTarget = match (true) {
             request()->routeIs('crafts') => 'craft',
             request()->routeIs('agenda') => 'agenda',
+            request()->routeIs('group.show') => 'group',
             default => null,
         };
+
+        // On a group's own dashboard, "that thing" is not just "a group" but this
+        // one — otherwise the panel would open asking for a name for a new group
+        // while standing inside an existing one.
+        $captureGroup = request()->routeIs('group.show') ? request()->route('group') : null;
+        $captureGroupId = $captureGroup instanceof \App\Models\TaskGroup ? $captureGroup->id : null;
     @endphp
-    <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
+    {{-- The capture defaults live on <body> so the keyboard shortcut (N, handled
+         globally in app.js) opens the same chip the page's own "+" would. --}}
+    <body
+        class="min-h-[100dvh] bg-paper font-sans text-ink antialiased"
+        @if ($captureTarget) data-capture-target="{{ $captureTarget }}" @endif
+        @if ($captureGroupId) data-capture-group="{{ $captureGroupId }}" @endif
+    >
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">
             Zum Inhalt springen
         </a>
@@ -165,7 +178,7 @@
                         <button
                             type="button"
                             x-data
-                            @click="$store.quickCapture.show($event.currentTarget, @js($captureTarget))"
+                            @click="$store.quickCapture.show($event.currentTarget)"
                             @class([
                                 'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
                                 'hidden sm:grid' => $showCaptureFab,
@@ -236,7 +249,7 @@
                 <button
                     type="button"
                     x-data
-                    @click="$store.quickCapture.show($event.currentTarget, @js($captureTarget))"
+                    @click="$store.quickCapture.show($event.currentTarget)"
                     @class([
                         'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
                         'bottom-[84px]' => request()->routeIs('app'),

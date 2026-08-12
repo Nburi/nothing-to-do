@@ -177,13 +177,21 @@ class QuickCapture extends Component
      * unknown value falls back to the Inbox default rather than being trusted.
      */
     #[On('quick-capture-opened')]
-    public function resetPanel(?string $target = null): void
+    public function resetPanel(?string $target = null, ?int $groupId = null): void
     {
         $this->reset(['title', 'target', 'deadline', 'dueDate', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
             $this->target = $target;
+        }
+
+        // Opened from inside a group: preselect it, so the panel doesn't ask for
+        // a name for a new group while standing in an existing one. Checked
+        // against the user's own groups — the id comes from the page, but it is
+        // still an id arriving from the client.
+        if ($groupId !== null && $this->taskGroups->contains('id', $groupId)) {
+            $this->groupId = $groupId;
         }
     }
 
