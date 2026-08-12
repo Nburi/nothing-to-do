@@ -409,6 +409,70 @@
             </div>
         </div>
         </form>
+
+        {{-- Vorschau auf fällige Termine --}}
+        <form
+            wire:submit="saveDeadlinePreview"
+            x-data="{ saved: false }"
+            @deadline-preview-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
+        >
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Vorschau auf Termine</h3>
+            <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+                Deadlines, Hausaufgaben und Prüfungen erscheinen im Zeitplan an ihrem eigenen Tag — zusätzlich
+                schon einige Tage vorher als Vorschau, damit nichts überraschend kommt. Ein Wunschtermin (weich)
+                erscheint nur an seinem eigenen Tag.
+            </p>
+
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium text-ink">Vorschau aktivieren</p>
+                <button
+                    type="button"
+                    wire:click="$set('deadlinePreviewEnabled', {{ $deadlinePreviewEnabled ? 'false' : 'true' }})"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $deadlinePreviewEnabled,
+                        'bg-line' => ! $deadlinePreviewEnabled,
+                    ])
+                    aria-label="Vorschau auf Termine {{ $deadlinePreviewEnabled ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $deadlinePreviewEnabled,
+                        'left-0.5' => ! $deadlinePreviewEnabled,
+                    ])></span>
+                </button>
+            </div>
+
+            @if ($deadlinePreviewEnabled)
+                <div class="mt-4 max-w-[10rem]">
+                    <label for="deadlinePreviewDays" class="mb-1.5 block text-xs font-medium text-ink-soft">Tage vorher</label>
+                    <input id="deadlinePreviewDays" type="number" min="0" max="14" wire:model="deadlinePreviewDays" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                    @error('deadlinePreviewDays') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            @endif
+
+            <div class="mt-5 flex items-center gap-3">
+                <button type="submit" class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
+                    Speichern
+                </button>
+                <span
+                    x-show="saved"
+                    x-transition:enter="transition duration-150"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition duration-300"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
+                    style="display: none;"
+                >
+                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Gespeichert
+                </span>
+            </div>
+        </div>
+        </form>
     </section>
 
     {{-- Vorbereitung --}}

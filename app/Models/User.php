@@ -24,6 +24,7 @@ use Laravel\Sanctum\HasApiTokens;
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
     'emergency_project_id',
     'last_seen_at', 'show_presence',
+    'deadline_preview_enabled', 'deadline_preview_days',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -43,6 +44,7 @@ class User extends Authenticatable
      */
     protected $attributes = [
         'show_presence' => true,
+        'deadline_preview_enabled' => true,
     ];
 
     /** @return HasMany<Task, $this> */
@@ -334,6 +336,8 @@ class User extends Authenticatable
             'prepare_prompt_dismissed_on' => 'date',
             'last_seen_at' => 'datetime',
             'show_presence' => 'boolean',
+            'deadline_preview_enabled' => 'boolean',
+            'deadline_preview_days' => 'integer',
         ];
     }
 }

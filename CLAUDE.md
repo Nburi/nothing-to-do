@@ -642,6 +642,29 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   like the Termin/Kategorie switch in the schedule event form — plus `savePrepareReminderTime()`, which
   saves on `wire:change` with no separate submit button since it's only ever touched in "fixed" mode) — see
   "Vorbereitung für morgen" below for what these settings actually drive.
+- **All-day strip — Task deadlines/Wunschtermine + Agenda homework/exams.** None of these carry a
+  time, so they sit in a row above the hour grid rather than on the timeline itself, in both the
+  desktop week view and the mobile single-day view. `Schedule::deadlineItems()` (a `#[Computed]`,
+  grouped by `Y-m-d`) reads every active `Task` with a `deadline`/`due_date` plus every
+  `AgendaEntry::visibleTo($user)->openFor($user)` (done items are excluded entirely, consistent with
+  Board/Agenda), and contributes one entry on the item's own date, plus — **only for a hard date**
+  (`Task::effectiveIsHard()`, i.e. `deadline`, not `due_date`; every Agenda entry counts as hard) and
+  only when the setting below is on — a second `isPreview` entry `deadline_preview_days` earlier. A
+  soft Wunschtermin therefore only ever shows on its own day, never as an advance preview — a
+  deliberate product decision, since it's self-set and a warning for it would clutter the preview
+  zone fast. Colours mirror the rest of the app: hard deadline = `contour`, soft Wunschtermin =
+  neutral, Hausaufgabe = `forest`, Prüfung = `overprint` (`partials/schedule-deadline-item.blade.php`).
+  A preview chip is dashed and carries a small "in Nd" label (tooltip: "in N Tagen fällig"); more
+  than 2 items on one day collapse behind a client-only "+N weitere" Alpine disclosure
+  (`partials/schedule-deadline-strip.blade.php`), the same pattern as Notfallmodus/Bastelideen. A
+  click on the chip's checkbox ticks the item off directly — `toggleDeadlineTaskDone()` /
+  `toggleDeadlineAgendaDone()`, both owner-/visibility-scoped and deliberately duplicating
+  `ManagesTasks::toggleComplete()`/`AgendaEntry::toggleDoneFor()` rather than pulling in a whole
+  trait for one action — a preview chip is checkable too, since finishing something ahead of its
+  date is a normal thing to do. A hover-revealed arrow icon opens the source page (Board or Agenda)
+  without deep-linking to the specific item. **Settings** has a matching **"Vorschau auf Termine"**
+  card (`users.deadline_preview_enabled` default `true`, `deadline_preview_days` default `2`,
+  max `14`) saved together via `saveDeadlinePreview()`, same form pattern as the Pomodoro card.
 
 ### Agenda — Hausaufgaben & Prüfungen (built)
 - A deliberately standalone page (`/app/agenda`, `route('agenda')`) for school deadlines — homework and
