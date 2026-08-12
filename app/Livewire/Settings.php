@@ -27,6 +27,11 @@ class Settings extends Component
 
     public bool $pAutostart = false;
 
+    // Vorschau auf fällige Termine (Deadlines/Wunschtermine/Hausaufgaben/Prüfungen im Zeitplan)
+    public bool $deadlinePreviewEnabled = true;
+
+    public int $deadlinePreviewDays = 2;
+
     // Timezone
     public float $timezoneOffset = 0;
 
@@ -54,6 +59,8 @@ class Settings extends Component
         $this->pLongBreak = $user->pomodoro_long_break ?? 15;
         $this->pLongEvery = $user->pomodoro_long_every ?? 4;
         $this->pAutostart = $user->pomodoro_autostart ?? false;
+        $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
+        $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
         $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
@@ -90,6 +97,26 @@ class Settings extends Component
         ]);
 
         $this->dispatch('schedule-saved');
+    }
+
+    /**
+     * Whether — and how many days ahead — a hard deadline/exam/homework shows an advance-preview
+     * entry in the Zeitplan, on top of appearing on its actual date. A soft Wunschtermin never
+     * previews (see Task::effectiveIsHard() / Schedule::deadlineItems()) — this only governs
+     * whether/how far the preview reaches, not which items are eligible for one.
+     */
+    public function saveDeadlinePreview(): void
+    {
+        $data = $this->validate([
+            'deadlinePreviewDays' => ['required', 'integer', 'min:0', 'max:14'],
+        ]);
+
+        auth()->user()->update([
+            'deadline_preview_enabled' => $this->deadlinePreviewEnabled,
+            'deadline_preview_days' => $data['deadlinePreviewDays'],
+        ]);
+
+        $this->dispatch('deadline-preview-saved');
     }
 
     /** Which day the Vorbereitung ritual targets — an immediate-save choice, like a category's colour swatch. */
