@@ -89,6 +89,22 @@ class TaskGroupsTest extends TestCase
         $this->assertSame(3, $box['inbox']);
     }
 
+    public function test_the_inbox_column_never_shows_a_group_box(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+
+        Task::factory()->for($user)->inbox()->create(['group_id' => $group->id]);
+        Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        $board = Livewire::actingAs($user)->test(TaskBoard::class)->instance();
+
+        $this->assertTrue($board->groupBoxesFor('inbox')->isEmpty());
+        $this->assertFalse($board->groupBoxesFor('todos')->isEmpty());
+        // …and the group's inbox tasks don't inflate the board's inbox count.
+        $this->assertSame(0, $board->counts['inbox']);
+    }
+
     public function test_grouped_tasks_count_towards_their_column(): void
     {
         $user = User::factory()->create();

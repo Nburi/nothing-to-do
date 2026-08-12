@@ -804,6 +804,70 @@ here applies to the single-user rest of the app.
     (that's "Verlassen", which hands ownership over properly). `transferOwnership()` exists so that leaving
     isn't the only way to pass on the admin role.
 
+### Task-Gruppen (built)
+
+The middle size between a single task and a Project: a bundle of steps that belong together — a
+presentation, rearranging a room — where a Project would be too heavy. Before this, every multi-step
+thing became a Project, which is exactly what made that column unreadable (see §1).
+
+- **`App\Models\TaskGroup`** — `user_id, name, notes, sort_order, timestamps`. `hasMany Task` (FK
+  `tasks.group_id`), `activeTasks` is the ordered working set, scopes `forUser/ordered`. `notes` is the
+  group's Markdown scratchpad; `renderNotes()`/`notesHtml()` use the same safety options as the project
+  brainstorm field (`html_input=strip`, `allow_unsafe_links=false`). `DEFAULT_NAME` ("Neue Gruppe") is what
+  a group created by a gesture is called until it is named.
+- **`tasks.group_id`** is **orthogonal to `list`**, exactly like `is_today` — a grouped task still lives in
+  `inbox`/`todos`/`tasks`, it just surfaces inside its group instead of loose on the board. That is why
+  dropping an Inbox card onto a group files it in the *group's* Inbox: nothing about the task's list
+  changes, only where it is shown. The FK is `nullOnDelete`, so dissolving a group can never take tasks
+  with it. A task belongs to a **project or a group, never both** — every write path enforces it
+  (`ManagesTasks::saveEdit`, `TaskBoard::groupTasks/assignTaskToGroup`, `GroupPage::assignToGroup`).
+- **`Task::scopeGroupOrdered()`** is `boardOrdered()` **minus the leading `is_important` sort**. Inside a
+  group the star is a marker only and must not pull a task to the top — a deliberate product decision, and
+  the one place in the app where important does not reorder. Deadlines still do.
+- **Board integration** (`TaskBoard`) — `boardTasks()` hides grouped tasks from their column *unless* they
+  are `is_important` or `is_today`: both are explicit "this one matters now" signals that outrank the
+  bundling, so those show as ordinary cards (and are therefore left out of the box preview, or they'd
+  appear twice). `groupBoxesFor(list)` builds the boxes: name, progress and the next two entries, rendered
+  by `partials/task-group-box.blade.php` in both `partials/column.blade.php` (desktop) and
+  `partials/mobile-task-list.blade.php`. Two rules worth knowing:
+  - **The Inbox column never shows a group box.** A group's own inbox is triage that belongs inside the
+    group; mixing it into the board's inbox puts two different kinds of "unsorted" in one pile.
+  - **A group with no open board work gets one compact box in Tasks** ("3 Aufgaben in der Gruppen-Inbox").
+    Without it, a group whose tasks all sit in its own inbox would be invisible on the board — the
+    difference between tucked away and lost.
+  `counts()` adds the grouped tasks of a column, since they are genuinely visible there.
+- **Creating one by drag (desktop)** — hold a dragged card over another for **350 ms**
+  (`GROUP_ARM_MS`/`groupArm` in `resources/js/app.js`, hooked into `boardSortable`'s `onMove`/`onEnd`). Dwell
+  time rather than a hidden drop band in the middle of the card: a hidden band makes ordinary reordering
+  feel unpredictable, because passing *through* a card would sometimes mean something else entirely.
+  Dwelling is something you can only do on purpose. The armed card gets `.group-arm` (ring + "Gruppieren"
+  label, `app.css`). An armed drop calls `TaskBoard::groupTasks()` and **returns before `reorder()`** —
+  the server moves the task itself, so persisting the destination order too would fight it with a stale
+  picture. Dropping onto an *already grouped* card just joins that group (no name prompt). A fresh group
+  opens an inline name field on its own box (`namingGroupId`/`groupNameDraft`/`saveGroupName`); leaving it
+  empty simply keeps `DEFAULT_NAME`, so the gesture never blocks on a dialog.
+- **Three more ways in**, because desktop drag is not enough — phones have no drag, and "file this into the
+  group" is wanted from everywhere:
+  - **QuickCapture's `group` target** — pick an existing group or name a new one, plus which of the
+    group's lists the task lands in. A group is only ever created *together with its first task* (an empty
+    group has no reason to exist), and the chosen group survives a save the way the Agenda's Fach does.
+  - **The edit sheet's Gruppe field** (`ManagesTasks::$editGroupId`/`editableGroups`) — shown for board
+    lists only, `wire:key`ed on the group count so a newly created group actually appears (the frozen
+    `x-data` trap, §10).
+  - **The mobile long-press sheet** lists groups above projects; inside a group's dashboard the same
+    gesture opens the mirror image (`partials/group-task-picker-sheet.blade.php`): release the task, or
+    hand it to another group.
+- **`App\Livewire\GroupPage`** (`/app/groups/{group}`, `route('group.show')`, `use ManagesTasks`) — the
+  group's own dashboard, deliberately the main board's shape so nothing new has to be learned: Kanban on
+  desktop, bottom-navigation on mobile, Inbox/To-Dos/Tasks plus a **Notizen** panel where the board has its
+  Projekte column. Per-column quick-add (`newTitle` keyed by list), drag-reorder through the same
+  `boardSortable`, the same swipe intents, an "Aus der Inbox hinzufügen" picker like the project page.
+  **No "Heute" area** — the day's focus is owned by the main board alone; a group task can still be flagged
+  for today and then appears in the board's Heute tab. `dissolveGroup()` is non-destructive: the tasks stay
+  exactly where they are and simply become loose again (armed double-click all the same — it is an
+  irreversible structural change, even if nothing is lost).
+- Not touched by this feature: the API/Shortcuts (see `TODO.md`), Notfallmodus, Vorbereitung.
+
 ### Bastelideen (built)
 - A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
   to Task/Project, and it doesn't surface on the board, in Vorbereitung, or in Notfallmodus.

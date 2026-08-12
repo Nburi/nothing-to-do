@@ -178,6 +178,13 @@ class TaskBoard extends Component
      */
     public function groupBoxesFor(string $list): Collection
     {
+        // The Inbox column never shows group boxes: a group's own inbox is
+        // triage that belongs inside the group, and mixing it into the board's
+        // inbox would put two different kinds of "unsorted" in one pile.
+        if ($list === 'inbox') {
+            return collect();
+        }
+
         return $this->taskGroups
             ->map(function (TaskGroup $group) use ($list) {
                 $active = $group->activeTasks;

@@ -1,118 +1,93 @@
-# PLAN — Geteilte Klassen-Agenda (Agenda Spaces)
+# PLAN — Task-Gruppen
 
-> Ersetzt den vorherigen Plan (Schnellerfassung, umgesetzt). Der steht weiterhin in der Git-Historie, Commit `5208038`.
+> Arbeitsplan für das Feature „Task-Gruppierungen“ (Refactor; ein früherer Versuch wurde verworfen).
+> Entstanden im `idea-to-app`-Workflow. Nach dem Merge kann diese Datei gelöscht werden.
 
-> Erstellt: 2026-08-11 · Branch: `feature/agenda-class-spaces` (von `main`)
-> Status: **umgesetzt und getestet** · Layout: **Variante A + Gruppierungs-Umschalter**
-> Nicht gemerged, nicht gepusht — wartet auf „fertig".
+## Ausgangsproblem
 
----
+Alles Mehrstufige landet heute als **Projekt** — echte Projekte, kleine mehrstufige Aufgaben und
+Projektideen. Die Projekte-Spalte wird dadurch unübersichtlich. Die Aufteilung soll sein:
 
-## Anforderungen (Schritt 1)
+| Ebene | Ort | Status |
+|---|---|---|
+| Projektideen | Bastelideen (`/app/crafts`) | ✅ gebaut |
+| Mehrstufige Aufgabe | **Task-Gruppe** | ← dieser Plan |
+| Grösseres Vorhaben (Vortrag) | Projekt (soll später ausgebaut werden) | vorhanden |
+| Lebensprojekt (mehrjährig) | eigener Ort | später |
 
-| Kategorie | Anforderung |
-|---|---|
-| **Datenmodell** | `AgendaSpace` (Name, Invite-Code, Besitzer) mit Mitgliedern; `AgendaEntry` bekommt optional eine Raum-Zuordnung — ohne Raum = privat wie bisher |
-| | Ein Nutzer kann **mehreren** Räumen angehören (Klasse + z.B. Lerngruppe) |
-| **Beitreten** | Jedes Mitglied kann einladen: 6-stelliger Code **und** Link (`/agenda/join/{code}`); Beitreten nur eingeloggt |
-| **Sichtbarkeit** | Jedes Mitglied sieht alle Einträge seiner Räume; private Einträge bleiben strikt privat |
-| **Erledigt** | **Pro Person.** Zusätzlich am Klassen-Eintrag sichtbar: „5/22 erledigt" |
-| **Rechte** | Einträge: **jedes Mitglied** darf bearbeiten/löschen. Raum löschen: nur Besitzer |
-| **Erstellen** | Beim Anlegen wählbar: „nur ich" oder ein Raum — auch in QuickCapture |
-| **Sicherheit** | Jeder Zugriff läuft über die Sichtbarkeits-Scope, nie über eine Frontend-ID |
-| **UX** | Klassen- vs. Privateintrag klar unterscheidbar; Ersteller sichtbar; Leerzustände für „noch kein Raum"; Löschen per armed double-click (nie `confirm()`) |
+## Anforderungen
 
-**Entschieden mit dem User (Schritt 1):** erledigt pro Person **mit** sichtbarem Fortschritt · mehrere Räume · jedes Mitglied darf Einträge bearbeiten.
+**Datenmodell**
+- `TaskGroup` (Besitzer, Name, Notizen, `sort_order`); `tasks.group_id` nullable — orthogonal zu `list`.
+- Eine Aufgabe ist entweder in einem Projekt **oder** in einer Gruppe, nie in beidem.
 
----
+**Erstellen und befüllen**
+- Über das N-Menü (QuickCapture) als eigenes Ziel „Gruppe“ — Gruppe wählen oder neu anlegen, plus Liste
+  innerhalb der Gruppe. Damit lassen sich Aufgaben auch direkt in eine bestehende Gruppe erfassen.
+- Desktop: eine Karte auf eine andere ziehen und ~350 ms halten; eine Karte auf eine Gruppen-Box ziehen
+  behält ihre Liste (Inbox-Aufgabe → Gruppen-Inbox).
+- Mobile: Feld „Gruppe“ im Bearbeitungs-Sheet, plus Long-Press auf eine Karte → „Projekt oder Gruppe“.
+- Im Gruppen-Dashboard: „Aus der Inbox hinzufügen“-Picker wie auf der Projektseite.
 
-## Produkt (Schritt 2)
+**Gruppen-Dashboard** (`/app/groups/{group}`)
+- Aufbau wie das Maindashboard: Kanban auf Desktop, Bottom-Navigation auf Mobile.
+- Vier Listen: Inbox, To-Dos, Tasks, **Notizen** (Markdown, an der Stelle der Projekte-Spalte).
+- Aufgaben haben Deadlines, sind von Hand sortierbar und als wichtig markierbar — **die
+  Wichtig-Markierung beeinflusst die Reihenfolge nicht** (Reihenfolge: Deadline, dann manuell).
+- Kein „Heute“-Bereich in den Gruppen-Spalten — Tagesfokus bleibt Sache des Maindashboards.
 
-### Layout-Varianten (Entscheidung offen)
+**Maindashboard**
+- Pro Gruppe eine abgetrennte Box in der jeweiligen Spalte mit Name (klickbar), Fortschrittsbalken und
+  den 2 nächsten Einträgen dieser Liste.
+- Als wichtig markierte Gruppen-Aufgaben erscheinen als normale Karte in der Spalte (und deshalb
+  nicht zusätzlich in der Box-Vorschau).
+- Die Gruppen-Inbox erscheint nicht als eigene Box; eine Gruppe ohne Board-Aufgaben zeigt stattdessen
+  eine kompakte Box in der Tasks-Spalte, damit sie nicht unsichtbar wird.
 
-**Variante A — ein Strom mit Raum-Filter**
-Alle Einträge chronologisch in einer Liste, jeder Klassen-Eintrag trägt ein Raum-Badge (`4b`), private
-Einträge ein `nur ich`-Badge. Unter der bestehenden Typ-Filterzeile eine zweite, leisere Filterzeile:
-`Alle Räume · Nur ich · Klasse 4b · Bio-Lerngruppe` — erscheint nur, wenn der Nutzer mindestens einen
-Raum hat (ohne Raum sieht die Seite exakt aus wie heute).
+**UX**
+- Leerzustände in jeder Spalte, Ladezustände über Livewire, Inline-Validierung beim Namen.
+- Kein `confirm()` — „Gruppe auflösen“ nutzt das armed Double-Click-Muster.
+- Auflösen/Löschen gibt Aufgaben frei (`group_id = null`), löscht sie nie.
 
-- **Für:** Datum bleibt die einzige Sortierachse — „was ist als Nächstes fällig" ist die eigentliche Frage.
-- **Gegen:** zwei Chip-Zeilen übereinander; pro Zeile ein Badge mehr.
+## Produkt
 
-**Variante B — getrennte Sektionen pro Raum**
-Liste in Abschnitte geteilt (`Klasse 4b · 22 Mitglieder`, dann `Nur ich`), keine zweite Filterzeile,
-kein Raum-Badge pro Zeile.
+Visuell festgehalten im Mockup (`gruppen-mockup.html`, Scratchpad): Gruppen-Box im Board, Drag-Geste
+mit „Gruppieren“-Ring, Gruppen-Dashboard Desktop und Mobile.
 
-- **Für:** ruhigere Zeilen, Zugehörigkeit ohne Badge lesbar, eine Chip-Zeile weniger.
-- **Gegen:** die Fälligkeits-Reihenfolge zerfällt — eine morgen fällige Privataufgabe steht unter einer
-  Klassenaufgabe in zwei Wochen.
+Gestalterische Entscheidungen:
+- Die Gruppen-Box führt **keine neue Farbe** ein — 3 px linke Kante in `ink-faint/55`, Fläche
+  `surface/55`. Grün (Heute) und Rot (Notfall) bleiben reserviert; eine Gruppe ist Struktur, kein Alarm.
+- Fortschrittsbalken identisch zur Projektkarte (`bg-line` Spur, `bg-forest` Füllung) — gleiche
+  Bedeutung, gleiche Optik.
+- Der Name ist der einzige Klickbereich, der wegführt; die Karten in der Box bleiben normale Karten
+  mit allen Schnellaktionen.
 
-### Gemeinsam in beiden Varianten
+## Umsetzung
 
-- **Header:** neuer „Klassen"-Button neben `+ Eintrag`.
-- **Klassen-Sheet** (gleiche Shell wie `agenda-entry-form`): Liste der Räume mit Mitgliederzahl,
-  Invite-Code + „Link kopieren" + „Neu" (Code rotieren), Verlassen/Löschen; darunter „Code eingeben →
-  Beitreten" und „Neue Klasse benennen → Erstellen".
-- **Eintragsformular:** neue Pill-Reihe „Für: `Nur ich` `Klasse 4b` `Bio-Lerngruppe`" (nur wenn Räume da).
-- **Zeile:** Fortschritts-Zähler `5/22` bei Klassen-Einträgen, `von Lena` wenn nicht selbst erstellt.
-- **Beitreten-Seite** `/agenda/join/{code}`: zeigt Raumnamen + Mitgliederzahl, ein Button „Beitreten".
-  Kein Join per GET — ein Link-Aufruf darf nichts mutieren.
-- **Fach-Vorschläge** kommen ab jetzt aus allen sichtbaren Einträgen (eigene + Räume), nicht nur eigenen.
+**Stack:** unverändert — Laravel 13 / Livewire 4 / Alpine / Tailwind v3 / SortableJS. Keine neue
+Abhängigkeit, kein neuer Skill nötig.
 
----
+**Reihenfolge (ein Commit pro Schritt, Branch `feature/task-groups`):**
 
-## Umsetzung (Schritt 3)
+1. **Migration + Modell** — `task_groups` (`user_id`, `name`, `notes`, `sort_order`), `tasks.group_id`
+   (`nullOnDelete`). `TaskGroup` mit `hasMany Task`, Scopes `forUser`/`ordered`, Fortschritts-Helfer.
+   `Task`: `group()`, Scopes `inGroup`/`ungrouped`, `groupOrdered()` (wie `boardOrdered`, aber ohne
+   `is_important`). `User::taskGroups()`.
+2. **Gruppen-Dashboard** — `App\Livewire\GroupPage` (`/app/groups/{group}`, `route('group.show')`),
+   nutzt `ManagesTasks` (Edit-Sheet, Schnellaktionen kostenlos). Vier Spalten, Bottom-Nav auf Mobile,
+   Notizen-Markdown analog Projekt-Brainstorming. Umbenennen, Auflösen, Aufgabe aus Gruppe lösen.
+3. **Maindashboard-Integration** — `TaskBoard`: Board-Queries schliessen gruppierte Aufgaben aus,
+   ausser sie sind wichtig; neue Computed `groupsFor(list)`; `partials/task-group-box.blade.php` in
+   Desktop-Spalte und Mobile-Liste.
+4. **Erstellen per Drag** — `boardSortable` bekommt `onMove`-Verharren-Erkennung (~350 ms) mit
+   `group-arm`-Klasse; `TaskBoard::groupTasks()`; Inline-Namensfeld auf der frischen Box; Drop auf eine
+   bestehende Gruppen-Box → `assignTaskToGroup()`.
+5. **QuickCapture + Mobile-Picker** — neues Ziel `group`; Picker-Sheet um Gruppen erweitert.
+6. **Tests + Dokumentation** — PHPUnit für Modell, Sichtbarkeit/Scoping, Dashboard-Aktionen und
+   Board-Integration; `CLAUDE.md` §7 ergänzen, `CHANGELOG.md` nachführen.
 
-**Kein neuer Stack, keine neue Dependency.** Alles mit Laravel + Livewire 4 + Alpine wie bisher.
-Keine externen Skills nötig — die App hat für jedes Element hier schon ein bestehendes Muster
-(Sheet = `schedule-event-form`, Löschen = armed double-click, Pill-Toggle = Termin/Kategorie-Schalter).
-
-### Migrationen (4, alle nicht-destruktiv)
-
-1. `create_agenda_spaces_table` — `id, owner_id→users, name, invite_code(unique), timestamps`
-2. `create_agenda_space_user_table` — Pivot, `unique(agenda_space_id, user_id)`
-3. `add_agenda_space_id_to_agenda_entries_table` — nullable FK, `nullOnDelete`, Index `(agenda_space_id, date)`
-4. `create_agenda_entry_completions_table` — Pivot `(agenda_entry_id, user_id)`, **+ Backfill**:
-   bestehende `is_done = true`-Einträge bekommen eine Completion-Zeile ihres Besitzers
-
-> **`agenda_entries.is_done` bleibt vorerst stehen** (Rollback-Punkt, CLAUDE.md §8: zweistufig).
-> Nach bestätigtem Produktionsdeploy in einem eigenen Commit entfernen → Eintrag in `TODO.md`.
-
-### Modelle
-
-- **`AgendaSpace`** — `owner()`, `members()` (BelongsToMany User), `entries()`, `hasMember()`,
-  `static generateInviteCode()` (6 Zeichen, Alphabet ohne `O/0/I/1`), Scope `forMember`.
-- **`AgendaEntry`** — `+ agenda_space_id`; `space()`, `completedBy()` (BelongsToMany User über
-  `agenda_entry_completions`), `isShared()`, `isDoneFor(User)`;
-  Scopes `visibleTo(User)` (eigene private **oder** in einem meiner Räume), `openFor(User)`,
-  `doneFor(User)`. Listen laden mit `withCount('completedBy')` +
-  `withExists(['completedBy as done_for_me' => …])` — keine N+1.
-- **`User`** — `agendaSpaces()`, `ownedAgendaSpaces()`.
-
-### Komponenten
-
-- **`Agenda`** — `userEntry()` → `visibleEntry()` (über `visibleTo`, nie über `agendaEntries()`);
-  `$filterSpace`; `$formSpaceId`; Sheet-Actions `createSpace/joinSpace/leaveSpace/deleteSpace/regenerateCode`.
-  Besitzer verlässt Raum → Besitz geht an das längste verbliebene Mitglied; letztes Mitglied raus → Raum weg
-  (Einträge fallen per `nullOnDelete` auf privat zurück, nichts geht verloren).
-- **`JoinAgendaSpace`** — neue Seite `/agenda/join/{code}`, `auth`-middleware.
-- **`QuickCapture`** — Raum-Auswahl für das `agenda`-Target.
-
-### Reihenfolge (ein Commit pro Schritt)
-
-1. Migrationen + Modelle + Factories + Modell-Tests
-2. Klassen-Sheet: erstellen / beitreten / verlassen / Code rotieren + Join-Seite
-3. Geteilte Einträge: „Für"-Auswahl, Sichtbarkeit, Erledigt pro Person, Fortschritt
-4. QuickCapture-Raumauswahl + Fach-Vorschläge aus allen Räumen
-5. Doku: `CLAUDE.md` §1/§7, `CHANGELOG.md`, `TODO.md`, Deployment-Checkliste
-
-### Tests (`tests/Feature/AgendaSpacesTest.php` + Erweiterung `AgendaTest.php`)
-
-Nicht-Mitglied sieht nichts · Beitritt per Code/Link · falscher Code · doppelter Beitritt ·
-Erledigt ist pro Person · Fortschrittszähler stimmt · jedes Mitglied darf bearbeiten ·
-Raum löschen nur als Besitzer · Verlassen macht Einträge nicht kaputt · privater Eintrag bleibt privat.
-
-### Deployment
-
-Nur `php artisan migrate --force` zusätzlich zum Standardablauf (§9) — keine neue `.env`-Variable,
-kein neuer Cron, keine neue Dependency.
+**Risiken / Achtungspunkte**
+- Der Drag-Konflikt ist der heikle Teil: `onMove` darf normales Einsortieren nicht stören, und ein
+  Gruppieren-Drop darf nicht zusätzlich `reorder()` auslösen.
+- `wire:key` an allem, was Alpine-Zustand über einen Livewire-Morph hält (CLAUDE.md §10).
+- API/Shortcuts kennen Gruppen zunächst nicht — bewusst ausgeklammert, in `TODO.md` notiert.
