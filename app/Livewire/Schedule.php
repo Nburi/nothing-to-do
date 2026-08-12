@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesSchedule;
+use App\Models\AgendaEntry;
 use App\Models\ScheduleEvent;
+use App\Models\Task;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -62,6 +64,113 @@ class Schedule extends Component
     public function focusedEvents(): Collection
     {
         return $this->events->get($this->focusedDate, collect());
+    }
+
+    /**
+     * Task deadlines/Wunschtermine and Agenda homework/exams for the visible week, grouped by
+     * Y-m-d — the "all-day" strip above the hour grid, since none of these carry a time. Each
+     * source item contributes one entry on its actual date, plus (only for a *hard* date — a task
+     * deadline, or any Agenda entry, never a soft Wunschtermin) a second, `isPreview` entry
+     * `deadline_preview_days` earlier, when that setting is enabled — see
+     * Settings::saveDeadlinePreview(). Completed/done items are excluded entirely (Task::active(),
+     * AgendaEntry::openFor()), consistent with how Board and Agenda hide finished work.
+     */
+    #[Computed]
+    public function deadlineItems(): Collection
+    {
+        $user = auth()->user();
+        $weekStart = Carbon::parse($this->weekStart)->startOfDay();
+        $weekEnd = $weekStart->copy()->endOfWeek();
+        $previewEnabled = (bool) $user->deadline_preview_enabled;
+        $previewDays = max(0, (int) $user->deadline_preview_days);
+
+        $items = collect();
+
+        Task::forUser($user)->active()
+            ->where(fn ($q) => $q->whereNotNull('deadline')->orWhereNotNull('due_date'))
+            ->get()
+            ->each(function (Task $task) use ($items, $previewEnabled, $previewDays) {
+                $date = $task->effectiveDate();
+
+                if ($date === null) {
+                    return;
+                }
+
+                $isHard = $task->effectiveIsHard();
+                $base = [
+                    'kind' => 'task',
+                    'subtype' => $isHard ? 'deadline' : 'due',
+                    'id' => $task->id,
+                    'title' => $task->title,
+                ];
+
+                $items->push($base + ['date' => $date->copy(), 'isPreview' => false]);
+
+                if ($isHard && $previewEnabled && $previewDays > 0) {
+                    $items->push($base + [
+                        'date' => $date->copy()->subDays($previewDays),
+                        'isPreview' => true,
+                        'daysUntil' => $previewDays,
+                    ]);
+                }
+            });
+
+        AgendaEntry::visibleTo($user)->openFor($user)->get()
+            ->each(function (AgendaEntry $entry) use ($items, $previewEnabled, $previewDays) {
+                $base = [
+                    'kind' => 'agenda',
+                    'subtype' => $entry->type,
+                    'id' => $entry->id,
+                    'title' => $entry->title,
+                    'subject' => $entry->subject,
+                ];
+
+                $items->push($base + ['date' => $entry->date->copy(), 'isPreview' => false]);
+
+                if ($previewEnabled && $previewDays > 0) {
+                    $items->push($base + [
+                        'date' => $entry->date->copy()->subDays($previewDays),
+                        'isPreview' => true,
+                        'daysUntil' => $previewDays,
+                    ]);
+                }
+            });
+
+        return $items
+            ->filter(fn (array $item) => $item['date']->between($weekStart, $weekEnd))
+            ->sortBy('title')
+            ->sortBy(fn (array $item) => $item['isPreview'] ? 1 : 0)
+            ->groupBy(fn (array $item) => $item['date']->toDateString());
+    }
+
+    /** Deadline items for the mobile single-day view. */
+    #[Computed]
+    public function focusedDeadlineItems(): Collection
+    {
+        return $this->deadlineItems->get($this->focusedDate, collect());
+    }
+
+    /**
+     * Ticks a task off straight from the Zeitplan strip. Deliberately duplicates
+     * ManagesTasks::toggleComplete() rather than pulling in the whole trait (its edit-sheet state
+     * isn't needed here) — the same small-duplication call already made between
+     * Task::effectiveDateLabel() and AgendaEntry::dateLabel().
+     */
+    public function toggleDeadlineTaskDone(int $id): void
+    {
+        $task = auth()->user()->tasks()->findOrFail($id);
+        $done = ! $task->is_completed;
+
+        $task->update([
+            'is_completed' => $done,
+            'completed_at' => $done ? now() : null,
+        ]);
+    }
+
+    /** Ticks an Agenda entry off for this person only — see AgendaEntry::toggleDoneFor(). */
+    public function toggleDeadlineAgendaDone(int $id): void
+    {
+        AgendaEntry::visibleTo(auth()->user())->findOrFail($id)->toggleDoneFor(auth()->user());
     }
 
     public function prevWeek(): void

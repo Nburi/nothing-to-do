@@ -74,6 +74,19 @@
                     @endforeach
                 </div>
 
+                {{-- All-day strip: task deadlines/Wunschtermine + Agenda homework/exams — none of
+                     these carry a time, so they live above the hour grid rather than on it. --}}
+                @if ($this->deadlineItems->isNotEmpty())
+                    <div class="flex border-b border-line">
+                        <div class="w-12 flex-none"></div>
+                        @foreach ($this->weekDays as $day)
+                            <div class="flex-1 border-l border-line px-1.5 py-1.5" wire:key="dl-strip-{{ $day->toDateString() }}">
+                                @include('livewire.partials.schedule-deadline-strip', ['items' => $this->deadlineItems->get($day->toDateString(), collect())])
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
                 {{-- Time gutter + 7 day columns --}}
                 <div class="flex" style="height: {{ $span * $ppmWeek }}px">
                     <div class="relative w-12 flex-none">
@@ -163,6 +176,12 @@
                             + {{ $t->displayName() }}
                         </button>
                     @endforeach
+                </div>
+            @endif
+
+            @if ($this->focusedDeadlineItems->isNotEmpty())
+                <div class="mb-2 flex-none rounded-card border border-line bg-surface p-2" wire:key="dl-strip-{{ $focusedDate }}">
+                    @include('livewire.partials.schedule-deadline-strip', ['items' => $this->focusedDeadlineItems])
                 </div>
             @endif
 
