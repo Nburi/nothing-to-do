@@ -862,9 +862,13 @@ thing became a Project, which is exactly what made that column unreadable (see �
   end and returns `0` — literally "no swap" — everywhere between, so Sortable itself holds the card still
   in the middle band. Its direction in the outer bands (`mouseOnAxis > mid ? 1 : -1`) also gives the
   intended semantics for free: the top band orders the dragged card *above* the target, the bottom band
-  below it. `groupZone.consider()` then returns `false` for the same middle band (belt and braces, and it
-  is what arms the visual cue); its band fraction is derived from the same `INVERTED_SWAP_THRESHOLD`
-  constant so the cue can never disagree with what a release actually does. The armed card gets
+  below it. **Arming is driven by `groupZone.track()`, a pointer listener of our own (`dragover` +
+  `pointermove`/`touchmove`, attached in `onStart`, removed in `onEnd`), deliberately not by Sortable's
+  `onMove`** — `_onDragOver` returns at `if (direction === 0 …)` *before* calling `_onMove`, and the middle
+  band is exactly where direction is 0, so `onMove` provably never fires there (see *Known Issues*).
+  `groupZone.consider()` stays wired to `onMove` purely as a safety net for the edge cases that do reach it;
+  its band fraction is derived from the same `INVERTED_SWAP_THRESHOLD` constant so the cue can never
+  disagree with what a release actually does. The armed card gets
   `.group-arm` — an indent plus a forest-coloured bracket on its leading edge (`app.css`), echoing the left
   accent a real group box gets — a secondary cue only, since the dragged card (or the browser's own
   drag-image snapshot) sits directly on top of whatever's under the cursor and would hide it otherwise. The
@@ -1346,6 +1350,32 @@ ever added from JS needs its name to appear in a scanned file; putting the rule 
 also works, but the glob is the honest fix. **After changing `tailwind.config.js`, restart the Vite dev
 server** — a running `npm run dev` does not reliably pick up a config change, so the old purged CSS keeps
 being served and it looks like the fix did nothing.
+
+### SortableJS never calls `onMove` for the one region a drop-onto-card gesture needs
+**Symptom:** with `invertSwap` correctly configured (previous entry), the middle band genuinely stops
+reordering — cards hold still exactly as intended — but the gesture built on it still does nothing: no
+highlight, no label, and releasing creates nothing. Instrumenting shows `_onDragOver` firing while the
+pointer crosses the card, yet the `onMove` callback is never invoked and the DOM correctly never changes.
+**Cause:** `_onDragOver` computes `direction` and then bails early —
+`if (direction === 0 || sibling === target) { return completed(false); }` — **before** it reaches
+`_onMove(...)`. `invertSwap` makes the middle band return `direction === 0` by design. So the single region
+where a "drop onto this card" gesture must arm is precisely the region where `onMove` is guaranteed never
+to fire. Any arming logic living in `onMove` is unreachable there, no matter how correct its band math is.
+**Fix:** don't hang the gesture off `onMove`. Track the pointer independently for the duration of the drag
+and resolve the hovered card yourself:
+```js
+onStart: (evt) => groupZone.startTracking(evt.item),   // adds document listeners
+onEnd:   (evt) => { const id = groupZone.disarm(); groupZone.stopTracking(); /* … */ },
+```
+listening to `dragover` (desktop's native HTML5 drag), plus `pointermove`/`touchmove` (touch and
+`forceFallback`), and finding the target with `document.elementFromPoint(x, y).closest('[data-id]')`
+— skipping the dragged element itself, which stays in the DOM as the placeholder. Keep the `onMove`
+predicate as a safety net for the edge cases that *do* reach `_onMove` (cross-list drops, `differentLevel`),
+but never as the place arming happens. See `groupZone.track()` in `resources/js/app.js`.
+> Also worth knowing when debugging Sortable: it binds **per-instance** copies of its private methods in
+> the constructor (`this[fn] = this[fn].bind(this)`), so wrapping `Sortable.prototype._onDragOver` after
+> instances exist observes nothing — wrap the methods on the instance. And `forceFallback` cannot be
+> toggled via `.option()` after construction: `nativeDraggable` is computed once in the constructor.
 
 ### A "drop one card onto another" gesture is impossible until you set `invertSwap` on the Sortable
 **Symptom:** any gesture that needs the pointer to rest *on* another card — dwell-to-group, or a

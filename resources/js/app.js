@@ -113,8 +113,12 @@ window.boardSortable = function (el, wire, handle = null) {
         delay: 60,
         delayOnTouchOnly: true,
         ...sortableGroupBands(),
-        // Mark the page as dragging so project cards can show a drop affordance.
-        onStart: () => document.body.classList.add('dragging-task'),
+        // Mark the page as dragging so project cards can show a drop affordance,
+        // and start watching the pointer for the group band (see groupZone.track).
+        onStart: (evt) => {
+            document.body.classList.add('dragging-task');
+            groupZone.startTracking(evt.item);
+        },
         // Hovering the middle band of another card arms "drop here to group
         // these two" and — critically — blocks Sortable's own reorder shift
         // for as long as the pointer stays there (see groupZone below).
@@ -122,6 +126,7 @@ window.boardSortable = function (el, wire, handle = null) {
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
             const armedId = groupZone.disarm();
+            groupZone.stopTracking();
             const draggedId = evt.item.dataset.id;
 
             // An armed grouping wins over the ordinary reorder: the server moves
@@ -242,38 +247,51 @@ const sortableGroupBands = () => ({
 
 const groupZone = {
     el: null,
+    draggedEl: null,
     lastX: 0,
     lastY: 0,
 
+    /** True when `y` sits in the middle (group) band of `rect`. */
+    isGroupBand(rect, y) {
+        const band = rect.height * GROUP_BAND_FRACTION;
+        return y > rect.top + band && y < rect.bottom - band;
+    },
+
     /**
-     * Called on every Sortable onMove with the card currently hovered, its
-     * rect, and the raw pointer/mouse/touch event. Returns whether Sortable
-     * should proceed with its normal reorder move (true) or hold still (false).
+     * Arming is driven from here — a pointer listener of our own — and
+     * deliberately NOT from Sortable's `onMove`.
+     *
+     * `onMove` looks like the natural hook, and it is a trap: Sortable's
+     * `_onDragOver` bails at `if (direction === 0 || sibling === target)
+     * return completed(false);` *before* it ever calls `_onMove`. Since
+     * `invertSwap` makes the middle band return direction 0 by design, the
+     * one region where grouping must arm is exactly the region where
+     * `onMove` is guaranteed never to fire. Arming there is unreachable.
+     *
+     * So we track the pointer ourselves for the duration of the drag
+     * (`dragover` covers desktop's native HTML5 drag, `pointermove`/
+     * `touchmove` the touch + forceFallback paths) and resolve the hovered
+     * card with elementFromPoint. Independent of Sortable's internals, and
+     * it works the same in every drag mode.
      */
-    consider(related, relatedRect, originalEvent) {
-        const point = originalEvent?.touches?.[0] ?? originalEvent;
-        if (point && typeof point.clientX === 'number') {
-            this.lastX = point.clientX;
-            this.lastY = point.clientY;
-            groupArmLabel.move(this.lastX, this.lastY);
+    track(x, y) {
+        this.lastX = x;
+        this.lastY = y;
+        groupArmLabel.move(x, y);
+
+        const under = document.elementFromPoint(x, y);
+        const card = under ? under.closest('[data-id]') : null;
+
+        // The dragged card itself stays in the DOM as the placeholder; it is
+        // never its own drop target.
+        if (!card || card === this.draggedEl || !card.dataset.id) {
+            this.reset();
+            return;
         }
 
-        const card = related && related.dataset && related.dataset.id ? related : null;
-
-        if (!card || !relatedRect || !point || typeof point.clientY !== 'number') {
+        if (!this.isGroupBand(card.getBoundingClientRect(), y)) {
             this.reset();
-            return true;
-        }
-
-        // Exactly the band Sortable itself refuses to swap in (see
-        // sortableGroupBands above) — deliberately the same number, so the
-        // visual cue can never disagree with what a release actually does.
-        const band = relatedRect.height * GROUP_BAND_FRACTION;
-        const inGroupBand = point.clientY > relatedRect.top + band && point.clientY < relatedRect.bottom - band;
-
-        if (!inGroupBand) {
-            this.reset();
-            return true;
+            return;
         }
 
         if (card !== this.el) {
@@ -281,10 +299,52 @@ const groupZone = {
             this.el = card;
             card.classList.add('group-arm');
             const title = card.dataset.title;
-            groupArmLabel.show(title ? `Gruppieren mit „${title}“` : 'Gruppieren', this.lastX, this.lastY);
+            groupArmLabel.show(title ? `Gruppieren mit „${title}“` : 'Gruppieren', x, y);
+        }
+    },
+
+    /** Bound once so add/removeEventListener see the same reference. */
+    _onPointer: null,
+
+    startTracking(draggedEl) {
+        this.draggedEl = draggedEl ?? null;
+        if (!this._onPointer) {
+            this._onPointer = (event) => {
+                const point = event.touches?.[0] ?? event;
+                if (point && typeof point.clientX === 'number' && (point.clientX || point.clientY)) {
+                    this.track(point.clientX, point.clientY);
+                }
+            };
+        }
+        document.addEventListener('dragover', this._onPointer, true);
+        document.addEventListener('pointermove', this._onPointer, true);
+        document.addEventListener('touchmove', this._onPointer, true);
+    },
+
+    stopTracking() {
+        if (this._onPointer) {
+            document.removeEventListener('dragover', this._onPointer, true);
+            document.removeEventListener('pointermove', this._onPointer, true);
+            document.removeEventListener('touchmove', this._onPointer, true);
+        }
+        this.draggedEl = null;
+    },
+
+    /**
+     * Sortable's `onMove`, kept purely as a safety net: `invertSwap` already
+     * returns 0 across the middle band, so this normally never even runs
+     * there. It only matters in the edge cases that reach `_onMove` anyway
+     * (a cross-list drop, `differentLevel`), where a reorder must still not
+     * happen while a group is armed. Pure predicate — no state changes.
+     */
+    consider(related, relatedRect, originalEvent) {
+        const point = originalEvent?.touches?.[0] ?? originalEvent;
+
+        if (!related?.dataset?.id || !relatedRect || !point || typeof point.clientY !== 'number') {
+            return true;
         }
 
-        return false; // hold the card still — this is the group band, not a reorder
+        return !this.isGroupBand(relatedRect, point.clientY);
     },
 
     /** Clear any highlight, keeping nothing armed. */
@@ -330,7 +390,10 @@ window.groupDropZone = function (el, wire, handle = null) {
         delay: 60,
         delayOnTouchOnly: true,
         ...sortableGroupBands(),
-        onStart: () => document.body.classList.add('dragging-task'),
+        onStart: (evt) => {
+            document.body.classList.add('dragging-task');
+            groupZone.startTracking(evt.item);
+        },
         onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
         onAdd: (evt) => {
             const taskId = evt.item.dataset.id;
@@ -343,6 +406,7 @@ window.groupDropZone = function (el, wire, handle = null) {
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
             const armedId = groupZone.disarm();
+            groupZone.stopTracking();
             const taskId = evt.item.dataset.id;
 
             // Held over the group band of another card on the way out: merge
