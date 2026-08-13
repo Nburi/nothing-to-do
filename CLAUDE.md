@@ -860,6 +860,33 @@ thing became a Project, which is exactly what made that column unreadable (see �
   picture. Dropping onto an *already grouped* card just joins that group (no name prompt). A fresh group
   opens an inline name field on its own box (`namingGroupId`/`groupNameDraft`/`saveGroupName`); leaving it
   empty simply keeps `DEFAULT_NAME`, so the gesture never blocks on a dialog.
+- **Dragging a task back out** of a group box — `groupDropZone` (`app.js`) is a full two-way Sortable zone,
+  not receive-only: dropping onto a plain board column releases the task (`TaskBoard::ungroupTask()`) and
+  persists its new position there via the same `reorder()` call an ordinary cross-column move already
+  makes. `sort: false` on this zone, since the box only ever previews up to two tasks — reordering that
+  partial view wouldn't mean anything. Held over another card for the same 350 ms on the way out merges
+  into *that* card's group instead (takes priority, mirrors `boardSortable`'s own onEnd). Dropping onto a
+  project card, another group's box, or the "new project" zone is already fully handled by that zone's own
+  `onAdd`, so `groupDropZone`'s `onEnd` only has to act when the destination is a plain column.
+- **`TaskGroup::pruneIfTooSmall()`** — dissolves a group the moment it would hold one task or none; a
+  bundle of one is not a group, and leaving the user to notice and clean up the leftover shell by hand would
+  just be busywork. Returns whether it dissolved. Every write path that can shrink a group's membership
+  calls it on the task's *previous* group (captured **before** the update, since `group_id` may already have
+  moved on by the time the caller checks): the drag-out gesture above, `groupTasks`/`assignTaskToGroup` when
+  the dragged task already belonged to a *different* group, the edit sheet's Gruppe field
+  (`ManagesTasks::saveEdit`), deleting a grouped task (`ManagesTasks::deleteTask`), and `GroupPage`'s own
+  `removeFromGroup`/`moveTaskToGroup`. `ManagesTasks::afterGroupMayHaveShrunk(?TaskGroup $group)` is the
+  shared hook both `saveEdit()` and `deleteTask()` funnel through — its default (used by `TaskBoard`/
+  `ProjectPage`) just prunes; **`GroupPage` overrides it** to also redirect to the board (`route('app')`)
+  when the group being dissolved is the one *its own page* is showing — otherwise it would try to re-render
+  a group that no longer exists. `TaskBoard`'s own group-mutating methods aren't part of the shared trait,
+  so they call `pruneIfTooSmall()` directly; they never need the redirect since the board's identity never
+  depends on one specific group.
+  > Auditing every `group_id` write site for this turned up two pre-existing gaps, fixed alongside it:
+  > `TaskBoard::assignTaskToProject()` and `ProjectPage::assignToProject()` (drag onto a project card, or
+  > pull one from the inbox picker) never cleared `group_id` — a grouped task dropped there could end up
+  > with both a project *and* a group at once, violating the "never both" rule everywhere else in this
+  > feature. Both now clear it and prune the vacated group.
 - **Three more ways in**, because desktop drag is not enough — phones have no drag, and "file this into the
   group" is wanted from everywhere:
   - **QuickCapture's `group` target** — pick an existing group or name a new one, plus which of the
