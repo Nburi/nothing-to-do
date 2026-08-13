@@ -23,12 +23,22 @@ class CraftIdeas extends Component
      * anywhere, but a page that is entirely about ideas shouldn't send you
      * through a global panel to add one — the same reasoning ProjectPage and
      * EmergencyMode already follow with their own inline add forms.
+     *
+     * The same form doubles as the edit form (mirrors Agenda's saveEntry()):
+     * $editingId null while capturing, set to an idea's id while editing it.
      */
+    public ?int $editingId = null;
+
     public string $newTitle = '';
 
+    /**
+     * Still the `where_to_begin` column underneath — repurposed in the UI as a
+     * general free-text note (material, links, a reminder of what to do first),
+     * not renamed at the DB/property level since nothing about its shape changed.
+     */
     public string $newWhereToBegin = '';
 
-    public function addIdea(): void
+    public function saveIdea(): void
     {
         // Trim first so a whitespace-only title fails the required rule.
         $this->newTitle = trim($this->newTitle);
@@ -39,13 +49,38 @@ class CraftIdeas extends Component
             'newWhereToBegin' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        auth()->user()->craftIdeas()->create([
+        $attributes = [
             'title' => $data['newTitle'],
             'where_to_begin' => $data['newWhereToBegin'] !== '' ? $data['newWhereToBegin'] : null,
-        ]);
+        ];
 
-        $this->reset(['newTitle', 'newWhereToBegin']);
-        $this->dispatch('idea-added');
+        if ($this->editingId !== null) {
+            $this->userIdea($this->editingId)->update($attributes);
+        } else {
+            auth()->user()->craftIdeas()->create($attributes);
+        }
+
+        $this->reset(['newTitle', 'newWhereToBegin', 'editingId']);
+        $this->dispatch('idea-form-reset');
+    }
+
+    /** Loads an idea into the shared form for editing. */
+    public function startEdit(int $id): void
+    {
+        $idea = $this->userIdea($id);
+
+        $this->editingId = $idea->id;
+        $this->newTitle = $idea->title;
+        $this->newWhereToBegin = (string) ($idea->where_to_begin ?? '');
+        $this->resetValidation();
+        $this->dispatch('edit-idea-opened');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->reset(['newTitle', 'newWhereToBegin', 'editingId']);
+        $this->resetValidation();
+        $this->dispatch('idea-form-reset');
     }
 
     /**
@@ -165,6 +200,10 @@ class CraftIdeas extends Component
     public function deleteIdea(int $id): void
     {
         $this->userIdea($id)->delete();
+
+        if ($this->editingId === $id) {
+            $this->cancelEdit();
+        }
     }
 
     public function render()

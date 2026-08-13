@@ -143,15 +143,14 @@
                 </div>
 
                 <div x-show="$wire.target === 'craft'" style="display: none;">
-                    <label for="qc-where" class="mb-1 block text-[11px] font-medium text-ink-faint">Wo anfangen (optional)</label>
-                    <input
+                    <label for="qc-where" class="mb-1 block text-[11px] font-medium text-ink-faint">Notiz (optional)</label>
+                    <textarea
                         id="qc-where"
-                        type="text"
                         wire:model="whereToBegin"
-                        placeholder="z. B. Material besorgen, Anleitung suchen …"
-                        autocomplete="off"
-                        class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
-                    />
+                        rows="2"
+                        placeholder="z. B. Material besorgen, Anleitung suchen, wo anfangen …"
+                        class="w-full resize-y rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                    ></textarea>
                 </div>
 
                 {{-- Agenda: type, Fach and date are all required (mirrors Agenda::save()). --}}

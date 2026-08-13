@@ -22,7 +22,7 @@ class CraftIdeasTest extends TestCase
             ->test(CraftIdeas::class)
             ->set('newTitle', '  Kerzen giessen  ')
             ->set('newWhereToBegin', '  Sojawachs bestellen  ')
-            ->call('addIdea')
+            ->call('saveIdea')
             ->assertHasNoErrors()
             ->assertSet('newTitle', '')
             ->assertSet('newWhereToBegin', '');
@@ -42,7 +42,7 @@ class CraftIdeasTest extends TestCase
         Livewire::actingAs($user)
             ->test(CraftIdeas::class)
             ->set('newTitle', 'Fotobuch gestalten')
-            ->call('addIdea')
+            ->call('saveIdea')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('craft_ideas', [
@@ -58,7 +58,7 @@ class CraftIdeasTest extends TestCase
         Livewire::actingAs($user)
             ->test(CraftIdeas::class)
             ->set('newTitle', '   ')
-            ->call('addIdea')
+            ->call('saveIdea')
             ->assertHasErrors(['newTitle' => 'required']);
 
         $this->assertDatabaseCount('craft_ideas', 0);
@@ -72,10 +72,113 @@ class CraftIdeasTest extends TestCase
         $component = Livewire::actingAs($user)->test(CraftIdeas::class);
         $this->assertNull($component->instance()->heroId);
 
-        $component->set('newTitle', 'Regal bauen')->call('addIdea');
+        $component->set('newTitle', 'Regal bauen')->call('saveIdea');
 
         $this->assertNotNull($component->instance()->heroId);
         $component->assertSee('Regal bauen');
+    }
+
+    public function test_starting_an_edit_loads_the_idea_into_the_form(): void
+    {
+        $user = User::factory()->create();
+        $idea = CraftIdea::factory()->for($user)->create([
+            'title' => 'Regal bauen',
+            'where_to_begin' => 'Holz besorgen',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('startEdit', $idea->id)
+            ->assertSet('editingId', $idea->id)
+            ->assertSet('newTitle', 'Regal bauen')
+            ->assertSet('newWhereToBegin', 'Holz besorgen');
+    }
+
+    public function test_saving_while_editing_updates_the_existing_idea_instead_of_creating_a_new_one(): void
+    {
+        $user = User::factory()->create();
+        $idea = CraftIdea::factory()->for($user)->create([
+            'title' => 'Regal bauen',
+            'where_to_begin' => 'Holz besorgen',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('startEdit', $idea->id)
+            ->set('newTitle', 'Regal bauen und streichen')
+            ->set('newWhereToBegin', 'Holz und Farbe besorgen')
+            ->call('saveIdea')
+            ->assertHasNoErrors()
+            ->assertSet('editingId', null);
+
+        $this->assertDatabaseCount('craft_ideas', 1);
+        $this->assertDatabaseHas('craft_ideas', [
+            'id' => $idea->id,
+            'title' => 'Regal bauen und streichen',
+            'where_to_begin' => 'Holz und Farbe besorgen',
+        ]);
+    }
+
+    public function test_the_note_can_be_cleared_while_editing(): void
+    {
+        $user = User::factory()->create();
+        $idea = CraftIdea::factory()->for($user)->create(['where_to_begin' => 'Holz besorgen']);
+
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('startEdit', $idea->id)
+            ->set('newWhereToBegin', '')
+            ->call('saveIdea')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('craft_ideas', ['id' => $idea->id, 'where_to_begin' => null]);
+    }
+
+    public function test_cancelling_an_edit_resets_the_form_without_saving(): void
+    {
+        $user = User::factory()->create();
+        $idea = CraftIdea::factory()->for($user)->create(['title' => 'Regal bauen']);
+
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('startEdit', $idea->id)
+            ->set('newTitle', 'Ganz anderer Titel')
+            ->call('cancelEdit')
+            ->assertSet('editingId', null)
+            ->assertSet('newTitle', '');
+
+        $this->assertDatabaseHas('craft_ideas', ['id' => $idea->id, 'title' => 'Regal bauen']);
+    }
+
+    public function test_deleting_the_idea_currently_being_edited_cancels_the_edit(): void
+    {
+        $user = User::factory()->create();
+        $idea = CraftIdea::factory()->for($user)->create();
+
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('startEdit', $idea->id)
+            ->call('deleteIdea', $idea->id)
+            ->assertSet('editingId', null)
+            ->assertSet('newTitle', '');
+
+        $this->assertDatabaseMissing('craft_ideas', ['id' => $idea->id]);
+    }
+
+    public function test_a_user_cannot_edit_another_users_idea(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $foreignIdea = CraftIdea::factory()->for($other)->create();
+
+        try {
+            Livewire::actingAs($user)
+                ->test(CraftIdeas::class)
+                ->call('startEdit', $foreignIdea->id);
+            $this->fail('Expected a ModelNotFoundException for the foreign idea.');
+        } catch (ModelNotFoundException) {
+            // Same guard as every other mutation, scoped through auth()->user()->craftIdeas().
+        }
     }
 
     public function test_the_page_suggests_a_hero_idea_when_ideas_exist(): void
