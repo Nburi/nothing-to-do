@@ -32,6 +32,9 @@ class Settings extends Component
 
     public int $deadlinePreviewDays = 2;
 
+    // Hausaufgaben-Vorschau im Dashboard
+    public bool $homeworkPreviewEnabled = true;
+
     // Timezone
     public float $timezoneOffset = 0;
 
@@ -61,6 +64,7 @@ class Settings extends Component
         $this->pAutostart = $user->pomodoro_autostart ?? false;
         $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
         $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
+        $this->homeworkPreviewEnabled = $user->homework_preview_enabled ?? true;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
         $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
@@ -172,6 +176,16 @@ class Settings extends Component
             'show_presence' => $enabled,
             'last_seen_at' => $enabled ? $user->last_seen_at : null,
         ]);
+    }
+
+    /** The dashboard's "bald fällige Hausaufgaben" card — an immediate-save toggle like presence. */
+    public function toggleHomeworkPreviewEnabled(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->homework_preview_enabled;
+
+        $user->update(['homework_preview_enabled' => $enabled]);
+        $this->homeworkPreviewEnabled = $enabled;
     }
 
     public function toggleNotifyEventStart(): void

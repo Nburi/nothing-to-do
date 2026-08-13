@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesTasks;
+use App\Models\AgendaEntry;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
@@ -310,6 +311,28 @@ class TaskBoard extends Component
     public function dismissPreparePrompt(): void
     {
         auth()->user()->update(['prepare_prompt_dismissed_on' => auth()->user()->localToday()->toDateString()]);
+    }
+
+    /**
+     * Open homework due within the next few weekdays — empty (not just hidden) when the setting
+     * is off, so the partial's `isNotEmpty()` check covers both "off" and "nothing due" the same way.
+     */
+    #[Computed]
+    public function homeworkPreview(): Collection
+    {
+        $user = auth()->user();
+
+        if (! $user->homework_preview_enabled) {
+            return collect();
+        }
+
+        return AgendaEntry::homeworkPreviewFor($user);
+    }
+
+    /** Marks a previewed homework entry done for this person — it then drops out of the preview on its own. */
+    public function toggleHomeworkPreviewDone(int $id): void
+    {
+        AgendaEntry::visibleTo(auth()->user())->findOrFail($id)->toggleDoneFor(auth()->user());
     }
 
     /** Ends emergency mode — the project and its task order are left exactly as arranged. */
