@@ -114,12 +114,13 @@ window.boardSortable = function (el, wire, handle = null) {
         delayOnTouchOnly: true,
         // Mark the page as dragging so project cards can show a drop affordance.
         onStart: () => document.body.classList.add('dragging-task'),
-        // Hovering one card over another for GROUP_ARM_MS arms "drop here to
-        // group these two" (see groupArm below).
-        onMove: (evt, originalEvent) => groupArm.consider(evt.related, originalEvent ?? evt.originalEvent),
+        // Hovering the middle band of another card arms "drop here to group
+        // these two" and — critically — blocks Sortable's own reorder shift
+        // for as long as the pointer stays there (see groupZone below).
+        onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
-            const armedId = groupArm.disarm();
+            const armedId = groupZone.disarm();
             const draggedId = evt.item.dataset.id;
 
             // An armed grouping wins over the ordinary reorder: the server moves
@@ -142,12 +143,13 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
- * A small label that follows the cursor while a hold is armed (see groupArm
- * below). Deliberately NOT just a ring around the target card: while
- * dragging, the card being carried — or the browser's own native drag-image
- * snapshot — sits right on top of whatever is under the cursor, which is
- * exactly where a ring on the target would be. A label pinned to the cursor
- * itself is the one thing guaranteed to render above that, in every browser.
+ * A small label that follows the cursor while a card is armed for grouping
+ * (see groupZone below). Deliberately NOT just a ring around the target
+ * card: while dragging, the card being carried — or the browser's own
+ * native drag-image snapshot — sits right on top of whatever is under the
+ * cursor, which is exactly where a ring on the target would be. A label
+ * pinned to the cursor itself is the one thing guaranteed to render above
+ * that, in every browser.
  */
 const groupArmLabel = (() => {
     let el = null;
@@ -177,29 +179,38 @@ const groupArmLabel = (() => {
 })();
 
 /**
- * "Hold one card over another to group them" — the desktop gesture for creating
- * a task group (see TaskBoard::groupTasks).
+ * "Hover the middle of another card to group with it" — the desktop gesture
+ * for creating a task group (see TaskBoard::groupTasks).
  *
- * Deliberately built on dwell time rather than a hidden drop zone in the middle
- * of the card: a hidden band makes ordinary reordering feel unpredictable,
- * because passing *through* a card would sometimes mean something entirely
- * different. Dwelling is a thing you can only do on purpose — dragging past a
- * card never arms anything, and any movement to a different card resets the
- * timer. The armed card also gets .group-arm (a ring — see app.css), which
- * helps once the drag image is small enough to peek past, but the cursor
- * label above is the reliable indicator.
+ * Each card is split into three vertical bands: the top and bottom quarters
+ * are ordinary reorder territory (SortableJS shifts siblings immediately,
+ * same as always), the middle half is the group band. Returning `false`
+ * from Sortable's onMove while the pointer sits in that middle band tells
+ * Sortable not to touch the DOM at all — the hovered card stays exactly
+ * where it is, no gap opens, nothing "slips away" — so the only way to see
+ * a sibling move is to be in a reorder band, and the only way to arm a
+ * group is to NOT be moving anything. The two states can never be
+ * ambiguous. Arming is instant (no dwell timer): the band boundary itself
+ * is the commitment, the same way crossing a card's own vertical midline
+ * already decides above/below during a plain reorder.
+ *
+ * The armed card gets .group-arm (an indent + forest bracket, see app.css) —
+ * a secondary cue that helps once the drag image is small enough to peek
+ * past, but the cursor label above is the reliable indicator, since the
+ * carried card (or the browser's own drag-image snapshot) usually sits
+ * right on top of the card underneath it.
  */
-const GROUP_ARM_MS = 350;
-
-const groupArm = {
+const groupZone = {
     el: null,
-    timer: null,
-    armedId: null,
     lastX: 0,
     lastY: 0,
 
-    /** Called on every Sortable onMove with the card currently hovered + the raw pointer/mouse/touch event. */
-    consider(related, originalEvent) {
+    /**
+     * Called on every Sortable onMove with the card currently hovered, its
+     * rect, and the raw pointer/mouse/touch event. Returns whether Sortable
+     * should proceed with its normal reorder move (true) or hold still (false).
+     */
+    consider(related, relatedRect, originalEvent) {
         const point = originalEvent?.touches?.[0] ?? originalEvent;
         if (point && typeof point.clientX === 'number') {
             this.lastX = point.clientX;
@@ -209,32 +220,40 @@ const groupArm = {
 
         const card = related && related.dataset && related.dataset.id ? related : null;
 
-        if (card === this.el) return; // same card, let the running timer finish
-        this.reset();
-        this.el = card;
-        if (! card) return;
+        if (!card || !relatedRect || !point || typeof point.clientY !== 'number') {
+            this.reset();
+            return true;
+        }
 
-        this.timer = setTimeout(() => {
-            this.armedId = card.dataset.id;
+        const band = Math.max(8, relatedRect.height * 0.25);
+        const inGroupBand = point.clientY > relatedRect.top + band && point.clientY < relatedRect.bottom - band;
+
+        if (!inGroupBand) {
+            this.reset();
+            return true;
+        }
+
+        if (card !== this.el) {
+            this.reset();
+            this.el = card;
             card.classList.add('group-arm');
             const title = card.dataset.title;
             groupArmLabel.show(title ? `Gruppieren mit „${title}“` : 'Gruppieren', this.lastX, this.lastY);
-        }, GROUP_ARM_MS);
+        }
+
+        return false; // hold the card still — this is the group band, not a reorder
     },
 
-    /** Clear the pending timer and any highlight, keeping nothing armed. */
+    /** Clear any highlight, keeping nothing armed. */
     reset() {
-        clearTimeout(this.timer);
-        this.timer = null;
         if (this.el) this.el.classList.remove('group-arm');
         this.el = null;
-        this.armedId = null;
         groupArmLabel.hide();
     },
 
     /** Read out whatever was armed at drop time, then clean up. */
     disarm() {
-        const id = this.armedId;
+        const id = this.el ? this.el.dataset.id : null;
         this.reset();
         return id;
     },
@@ -268,7 +287,7 @@ window.groupDropZone = function (el, wire, handle = null) {
         delay: 60,
         delayOnTouchOnly: true,
         onStart: () => document.body.classList.add('dragging-task'),
-        onMove: (evt, originalEvent) => groupArm.consider(evt.related, originalEvent ?? evt.originalEvent),
+        onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
         onAdd: (evt) => {
             const taskId = evt.item.dataset.id;
             const groupId = el.dataset.groupId;
@@ -279,10 +298,10 @@ window.groupDropZone = function (el, wire, handle = null) {
         },
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
-            const armedId = groupArm.disarm();
+            const armedId = groupZone.disarm();
             const taskId = evt.item.dataset.id;
 
-            // Held over another card for GROUP_ARM_MS on the way out: merge
+            // Held over the group band of another card on the way out: merge
             // into that card's group (or a fresh one) instead — same as
             // boardSortable's own onEnd, and takes priority over a plain drop.
             if (armedId && taskId && armedId !== taskId) {

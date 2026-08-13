@@ -846,15 +846,22 @@ thing became a Project, which is exactly what made that column unreadable (see �
     Without it, a group whose tasks all sit in its own inbox would be invisible on the board — the
     difference between tucked away and lost.
   `counts()` adds the grouped tasks of a column, since they are genuinely visible there.
-- **Creating one by drag (desktop)** — hold a dragged card over another for **350 ms**
-  (`GROUP_ARM_MS`/`groupArm` in `resources/js/app.js`, hooked into `boardSortable`'s `onMove`/`onEnd`). Dwell
-  time rather than a hidden drop band in the middle of the card: a hidden band makes ordinary reordering
-  feel unpredictable, because passing *through* a card would sometimes mean something else entirely.
-  Dwelling is something you can only do on purpose. The armed card gets `.group-arm` (a ring, `app.css`) —
-  a secondary cue only, since the dragged card (or the browser's own drag-image snapshot) sits directly on
-  top of whatever's under the cursor and would hide a ring there completely. The reliable indicator is a
-  small "Gruppieren mit «Titel»" label pinned to the cursor itself (`groupArmLabel` in `app.js`, styled
-  `.group-arm-label`), which always renders above the drag image. An armed drop calls
+- **Creating one by drag (desktop)** — each card is split into three vertical bands: the middle 50% is the
+  "group" band, the top/bottom 25% are ordinary reorder territory (`groupZone` in `resources/js/app.js`,
+  hooked into `boardSortable`'s `onMove`/`onEnd`). This replaced an earlier dwell-time design (hold a card
+  over another for 350ms) that turned out to be unreachable in practice: SortableJS's default
+  `swapThreshold` shifts the hovered card out from under the cursor the instant it's touched, so the target
+  never stays still long enough for a timer to fire. The fix is geometric, not temporal — `onMove` reads the
+  pointer's position against `evt.relatedRect` and returns `false` while it's in the middle band, which
+  tells Sortable not to touch the DOM at all: the hovered card holds its position, no gap opens, nothing
+  "slips away" out from under the cursor. The only way to see a sibling move is to be in a reorder band, and
+  the only way to arm a group is to *not* be moving anything — the two states can never be ambiguous, and
+  arming is instant (crossing the band boundary is the commitment, no wait). The armed card gets
+  `.group-arm` — an indent plus a forest-coloured bracket on its leading edge (`app.css`), echoing the left
+  accent a real group box gets — a secondary cue only, since the dragged card (or the browser's own
+  drag-image snapshot) sits directly on top of whatever's under the cursor and would hide it otherwise. The
+  reliable indicator is a small "Gruppieren mit «Titel»" label pinned to the cursor itself (`groupArmLabel`
+  in `app.js`, styled `.group-arm-label`), which always renders above the drag image. An armed drop calls
   `TaskBoard::groupTasks()` and **returns before `reorder()`** —
   the server moves the task itself, so persisting the destination order too would fight it with a stale
   picture. Dropping onto an *already grouped* card just joins that group (no name prompt). A fresh group
@@ -864,7 +871,7 @@ thing became a Project, which is exactly what made that column unreadable (see �
   not receive-only: dropping onto a plain board column releases the task (`TaskBoard::ungroupTask()`) and
   persists its new position there via the same `reorder()` call an ordinary cross-column move already
   makes. `sort: false` on this zone, since the box only ever previews up to two tasks — reordering that
-  partial view wouldn't mean anything. Held over another card for the same 350 ms on the way out merges
+  partial view wouldn't mean anything. Hovering the group band of another card on the way out merges
   into *that* card's group instead (takes priority, mirrors `boardSortable`'s own onEnd). Dropping onto a
   project card, another group's box, or the "new project" zone is already fully handled by that zone's own
   `onAdd`, so `groupDropZone`'s `onEnd` only has to act when the destination is a plain column.
@@ -1311,6 +1318,26 @@ key makes Livewire's morph treat it as a genuinely new node — destroy the old,
 re-runs `x-data` with the current date. Same underlying lesson as the focus ring's `wire:key` (§7 Schedule):
 any `x-data`/`x-init` that closes over server-rendered values needs a key tied to those values, or Alpine
 will silently keep serving the values from first mount.
+
+### A SortableJS dwell-time gesture never fires because the target card moves out from under the cursor
+**Symptom:** a "hold a dragged card over another card to trigger X" gesture (task-group creation, in this
+case) never arms — the timer that's supposed to fire after N ms of dwelling never gets the chance, no matter
+how long the pointer sits still over the target.
+**Cause:** SortableJS's default `swapThreshold` (1, unset) shifts the hovered sibling out of the way — and
+opens the dashed insertion gap in its place — the instant the pointer touches any part of it, as part of its
+normal reorder-preview behavior. That means the element the pointer is "hovering" is never the same DOM node
+for more than an instant: `onMove`'s `evt.related` changes (or the card the pointer physically sits over is
+no longer the target's original position) before any dwell timer set on the first sighting can complete. A
+gesture built on "the same target stays hovered for N ms" is checking a condition SortableJS's own default
+behavior makes almost impossible to satisfy.
+**Fix:** don't fight Sortable's swap behavior — make holding still an explicit exception to it. Split each
+card into vertical bands (e.g. top/bottom 25% = normal reorder, middle 50% = the alternate gesture), and in
+`onMove` return `false` while the pointer is in the alternate-gesture band. Returning `false` from `onMove`
+tells Sortable to skip the DOM move entirely for that event, so the target card holds its position — no gap
+opens, nothing shifts — for as long as the pointer stays in that band. The gesture becomes geometric and
+instantaneous (crossing into the band is the commitment) instead of temporal, and the two states never
+compete for the same screen space. See `groupZone` in `resources/js/app.js` (Task-Gruppen §7), which replaced
+an earlier 350ms-dwell design that hit exactly this bug.
 
 ---
 
