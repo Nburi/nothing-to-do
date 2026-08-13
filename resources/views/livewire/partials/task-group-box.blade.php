@@ -41,13 +41,18 @@
                 <button type="submit" class="flex-none rounded-[0.4rem] bg-forest px-2 py-0.5 text-[11px] font-medium text-white transition hover:brightness-110">OK</button>
             </form>
         @else
+            {{-- The whole header (name, count, arrow) is one link — not just the
+                 name text — so the arrow is a clickable affordance and not just
+                 a hint that turns out to do nothing. --}}
             <a
                 href="{{ route('group.show', $group) }}"
                 wire:navigate
-                class="min-w-0 flex-1 truncate rounded text-xs font-medium text-ink underline decoration-dotted decoration-ink-faint/60 underline-offset-2 transition hover:decoration-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-            >{{ $group->name }}</a>
-            <span class="tnum flex-none text-[11px] text-ink-faint">{{ $box['done'] }}/{{ $box['total'] }}</span>
-            <svg class="h-3 w-3 flex-none text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                class="flex min-w-0 flex-1 items-center gap-1.5 rounded text-xs font-medium text-ink transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+            >
+                <span class="min-w-0 truncate underline decoration-dotted decoration-ink-faint/60 underline-offset-2">{{ $group->name }}</span>
+                <span class="tnum flex-none text-[11px] font-normal text-ink-faint">{{ $box['done'] }}/{{ $box['total'] }}</span>
+                <svg class="h-3 w-3 flex-none text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
         @endif
     </div>
 
