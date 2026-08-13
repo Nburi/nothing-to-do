@@ -3,16 +3,16 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Task;
+use App\Models\TaskGroup;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
 /**
- * Shared task mutations + the inline edit sheet. Used by both the main
- * TaskBoard and the per-project ProjectPage so the two surfaces behave
- * identically. Every write resolves the task through the owner relationship,
- * so an id alone is never trusted.
+ * Shared task mutations + the inline edit sheet. Used by TaskBoard, ProjectPage
+ * and GroupPage so the three surfaces behave identically. Every write resolves
+ * the task through the owner relationship, so an id alone is never trusted.
  */
 trait ManagesTasks
 {
@@ -38,6 +38,22 @@ trait ManagesTasks
     protected function userTask(int $id): Task
     {
         return auth()->user()->tasks()->findOrFail($id);
+    }
+
+    /**
+     * Called after a task may have left a group as part of one of this
+     * trait's mutations (saveEdit, deleteTask) — dissolves the group if that
+     * leaves it with one task or none (see TaskGroup::pruneIfTooSmall()).
+     *
+     * GroupPage overrides this to also redirect away when the group being
+     * dissolved is the one its own page is showing: this trait has no notion
+     * of "the current page's group", so on its own it can only do the
+     * generic half (TaskBoard/ProjectPage never need the redirect, since
+     * neither page's identity depends on a specific group existing).
+     */
+    protected function afterGroupMayHaveShrunk(?TaskGroup $group): void
+    {
+        $group?->pruneIfTooSmall();
     }
 
     /** Projects available to assign in the edit sheet. */
@@ -115,6 +131,12 @@ trait ManagesTasks
 
         $task = $this->userTask($this->editingId);
 
+        // Captured before the update — if the task leaves this group, it's
+        // pruned (dissolved if only one task would be left) once the new
+        // state is saved. Reading it now, not after, since group_id may be
+        // overwritten below.
+        $oldGroup = $task->group;
+
         $notes = trim((string) $data['editNotes']);
 
         $updates = [
@@ -157,6 +179,10 @@ trait ManagesTasks
 
         $task->update($updates);
 
+        if ($oldGroup !== null && $oldGroup->id !== $newGroupId) {
+            $this->afterGroupMayHaveShrunk($oldGroup);
+        }
+
         $this->cancelEdit();
     }
 
@@ -189,7 +215,11 @@ trait ManagesTasks
 
     public function deleteTask(int $id): void
     {
-        $this->userTask($id)->delete();
+        $task = $this->userTask($id);
+        $group = $task->group;
+
+        $task->delete();
+        $this->afterGroupMayHaveShrunk($group);
 
         if ($this->editingId === $id) {
             $this->cancelEdit();

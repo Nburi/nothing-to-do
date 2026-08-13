@@ -451,12 +451,16 @@ class TaskBoard extends Component
     {
         $task = $this->userTask($taskId);
         $project = auth()->user()->projects()->findOrFail($projectId);
+        $oldGroup = $task->group; // a task belongs to a project or a group, never both
 
         $task->update([
             'project_id' => $project->id,
+            'group_id' => null,
             'list' => 'projects',
             'is_today' => false,
         ]);
+
+        $oldGroup?->pruneIfTooSmall();
     }
 
     /**
@@ -483,6 +487,10 @@ class TaskBoard extends Component
             return;
         }
 
+        // Captured before the merge — the dragged task may already have
+        // belonged to a different group, which this join then leaves behind.
+        $oldGroup = $task->group;
+
         // Dropped onto a card that is already grouped? Then this is simply
         // "add to that group" — no reason to make the user undo one first.
         $group = $target->group ?? auth()->user()->taskGroups()->create([
@@ -492,6 +500,10 @@ class TaskBoard extends Component
 
         $target->update(['group_id' => $group->id]);
         $task->update(['group_id' => $group->id, 'list' => $target->list]);
+
+        if ($oldGroup !== null && $oldGroup->id !== $group->id) {
+            $oldGroup->pruneIfTooSmall();
+        }
 
         // Only a brand-new group opens its name field; adding to an existing
         // one shouldn't ask for a name it already has.
@@ -511,7 +523,33 @@ class TaskBoard extends Component
             return;
         }
 
+        $oldGroup = $task->group;
+
         $task->update(['group_id' => $group->id]);
+
+        if ($oldGroup !== null && $oldGroup->id !== $group->id) {
+            $oldGroup->pruneIfTooSmall();
+        }
+    }
+
+    /**
+     * Desktop drag & drop: a card dragged out of its group's box and dropped
+     * onto a plain board column (see groupDropZone's onEnd in app.js, which
+     * also calls reorder() for the new position). Releases the task and, if
+     * that leaves the group with one task or none, dissolves it — a bundle of
+     * one is not a group.
+     */
+    public function ungroupTask(int $taskId): void
+    {
+        $task = $this->userTask($taskId);
+        $group = $task->group;
+
+        if ($group === null) {
+            return;
+        }
+
+        $task->update(['group_id' => null]);
+        $group->pruneIfTooSmall();
     }
 
     /** Save the inline name of a freshly created group. Empty simply keeps the default. */
@@ -548,6 +586,7 @@ class TaskBoard extends Component
     public function createProjectFromTask(int $taskId): void
     {
         $task = $this->userTask($taskId);
+        $group = $task->group;
 
         auth()->user()->projects()->create([
             'name' => $task->title,
@@ -555,6 +594,7 @@ class TaskBoard extends Component
         ]);
 
         $task->delete();
+        $group?->pruneIfTooSmall();
     }
 
     /** Set/clear the Today focus. Inbox & project tasks can never be Today. */

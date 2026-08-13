@@ -60,6 +60,27 @@ class GroupPage extends Component
         $this->groupName = $group->name;
     }
 
+    /**
+     * Overrides ManagesTasks' generic version: when the group being dissolved
+     * (see TaskGroup::pruneIfTooSmall()) is the one *this page* is showing,
+     * there's nothing left to render here — send the user back to the board
+     * instead of re-rendering a group that's just been deleted out from under
+     * them. A different group shrinking (defensively possible, not the normal
+     * path) is still pruned, just without a redirect.
+     */
+    protected function afterGroupMayHaveShrunk(?TaskGroup $group): void
+    {
+        if ($group === null) {
+            return;
+        }
+
+        $isCurrentGroup = $group->id === $this->groupId;
+
+        if ($group->pruneIfTooSmall() && $isCurrentGroup) {
+            $this->redirectRoute('app', navigate: true);
+        }
+    }
+
     /** Always re-resolve through the owner relationship — never trust the id alone. */
     #[Computed]
     public function group(): TaskGroup
@@ -242,10 +263,22 @@ class GroupPage extends Component
             return; // a task belongs to a project or a group, never to both
         }
 
+        // boardInboxTasks() only offers ungrouped tasks, but an id could in
+        // principle point at one that's already in a (different) group.
+        $oldGroup = $task->group;
+
         $task->update(['group_id' => $this->groupId]);
+
+        if ($oldGroup !== null && $oldGroup->id !== $this->groupId) {
+            $this->afterGroupMayHaveShrunk($oldGroup);
+        }
     }
 
-    /** Release one task from the group. It stays exactly where it is on the board. */
+    /**
+     * Release one task from the group — the desktop counterpart is dragging
+     * it out of the group's box on the main board (TaskBoard::ungroupTask()).
+     * The task stays exactly where it is on the board.
+     */
     public function removeFromGroup(int $taskId): void
     {
         $task = $this->userTask($taskId);
@@ -254,11 +287,14 @@ class GroupPage extends Component
             return;
         }
 
+        $group = $this->group;
         $task->update(['group_id' => null]);
 
         if ($this->editingId === $taskId) {
             $this->cancelEdit();
         }
+
+        $this->afterGroupMayHaveShrunk($group);
     }
 
     /** Hand a task over to a different group (mobile long-press sheet). */
@@ -266,8 +302,11 @@ class GroupPage extends Component
     {
         $task = auth()->user()->tasks()->inGroup($this->groupId)->findOrFail($taskId);
         $target = auth()->user()->taskGroups()->findOrFail($groupId);
+        $currentGroup = $this->group;
 
         $task->update(['group_id' => $target->id]);
+
+        $this->afterGroupMayHaveShrunk($currentGroup);
     }
 
     public function saveRename(): void

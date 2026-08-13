@@ -241,17 +241,34 @@ const groupArm = {
 };
 
 /**
- * A group box as a drop target: receive-only member of the 'board' group, same
- * shape as projectDropZone. The task keeps its list — dropping an Inbox card on
- * a group therefore files it in that group's Inbox, which is what "move this
- * into the group" means from the Inbox's point of view.
+ * A group box, both as a drop target and as a source: dropping a card here
+ * (from anywhere) assigns it to the group and keeps its list — an Inbox card
+ * lands in that group's Inbox. Dragging a card OUT of the box (to a plain
+ * board column) releases it again, the reverse gesture.
+ *
+ * `sort: false` — the box only ever previews up to two tasks (never the full
+ * group), so reordering within that partial view isn't meaningful; the true
+ * order is only set from inside the group's own dashboard.
+ *
+ * `handle` mirrors boardSortable's: mobile restricts the drag start to the
+ * card's grip icon (its body is already claimed by swipeCard's gestures),
+ * desktop leaves the whole card draggable.
  */
-window.groupDropZone = function (el, wire) {
+window.groupDropZone = function (el, wire, handle = null) {
     if (el._sortable) return el._sortable;
     el._sortable = Sortable.create(el, {
-        group: { name: 'board', pull: false, put: true },
+        group: 'board',
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
         sort: false,
         draggable: '[data-id]',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onStart: () => document.body.classList.add('dragging-task'),
+        onMove: (evt, originalEvent) => groupArm.consider(evt.related, originalEvent ?? evt.originalEvent),
         onAdd: (evt) => {
             const taskId = evt.item.dataset.id;
             const groupId = el.dataset.groupId;
@@ -259,6 +276,33 @@ window.groupDropZone = function (el, wire) {
             if (taskId && groupId) {
                 wire.assignTaskToGroup(parseInt(taskId, 10), parseInt(groupId, 10));
             }
+        },
+        onEnd: (evt) => {
+            document.body.classList.remove('dragging-task');
+            const armedId = groupArm.disarm();
+            const taskId = evt.item.dataset.id;
+
+            // Held over another card for GROUP_ARM_MS on the way out: merge
+            // into that card's group (or a fresh one) instead — same as
+            // boardSortable's own onEnd, and takes priority over a plain drop.
+            if (armedId && taskId && armedId !== taskId) {
+                wire.groupTasks(parseInt(taskId, 10), parseInt(armedId, 10));
+                return;
+            }
+
+            const to = evt.to;
+            if (to === el) return; // dropped back into the same box — nothing changed
+
+            // Any other receiving zone (a project card, another group's box,
+            // the "new project" zone) already fully handles the move via its
+            // own onAdd, including releasing this box's group membership —
+            // only a plain board column has no such handler of its own.
+            if (to.dataset.list === undefined) return;
+            if (!taskId) return;
+
+            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
+            wire.ungroupTask(parseInt(taskId, 10));
         },
     });
     return el._sortable;

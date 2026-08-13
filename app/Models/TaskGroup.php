@@ -53,6 +53,32 @@ class TaskGroup extends Model
         return $this->tasks()->active()->groupOrdered();
     }
 
+    /**
+     * Called right after a task has left this group (moved elsewhere,
+     * ungrouped, or deleted) — dissolves the group if that leaves it with one
+     * task or none. A bundle of one is not a group, and leaving the user to
+     * notice and clean up the leftover shell by hand would just be busywork;
+     * the same rule that lets "Gruppe auflösen" release tasks non-destructively
+     * applies here (see dissolveGroup() in GroupPage).
+     *
+     * Callers capture the task's *previous* group before changing/removing it
+     * (`$oldGroup = $task->group;`), perform their own update however it needs
+     * to happen, then call this on that captured instance — never on `$this`
+     * after the fact, since by then group_id has already moved on.
+     *
+     * @return bool True if the group was dissolved.
+     */
+    public function pruneIfTooSmall(): bool
+    {
+        if ($this->tasks()->count() > 1) {
+            return false;
+        }
+
+        $this->delete(); // cascades group_notes; nullOnDelete releases any last task
+
+        return true;
+    }
+
     /** The group's note cards, in display order. */
     public function notes(): HasMany
     {

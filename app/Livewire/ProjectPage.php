@@ -245,11 +245,19 @@ class ProjectPage extends Component
     {
         $task = $this->userTask($taskId);
 
+        // inboxTasks() doesn't filter out grouped tasks (unlike GroupPage's
+        // equivalent picker) — a task belongs to a project or a group, never
+        // both, so joining a project always leaves any group behind.
+        $oldGroup = $task->group;
+
         $task->update([
             'project_id' => $this->projectId,
+            'group_id' => null,
             'list' => 'projects',
             'is_today' => false,
         ]);
+
+        $this->afterGroupMayHaveShrunk($oldGroup);
     }
 
     /** Release a task from the project back into the inbox. */

@@ -618,4 +618,214 @@ class TaskGroupsTest extends TestCase
 
         $this->assertSame(0, Task::query()->count());
     }
+
+    // ── Ungrouping & auto-dissolve ──────────────────────────────────────
+
+    public function test_dragging_a_task_out_of_its_group_box_releases_it(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        Task::factory()->count(2)->for($user)->todos()->create(['group_id' => $group->id]);
+        $task = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('ungroupTask', $task->id);
+
+        $this->assertNull($task->fresh()->group_id);
+        $this->assertDatabaseHas('task_groups', ['id' => $group->id]);
+    }
+
+    public function test_ungrouping_down_to_one_task_dissolves_the_group(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+        $leaves = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('ungroupTask', $leaves->id);
+
+        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
+        $this->assertNull($stays->fresh()->group_id, 'The one task left behind is released too, not left pointing at a deleted group.');
+        $this->assertNull($leaves->fresh()->group_id);
+    }
+
+    public function test_ungrouping_a_loose_task_is_a_no_op(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->todos()->create();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('ungroupTask', $task->id);
+
+        $this->assertNull($task->fresh()->group_id);
+    }
+
+    public function test_a_foreign_task_can_never_be_ungrouped(): void
+    {
+        $user = User::factory()->create();
+        $stranger = Task::factory()->for(User::factory())->todos()->create();
+
+        $this->expectException(ModelNotFoundException::class);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('ungroupTask', $stranger->id);
+    }
+
+    public function test_assigning_a_task_to_a_project_leaves_its_group_and_prunes_it(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+        $moves = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('assignTaskToProject', $moves->id, $project->id);
+
+        $moves->refresh();
+        $this->assertSame($project->id, $moves->project_id);
+        $this->assertNull($moves->group_id);
+        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
+
+    public function test_the_project_pages_inbox_picker_also_leaves_a_task_s_group_behind(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+        $task = Task::factory()->for($user)->inbox()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\ProjectPage::class, ['project' => $project])
+            ->call('assignToProject', $task->id);
+
+        $this->assertSame($project->id, $task->fresh()->project_id);
+        $this->assertNull($task->fresh()->group_id);
+    }
+
+    public function test_deleting_the_second_to_last_task_dissolves_the_group(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+        $deleted = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('deleteTask', $deleted->id);
+
+        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
+
+    public function test_changing_a_tasks_group_in_the_edit_sheet_prunes_the_old_one(): void
+    {
+        $user = User::factory()->create();
+        $oldGroup = TaskGroup::factory()->for($user)->create();
+        $newGroup = TaskGroup::factory()->for($user)->create();
+        Task::factory()->count(2)->for($user)->todos()->create(['group_id' => $newGroup->id]);
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $oldGroup->id]);
+        $moved = Task::factory()->for($user)->todos()->create(['group_id' => $oldGroup->id]);
+
+        Livewire::actingAs($user)
+            ->test(TaskBoard::class)
+            ->call('startEdit', $moved->id)
+            ->set('editGroupId', $newGroup->id)
+            ->call('saveEdit');
+
+        $this->assertSame($newGroup->id, $moved->fresh()->group_id);
+        $this->assertDatabaseMissing('task_groups', ['id' => $oldGroup->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
+
+    public function test_merging_a_task_that_was_already_grouped_prunes_its_old_group(): void
+    {
+        $user = User::factory()->create();
+        $oldGroup = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $oldGroup->id]);
+        $dragged = Task::factory()->for($user)->todos()->create(['group_id' => $oldGroup->id]);
+        $target = Task::factory()->for($user)->todos()->create();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('groupTasks', $dragged->id, $target->id);
+
+        $this->assertDatabaseMissing('task_groups', ['id' => $oldGroup->id]);
+        $this->assertNull($stays->fresh()->group_id);
+        $this->assertSame($dragged->fresh()->group_id, $target->fresh()->group_id);
+    }
+
+    public function test_dropping_onto_a_different_group_box_prunes_the_source_group(): void
+    {
+        $user = User::factory()->create();
+        $sourceGroup = TaskGroup::factory()->for($user)->create();
+        $targetGroup = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $sourceGroup->id]);
+        $dragged = Task::factory()->for($user)->todos()->create(['group_id' => $sourceGroup->id]);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('assignTaskToGroup', $dragged->id, $targetGroup->id);
+
+        $this->assertSame($targetGroup->id, $dragged->fresh()->group_id);
+        $this->assertDatabaseMissing('task_groups', ['id' => $sourceGroup->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
+
+    public function test_releasing_the_second_to_last_task_on_the_group_page_redirects_to_the_board(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+        $released = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('removeFromGroup', $released->id)
+            ->assertRedirect(route('app'));
+
+        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
+
+    public function test_releasing_a_task_with_two_left_does_not_redirect(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        Task::factory()->count(2)->for($user)->todos()->create(['group_id' => $group->id]);
+        $released = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('removeFromGroup', $released->id)
+            ->assertNoRedirect();
+
+        $this->assertDatabaseHas('task_groups', ['id' => $group->id]);
+    }
+
+    public function test_moving_the_second_to_last_task_to_another_group_redirects_to_the_board(): void
+    {
+        $user = User::factory()->create();
+        $currentGroup = TaskGroup::factory()->for($user)->create();
+        $otherGroup = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $currentGroup->id]);
+        $moved = Task::factory()->for($user)->todos()->create(['group_id' => $currentGroup->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $currentGroup])
+            ->call('moveTaskToGroup', $moved->id, $otherGroup->id)
+            ->assertRedirect(route('app'));
+
+        $this->assertSame($otherGroup->id, $moved->fresh()->group_id);
+        $this->assertDatabaseMissing('task_groups', ['id' => $currentGroup->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
+
+    public function test_deleting_the_second_to_last_task_on_the_group_page_redirects_to_the_board(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $stays = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+        $deleted = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('deleteTask', $deleted->id)
+            ->assertRedirect(route('app'));
+
+        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
+        $this->assertNull($stays->fresh()->group_id);
+    }
 }

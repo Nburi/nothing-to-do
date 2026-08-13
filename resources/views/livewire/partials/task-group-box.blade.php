@@ -17,7 +17,7 @@
     class="group/gbox mb-2.5 rounded-card border border-line border-l-[3px] border-l-ink-faint/55 bg-surface/55 p-2.5 transition-colors [body.dragging-task_&]:border-l-forest [body.dragging-task_&]:bg-forest-soft/30"
     data-group-id="{{ $group->id }}"
     x-data
-    x-init="window.groupDropZone($el, $wire)"
+    x-init="window.groupDropZone($el, $wire{{ $mobile ? ", '[data-drag-handle]'" : '' }})"
 >
     <div class="mb-2 flex items-center gap-1.5">
         <svg class="h-3.5 w-3.5 flex-none text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true">
