@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\GroupPage;
 use App\Livewire\QuickCapture;
 use App\Livewire\TaskBoard;
+use App\Models\GroupNote;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
@@ -407,18 +408,93 @@ class TaskGroupsTest extends TestCase
         $this->assertSame('todos', $task->fresh()->list);
     }
 
-    public function test_group_notes_are_rendered_as_safe_markdown(): void
+    public function test_a_group_note_is_rendered_as_safe_markdown(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+
+        $component = Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('addNote');
+
+        $noteId = $component->instance()->editingNoteId;
+
+        $component->set('noteDraft', "## Kernaussage\n\n<script>alert(1)</script>");
+
+        $note = GroupNote::query()->findOrFail($noteId);
+        $this->assertSame("## Kernaussage\n\n<script>alert(1)</script>", $note->content);
+        $this->assertStringContainsString('<h2>Kernaussage</h2>', $note->contentHtml());
+        $this->assertStringNotContainsString('<script>', $note->contentHtml());
+    }
+
+    public function test_a_group_can_hold_several_note_cards(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+
+        $component = Livewire::actingAs($user)->test(GroupPage::class, ['group' => $group]);
+
+        $component->call('addNote')->set('noteDraft', 'Erste Notiz')->call('stopEditingNote');
+        $component->call('addNote')->set('noteDraft', 'Zweite Notiz')->call('stopEditingNote');
+
+        $this->assertSame(2, GroupNote::query()->where('task_group_id', $group->id)->count());
+        $this->assertSame(
+            ['Erste Notiz', 'Zweite Notiz'],
+            $component->instance()->notes->pluck('content')->all(),
+        );
+    }
+
+    public function test_finishing_an_empty_note_removes_it_instead_of_leaving_a_blank_card(): void
     {
         $user = User::factory()->create();
         $group = TaskGroup::factory()->for($user)->create();
 
         Livewire::actingAs($user)
             ->test(GroupPage::class, ['group' => $group])
-            ->set('notes', "## Kernaussage\n\n<script>alert(1)</script>");
+            ->call('addNote')
+            ->call('stopEditingNote');
 
-        $this->assertSame("## Kernaussage\n\n<script>alert(1)</script>", $group->fresh()->notes);
-        $this->assertStringContainsString('<h2>Kernaussage</h2>', $group->fresh()->notesHtml());
-        $this->assertStringNotContainsString('<script>', $group->fresh()->notesHtml());
+        $this->assertSame(0, GroupNote::query()->where('task_group_id', $group->id)->count());
+    }
+
+    public function test_a_note_can_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $note = GroupNote::factory()->for($group, 'group')->create();
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('deleteNote', $note->id);
+
+        $this->assertDatabaseMissing('group_notes', ['id' => $note->id]);
+    }
+
+    public function test_a_foreign_group_note_can_never_be_edited_or_deleted(): void
+    {
+        $user = User::factory()->create();
+        $foreignGroup = TaskGroup::factory()->for(User::factory())->create();
+        $foreignNote = GroupNote::factory()->for($foreignGroup, 'group')->create();
+        $ownGroup = TaskGroup::factory()->for($user)->create();
+
+        $this->expectException(ModelNotFoundException::class);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $ownGroup])
+            ->call('editNote', $foreignNote->id);
+    }
+
+    public function test_dissolving_a_group_deletes_its_notes(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $note = GroupNote::factory()->for($group, 'group')->create();
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('dissolveGroup');
+
+        $this->assertDatabaseMissing('group_notes', ['id' => $note->id]);
     }
 
     // ── Quick capture ─────────────────────────────────────────────────

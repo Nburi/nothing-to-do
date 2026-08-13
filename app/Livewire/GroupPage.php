@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesTasks;
+use App\Models\GroupNote;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use Illuminate\Support\Collection;
@@ -13,9 +14,10 @@ use Livewire\Component;
 
 /**
  * A task group's own dashboard: the same three lists as the main board
- * (Inbox / To-Dos / Tasks) plus a Markdown notes panel where the board has its
- * Projekte column. Kanban on desktop, bottom-navigation on mobile — deliberately
- * the main board's shape, so nothing new has to be learned to use one.
+ * (Inbox / To-Dos / Tasks) plus a Notizen column of separate Markdown note
+ * cards where the board has its Projekte column. Kanban on desktop,
+ * bottom-navigation on mobile — deliberately the main board's shape, so
+ * nothing new has to be learned to use one.
  *
  * There is no "Heute" area here: the day's focus belongs to the main board, and
  * two places both claiming to own it would be one too many. A group task can
@@ -38,10 +40,16 @@ class GroupPage extends Component
 
     public bool $renaming = false;
 
-    /** Free-form Markdown scratchpad — the group's fourth "list". */
-    public string $notes = '';
+    /**
+     * The Notizen column is a stack of separate small note cards rather than
+     * one growing document — a group can hold a few unrelated things worth
+     * jotting down (a checklist, a quote, a deadline reminder), and one blob
+     * made finding any single one of them slower as it grew. Only one card is
+     * ever being edited at a time, same as the task edit sheet.
+     */
+    public ?int $editingNoteId = null;
 
-    public bool $editingNotes = false;
+    public string $noteDraft = '';
 
     public function mount(TaskGroup $group): void
     {
@@ -50,7 +58,6 @@ class GroupPage extends Component
 
         $this->groupId = $group->id;
         $this->groupName = $group->name;
-        $this->notes = (string) ($group->notes ?? '');
     }
 
     /** Always re-resolve through the owner relationship — never trust the id alone. */
@@ -138,12 +145,11 @@ class GroupPage extends Component
             ->get();
     }
 
-    /** The notes rendered to safe HTML for the read view. */
+    /** The group's note cards, in display order. */
     #[Computed]
-    public function notesHtml(): string
+    public function notes(): Collection
     {
-        // Rendered through the model so the safety options live in one place.
-        return TaskGroup::renderNotes($this->notes);
+        return $this->group->notes;
     }
 
     // ── Writes (all ownership-scoped) ─────────────────────────────────
@@ -282,34 +288,92 @@ class GroupPage extends Component
         $this->renaming = false;
     }
 
-    public function editNotesPanel(): void
+    /** Always re-resolve through the group — never trust a note id alone. */
+    protected function groupNote(int $id): GroupNote
     {
-        $this->editingNotes = true;
+        return $this->group->notes()->findOrFail($id);
+    }
+
+    /** Adds a fresh, empty card and opens it for editing straight away. */
+    public function addNote(): void
+    {
+        $nextOrder = (int) ($this->group->notes()->max('sort_order') ?? -1) + 1;
+
+        $note = $this->group->notes()->create([
+            'content' => '',
+            'sort_order' => $nextOrder,
+        ]);
+
+        $this->editingNoteId = $note->id;
+        $this->noteDraft = '';
         $this->dispatch('group-notes-focus');
     }
 
-    public function stopEditingNotes(): void
+    /** Only one card is ever being edited at a time — switching saves/discards whatever was open. */
+    public function editNote(int $id): void
     {
-        $this->saveNotes();
-        $this->editingNotes = false;
+        if ($this->editingNoteId !== null && $this->editingNoteId !== $id) {
+            $this->stopEditingNote();
+        }
+
+        $note = $this->groupNote($id);
+        $this->editingNoteId = $note->id;
+        $this->noteDraft = (string) $note->content;
+        $this->dispatch('group-notes-focus');
     }
 
-    /** Autosave — fires on every Livewire model sync of the notes buffer. */
-    public function updatedNotes(): void
+    /** Autosave — fires on every Livewire model sync of the draft buffer. */
+    public function updatedNoteDraft(): void
     {
-        $this->saveNotes();
+        $this->saveDraft();
         $this->dispatch('group-notes-saved');
     }
 
-    protected function saveNotes(): void
+    protected function saveDraft(): void
     {
+        if ($this->editingNoteId === null) {
+            return;
+        }
+
         $data = $this->validate([
-            'notes' => ['nullable', 'string', 'max:50000'],
+            'noteDraft' => ['nullable', 'string', 'max:50000'],
         ]);
 
-        $text = trim((string) ($data['notes'] ?? ''));
+        $this->groupNote($this->editingNoteId)->update([
+            'content' => trim((string) ($data['noteDraft'] ?? '')),
+        ]);
+    }
 
-        $this->group->update(['notes' => $text !== '' ? $this->notes : null]);
+    /**
+     * "Fertig" — saves and closes the editor. A card left completely empty is
+     * removed rather than kept as a blank tile, so cancelling out of "+ Notiz"
+     * (or clearing a card's text entirely) never leaves a shell behind.
+     */
+    public function stopEditingNote(): void
+    {
+        if ($this->editingNoteId === null) {
+            return;
+        }
+
+        $this->saveDraft();
+        $note = $this->groupNote($this->editingNoteId);
+
+        if (trim((string) $note->content) === '') {
+            $note->delete();
+        }
+
+        $this->editingNoteId = null;
+        $this->noteDraft = '';
+    }
+
+    public function deleteNote(int $id): void
+    {
+        $this->groupNote($id)->delete();
+
+        if ($this->editingNoteId === $id) {
+            $this->editingNoteId = null;
+            $this->noteDraft = '';
+        }
     }
 
     /**

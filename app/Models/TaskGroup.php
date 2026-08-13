@@ -26,7 +26,6 @@ class TaskGroup extends Model
 
     protected $fillable = [
         'name',
-        'notes',
         'sort_order',
     ];
 
@@ -54,17 +53,18 @@ class TaskGroup extends Model
         return $this->tasks()->active()->groupOrdered();
     }
 
-    /**
-     * The group's notes rendered to safe HTML. Same options as the project
-     * brainstorm field and the task notes (raw HTML stripped, unsafe link
-     * schemes dropped), so nothing a note contains can inject.
-     */
-    public function notesHtml(): string
+    /** The group's note cards, in display order. */
+    public function notes(): HasMany
     {
-        return self::renderNotes((string) $this->notes);
+        return $this->hasMany(GroupNote::class, 'task_group_id')->orderBy('sort_order')->orderBy('created_at');
     }
 
-    /** Static so the live editor can render its preview without a saved model. */
+    /**
+     * Renders one note's Markdown to safe HTML. Same options as the project
+     * brainstorm field and the task notes (raw HTML stripped, unsafe link
+     * schemes dropped), so nothing a note contains can inject. Static so the
+     * live editor can render its preview before anything is saved.
+     */
     public static function renderNotes(string $text): string
     {
         $text = trim($text);
