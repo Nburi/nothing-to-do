@@ -227,18 +227,26 @@
        the carried card (or the browser's own drag-image snapshot) sits
        directly on top of whatever the cursor is over, which would hide a
        ring on the card underneath it completely. */
+    /* Deliberately NO `transform` here, however tempting a lift is.
+       getBoundingClientRect() reports transformed geometry, and Sortable reads
+       the target's rect on every dragover: a scaled/translated card flips its
+       own `_dragElInRowColumn` check to "different row/column", which forces
+       swapThreshold back to 1 and re-enables the whole-card swap zone this
+       gesture exists to avoid — i.e. the cue would break the mechanism that
+       produced it. Everything below is either paint-only (background, border
+       colour, box-shadow, outline) or a pseudo-element, none of which affect
+       the host element's rect. */
     .group-arm {
         position: relative;
-        transform: scale(1.03) translateX(7px);
         border-color: rgb(var(--forest)) !important;
-        box-shadow: 0 0 0 3px rgb(var(--forest) / 0.18), var(--shadow-map);
-        transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        background-color: rgb(var(--forest-soft)) !important;
+        box-shadow: 0 0 0 3px rgb(var(--forest) / 0.22), var(--shadow-map);
         z-index: 10;
     }
     .group-arm::before {
         content: '';
         position: absolute;
-        left: -11px;
+        left: -8px;
         top: 12%;
         bottom: 12%;
         width: 3px;

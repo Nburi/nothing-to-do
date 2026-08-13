@@ -1327,6 +1327,26 @@ re-runs `x-data` with the current date. Same underlying lesson as the focus ring
 any `x-data`/`x-init` that closes over server-rendered values needs a key tied to those values, or Alpine
 will silently keep serving the values from first mount.
 
+### CSS classes applied only from JavaScript are silently purged out of the build
+**Symptom:** a rule written in `resources/css/app.css` simply does not exist at runtime — no typo, no
+specificity fight, no cascade problem. `getComputedStyle` returns the untouched defaults, and searching
+`document.styleSheets` for the class name finds nothing. Drag & drop was the worst case: **every** piece of
+its visual feedback (`.board-ghost`, `.board-chosen`, `.group-arm`, `.group-arm-label`) was missing, so
+dragging a card gave no indication of anything at all and the task-group gesture looked completely dead
+even though its logic was running correctly.
+**Cause:** those rules live in app.css's `@layer components`, and **Tailwind v3 tree-shakes
+`@layer components` / `@layer utilities` rules whose class name never appears in a file matched by
+`content` in `tailwind.config.js`** (unlike `@layer base`, which is always emitted). The content globs
+listed Blade and PHP only. These particular classes are applied exclusively from `resources/js/app.js` —
+either by hand (`card.classList.add('group-arm')`) or as SortableJS options (`ghostClass: 'board-ghost'`) —
+so Tailwind never saw them and dropped all four. Verify with
+`grep -c board-ghost public/build/assets/app-*.css` → `0`.
+**Fix:** `./resources/js/**/*.js` is in the `content` array — keep it there. Any new class that is only
+ever added from JS needs its name to appear in a scanned file; putting the rule in `@layer base` instead
+also works, but the glob is the honest fix. **After changing `tailwind.config.js`, restart the Vite dev
+server** — a running `npm run dev` does not reliably pick up a config change, so the old purged CSS keeps
+being served and it looks like the fix did nothing.
+
 ### A "drop one card onto another" gesture is impossible until you set `invertSwap` on the Sortable
 **Symptom:** any gesture that needs the pointer to rest *on* another card — dwell-to-group, or a
 middle-of-the-card drop band — never triggers. The target card slides out from under the cursor before you
