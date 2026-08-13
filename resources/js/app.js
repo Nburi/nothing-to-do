@@ -116,7 +116,7 @@ window.boardSortable = function (el, wire, handle = null) {
         onStart: () => document.body.classList.add('dragging-task'),
         // Hovering one card over another for GROUP_ARM_MS arms "drop here to
         // group these two" (see groupArm below).
-        onMove: (evt) => groupArm.consider(evt.related),
+        onMove: (evt, originalEvent) => groupArm.consider(evt.related, originalEvent ?? evt.originalEvent),
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
             const armedId = groupArm.disarm();
@@ -142,6 +142,41 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
+ * A small label that follows the cursor while a hold is armed (see groupArm
+ * below). Deliberately NOT just a ring around the target card: while
+ * dragging, the card being carried — or the browser's own native drag-image
+ * snapshot — sits right on top of whatever is under the cursor, which is
+ * exactly where a ring on the target would be. A label pinned to the cursor
+ * itself is the one thing guaranteed to render above that, in every browser.
+ */
+const groupArmLabel = (() => {
+    let el = null;
+    const ensure = () => {
+        if (el) return el;
+        el = document.createElement('div');
+        el.className = 'group-arm-label';
+        el.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(el);
+        return el;
+    };
+    return {
+        show(text, x, y) {
+            const node = ensure();
+            node.textContent = text;
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.style.display = 'block';
+        },
+        move(x, y) {
+            if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; }
+        },
+        hide() {
+            if (el) el.style.display = 'none';
+        },
+    };
+})();
+
+/**
  * "Hold one card over another to group them" — the desktop gesture for creating
  * a task group (see TaskBoard::groupTasks).
  *
@@ -150,7 +185,9 @@ window.boardSortable = function (el, wire, handle = null) {
  * because passing *through* a card would sometimes mean something entirely
  * different. Dwelling is a thing you can only do on purpose — dragging past a
  * card never arms anything, and any movement to a different card resets the
- * timer. The armed card marks itself with .group-arm (styled in app.css).
+ * timer. The armed card also gets .group-arm (a ring — see app.css), which
+ * helps once the drag image is small enough to peek past, but the cursor
+ * label above is the reliable indicator.
  */
 const GROUP_ARM_MS = 350;
 
@@ -158,9 +195,18 @@ const groupArm = {
     el: null,
     timer: null,
     armedId: null,
+    lastX: 0,
+    lastY: 0,
 
-    /** Called on every Sortable onMove with the card currently hovered. */
-    consider(related) {
+    /** Called on every Sortable onMove with the card currently hovered + the raw pointer/mouse/touch event. */
+    consider(related, originalEvent) {
+        const point = originalEvent?.touches?.[0] ?? originalEvent;
+        if (point && typeof point.clientX === 'number') {
+            this.lastX = point.clientX;
+            this.lastY = point.clientY;
+            groupArmLabel.move(this.lastX, this.lastY);
+        }
+
         const card = related && related.dataset && related.dataset.id ? related : null;
 
         if (card === this.el) return; // same card, let the running timer finish
@@ -171,6 +217,8 @@ const groupArm = {
         this.timer = setTimeout(() => {
             this.armedId = card.dataset.id;
             card.classList.add('group-arm');
+            const title = card.dataset.title;
+            groupArmLabel.show(title ? `Gruppieren mit „${title}“` : 'Gruppieren', this.lastX, this.lastY);
         }, GROUP_ARM_MS);
     },
 
@@ -181,6 +229,7 @@ const groupArm = {
         if (this.el) this.el.classList.remove('group-arm');
         this.el = null;
         this.armedId = null;
+        groupArmLabel.hide();
     },
 
     /** Read out whatever was armed at drop time, then clean up. */
