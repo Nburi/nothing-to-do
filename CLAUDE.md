@@ -810,11 +810,21 @@ The middle size between a single task and a Project: a bundle of steps that belo
 presentation, rearranging a room — where a Project would be too heavy. Before this, every multi-step
 thing became a Project, which is exactly what made that column unreadable (see §1).
 
-- **`App\Models\TaskGroup`** — `user_id, name, notes, sort_order, timestamps`. `hasMany Task` (FK
-  `tasks.group_id`), `activeTasks` is the ordered working set, scopes `forUser/ordered`. `notes` is the
-  group's Markdown scratchpad; `renderNotes()`/`notesHtml()` use the same safety options as the project
-  brainstorm field (`html_input=strip`, `allow_unsafe_links=false`). `DEFAULT_NAME` ("Neue Gruppe") is what
-  a group created by a gesture is called until it is named.
+- **`App\Models\TaskGroup`** — `user_id, name, sort_order, timestamps`. `hasMany Task` (FK
+  `tasks.group_id`), `activeTasks` is the ordered working set, scopes `forUser/ordered`. `hasMany GroupNote`
+  (`notes()`, ordered) — see below. `DEFAULT_NAME` ("Neue Gruppe") is what a group created by a gesture is
+  called until it is named.
+- **`App\Models\GroupNote`** (`group_notes` table: `task_group_id, content, sort_order, timestamps`,
+  `cascadeOnDelete`) — the Notizen column is a **stack of separate note cards**, not one growing document: a
+  group can hold a few unrelated things worth jotting down (a checklist, a quote, a deadline reminder), and
+  one blob made finding any single one of them slower as it grew. `contentHtml()` renders through
+  `TaskGroup::renderNotes()` (static, shared so the safety options — `html_input=strip`,
+  `allow_unsafe_links=false`, same as the project brainstorm field — live in one place). Cascades on group
+  delete: unlike a task, a note has no meaning outside the group it was written for, so there is nothing to
+  release it back to (contrast with `tasks.group_id`'s `nullOnDelete` just below).
+  `GroupPage` keeps only one card editable at a time (`editingNoteId`/`noteDraft`, same single-editor
+  pattern as the task edit sheet); switching to another card or leaving one completely empty on "Fertig"
+  deletes it rather than leaving a blank tile.
 - **`tasks.group_id`** is **orthogonal to `list`**, exactly like `is_today` — a grouped task still lives in
   `inbox`/`todos`/`tasks`, it just surfaces inside its group instead of loose on the board. That is why
   dropping an Inbox card onto a group files it in the *group's* Inbox: nothing about the task's list
@@ -840,8 +850,12 @@ thing became a Project, which is exactly what made that column unreadable (see �
   (`GROUP_ARM_MS`/`groupArm` in `resources/js/app.js`, hooked into `boardSortable`'s `onMove`/`onEnd`). Dwell
   time rather than a hidden drop band in the middle of the card: a hidden band makes ordinary reordering
   feel unpredictable, because passing *through* a card would sometimes mean something else entirely.
-  Dwelling is something you can only do on purpose. The armed card gets `.group-arm` (ring + "Gruppieren"
-  label, `app.css`). An armed drop calls `TaskBoard::groupTasks()` and **returns before `reorder()`** —
+  Dwelling is something you can only do on purpose. The armed card gets `.group-arm` (a ring, `app.css`) —
+  a secondary cue only, since the dragged card (or the browser's own drag-image snapshot) sits directly on
+  top of whatever's under the cursor and would hide a ring there completely. The reliable indicator is a
+  small "Gruppieren mit «Titel»" label pinned to the cursor itself (`groupArmLabel` in `app.js`, styled
+  `.group-arm-label`), which always renders above the drag image. An armed drop calls
+  `TaskBoard::groupTasks()` and **returns before `reorder()`** —
   the server moves the task itself, so persisting the destination order too would fight it with a stale
   picture. Dropping onto an *already grouped* card just joins that group (no name prompt). A fresh group
   opens an inline name field on its own box (`namingGroupId`/`groupNameDraft`/`saveGroupName`); leaving it
@@ -859,8 +873,8 @@ thing became a Project, which is exactly what made that column unreadable (see �
     hand it to another group.
 - **`App\Livewire\GroupPage`** (`/app/groups/{group}`, `route('group.show')`, `use ManagesTasks`) — the
   group's own dashboard, deliberately the main board's shape so nothing new has to be learned: Kanban on
-  desktop, bottom-navigation on mobile, Inbox/To-Dos/Tasks plus a **Notizen** panel where the board has its
-  Projekte column. Per-column quick-add (`newTitle` keyed by list), drag-reorder through the same
+  desktop, bottom-navigation on mobile, Inbox/To-Dos/Tasks plus a **Notizen** column of note cards where the
+  board has its Projekte column. Per-column quick-add (`newTitle` keyed by list), drag-reorder through the same
   `boardSortable`, the same swipe intents, an "Aus der Inbox hinzufügen" picker like the project page.
   **No "Heute" area** — the day's focus is owned by the main board alone; a group task can still be flagged
   for today and then appears in the board's Heute tab. `dissolveGroup()` is non-destructive: the tasks stay
