@@ -112,6 +112,7 @@ window.boardSortable = function (el, wire, handle = null) {
         handle: handle ?? undefined,
         delay: 60,
         delayOnTouchOnly: true,
+        ...sortableGroupBands(),
         // Mark the page as dragging so project cards can show a drop affordance.
         onStart: () => document.body.classList.add('dragging-task'),
         // Hovering the middle band of another card arms "drop here to group
@@ -200,6 +201,45 @@ const groupArmLabel = (() => {
  * carried card (or the browser's own drag-image snapshot) usually sits
  * right on top of the card underneath it.
  */
+/**
+ * Sortable's `invertedSwapThreshold`, mirrored here so groupZone's own band
+ * math can't drift from the one Sortable actually reorders by. 0.5 means the
+ * outer quarter at each end is a reorder band and the middle half is the
+ * group band — see GROUP_BAND_FRACTION below and the sortableGroupBands()
+ * options both zones spread into their config.
+ */
+const INVERTED_SWAP_THRESHOLD = 0.5;
+
+/** Fraction of a card's height taken by ONE reorder band, at each end. */
+const GROUP_BAND_FRACTION = INVERTED_SWAP_THRESHOLD / 2;
+
+/**
+ * The Sortable options that make the three bands real.
+ *
+ * `invertSwap: true` is the load-bearing one, and the whole reason the
+ * earlier version of this gesture did not work. With Sortable's default
+ * (`invertSwap: false`, `swapThreshold: 1`) the swap zone is the *entire*
+ * card — see _getSwapDirection in sortablejs: the regular branch tests
+ * `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2`, which
+ * with swapThreshold 1 is simply "anywhere inside the target". So the
+ * hovered card is reordered out from under the cursor the instant the
+ * pointer touches its leading edge, long before the pointer can reach the
+ * middle. No onMove guard can rescue that, because by the time the pointer
+ * is in the middle band the card that was there has already moved.
+ *
+ * `invertSwap: true` switches to the inverted branch, which swaps only in
+ * the outer `invertedSwapThreshold / 2` of each end and returns 0 —
+ * literally "no swap" — everywhere in between. Sortable itself then holds
+ * the card still in the middle band, so it stays put under the cursor and
+ * can be grouped onto. The direction it returns in the outer bands is
+ * `mouseOnAxis > mid ? 1 : -1`: the top band inserts the dragged card
+ * *before* the target (order it above), the bottom band after it.
+ */
+const sortableGroupBands = () => ({
+    invertSwap: true,
+    invertedSwapThreshold: INVERTED_SWAP_THRESHOLD,
+});
+
 const groupZone = {
     el: null,
     lastX: 0,
@@ -225,7 +265,10 @@ const groupZone = {
             return true;
         }
 
-        const band = Math.max(8, relatedRect.height * 0.25);
+        // Exactly the band Sortable itself refuses to swap in (see
+        // sortableGroupBands above) — deliberately the same number, so the
+        // visual cue can never disagree with what a release actually does.
+        const band = relatedRect.height * GROUP_BAND_FRACTION;
         const inGroupBand = point.clientY > relatedRect.top + band && point.clientY < relatedRect.bottom - band;
 
         if (!inGroupBand) {
@@ -286,6 +329,7 @@ window.groupDropZone = function (el, wire, handle = null) {
         draggable: '[data-id]',
         delay: 60,
         delayOnTouchOnly: true,
+        ...sortableGroupBands(),
         onStart: () => document.body.classList.add('dragging-task'),
         onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
         onAdd: (evt) => {

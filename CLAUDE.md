@@ -849,14 +849,22 @@ thing became a Project, which is exactly what made that column unreadable (see �
 - **Creating one by drag (desktop)** — each card is split into three vertical bands: the middle 50% is the
   "group" band, the top/bottom 25% are ordinary reorder territory (`groupZone` in `resources/js/app.js`,
   hooked into `boardSortable`'s `onMove`/`onEnd`). This replaced an earlier dwell-time design (hold a card
-  over another for 350ms) that turned out to be unreachable in practice: SortableJS's default
-  `swapThreshold` shifts the hovered card out from under the cursor the instant it's touched, so the target
-  never stays still long enough for a timer to fire. The fix is geometric, not temporal — `onMove` reads the
-  pointer's position against `evt.relatedRect` and returns `false` while it's in the middle band, which
-  tells Sortable not to touch the DOM at all: the hovered card holds its position, no gap opens, nothing
-  "slips away" out from under the cursor. The only way to see a sibling move is to be in a reorder band, and
-  the only way to arm a group is to *not* be moving anything — the two states can never be ambiguous, and
-  arming is instant (crossing the band boundary is the commitment, no wait). The armed card gets
+  over another for 350ms) that was unreachable in practice.
+  **The load-bearing part of the fix is `invertSwap: true` + `invertedSwapThreshold: 0.5` on the Sortable
+  instances** (`sortableGroupBands()` in `app.js`), not the `onMove` guard. With Sortable's defaults
+  (`invertSwap: false`, `swapThreshold: 1`) the swap zone is the *entire* card — `_getSwapDirection` in
+  sortablejs tests `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2`, which at
+  swapThreshold 1 is just "anywhere inside the target" — so the hovered card is reordered out from under
+  the cursor the instant the pointer crosses its leading edge. That is why *both* the dwell design and a
+  first attempt at a middle-band `onMove` guard failed: by the time the pointer reaches the middle, the
+  card that was there has already moved away, so no guard checked at that point can help. `invertSwap`
+  switches Sortable to its inverted branch, which swaps only within `invertedSwapThreshold / 2` of each
+  end and returns `0` — literally "no swap" — everywhere between, so Sortable itself holds the card still
+  in the middle band. Its direction in the outer bands (`mouseOnAxis > mid ? 1 : -1`) also gives the
+  intended semantics for free: the top band orders the dragged card *above* the target, the bottom band
+  below it. `groupZone.consider()` then returns `false` for the same middle band (belt and braces, and it
+  is what arms the visual cue); its band fraction is derived from the same `INVERTED_SWAP_THRESHOLD`
+  constant so the cue can never disagree with what a release actually does. The armed card gets
   `.group-arm` — an indent plus a forest-coloured bracket on its leading edge (`app.css`), echoing the left
   accent a real group box gets — a secondary cue only, since the dragged card (or the browser's own
   drag-image snapshot) sits directly on top of whatever's under the cursor and would hide it otherwise. The
@@ -1319,25 +1327,30 @@ re-runs `x-data` with the current date. Same underlying lesson as the focus ring
 any `x-data`/`x-init` that closes over server-rendered values needs a key tied to those values, or Alpine
 will silently keep serving the values from first mount.
 
-### A SortableJS dwell-time gesture never fires because the target card moves out from under the cursor
-**Symptom:** a "hold a dragged card over another card to trigger X" gesture (task-group creation, in this
-case) never arms — the timer that's supposed to fire after N ms of dwelling never gets the chance, no matter
-how long the pointer sits still over the target.
-**Cause:** SortableJS's default `swapThreshold` (1, unset) shifts the hovered sibling out of the way — and
-opens the dashed insertion gap in its place — the instant the pointer touches any part of it, as part of its
-normal reorder-preview behavior. That means the element the pointer is "hovering" is never the same DOM node
-for more than an instant: `onMove`'s `evt.related` changes (or the card the pointer physically sits over is
-no longer the target's original position) before any dwell timer set on the first sighting can complete. A
-gesture built on "the same target stays hovered for N ms" is checking a condition SortableJS's own default
-behavior makes almost impossible to satisfy.
-**Fix:** don't fight Sortable's swap behavior — make holding still an explicit exception to it. Split each
-card into vertical bands (e.g. top/bottom 25% = normal reorder, middle 50% = the alternate gesture), and in
-`onMove` return `false` while the pointer is in the alternate-gesture band. Returning `false` from `onMove`
-tells Sortable to skip the DOM move entirely for that event, so the target card holds its position — no gap
-opens, nothing shifts — for as long as the pointer stays in that band. The gesture becomes geometric and
-instantaneous (crossing into the band is the commitment) instead of temporal, and the two states never
-compete for the same screen space. See `groupZone` in `resources/js/app.js` (Task-Gruppen §7), which replaced
-an earlier 350ms-dwell design that hit exactly this bug.
+### A "drop one card onto another" gesture is impossible until you set `invertSwap` on the Sortable
+**Symptom:** any gesture that needs the pointer to rest *on* another card — dwell-to-group, or a
+middle-of-the-card drop band — never triggers. The target card slides out from under the cursor before you
+can release on it, and with a reorder-on-approach it can oscillate: you chase the card up and down and can
+never land on it. `onMove` guards that check "am I in the middle of the target?" appear correct but never
+help.
+**Cause:** SortableJS's default swap zone is the **entire** target card. `_getSwapDirection`
+(`node_modules/sortablejs/modular/sortable.esm.js`) takes the regular branch when `invertSwap` is false and
+tests `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2 && mouseOnAxis < targetS2 - …`; with
+the default `swapThreshold: 1` both margins are 0, so the test is simply "anywhere inside the target" and a
+swap is triggered the moment the pointer crosses the card's leading edge. The pointer therefore *cannot*
+reach the card's middle while that card is still there — it has already been reordered away, and what sits
+under the cursor is the dragged element's own placeholder (which Sortable then ignores). Checking anything
+in `onMove` at middle-of-card time is checking a state that can no longer occur.
+**Fix:** change *where Sortable swaps*, don't try to veto it after the fact. Set `invertSwap: true` plus an
+explicit `invertedSwapThreshold` (0.5 gives 25% / 50% / 25% bands). That routes Sortable to its inverted
+branch, which swaps only within `invertedSwapThreshold / 2` of each end and `return 0`s — no swap at all —
+everywhere in between, so the card genuinely holds still in the middle band and can be dropped onto. Bonus:
+the inverted branch's direction (`mouseOnAxis > targetS1 + targetLength / 2 ? 1 : -1`) means the top band
+inserts the dragged item *before* the target and the bottom band after it, which is usually exactly the
+intended reorder semantics. Keep an `onMove` guard returning `false` for the same middle band as belt and
+braces / to drive the visual cue, and derive its band size from the same threshold constant so the two can
+never disagree. See `sortableGroupBands()` and `groupZone` in `resources/js/app.js` (Task-Gruppen §7); an
+earlier 350ms-dwell design and a first `onMove`-only attempt both failed to this exact cause.
 
 ---
 
