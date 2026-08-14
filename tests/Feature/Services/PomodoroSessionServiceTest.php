@@ -78,10 +78,12 @@ class PomodoroSessionServiceTest extends TestCase
         $this->assertNull($event->pomodoro_started_at);
     }
 
-    public function test_transition_moves_from_work_cycle_one_to_short_break_and_notifies(): void
+    public function test_transition_moves_from_work_cycle_one_to_short_break_and_never_notifies(): void
     {
+        // A direct result of the user's own "weiter" tap — they've already seen
+        // the "session ended" push sent when the phase froze (see handleTick tests).
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $user = User::factory()->create(['notify_break_start' => true]);
@@ -104,7 +106,7 @@ class PomodoroSessionServiceTest extends TestCase
     public function test_transition_from_work_cycle_four_goes_to_long_break(): void
     {
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $user = User::factory()->create(['notify_break_start' => true]);
@@ -119,10 +121,10 @@ class PomodoroSessionServiceTest extends TestCase
         $this->assertSame(4, $event->pomodoro_cycle);
     }
 
-    public function test_skip_break_from_a_running_short_break_jumps_to_next_work_cycle_and_notifies(): void
+    public function test_skip_break_from_a_running_short_break_jumps_to_next_work_cycle_and_never_notifies(): void
     {
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $user = User::factory()->create(['notify_pomo_start' => true]);
@@ -142,7 +144,7 @@ class PomodoroSessionServiceTest extends TestCase
     public function test_skip_break_from_a_frozen_state_landing_on_a_break_also_jumps_past_it(): void
     {
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $user = User::factory()->create(['notify_pomo_start' => true]);
@@ -220,15 +222,17 @@ class PomodoroSessionServiceTest extends TestCase
         $this->assertTrue($event->pomodoro_started_at->equalTo(Carbon::parse('2026-06-26 14:00:00')));
     }
 
-    public function test_handle_tick_freezes_when_autostart_is_disabled_and_the_phase_has_elapsed(): void
+    public function test_handle_tick_freezes_when_autostart_is_disabled_and_the_phase_has_elapsed_and_notifies_when_enabled(): void
     {
+        // The freeze is the genuine end-of-session moment — no user tap caused it,
+        // so it's the one place that should notify (naming the break that's now due).
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldReceive('notify')->once();
         });
 
         $user = User::factory()->create([
             'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
-            'pomodoro_autostart' => false,
+            'pomodoro_autostart' => false, 'notify_break_start' => true,
         ]);
         $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
@@ -242,6 +246,27 @@ class PomodoroSessionServiceTest extends TestCase
         $this->assertSame('work', $event->pomodoro_phase); // stays the just-finished phase
         $this->assertSame(1, $event->pomodoro_cycle);
         $this->assertNull($event->pomodoro_started_at); // frozen
+    }
+
+    public function test_handle_tick_freeze_does_not_notify_when_disabled(): void
+    {
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        $user = User::factory()->create([
+            'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+            'pomodoro_autostart' => false, 'notify_break_start' => false,
+        ]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
+            ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
+
+        Carbon::setTestNow('2026-06-26 14:25:00');
+
+        app(PomodoroSessionService::class)->handleTick($event, $user);
+
+        $this->assertNull($event->refresh()->pomodoro_started_at); // frozen
     }
 
     public function test_handle_tick_with_autostart_advances_exactly_one_phase_and_carries_elapsed_time_forward(): void

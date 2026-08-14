@@ -48,10 +48,13 @@ class AdvancePomodoroPhasesTest extends TestCase
         $this->assertTrue($event->pomodoro_started_at->equalTo(Carbon::parse('2026-06-26 14:25:00')));
     }
 
-    public function test_it_freezes_an_elapsed_session_when_autostart_is_disabled_and_never_notifies(): void
+    public function test_it_freezes_an_elapsed_session_when_autostart_is_disabled_and_notifies(): void
     {
+        // This is the scheduled command that ticks unattended sessions forward with no
+        // tab open — the freeze it causes IS the genuine end-of-session moment, so it's
+        // exactly where the "your focus session ended, take a break" push must fire.
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldNotReceive('notify');
+            $mock->shouldReceive('notify')->once();
         });
 
         $user = User::factory()->create([

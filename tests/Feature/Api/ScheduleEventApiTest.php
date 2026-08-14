@@ -260,8 +260,10 @@ class ScheduleEventApiTest extends TestCase
         $this->postJson("/api/schedule-events/{$event->id}/start-focus")->assertOk();
     }
 
-    public function test_continue_focus_via_api_sends_a_push_notification_when_enabled(): void
+    public function test_continue_focus_via_api_sends_no_push_notification_even_when_enabled(): void
     {
+        // A direct result of the caller's own continue action — the "session ended"
+        // push already went out when the phase froze (handled by the scheduler).
         $user = User::factory()->create([
             'notify_break_start' => true,
             'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
@@ -274,7 +276,7 @@ class ScheduleEventApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $this->postJson("/api/schedule-events/{$event->id}/continue-focus")->assertOk();

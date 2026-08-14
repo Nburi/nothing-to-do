@@ -48,7 +48,11 @@ class PomodoroSessionService
 
     /**
      * Manually advance to the next queued phase (a continue after a freeze,
-     * or an explicit "next" action). Persists and notifies.
+     * or an explicit "next" action). Persists, but — like start() — never
+     * notifies: this is always a direct result of the user's own tap
+     * (they've already seen the "session ended" push sent when the phase
+     * froze, see handleTick()), so notifying again here would just repeat
+     * something they already know and just acted on.
      *
      * @param  array{work:int,short_break:int,long_break:int,long_every:int}  $rhythm
      * @return array{phase:string,cycle:int}
@@ -63,8 +67,6 @@ class PomodoroSessionService
             'pomodoro_started_at' => now(),
         ]);
 
-        $this->notifyPhaseStart($user, $next['phase']);
-
         return $next;
     }
 
@@ -73,6 +75,8 @@ class PomodoroSessionService
      * next work session. Works whether the break is actively running or
      * still frozen awaiting its own manual start. Returns false if there is
      * nothing to skip (no session, or the current/next phase isn't a break).
+     * Never notifies, for the same reason transition() doesn't — it's a
+     * direct result of the user's own tap.
      */
     public function skipBreak(ScheduleEvent $event, User $user, array $rhythm): bool
     {
@@ -101,8 +105,6 @@ class PomodoroSessionService
             'pomodoro_started_at' => now(),
         ]);
 
-        $this->notifyPhaseStart($user, $next['phase']);
-
         return true;
     }
 
@@ -130,8 +132,9 @@ class PomodoroSessionService
     {
         $now ??= now();
         $phaseToNotify = null;
+        $awaitingNotify = null;
 
-        DB::transaction(function () use ($event, $user, $now, &$phaseToNotify) {
+        DB::transaction(function () use ($event, $user, $now, &$phaseToNotify, &$awaitingNotify) {
             $locked = ScheduleEvent::whereKey($event->getKey())->lockForUpdate()->first();
 
             if ($locked === null || $locked->pomodoro_phase === null || $locked->pomodoro_started_at === null) {
@@ -151,6 +154,12 @@ class PomodoroSessionService
 
             if (! $user->pomodoro_autostart) {
                 $locked->update(['pomodoro_started_at' => null]);
+
+                // This freeze *is* the real end of the phase — the only moment that
+                // isn't a direct result of the user's own tap, so it's the one place
+                // that should notify. What comes next (awaiting a manual continue)
+                // is what the notification names.
+                $awaitingNotify = PomodoroCycle::next($phase, $cycle, $rhythm)['phase'];
 
                 return;
             }
@@ -175,10 +184,12 @@ class PomodoroSessionService
 
         if ($phaseToNotify !== null) {
             $this->notifyPhaseStart($user, $phaseToNotify);
+        } elseif ($awaitingNotify !== null) {
+            $this->notifyPhaseEnded($user, $awaitingNotify);
         }
     }
 
-    /** Sends a push notification for a phase that just started, gated by the user's per-type preference. */
+    /** Sends a push notification for a phase that just auto-started (autostart cascade), gated by the user's per-type preference. */
     private function notifyPhaseStart(User $user, string $phase): void
     {
         $enabled = $phase === PomodoroCycle::WORK ? $user->notify_pomo_start : $user->notify_break_start;
@@ -191,6 +202,30 @@ class PomodoroSessionService
             PomodoroCycle::WORK => ['Pomodoro', 'Neue Fokus-Session beginnt'],
             PomodoroCycle::LONG_BREAK => ['Lange Pause', 'Zeit für eine längere Pause'],
             default => ['Kurze Pause', 'Zeit für eine kurze Pause'],
+        };
+
+        $this->pushNotifier->notify($user, ['title' => $title, 'body' => $body, 'url' => '/app/schedule']);
+    }
+
+    /**
+     * Sends a push notification the moment a phase actually finishes and freezes
+     * awaiting a manual continue (autostart off) — the genuine "it's over" moment,
+     * naming what's due next. Gated by the same per-type preference as
+     * notifyPhaseStart(): notify_pomo_start gates "a focus session is due"
+     * (next = work), notify_break_start gates "a break is due" (next = break).
+     */
+    private function notifyPhaseEnded(User $user, string $nextPhase): void
+    {
+        $enabled = $nextPhase === PomodoroCycle::WORK ? $user->notify_pomo_start : $user->notify_break_start;
+
+        if (! $enabled) {
+            return;
+        }
+
+        [$title, $body] = match ($nextPhase) {
+            PomodoroCycle::WORK => ['Pause vorbei', 'Zeit für die nächste Fokus-Session'],
+            PomodoroCycle::LONG_BREAK => ['Fokus-Session beendet', 'Zeit für eine längere Pause'],
+            default => ['Fokus-Session beendet', 'Zeit für eine kurze Pause'],
         };
 
         $this->pushNotifier->notify($user, ['title' => $title, 'body' => $body, 'url' => '/app/schedule']);
