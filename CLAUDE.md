@@ -832,7 +832,11 @@ here applies to the single-user rest of the app.
   to Task/Project, and it doesn't surface on the board, in Vorbereitung, or in Notfallmodus.
 - **`App\Models\CraftIdea`** — `user_id, title, where_to_begin(nullable), is_done, timestamps`. No date
   fields at all (unlike Agenda) — these are "someday" ideas, not deadline-driven. Scopes `forUser/open/done`.
-  `User::craftIdeas()` is the standard `hasMany`.
+  `User::craftIdeas()` is the standard `hasMany`. `where_to_begin` is deliberately **not** a dedicated
+  "first step" field — it's the idea's one free-text note (material, links, a reminder of where to start,
+  whatever). Kept under its original column/property name rather than renamed at the DB or Livewire-property
+  level (nothing about its shape changed, only the label above it), but the UI calls it "Notiz" and edits it
+  through a `<textarea>` rather than a single-line input, since a note can run longer than one line.
 - **`App\Livewire\CraftIdeas`** (class-based, `/app/crafts`, `route('crafts')`) is a single-purpose "browse
   and pick one" page, not a form-driven CRUD list like Agenda's:
   - **Hero suggestion ("Mach doch das")** — `$heroId` (persisted on the component, not the DB) names the
@@ -864,18 +868,24 @@ here applies to the single-user rest of the app.
   never become the hero. **Delete** (`deleteIdea`) uses the same armed double-click pattern as everywhere
   else in the app (never `confirm()`) — both on the hero card and on each pinboard card (the latter
   hover-revealed on desktop via `group-hover/idea:opacity-100`, always-visible-but-dim on mobile since
-  there's no hover there, same convention as the task card's quick-date placeholder).
-- **Capture is not on this page at all.** Unlike Agenda's own inline form, Bastelideen has no add-idea UI
-  on `/app/crafts` itself — new ideas are always captured from a quick-add bar embedded directly in the
-  dashboard, `partials/craft-idea-capture.blade.php`, `@include`d twice in `task-board.blade.php` (the
-  desktop Projekte column and the mobile board section). Its state (`newIdeaTitle`, `newIdeaWhereToBegin`)
-  and its action (`TaskBoard::addCraftIdea()`) live directly on `App\Livewire\TaskBoard` — there's no
-  separate "QuickCapture" component or cross-component event listener; the capture bar is just another
-  facet of the board component, the same way the inline task quick-add is. The optional "Wo anfangen" field
-  is a click/focus-expanded section (`x-data="{ exp: false }"`, collapses again on an `idea-added` window
-  event dispatched by `addCraftIdea()` after a successful save, or on an outside click) — this keeps the bar
-  a single-line input in its resting state, matching the board's other quick-add fields. Ideas themselves
-  are only ever browsed/actioned on the dedicated `/app/crafts` page.
+  there's no hover there, same convention as the task card's quick-date placeholder). Deleting the idea
+  currently open in the edit form (below) cancels the edit too, so the form never keeps editing something
+  that no longer exists — mirrors `Agenda::deleteEntry()`.
+- **Editing** — the same capture form doubles as the edit form, mirroring `Agenda::saveEntry()`'s single
+  create/edit form rather than a separate modal: `$editingId` is null while capturing, set to an idea's id
+  while editing it. `startEdit(int $id)` loads the idea into the form and dispatches `edit-idea-opened`,
+  which the form's Alpine scope uses to expand the (otherwise collapsed) Notiz field, focus the title input,
+  and scroll the form into view — necessary because the trigger can be a pinboard card scrolled well below
+  the form. `saveIdea()` (renamed from the old create-only `addIdea()`) branches on `$editingId` to update
+  vs. create, then resets the form and dispatches `idea-form-reset` (renamed from `idea-added`, since it now
+  fires after an edit too) to collapse the Notiz field back down. `cancelEdit()` does the same reset without
+  writing anything. A pencil button opens edit on the hero card (next to delete) and on each pinboard card
+  (hover-revealed next to its own delete button, same convention as delete).
+- **Capture** happens two ways: the page's own inline form at the top of `/app/crafts` (`saveIdea()` above —
+  a page entirely about ideas shouldn't need the global panel, the same reasoning `ProjectPage` and
+  `EmergencyMode` follow with their own inline add forms), and the app-wide QuickCapture panel's `craft`
+  target from anywhere else (see Schnellerfassung above). Ideas are still only ever browsed/actioned on the
+  dedicated `/app/crafts` page.
 
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
