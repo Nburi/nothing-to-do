@@ -17,7 +17,7 @@
 @endphp
 <div
     @class([
-        'group/dl flex items-center gap-1.5 rounded-[6px] px-1.5 py-1',
+        'group/dl flex min-w-0 items-center gap-1.5 rounded-[6px] px-1.5 py-1',
         $styles['bg'] => ! $item['isPreview'],
         'border border-dashed border-line' => $item['isPreview'],
     ])
@@ -30,7 +30,7 @@
         aria-label="Erledigt markieren: {{ $item['title'] }}"
     ></button>
 
-    <span class="truncate text-[11px] {{ $item['isPreview'] ? $styles['tx'].' opacity-80' : $styles['tx'] }}">{{ $item['title'] }}</span>
+    <span class="min-w-0 flex-1 truncate text-[11px] {{ $item['isPreview'] ? $styles['tx'].' opacity-80' : $styles['tx'] }}">{{ $item['title'] }}</span>
 
     @if ($item['isPreview'])
         <span class="flex-none text-[9.5px] {{ $styles['tx'] }} opacity-80" aria-hidden="true">in {{ $item['daysUntil'] }}T</span>

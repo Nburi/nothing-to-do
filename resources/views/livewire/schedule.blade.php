@@ -80,7 +80,7 @@
                     <div class="flex border-b border-line">
                         <div class="w-12 flex-none"></div>
                         @foreach ($this->weekDays as $day)
-                            <div class="flex-1 border-l border-line px-1.5 py-1.5" wire:key="dl-strip-{{ $day->toDateString() }}">
+                            <div class="min-w-0 flex-1 border-l border-line px-1.5 py-1.5" wire:key="dl-strip-{{ $day->toDateString() }}">
                                 @include('livewire.partials.schedule-deadline-strip', ['items' => $this->deadlineItems->get($day->toDateString(), collect())])
                             </div>
                         @endforeach
