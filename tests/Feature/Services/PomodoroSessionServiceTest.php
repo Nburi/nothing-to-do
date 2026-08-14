@@ -23,10 +23,10 @@ class PomodoroSessionServiceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_start_sets_phase_cycle_and_start_time_and_notifies_when_enabled(): void
+    public function test_start_sets_phase_cycle_and_start_time_and_never_notifies(): void
     {
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $user = User::factory()->create(['notify_pomo_start' => true]);
@@ -44,7 +44,7 @@ class PomodoroSessionServiceTest extends TestCase
         $this->assertTrue($event->pomodoro_started_at->equalTo(Carbon::parse('2026-06-26 14:00:00')));
     }
 
-    public function test_start_does_not_notify_when_notify_pomo_start_is_disabled(): void
+    public function test_start_does_not_notify_even_when_notify_pomo_start_is_enabled(): void
     {
         $this->mock(PushNotifier::class, function ($mock) {
             $mock->shouldNotReceive('notify');

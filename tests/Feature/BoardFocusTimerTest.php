@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
-use Mockery;
 use Tests\TestCase;
 
 class BoardFocusTimerTest extends TestCase
@@ -242,17 +241,17 @@ class BoardFocusTimerTest extends TestCase
         $this->assertSame(1, $event->pomodoro_cycle);
     }
 
-    public function test_starting_the_focus_timer_sends_a_push_notification_when_enabled(): void
+    public function test_starting_the_focus_timer_sends_no_push_notification_even_when_enabled(): void
     {
+        // Starting is always a direct result of the user's own tap, so it never notifies —
+        // unlike a phase transition, there is nothing new to tell them.
         $user = User::factory()->create(['notify_pomo_start' => true]);
         $this->actingAs($user);
         $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')->create();
 
-        $this->mock(PushNotifier::class, function ($mock) use ($user) {
-            $mock->shouldReceive('notify')
-                ->once()
-                ->with($user, Mockery::on(fn ($payload) => is_array($payload) && isset($payload['title'], $payload['body'])));
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
         });
 
         Livewire::test(TaskBoard::class)->call('startFocusTimer', $event->id);

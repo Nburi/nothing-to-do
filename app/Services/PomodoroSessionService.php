@@ -22,7 +22,10 @@ class PomodoroSessionService
     /**
      * Start the Pomodoro focus timer on a category block. Always manual,
      * regardless of the autostart setting — that only governs transitions
-     * *after* this first session.
+     * *after* this first session. Deliberately does not push a notification:
+     * unlike every other phase change, this one is a direct result of the
+     * user's own just-now tap, so telling them "your focus session begins"
+     * a moment later is pure noise, not new information.
      */
     public function start(ScheduleEvent $event, User $user): void
     {
@@ -31,8 +34,6 @@ class PomodoroSessionService
             'pomodoro_cycle' => 1,
             'pomodoro_started_at' => now(),
         ]);
-
-        $this->notifyPhaseStart($user, PomodoroCycle::WORK);
     }
 
     /** Fully ends the session — a fresh Start is needed to begin again. */

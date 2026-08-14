@@ -244,15 +244,17 @@ class ScheduleEventApiTest extends TestCase
             ->assertJson(['focus_session' => null, 'phase' => null, 'suggestion' => null]);
     }
 
-    public function test_start_focus_via_api_sends_a_push_notification_when_enabled(): void
+    public function test_start_focus_via_api_sends_no_push_notification_even_when_enabled(): void
     {
+        // Starting is always a direct result of the caller's own action, so it never notifies —
+        // unlike a phase transition, there is nothing new to tell them.
         $user = User::factory()->create(['notify_pomo_start' => true]);
         $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
         $event = ScheduleEvent::factory()->for($user)->create(['category_id' => $category->id]);
         Sanctum::actingAs($user);
 
         $this->mock(PushNotifier::class, function ($mock) {
-            $mock->shouldReceive('notify')->once();
+            $mock->shouldNotReceive('notify');
         });
 
         $this->postJson("/api/schedule-events/{$event->id}/start-focus")->assertOk();
