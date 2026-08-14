@@ -25,6 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
     'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
+    'homework_preview_enabled',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -45,6 +46,7 @@ class User extends Authenticatable
     protected $attributes = [
         'show_presence' => true,
         'deadline_preview_enabled' => true,
+        'homework_preview_enabled' => true,
     ];
 
     /** @return HasMany<Task, $this> */
@@ -338,6 +340,7 @@ class User extends Authenticatable
             'show_presence' => 'boolean',
             'deadline_preview_enabled' => 'boolean',
             'deadline_preview_days' => 'integer',
+            'homework_preview_enabled' => 'boolean',
         ];
     }
 }

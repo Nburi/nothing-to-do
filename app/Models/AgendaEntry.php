@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\AgendaEntryFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,9 @@ class AgendaEntry extends Model
         'homework' => 'Hausaufgabe',
         'exam' => 'Prüfung',
     ];
+
+    /** How many weekdays ahead the dashboard homework preview looks — weekends don't count as lookahead. */
+    public const DASHBOARD_PREVIEW_WEEKDAYS = 3;
 
     protected $fillable = [
         'type',
@@ -136,6 +140,30 @@ class AgendaEntry extends Model
     public function completedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'agenda_entry_completions')->withTimestamps();
+    }
+
+    /**
+     * Open homework (own or a shared class's) due within the next
+     * DASHBOARD_PREVIEW_WEEKDAYS *weekdays* — Saturday/Sunday are skipped
+     * when counting the lookahead, so a Thursday/Friday "today" still reaches
+     * into the following Monday/Tuesday rather than being pushed further out
+     * by the weekend. `addWeekdays()` starts counting from tomorrow, so an
+     * overdue or due-today item is always included too (its date is already
+     * on or before the cutoff) — deliberate, since those are the most urgent.
+     *
+     * @return Collection<int, self>
+     */
+    public static function homeworkPreviewFor(User $user): Collection
+    {
+        $cutoff = $user->localToday()->copy()->addWeekdays(self::DASHBOARD_PREVIEW_WEEKDAYS);
+
+        return static::query()
+            ->visibleTo($user)
+            ->ofType('homework')
+            ->openFor($user)
+            ->where('date', '<=', $cutoff)
+            ->ordered()
+            ->get();
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

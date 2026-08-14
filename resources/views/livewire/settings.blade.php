@@ -114,6 +114,35 @@
         </form>
         </div>
 
+        {{-- Hausaufgaben-Vorschau --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Hausaufgaben-Vorschau</p>
+                    <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
+                        Zeigt offene Hausaufgaben, die innerhalb der nächsten 3 Wochentage fällig sind, oben im
+                        Dashboard — Wochenenden zählen dabei nicht mit.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleHomeworkPreviewEnabled"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $homeworkPreviewEnabled,
+                        'bg-line' => ! $homeworkPreviewEnabled,
+                    ])
+                    aria-label="Hausaufgaben-Vorschau {{ $homeworkPreviewEnabled ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $homeworkPreviewEnabled,
+                        'left-0.5' => ! $homeworkPreviewEnabled,
+                    ])></span>
+                </button>
+            </div>
+        </div>
+
         {{-- Zeitzone --}}
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Zeitzone</h3>
