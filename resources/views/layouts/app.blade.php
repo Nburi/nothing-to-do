@@ -292,6 +292,43 @@
             @endif
 
             <livewire:quick-capture />
+
+            {{-- Milestone celebration overlay — mounted once here (not inside any one
+                 Livewire component) so it fires no matter which page a task gets
+                 completed from (board, project page, Zeitplan strip). See the
+                 'celebration' Alpine store in app.js and ProgressStats::celebrationFor(). --}}
+            <div
+                x-data
+                x-on:celebrate.window="$store.celebration.fire($event.detail.kind, $event.detail.label)"
+                class="pointer-events-none fixed inset-x-0 top-20 z-50 flex justify-center"
+                aria-hidden="true"
+            >
+                <template x-if="$store.celebration.visible">
+                    <div class="relative" x-transition.opacity.duration.200ms>
+                        <div class="relative h-24 w-24">
+                            <template x-for="n in 3" :key="n">
+                                <div
+                                    class="celebrate-ring"
+                                    :class="{ 'celebrate-ring--record': $store.celebration.kind === 'record' }"
+                                    :style="`animation-delay: ${(n - 1) * 140}ms`"
+                                ></div>
+                            </template>
+                            <template x-for="p in $store.celebration.particles" :key="p.id">
+                                <div
+                                    class="celebrate-particle"
+                                    :class="{ 'celebrate-particle--record': $store.celebration.kind === 'record' }"
+                                    :style="`--dx: ${p.dx}px; --dy: ${p.dy}px; --rotate: ${p.rotate}deg; animation-delay: ${p.delay}ms`"
+                                ></div>
+                            </template>
+                        </div>
+                        <p
+                            class="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium shadow-map"
+                            :class="$store.celebration.kind === 'record' ? 'bg-overprint text-white' : 'bg-forest text-white'"
+                            x-text="$store.celebration.label"
+                        ></p>
+                    </div>
+                </template>
+            </div>
         @endauth
 
         @livewireScripts

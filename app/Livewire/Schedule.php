@@ -6,6 +6,7 @@ use App\Livewire\Concerns\ManagesSchedule;
 use App\Models\AgendaEntry;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\ProgressStats;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -160,11 +161,18 @@ class Schedule extends Component
     {
         $task = auth()->user()->tasks()->findOrFail($id);
         $done = ! $task->is_completed;
+        $user = auth()->user();
+
+        $before = $done ? ProgressStats::todayCount($user) : null;
 
         $task->update([
             'is_completed' => $done,
             'completed_at' => $done ? now() : null,
         ]);
+
+        if ($done && ($celebration = ProgressStats::celebrationFor($user, $before)) !== null) {
+            $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
+        }
     }
 
     /** Ticks an Agenda entry off for this person only — see AgendaEntry::toggleDoneFor(). */
