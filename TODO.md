@@ -41,3 +41,13 @@ old column still holds the pre-migration state.
   done in the branch that shipped the strip — `PrepareTomorrow` would need its own wiring of the same
   computed logic (it doesn't share a base class with `Schedule`), which is meaningfully more scope than the
   original request covered.
+- **A sound for the milestone celebration** (Fortschritt & Motivation) was deliberately left out of the
+  first pass — the existing focus-timer chime pattern (`window.primeFocusAudio()`, primed on a real click
+  before the async round trip) could be reused, but audio-autoplay policy and headless-browser
+  verification are both fragile enough that it felt safer to ship the visual-only version first and see
+  whether it's missed before adding the complexity.
+- **Watch how often "Tagesziel erreicht" actually fires** once the default goal (5) has been lived with —
+  a low goal makes it an almost-daily celebration, which risks the same staleness the per-task version was
+  explicitly avoided for, just at a coarser grain. If it starts feeling routine, raising the default (or
+  making the celebration itself rarer, e.g. only on a fresh streak-day) would be the fix, not more visual
+  intensity.
