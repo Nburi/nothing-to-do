@@ -44,7 +44,7 @@
         }"
         class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm"
     >
-        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'prepare' => 'Vorbereitung', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
+        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'prepare' => 'Vorbereitung', 'progress' => 'Fortschritt', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
             <a
                 href="#{{ $id }}"
                 :aria-current="active === '{{ $id }}' ? 'true' : null"
@@ -571,6 +571,136 @@
                 @error('prepareReminderTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
             </div>
         @endif
+        </div>
+    </section>
+
+    {{-- Fortschritt --}}
+    <section id="progress" class="scroll-mt-28 space-y-5">
+        <h2 class="text-lg font-medium tracking-tight text-ink">Fortschritt</h2>
+
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Tagesziel</h3>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Wie viele Aufgaben an einem Tag als "Ziel erreicht" zählen — treibt den Ring auf der
+            <a href="{{ route('progress') }}" class="text-overprint hover:underline" wire:navigate>Fortschritt</a>-Seite
+            und eine der beiden Feier-Animationen.
+        </p>
+
+        <form wire:submit="saveDailyGoal" class="max-w-[8rem] space-y-4">
+            <div>
+                <label for="dailyTaskGoal" class="mb-1.5 block text-sm font-medium text-ink">Aufgaben pro Tag</label>
+                <input
+                    id="dailyTaskGoal"
+                    type="number"
+                    min="1"
+                    max="30"
+                    wire:model="dailyTaskGoal"
+                    class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                />
+                @error('dailyTaskGoal') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+            </div>
+
+            <div
+                x-data="{ saved: false }"
+                @daily-goal-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
+                class="flex items-center gap-3"
+            >
+                <button
+                    type="submit"
+                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                >
+                    Speichern
+                </button>
+                <span
+                    x-show="saved"
+                    x-transition:enter="transition duration-150"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition duration-300"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
+                    style="display: none;"
+                >
+                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Gespeichert
+                </span>
+            </div>
+        </form>
+        </div>
+
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Erinnerungen</h3>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            Zwei unabhängige Stupser, falls am Tag noch nichts (genug) passiert ist.
+        </p>
+
+        <div class="space-y-1">
+            <div class="flex items-center justify-between gap-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Offene Aufgaben am Abend</p>
+                    <p class="text-xs text-ink-soft">Falls dann noch "Heute"-Aufgaben offen sind.</p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleNotifyDailyReminder"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $notifyDailyReminder,
+                        'bg-line' => ! $notifyDailyReminder,
+                    ])
+                    aria-label="Erinnerung an offene Aufgaben {{ $notifyDailyReminder ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $notifyDailyReminder,
+                        'left-0.5' => ! $notifyDailyReminder,
+                    ])></span>
+                </button>
+            </div>
+
+            @if ($notifyDailyReminder)
+                <div class="max-w-[10rem] pb-2">
+                    <label for="dailyReminderTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
+                    <input
+                        id="dailyReminderTime"
+                        type="time"
+                        wire:model="dailyReminderTime"
+                        wire:change="saveDailyReminderTime"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    />
+                    @error('dailyReminderTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            @endif
+
+            <div class="flex items-center justify-between gap-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Serie in Gefahr</p>
+                    <p class="text-xs text-ink-soft">
+                        Um {{ \App\Models\User::STREAK_RISK_DUE_TIME }}, falls heute noch nichts erledigt wurde und
+                        die Serie sonst reissen würde.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleNotifyStreakRisk"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $notifyStreakRisk,
+                        'bg-line' => ! $notifyStreakRisk,
+                    ])
+                    aria-label="Serie-in-Gefahr-Erinnerung {{ $notifyStreakRisk ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $notifyStreakRisk,
+                        'left-0.5' => ! $notifyStreakRisk,
+                    ])></span>
+                </button>
+            </div>
+        </div>
         </div>
     </section>
 
