@@ -8,6 +8,7 @@ use App\Livewire\EmergencyMode;
 use App\Livewire\JoinAgendaSpace;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
+use App\Livewire\Progress;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\TaskBoard;
@@ -58,6 +59,10 @@ Route::get('/app/agenda/join/{code}', JoinAgendaSpace::class)
 Route::get('/app/crafts', CraftIdeas::class)
     ->middleware('auth')
     ->name('crafts');
+
+Route::get('/app/progress', Progress::class)
+    ->middleware('auth')
+    ->name('progress');
 
 // Presence heartbeat — see PresenceController and the heartbeat block in app.js.
 Route::post('/app/heartbeat', PresenceController::class)

@@ -169,6 +169,23 @@ class ProgressStats
     }
 
     /**
+     * 0 (no streak) through 4 (long streak) — drives the header badge's and
+     * the progress page's color escalation. Deliberately capped at `forest`:
+     * this app reserves `signal` for danger/urgency (armed delete, overdue,
+     * active emergency mode), so a *positive* streak never routes through it.
+     */
+    public static function streakTier(int $streak): int
+    {
+        return match (true) {
+            $streak <= 0 => 0,
+            $streak <= 2 => 1,
+            $streak <= 6 => 2,
+            $streak <= 13 => 3,
+            default => 4,
+        };
+    }
+
+    /**
      * Whether *this* completion (the one that just moved today's count from
      * $beforeCount to $beforeCount+1) crosses a real milestone — the daily
      * goal, or an all-time daily record. Never both at once: a record is the

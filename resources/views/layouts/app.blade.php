@@ -55,9 +55,33 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'agenda', 'emergency', 'crafts']);
+                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'agenda', 'emergency', 'crafts', 'progress']);
+                            $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
+                            $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
                         @endphp
                         <div class="flex items-center gap-1.5">
+                        {{-- Ambient streak indicator — only takes up header space once a streak
+                             actually exists (no sad "0" state). Colour escalates with the streak
+                             but is capped at forest; signal is this app's warning colour and stays
+                             reserved for that. See ProgressStats::streakTier(). --}}
+                        @if ($currentStreak > 0)
+                            <a
+                                href="{{ route('progress') }}"
+                                wire:navigate
+                                @class([
+                                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition',
+                                    'border border-line text-ink-faint hover:text-ink' => $streakTier <= 1,
+                                    'bg-contour-soft text-contour hover:brightness-95' => $streakTier === 2,
+                                    'bg-forest-soft text-forest hover:brightness-95' => $streakTier === 3,
+                                    'bg-forest text-white hover:brightness-110' => $streakTier === 4,
+                                ])
+                                title="{{ $currentStreak === 1 ? '1 Tag Serie' : $currentStreak.' Tage Serie' }} — Fortschritt ansehen"
+                            >
+                                <x-flame-icon class="h-3.5 w-3.5" />
+                                <span class="tnum">{{ $currentStreak }}</span>
+                            </a>
+                        @endif
+
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills
                              (Vorbereiten/Zeitplan/Agenda/Notfall) and the mobile-only
                              duplicate list that used to live inside the avatar menu — a
@@ -130,6 +154,25 @@
                                 ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
                                     Bastelideen
+                                </a>
+                                <a href="{{ route('progress') }}" wire:navigate @class([
+                                    'flex items-center justify-between gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('progress'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('progress'),
+                                ]) @if(request()->routeIs('progress')) aria-current="page" @endif>
+                                    <span class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16.5V11m5.5 5.5V6M15 16.5V9"/></svg>
+                                        Fortschritt
+                                    </span>
+                                    @if ($currentStreak > 0)
+                                        <span @class([
+                                            'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none',
+                                            'bg-paper text-ink-faint' => $streakTier <= 1,
+                                            'bg-contour-soft text-contour' => $streakTier === 2,
+                                            'bg-forest-soft text-forest' => $streakTier === 3,
+                                            'bg-forest text-white' => $streakTier === 4,
+                                        ])>{{ $currentStreak }}</span>
+                                    @endif
                                 </a>
                                 {{-- Notfall is always listed here now (no longer conditionally
                                      hidden from the header) — an "Aktiv" badge communicates the
