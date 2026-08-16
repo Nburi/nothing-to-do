@@ -204,6 +204,18 @@ class ScheduleSettingsTest extends TestCase
         $this->assertFalse($user->refresh()->notify_event_start);
     }
 
+    public function test_it_toggles_the_event_upcoming_notification_setting(): void
+    {
+        $user = User::factory()->create(['notify_event_upcoming' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('toggleNotifyEventUpcoming');
+        $this->assertTrue($user->refresh()->notify_event_upcoming);
+
+        Livewire::test(Settings::class)->call('toggleNotifyEventUpcoming');
+        $this->assertFalse($user->refresh()->notify_event_upcoming);
+    }
+
     public function test_it_toggles_the_pomo_start_notification_setting(): void
     {
         $user = User::factory()->create(['notify_pomo_start' => false]);

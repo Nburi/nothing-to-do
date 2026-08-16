@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // minute — see CLAUDE.md §9 Deployment.
         $schedule->command('app:advance-pomodoro-phases')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-event-start-notifications')->everyMinute()->withoutOverlapping();
+        $schedule->command('app:send-event-upcoming-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-prepare-reminders')->everyMinute()->withoutOverlapping();
     })
     ->create();

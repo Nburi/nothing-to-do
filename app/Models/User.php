@@ -18,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
 #[Fillable([
     'name', 'email', 'password', 'task_reset_time',
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
-    'notify_event_start', 'notify_pomo_start', 'notify_break_start',
+    'notify_event_start', 'notify_pomo_start', 'notify_break_start', 'notify_event_upcoming',
     'timezone_offset', 'timezone_auto_dst',
     'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
@@ -333,6 +333,7 @@ class User extends Authenticatable
             'notify_event_start' => 'boolean',
             'notify_pomo_start' => 'boolean',
             'notify_break_start' => 'boolean',
+            'notify_event_upcoming' => 'boolean',
             'prepared_on' => 'date',
             'prepare_reminder_sent_on' => 'date',
             'prepare_prompt_dismissed_on' => 'date',

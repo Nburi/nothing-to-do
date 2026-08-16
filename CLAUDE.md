@@ -137,9 +137,9 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (`work/short_break/long_break/long_every`), consumed by `PomodoroCycle` and any category's focus timer.
   `pomodoro_autostart` (bool, default `false`) governs whether a phase transition *after* the first
   (always-manual) work session continues on its own or freezes awaiting a manual continue — see
-  `ScheduleEvent::pomodoroPhaseNow()` below. `notify_event_start`/`notify_pomo_start`/`notify_break_start`
-  (bools, default `false`) independently gate the three browser-notification triggers (Settings'
-  Benachrichtigungen card) — see §7 Schedule "Notifications". Also carries manual timezone settings —
+  `ScheduleEvent::pomodoroPhaseNow()` below. `notify_event_start`/`notify_pomo_start`/`notify_break_start`/
+  `notify_event_upcoming` (bools, default `false`) independently gate the four browser-notification triggers
+  (Settings' Benachrichtigungen card) — see §7 Schedule "Notifications". Also carries manual timezone settings —
   `timezone_offset` (a plain UTC-offset integer entered by the
   user, e.g. `+1`, not an IANA zone; defaults to `0` so an unconfigured account behaves exactly like the
   server clock) and `timezone_auto_dst` (adds +1 hour automatically while European DST is active, detected
@@ -557,10 +557,10 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   task suggestion opens the existing inline edit sheet (`startEdit`), a project suggestion links to its
   project page.
 - **Notifications** — real **Web Push** (VAPID), delivered by the OS/browser even with the app's tab, and
-  the whole browser, fully closed. Three independent per-type toggles still gate *which* moments push
-  (`notify_event_start`, `notify_pomo_start`, `notify_break_start` on `User`; Settings' Benachrichtigungen
-  card), all default `false` — but delivery itself no longer depends on any tab being open, since the
-  server decides when to send.
+  the whole browser, fully closed. Four independent per-type toggles still gate *which* moments push
+  (`notify_event_start`, `notify_pomo_start`, `notify_break_start`, `notify_event_upcoming` on `User`;
+  Settings' Benachrichtigungen card), all default `false` — but delivery itself no longer depends on any tab
+  being open, since the server decides when to send.
   - **Subscribing** — Settings' Benachrichtigungen card has an Aktivieren/Deaktivieren control
     (`resources/js/app.js`'s `window.subscribeToPush(vapidPublicKey)` requests Notification permission,
     then `navigator.serviceWorker.ready` → `pushManager.subscribe({applicationServerKey: ...})`) that POSTs
@@ -608,6 +608,13 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
     `ScheduleEvent::withNotifiedReset(array $updates)` clears `notified_at` whenever `start_time` changes,
     wired into every write path that can move one (`ManagesSchedule::saveEventForm/moveEvent/resizeEvent`,
     `ScheduleEventController::update()`), so a rescheduled event is eligible to notify again at its new time.
+  - **A 5-minute heads-up before a schedule event's start time** (`notify_event_upcoming`) — a fourth,
+    independent toggle alongside (not a replacement for) `notify_event_start`: a user can opt into either,
+    both, or neither. The scheduled command **`app:send-event-upcoming-notifications`** (every minute) mirrors
+    `app:send-event-start-notifications` structurally, but is due once `ScheduleEvent::startInstantUtc(User)
+    ->subMinutes(5)` has passed, and dedups via its own column, `schedule_events.notified_upcoming_at` — a
+    separate flag from `notified_at`, since one event can fire both notifications independently.
+    `ScheduleEvent::withNotifiedReset()` clears both columns together whenever `start_time`/`date` changes.
   - **`public/sw.js`** has `push` (shows the OS notification) and `notificationclick` (focuses/opens the app)
     listeners alongside its pre-existing offline-caching handlers.
 - **Shared mutations** live in **`App\Livewire\Concerns\ManagesSchedule`** (used by `Schedule`): create/edit/
@@ -965,9 +972,9 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 **Cron is required** as of the Web Push feature: `php artisan schedule:run` must run every minute (a
 single crontab line, see step 10 above) — it drives `app:advance-pomodoro-phases`,
-`app:send-event-start-notifications`, and `app:send-prepare-reminders`, the three commands that make
-Pomodoro/event-start/Vorbereitung push notifications fire even with no tab open. No separate queue worker is
-needed (notifications send synchronously inline).
+`app:send-event-start-notifications`, `app:send-event-upcoming-notifications`, and `app:send-prepare-reminders`,
+the four commands that make Pomodoro/event-start/event-upcoming/Vorbereitung push notifications fire even with
+no tab open. No separate queue worker is needed (notifications send synchronously inline).
 
 ---
 

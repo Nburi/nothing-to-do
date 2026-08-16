@@ -206,6 +206,12 @@ class Settings extends Component
         $user->update(['notify_break_start' => ! $user->notify_break_start]);
     }
 
+    public function toggleNotifyEventUpcoming(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_event_upcoming' => ! $user->notify_event_upcoming]);
+    }
+
     /** Persists a browser's Web Push subscription so the server can notify it even with every tab closed. */
     public function subscribeToPush(string $endpoint, string $p256dh, string $authToken): void
     {

@@ -694,6 +694,7 @@
                     ['key' => 'notify_event_start', 'action' => 'toggleNotifyEventStart', 'label' => 'Beginn von Terminen & Kategorien', 'hint' => 'Jeder Zeitplan-Block, sobald seine Startzeit erreicht ist.'],
                     ['key' => 'notify_pomo_start', 'action' => 'toggleNotifyPomoStart', 'label' => 'Start einer Pomodoro-Session', 'hint' => 'Die erste Session und jede automatisch/manuell folgende.'],
                     ['key' => 'notify_break_start', 'action' => 'toggleNotifyBreakStart', 'label' => 'Start einer Pause', 'hint' => 'Kurze und lange Pausen.'],
+                    ['key' => 'notify_event_upcoming', 'action' => 'toggleNotifyEventUpcoming', 'label' => '5 Minuten vor Terminen & Kategorien', 'hint' => 'Ein zusätzlicher Hinweis, kurz bevor ein Zeitplan-Block beginnt.'],
                 ];
             @endphp
             @foreach ($notifyRows as $row)
