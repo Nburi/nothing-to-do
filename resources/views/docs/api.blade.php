@@ -85,6 +85,7 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_event_start</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_pomo_start</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_break_start</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_event_upcoming</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_offset</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_auto_dst</code>.
                     </p>

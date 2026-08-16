@@ -36,6 +36,7 @@ class ScheduleEvent extends Model
         'pomodoro_phase',
         'pomodoro_cycle',
         'notified_at',
+        'notified_upcoming_at',
     ];
 
     protected function casts(): array
@@ -46,6 +47,7 @@ class ScheduleEvent extends Model
             'pomodoro_started_at' => 'datetime',
             'pomodoro_cycle' => 'integer',
             'notified_at' => 'datetime',
+            'notified_upcoming_at' => 'datetime',
         ];
     }
 
@@ -144,10 +146,12 @@ class ScheduleEvent extends Model
 
     /**
      * Wrap an update payload so a `start_time` OR `date` change also clears
-     * the event-start notification dedupe flag — a rescheduled event should
-     * be eligible to notify again at its new date/time (a date-only move,
-     * e.g. dragging an already-notified event to tomorrow at the same clock
-     * time, must reset it too, or it silently never notifies again).
+     * both notification dedupe flags — a rescheduled event should be
+     * eligible to notify again at its new date/time (a date-only move, e.g.
+     * dragging an already-notified event to tomorrow at the same clock time,
+     * must reset it too, or it silently never notifies again). Both
+     * `notified_at` (at start) and `notified_upcoming_at` (5 min before) are
+     * independent opt-ins, so both are reset together here.
      */
     public function withNotifiedReset(array $updates): array
     {
@@ -156,6 +160,7 @@ class ScheduleEvent extends Model
 
         if ($startChanged || $dateChanged) {
             $updates['notified_at'] = null;
+            $updates['notified_upcoming_at'] = null;
         }
 
         return $updates;

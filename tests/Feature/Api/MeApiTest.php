@@ -29,6 +29,7 @@ class MeApiTest extends TestCase
             ->assertJsonPath('notify_event_start', false)
             ->assertJsonPath('notify_pomo_start', false)
             ->assertJsonPath('notify_break_start', false)
+            ->assertJsonPath('notify_event_upcoming', false)
             ->assertJsonStructure(['pomodoro' => ['work', 'short_break', 'long_break', 'long_every']]);
     }
 
@@ -58,17 +59,20 @@ class MeApiTest extends TestCase
             'notify_event_start' => true,
             'notify_pomo_start' => true,
             'notify_break_start' => true,
+            'notify_event_upcoming' => true,
         ])
             ->assertOk()
             ->assertJsonPath('pomodoro_autostart', true)
             ->assertJsonPath('notify_event_start', true)
             ->assertJsonPath('notify_pomo_start', true)
-            ->assertJsonPath('notify_break_start', true);
+            ->assertJsonPath('notify_break_start', true)
+            ->assertJsonPath('notify_event_upcoming', true);
 
         $user->refresh();
         $this->assertTrue((bool) $user->pomodoro_autostart);
         $this->assertTrue((bool) $user->notify_event_start);
         $this->assertTrue((bool) $user->notify_pomo_start);
         $this->assertTrue((bool) $user->notify_break_start);
+        $this->assertTrue((bool) $user->notify_event_upcoming);
     }
 }

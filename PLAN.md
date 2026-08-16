@@ -1,62 +1,56 @@
-# PLAN — Fällige Termine im Zeitplan
+# PLAN — Erinnerung 5 Minuten vor Termin/Kategorie-Start
 
 ## Ausgangslage (bestätigt im Code)
-- `Task.deadline` = **Deadline · hart**, `Task.due_date` = **Wunschtermin · weich** (beide `date`, keine Uhrzeit).
-- Prüfungen/Hausaufgaben sind `AgendaEntry` (`type` = `exam`|`homework`, Feld `date`), inkl. geteilter Klassen-Einträge.
-- `App\Livewire\Schedule` (`/app/schedule`) ist ein zeitskaliertes Raster 06:00–23:00 (Woche auf Desktop, ein Tag
-  auf Mobile). Diese Einträge haben keine Uhrzeit — sie brauchen eine eigene "Ganztags"-Zone oberhalb des Rasters,
-  nicht einen Platz auf der Zeitachse.
-- Bestehende Farbsprache (aus `task-card.blade.php` / `agenda-entry.blade.php`, wird 1:1 übernommen):
-  Deadline (hart) = **contour**, Wunschtermin (weich) = neutral/`ink-faint`, überfällig = **signal**,
-  Hausaufgabe = **forest**, Prüfung = **overprint**.
-
-## Entschieden mit dem User
-1. **Vorschau nur für harte Termine** — Deadline, Hausaufgabe, Prüfung. Wunschtermin (weich) erscheint nur am
-   eigenen Tag, nie als Vorschau.
-2. **Klick = direkt abhaken** (Task `toggleComplete` / Agenda `toggleDoneFor`). Ein kleiner Pfeil daneben
-   springt zur Quelle (Board bzw. Agenda-Seite) — kein Deep-Link auf den einzelnen Eintrag.
-3. **Erledigtes wird ausgeblendet**, konsistent mit Board/Agenda.
+- Es gibt bereits `notify_event_start` (User-Flag) + den Minuten-Cronjob `app:send-event-start-notifications`,
+  der genau **im Moment des Starts** eine Push-Benachrichtigung schickt. Dedup über `schedule_events.notified_at`
+  (nicht ein festes Zeitfenster — ein verpasster/verzögerter Tick holt die Benachrichtigung beim nächsten Lauf
+  trotzdem nach, siehe `ScheduleEvent::startInstantUtc()`).
+- Zwei weitere, unabhängige Push-Toggles existieren nach demselben Muster: `notify_pomo_start`,
+  `notify_break_start` — jeweils eigene Spalte, eigener Schalter in Settings, eigenes Verhalten.
+- Alle drei Toggles sind auch über die Shortcuts-API sichtbar/setzbar (`MeController::show/update`).
 
 ## Produkt
 
-Neue "Ganztags-Zone" oberhalb des Stunden-Rasters, in beiden Ansichten (Desktop-Wochen-Raster, Mobile-Tagesansicht):
-pro Tag eine kleine Liste von Chips — Titel + farbiger Punkt je Typ, Checkbox links, Pfeil-Icon rechts (öffnet
-Board/Agenda). Vorschau-Chips (N Tage vorher) sind gestrichelt umrandet und tragen ein kleines "in Nd"-Label
-(Tooltip: "in N Tagen fällig"). Mehr als 2 Einträge an einem Tag → "+N weitere" (Alpine-Disclosure, kein
-Round-Trip), gleiches Muster wie an anderen Stellen der App (Notfallmodus, Bastelideen). Mockup wurde dem User
-gezeigt und bestätigt.
+**Neuer, unabhängiger vierter Toggle** ("5 Minuten vorher") — zusätzlich zum bestehenden "Beginn"-Toggle, nicht
+als Ersatz dafür. Grund: gleiches Muster wie die drei bestehenden Toggles — frei kombinierbar (nur bei Start,
+nur vorher, oder beides), Default **aus**, wie alle anderen Notify-Toggles.
+
+- Settings → Benachrichtigungen: vierte Zeile in der bestehenden Toggle-Liste.
+  - Label: „5 Minuten vor Terminen & Kategorien"
+  - Hint: „Ein zusätzlicher Hinweis, kurz bevor ein Zeitplan-Block beginnt."
+- Push-Text: „{Titel} beginnt in 5 Minuten" (analog zum bestehenden „{Titel} beginnt jetzt").
+- Gilt für Termine **und** Kategorie-Blöcke gleichermaßen (wie der bestehende Start-Toggle auch).
 
 ## Umsetzung
 
-### Datenmodell
-- Migration: `users.deadline_preview_enabled` (bool, default **true**) + `users.deadline_preview_days`
-  (unsigned tinyint, default **2**).
-- `User`: Fillable-Attribut, Cast, `$attributes` Default `true` für `deadline_preview_enabled` (gleiches Muster
-  wie `show_presence`, wegen des bekannten "fresh model"-Gotchas, siehe CLAUDE.md §10).
+- **Migration 1** (`users`): `notify_event_upcoming` (bool, default `false`).
+- **Migration 2** (`schedule_events`): `notified_upcoming_at` (timestamp, nullable) — eigene Dedup-Spalte,
+  unabhängig von `notified_at`, weil beide Benachrichtigungen unabhängig voneinander an/aus geschaltet werden
+  können und ein Event beide auslösen kann.
+- **`ScheduleEvent::withNotifiedReset()`**: setzt bei Start-/Datumsänderung künftig auch `notified_upcoming_at`
+  zurück (bisher nur `notified_at`).
+- **Neuer Command `app:send-event-upcoming-notifications`** (jede Minute, `bootstrap/app.php`), strukturell
+  identisch zu `SendEventStartNotifications`, aber:
+  - Filter auf `notify_event_upcoming = true` statt `notify_event_start`.
+  - Fällig, sobald `startInstantUtc() - 5 Minuten <= now` (statt `startInstantUtc() <= now`).
+  - Dedup über `notified_upcoming_at` statt `notified_at`.
+- **`Settings::toggleNotifyEventUpcoming()`** + vierte Zeile in `settings.blade.php`s `$notifyRows`.
+- **API**: `notify_event_upcoming` in `MeController::show()` (Ausgabe) und `::update()` (Validierung), plus
+  Erwähnung in `docs/api.blade.php` — Shortcuts-Nutzer sollen den neuen Toggle genauso setzen können wie die
+  drei bestehenden.
+- **Tests**: `SendEventUpcomingNotificationsTest.php` (analog zu `SendEventStartNotificationsTest.php`: einmalig
+  benachrichtigt, kein Duplikat bei zweitem Lauf, deaktiviertes Flag, zu weit in der Zukunft, Timezone-Offset,
+  verpasster Tick, stornierter Termin) + ein Toggle-Test in `ScheduleSettingsTest.php` + API-Test-Ergänzung in
+  `MeApiTest.php`.
+- **CLAUDE.md**: §7 „Notifications" um den neuen Toggle/Command ergänzen, §9 Deployment-Cron-Hinweis um den
+  neuen Command erweitern (kein neuer Cron-Eintrag nötig — läuft über denselben `schedule:run`, aber die
+  Aufzählung der Commands, die davon abhängen, muss stimmen).
 
-### Settings
-Neue Karte unter "Zeitplan & Fokus" (`App\Livewire\Settings`): Toggle "Vorschau aktivieren" + Zahlenfeld "Tage
-vorher" (min 0, max 14), gemeinsam gespeichert über `saveDeadlinePreview()` — gleiches Formular-Muster wie die
-Pomodoro-Karte.
+Branch: `feature/event-upcoming-notification` (von `main`), da mehr als eine Datei/ein Commit betroffen ist.
 
-### `App\Livewire\Schedule`
-- Neue `#[Computed] deadlineItems()`: liest aktive `Task`s mit `deadline`/`due_date` sowie für den User sichtbare,
-  offene `AgendaEntry`s, baut je Eintrag 1 (Ist-Tag) oder 2 Datensätze (Ist-Tag + Vorschau-Tag, nur bei harten
-  Terminen und aktivierter Vorschau), gruppiert nach Datum, gefiltert auf die sichtbare Woche.
-- Neue Actions `toggleDeadlineTaskDone(int $id)` / `toggleDeadlineAgendaDone(int $id)`, beide über die
-  Owner-/Sichtbarkeits-Relation aufgelöst (kein Vertrauen auf die id allein).
+## Entscheidung
 
-### Views
-- Neue Partials `partials/schedule-deadline-strip.blade.php` (ein Tag) und
-  `partials/schedule-deadline-item.blade.php` (ein Chip), in `schedule.blade.php` sowohl im Desktop- als auch
-  im Mobile-Zweig eingebunden.
+_(aus Schritt 4)_
 
-### Tests
-`ScheduleDeadlineItemsTest.php`: Anzeige am eigenen Tag, Vorschau N Tage vorher, keine Vorschau bei
-deaktiviertem Setting, benutzerdefiniertes N, Wunschtermin bekommt nie eine Vorschau, erledigte Einträge werden
-ausgeblendet, Toggle-Actions sind owner-/sichtbarkeits-scoped, Settings-Validierung.
-
-### Bewusst außerhalb des Umfangs
-Die "Vorbereitung für morgen"-Ansicht (`/app/prepare`, Schritt 3) hat ein eigenes, kleineres Tages-Zeitfenster
-und würde eine eigene Verdrahtung derselben Logik brauchen — nicht Teil dieser Anfrage, wird im Abschlussbericht
-als mögliche spätere Erweiterung erwähnt.
+Bestätigt wie vorgeschlagen: eigener, unabhängiger vierter Toggle „5 Minuten vorher" (nicht Ersatz für den
+bestehenden „Beginn"-Toggle).

@@ -24,6 +24,7 @@ class MeController extends Controller
             'notify_event_start' => (bool) $user->notify_event_start,
             'notify_pomo_start' => (bool) $user->notify_pomo_start,
             'notify_break_start' => (bool) $user->notify_break_start,
+            'notify_event_upcoming' => (bool) $user->notify_event_upcoming,
             'timezone_offset' => $user->timezoneOffsetHours(),
             'timezone_auto_dst' => (bool) $user->timezone_auto_dst,
             'local_now' => $user->localNow()->toIso8601String(),
@@ -52,6 +53,7 @@ class MeController extends Controller
             'notify_event_start' => ['sometimes', 'boolean'],
             'notify_pomo_start' => ['sometimes', 'boolean'],
             'notify_break_start' => ['sometimes', 'boolean'],
+            'notify_event_upcoming' => ['sometimes', 'boolean'],
             'timezone_offset' => ['sometimes', 'numeric', 'between:-12,14'],
             'timezone_auto_dst' => ['sometimes', 'boolean'],
         ]);
