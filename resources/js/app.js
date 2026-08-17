@@ -215,6 +215,41 @@ document.addEventListener('alpine:init', () => {
     /** Which task id (if any) the mobile long-press project-picker sheet is open for. */
     window.Alpine.store('projectPicker', { taskId: null });
     /**
+     * Non-blocking "something happened" celebration — topographic rings plus a
+     * handful of line-mark particles, fired only by the two real milestones in
+     * ProgressStats::celebrationFor() (daily goal reached, new all-time daily
+     * record) via a 'celebrate' browser event dispatched from wherever a task
+     * was just completed (board, project page, or the Zeitplan deadline strip
+     * — see the overlay mounted once in layouts/app.blade.php). Auto-hides
+     * itself; there is nothing to confirm or dismiss, unlike a dialog.
+     */
+    window.Alpine.store('celebration', {
+        visible: false,
+        kind: null,
+        label: '',
+        particles: [],
+        _timer: null,
+        fire(kind, label) {
+            this.kind = kind;
+            this.label = label;
+            this.particles = Array.from({ length: 12 }, (_, i) => {
+                const angle = (Math.PI * 2 * i) / 12 + (Math.random() * 0.35 - 0.175);
+                const distance = 46 + Math.random() * 36;
+
+                return {
+                    id: i,
+                    dx: Math.round(Math.cos(angle) * distance),
+                    dy: Math.round(Math.sin(angle) * distance),
+                    rotate: Math.round(Math.random() * 360),
+                    delay: Math.round(Math.random() * 120),
+                };
+            });
+            this.visible = true;
+            clearTimeout(this._timer);
+            this._timer = setTimeout(() => { this.visible = false; }, 1700);
+        },
+    });
+    /**
      * Open/closed state of the app-wide capture panel (see QuickCapture). This is
      * ephemeral UI state, so it lives here rather than on the Livewire component —
      * opening the panel then costs no round trip at all.

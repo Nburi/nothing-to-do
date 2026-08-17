@@ -28,5 +28,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:send-event-start-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-event-upcoming-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-prepare-reminders')->everyMinute()->withoutOverlapping();
+        $schedule->command('app:send-progress-reminders')->everyMinute()->withoutOverlapping();
     })
     ->create();

@@ -3,6 +3,7 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Task;
+use App\Services\ProgressStats;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -61,11 +62,20 @@ trait ManagesTasks
     {
         $task = $this->userTask($id);
         $done = ! $task->is_completed;
+        $user = auth()->user();
+
+        // Captured before the write: ProgressStats::celebrationFor() needs to know
+        // where today's count stood a moment ago to detect the exact crossing.
+        $before = $done ? ProgressStats::todayCount($user) : null;
 
         $task->update([
             'is_completed' => $done,
             'completed_at' => $done ? now() : null,
         ]);
+
+        if ($done && ($celebration = ProgressStats::celebrationFor($user, $before)) !== null) {
+            $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
+        }
     }
 
     public function startEdit(int $id): void

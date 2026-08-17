@@ -47,6 +47,15 @@ class Settings extends Component
 
     public ?string $prepareReminderTime = null;
 
+    // Fortschritt
+    public int $dailyTaskGoal = 5;
+
+    public bool $notifyDailyReminder = false;
+
+    public string $dailyReminderTime = '19:00';
+
+    public bool $notifyStreakRisk = false;
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -70,6 +79,10 @@ class Settings extends Component
         $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
         $this->prepareReminderMode = $user->prepare_reminder_mode ?? 'off';
         $this->prepareReminderTime = $user->prepare_reminder_time;
+        $this->dailyTaskGoal = $user->dailyTaskGoal();
+        $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
+        $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
+        $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
     }
 
     public function save(): void
@@ -153,6 +166,44 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['prepare_reminder_time' => $data['prepareReminderTime']]);
+    }
+
+    /** How many tasks completed in one day counts as "hit the daily goal" — drives the progress ring and one of the two celebrations. */
+    public function saveDailyGoal(): void
+    {
+        $data = $this->validate([
+            'dailyTaskGoal' => ['required', 'integer', 'min:1', 'max:30'],
+        ]);
+
+        auth()->user()->update(['daily_task_goal' => $data['dailyTaskGoal']]);
+
+        $this->dispatch('daily-goal-saved');
+    }
+
+    /** Evening push if today still has open "Heute"-flagged tasks — an immediate-save toggle like the notify_* rows below. */
+    public function toggleNotifyDailyReminder(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_daily_reminder' => ! $user->notify_daily_reminder]);
+        $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
+    }
+
+    /** Only relevant while the reminder above is on — saves on change, no separate submit button (mirrors savePrepareReminderTime). */
+    public function saveDailyReminderTime(): void
+    {
+        $data = $this->validate([
+            'dailyReminderTime' => ['required', 'date_format:H:i'],
+        ]);
+
+        auth()->user()->update(['daily_reminder_time' => $data['dailyReminderTime']]);
+    }
+
+    /** "Last call" push at User::STREAK_RISK_DUE_TIME if the streak would otherwise break today. */
+    public function toggleNotifyStreakRisk(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
+        $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
     }
 
     /** The presence toggle only means something to someone who is in a class. */

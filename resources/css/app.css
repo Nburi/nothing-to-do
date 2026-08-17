@@ -237,6 +237,43 @@
         }
     }
 
+    /* Milestone celebration (ProgressStats::celebrationFor) — concentric topographic
+       rings plus a handful of flying line-mark particles. Positioning (inset/left/top)
+       lives here so the Alpine template only needs to set the per-particle --dx/--dy/
+       --rotate custom properties. Respects prefers-reduced-motion via the global
+       animation-collapse rule in @layer utilities below — nothing extra needed here. */
+    @keyframes celebrate-ring {
+        0% { transform: scale(0.5); opacity: 0.9; }
+        100% { transform: scale(1.9); opacity: 0; }
+    }
+    .celebrate-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        border: 1.5px solid rgb(var(--forest));
+        animation: celebrate-ring 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .celebrate-ring--record {
+        border-color: rgb(var(--overprint));
+    }
+    @keyframes celebrate-particle {
+        0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
+        100% { transform: translate(calc(-50% + var(--dx, 40px)), calc(-50% + var(--dy, 40px))) rotate(var(--rotate, 90deg)); opacity: 0; }
+    }
+    .celebrate-particle {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 3px;
+        height: 10px;
+        border-radius: 2px;
+        background: rgb(var(--forest));
+        animation: celebrate-particle 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) both;
+    }
+    .celebrate-particle--record {
+        background: rgb(var(--overprint));
+    }
+
     /* While a task is being dragged, project cards hint that they accept a drop. */
     body.dragging-task .project-drop {
         outline: 1.5px dashed rgb(var(--line));

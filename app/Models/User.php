@@ -26,6 +26,9 @@ use Laravel\Sanctum\HasApiTokens;
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
     'homework_preview_enabled',
+    'daily_task_goal',
+    'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
+    'notify_streak_risk', 'streak_risk_sent_on',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -47,6 +50,10 @@ class User extends Authenticatable
         'show_presence' => true,
         'deadline_preview_enabled' => true,
         'homework_preview_enabled' => true,
+        'daily_task_goal' => 5,
+        'notify_daily_reminder' => false,
+        'daily_reminder_time' => '19:00',
+        'notify_streak_risk' => false,
     ];
 
     /** @return HasMany<Task, $this> */
@@ -318,8 +325,23 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the attributes that should be cast.
-     *
+     * How many tasks completed in one local calendar day counts as "hit the daily
+     * goal" — drives the progress ring and the "goal reached" celebration (see
+     * ProgressStats::celebrationFor()).
+     */
+    public function dailyTaskGoal(): int
+    {
+        return (int) ($this->daily_task_goal ?? 5);
+    }
+
+    /**
+     * Fixed "last call" time for the streak-at-risk push — deliberately not
+     * user-configurable (mirrors prepareReminderDueTime()'s 'automatic' fallback):
+     * one plain warning shortly before midnight, not another field to tune.
+     */
+    public const STREAK_RISK_DUE_TIME = '21:00';
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -342,6 +364,11 @@ class User extends Authenticatable
             'deadline_preview_enabled' => 'boolean',
             'deadline_preview_days' => 'integer',
             'homework_preview_enabled' => 'boolean',
+            'daily_task_goal' => 'integer',
+            'notify_daily_reminder' => 'boolean',
+            'daily_reminder_sent_on' => 'date',
+            'notify_streak_risk' => 'boolean',
+            'streak_risk_sent_on' => 'date',
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Livewire\EmergencyMode;
 use App\Livewire\JoinAgendaSpace;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
+use App\Livewire\Progress;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\TaskBoard;
@@ -18,6 +19,31 @@ Route::get('/', function () {
         ? redirect()->route('app')
         : view('welcome');
 })->name('home');
+
+// Only "/" is public (everything else sits behind auth), so both files are
+// generated rather than static — that keeps them correct for whatever
+// APP_URL the app is actually deployed under, with no hardcoded domain.
+Route::get('/robots.txt', function () {
+    return response(
+        "User-agent: *\nDisallow: /app\nDisallow: /profile\nDisallow: /docs\n\nSitemap: ".url('/sitemap.xml')."\n"
+    )->header('Content-Type', 'text/plain');
+})->name('robots');
+
+Route::get('/sitemap.xml', function () {
+    $sitemapUrl = url('/');
+    $xml = <<<XML
+    <?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <url>
+            <loc>{$sitemapUrl}</loc>
+            <changefreq>monthly</changefreq>
+            <priority>1.0</priority>
+        </url>
+    </urlset>
+    XML;
+
+    return response($xml)->header('Content-Type', 'application/xml');
+})->name('sitemap');
 
 Route::get('/app', TaskBoard::class)
     ->middleware('auth')
@@ -58,6 +84,10 @@ Route::get('/app/agenda/join/{code}', JoinAgendaSpace::class)
 Route::get('/app/crafts', CraftIdeas::class)
     ->middleware('auth')
     ->name('crafts');
+
+Route::get('/app/progress', Progress::class)
+    ->middleware('auth')
+    ->name('progress');
 
 // Presence heartbeat — see PresenceController and the heartbeat block in app.js.
 Route::post('/app/heartbeat', PresenceController::class)

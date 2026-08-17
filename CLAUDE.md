@@ -111,7 +111,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (372 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (532 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -151,6 +151,10 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   (`pomodoroPhaseNow`) deliberately keeps using the raw, unshifted `now()` — it's a pure elapsed-time diff
   against `pomodoro_started_at`, so a timezone shift would cancel out at best and corrupt the countdown at
   worst if applied inconsistently. Configured in **Settings**' Zeitzone card (`saveTimezone()`).
+  `daily_task_goal`/`notify_daily_reminder`/`daily_reminder_time`/`daily_reminder_sent_on`/
+  `notify_streak_risk`/`streak_risk_sent_on` back the Fortschritt feature (see its own section below)
+  — `dailyTaskGoal()` and the `STREAK_RISK_DUE_TIME` constant live on `User` alongside the other
+  per-user rhythm helpers above.
 - **`Project`** — `user_id, name, brainstorm, external_url, sort_order, timestamps`. `hasMany Task`; `activeTasks` is the ordered
   uncompleted working set. `externalServiceName()` detects the service label from the URL (Jira, GitHub, Linear, etc.).
   Scopes: `forUser`, `ordered`.
@@ -894,6 +898,63 @@ here applies to the single-user rest of the app.
   target from anywhere else (see Schnellerfassung above). Ideas are still only ever browsed/actioned on the
   dedicated `/app/crafts` page.
 
+### Fortschritt & Motivation (built)
+- "How did today go", made visible without inventing a second bookkeeping system: everything here
+  reads from **`tasks.completed_at`**, the one field the app already writes. No XP/points — the
+  "game" feel comes from a streak counter and a GitHub-style completion heatmap, both well-worn,
+  calm patterns, not a scoring system.
+- **`App\Services\ProgressStats`** (stateless, like `PomodoroCycle`/`TaskSuggestor`) turns that one
+  column into every number this feature needs: `completedCountsByDay()` (one query, reused by
+  everything else — never call this in a loop), `todayCount()`, `currentStreak()` (consecutive
+  **local calendar days** — `User::localToday()`, deliberately *not* `completedWindowStart()`, which
+  is a separate, board-only "how long do completed cards stay visible" concept), `bestStreak()`,
+  `bestDailyCount()`, `heatmap()` (12 weeks × 7 days, level 0–4 **relative to the user's own daily
+  goal** rather than a fixed absolute count, so the heatmap doesn't read as permanently full/empty
+  depending on the goal chosen), and `streakTier()` (0–4, drives every streak color escalation).
+  `completedCountsByDay()` shifts each timestamp using the user's offset **at that instant**
+  (`User::utcOffsetMinutes($task->completed_at)`), not "now" — a DST-auto user has a different offset
+  in July than in January, and this spans their whole history.
+- **`App\Livewire\Progress`** (`/app/progress`, `route('progress')`) — a read-only page (three stat
+  tiles: today-vs-goal ring, streak + best streak, lifetime total; then the heatmap; then a
+  best-single-day callout). Reachable from the header "Mehr" menu like every other feature page.
+- **The header streak badge** (hand-drawn `<x-flame-icon>`, no emoji) sits next to "Mehr" — rendered
+  **only once `currentStreak() >= 1`**, so a fresh account's header looks exactly like it always did
+  (no sad "0" state). Color escalates with `streakTier()` but is **capped at `forest`**: this app
+  reserves `signal` for danger/urgency (armed delete, overdue, active emergency mode), so a positive
+  streak never routes through it — a deliberate correction made during this feature's plan review.
+- **Milestone celebration** — a non-blocking overlay (concentric topographic rings + a dozen flying
+  line-mark particles, `resources/js/app.js`'s `celebration` Alpine store, mounted **once** in
+  `layouts/app.blade.php` rather than inside any one Livewire component, so it fires no matter which
+  page a task gets completed from) triggered by a `celebrate` browser event carrying `{kind, label}`.
+  Fires for exactly two milestones, computed by **`ProgressStats::celebrationFor(User $user, int
+  $beforeCount): ?array`** — called from both real "mark a task done" sites
+  (`ManagesTasks::toggleComplete()`, used by the board and `ProjectPage`; and the duplicated
+  `Schedule::toggleDeadlineTaskDone()` on the Zeitplan's deadline strip), which each capture
+  `$beforeCount = ProgressStats::todayCount($user)` **before** the `$task->update(...)` so the
+  crossing can be detected precisely instead of re-comparing aggregates after the fact (a naive
+  after-the-write comparison either misfires on every later completion of a record day, or can't tell
+  "just tied the record" from "already led it two tasks ago"):
+  - **Tagesziel erreicht** — the exact completion where today's count first reaches `daily_task_goal`.
+  - **Neuer Bestwert** — the exact completion where today's count first exceeds the all-time daily
+    record. Wins over a simultaneous goal-crossing (rarer, bigger achievement). A record can only be
+    *broken*, never *set from nothing* — the first tasks ever completed don't celebrate "record: 1".
+  Deliberately **not** wired into the API controllers — there is no browser there to show anything to.
+  No sound in this pass (autoplay-policy risk, hard to verify headless — see `TODO.md`).
+- **Settings** has a **Fortschritt** tab: `daily_task_goal` (1–30, default 5, `saveDailyGoal()` —
+  form-submit-with-flash like the reset-time card) and two independent immediate-save reminder
+  toggles, mirroring the `notify_*` rows and the Vorbereitung reminder-time field.
+- **Reminders** — the scheduled command **`app:send-progress-reminders`** (every minute, registered
+  in `bootstrap/app.php` alongside the other four — same cron requirement, no new deployment step):
+  - **Offene Aufgaben am Abend** (`notify_daily_reminder` / `daily_reminder_time`, default 19:00) —
+    once that time has passed, if today still has open "Heute"-flagged board tasks. Dedup:
+    `daily_reminder_sent_on`.
+  - **Serie in Gefahr** (`notify_streak_risk`, fixed `User::STREAK_RISK_DUE_TIME` = 21:00, **not**
+    user-configurable — a plain last-call warning, not another field to tune) — once that time has
+    passed, if `currentStreak()` is still > 0 (it counts through yesterday while today is empty — see
+    above) but nothing has been completed yet today. Dedup: `streak_risk_sent_on`.
+  Both dedup columns are "already sent today", not an exact-minute match, matching every other
+  reminder command in this app.
+
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
   exposes, so it can be driven from Apple Shortcuts or any other automation — not a 1:1 mirror of every
@@ -972,9 +1033,10 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 **Cron is required** as of the Web Push feature: `php artisan schedule:run` must run every minute (a
 single crontab line, see step 10 above) — it drives `app:advance-pomodoro-phases`,
-`app:send-event-start-notifications`, `app:send-event-upcoming-notifications`, and `app:send-prepare-reminders`,
-the four commands that make Pomodoro/event-start/event-upcoming/Vorbereitung push notifications fire even with
-no tab open. No separate queue worker is needed (notifications send synchronously inline).
+`app:send-event-start-notifications`, `app:send-event-upcoming-notifications`, `app:send-prepare-reminders`,
+and `app:send-progress-reminders`, the five commands that make Pomodoro/event-start/event-upcoming/
+Vorbereitung/Fortschritt push notifications fire even with no tab open. No separate queue worker is
+needed (notifications send synchronously inline).
 
 ---
 
