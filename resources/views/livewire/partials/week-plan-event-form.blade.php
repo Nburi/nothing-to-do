@@ -31,7 +31,7 @@
     >
         <div class="mx-auto max-h-[88dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map md:rounded-card">
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-base font-medium text-ink">{{ $editingEventId ? 'Eintrag bearbeiten' : 'Neuer Eintrag' }}</h2>
+                <h2 class="text-base font-medium text-ink">{{ $editingEventId ? 'Block bearbeiten' : 'Neuer Block' }}</h2>
                 <button wire:click="cancelEventForm" class="grid h-8 w-8 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink" aria-label="Schließen">
                     <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
@@ -92,10 +92,22 @@
                     </div>
                 @endif
 
-                <div>
-                    <label class="mb-1 block text-[11px] font-medium text-ink-faint">Datum</label>
-                    <input type="date" wire:model="eventDate" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
-                    @error('eventDate') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                {{-- Unlike the Zeitplan's own form, weekdays are always shown, never
+                     behind a "Wiederholen" toggle — everything here is the template. --}}
+                <div x-data="{ days: $wire.entangle('eventDays') }">
+                    <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Wochentage</label>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach ($wdLabels as $i => $lbl)
+                            @php $iso = $i + 1; @endphp
+                            <button
+                                type="button"
+                                @click="days.includes({{ $iso }}) ? days = days.filter(d => d !== {{ $iso }}) : days.push({{ $iso }})"
+                                class="h-8 w-8 rounded-full border text-xs font-medium transition"
+                                :class="days.includes({{ $iso }}) ? 'border-forest bg-forest text-white' : 'border-line bg-surface text-ink-soft hover:border-ink-faint/60'"
+                            >{{ $lbl }}</button>
+                        @endforeach
+                    </div>
+                    @error('eventDays') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -130,40 +142,6 @@
                     </div>
                 @endif
 
-                @if ($editingEventId === null)
-                    <div x-data="{ rec: $wire.entangle('eventRecurring'), days: $wire.entangle('eventDays') }" class="rounded-card border border-line bg-paper/60 p-3">
-                        <label class="flex cursor-pointer items-center justify-between">
-                            <span class="text-sm text-ink">Wiederholen</span>
-                            <input type="checkbox" x-model="rec" class="rounded border-line text-forest focus:ring-forest" />
-                        </label>
-                        <div x-show="rec" x-transition.opacity.duration.150ms class="mt-3 flex flex-wrap gap-1.5" style="display:none">
-                            @foreach ($wdLabels as $i => $lbl)
-                                @php $iso = $i + 1; @endphp
-                                <button
-                                    type="button"
-                                    @click="days.includes({{ $iso }}) ? days = days.filter(d => d !== {{ $iso }}) : days.push({{ $iso }})"
-                                    class="h-8 w-8 rounded-full border text-xs font-medium transition"
-                                    :class="days.includes({{ $iso }}) ? 'border-forest bg-forest text-white' : 'border-line bg-surface text-ink-soft hover:border-ink-faint/60'"
-                                >{{ $lbl }}</button>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    @if ($eventKind === 'appointment')
-                        <label class="flex cursor-pointer items-center gap-2.5">
-                            <input type="checkbox" wire:model="eventSaveAsTemplate" class="rounded border-line text-forest focus:ring-forest" />
-                            <span class="text-sm text-ink-soft">Als Vorlage speichern</span>
-                        </label>
-                    @endif
-                @endif
-
-                @if ($this->editingEventIsRecurring)
-                    <p class="text-xs text-ink-faint">
-                        Das löscht nur diesen einen Termin. Für eine ganze Woche (z. B. Ferien):
-                        <a href="{{ route('weekplan') }}" wire:navigate class="font-medium text-overprint hover:underline">Wochenplan pausieren →</a>
-                    </p>
-                @endif
-
                 <div class="flex items-center gap-2 pt-1">
                     <button type="submit" class="flex-1 rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
                         {{ $editingEventId ? 'Speichern' : 'Hinzufügen' }}
@@ -177,7 +155,7 @@
                             @keydown.escape.window="armed = false; clearTimeout(_t)"
                             :class="armed ? 'bg-signal border-signal text-white' : 'border-line text-signal hover:bg-signal-soft'"
                             class="grid h-11 w-11 flex-none place-items-center rounded-card border transition active:scale-95"
-                            aria-label="Eintrag löschen"
+                            aria-label="Block löschen"
                         >
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
                         </button>

@@ -111,7 +111,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (532 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (563 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -676,6 +676,87 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   without deep-linking to the specific item. **Settings** has a matching **"Vorschau auf Termine"**
   card (`users.deadline_preview_enabled` default `true`, `deadline_preview_days` default `2`,
   max `14`) saved together via `saveDeadlinePreview()`, same form pattern as the Pomodoro card.
+
+### Wochenplan (built)
+
+A dedicated editing surface for the recurring side of the Zeitplan — the part of a week that's the
+same every week (Schule, Training) shouldn't have to be replanned inside a real calendar week, and
+until this feature there was nowhere to see or edit it as a whole. The materialisation mechanism this
+builds on already existed (`EventTemplate` + `ScheduleEvent::materializeRange()`, see Schedule above) —
+this feature is a proper front end for it, plus the one thing that genuinely didn't exist: switching
+the whole week plan off for specific dates (Ferien, sick days).
+
+- **`App\Livewire\WeekPlan`** (`/app/weekplan`, `route('weekplan')`) is an abstract Mon–Sun canvas — no
+  calendar dates, just ISO weekdays 1–7. `templatesByWeekday()` buckets every recurring `EventTemplate`
+  by the weekdays in its `recurrence` mask (a template on "1,3,5" appears in three buckets — same
+  template id, rendered three times). Its mutation methods (`moveEvent`/`resizeEvent`/
+  `quickCreateCategoryBlock`/`quickCreateTermin`/`startEditEvent`/`saveEventForm`/`deleteEvent`) are
+  deliberately **named to match `ManagesSchedule`'s own method signatures**, even though they operate on
+  `EventTemplate` (weekday-keyed) instead of `ScheduleEvent` (date-keyed) — this lets the existing
+  `scheduleEvent`/`scheduleDraw` Alpine components (drag-move, drag-resize, draw-to-create, tap-to-edit)
+  be reused **completely unmodified**. Those components only ever forward an opaque id/date string to
+  `$wire`; feeding them a weekday number ("1".."7") instead of a date string costs nothing since neither
+  component interprets that string itself. No new gesture code exists anywhere in this feature.
+- **Editing an existing template propagates to near-future materialised occurrences.** Before this
+  feature, a template's shape was fixed at creation (the Zeitplan's own "Wiederholen" checkbox only ever
+  *creates* a template, never edits one) — so nothing had to reconcile an edit against rows already
+  materialised for the current/next week. `WeekPlan::refreshMaterializedOccurrences()` (called after
+  every `saveEventForm`/`moveEvent`/`resizeEvent`) finds that template's still-linked, not-cancelled,
+  **strictly future** (`date > today`) occurrences and either updates them to the new title/colour/time,
+  or — if the edited weekday mask no longer includes that occurrence's weekday — deletes the row outright
+  (not tombstoned; `materializeRange()`'s dedup is presence-based, so a later re-added weekday
+  regenerates cleanly with nothing left to work around). **Today's occurrence and every past one are
+  deliberately never touched** — a template edit must not rewrite history or disturb something already
+  under way. Without this, editing a block on the Wochenplan would silently not apply to a week that had
+  already been materialised by opening the Zeitplan.
+- **Mobile has no server-side day paging.** Unlike the Zeitplan (which pages through an unbounded range
+  of real dates and must round-trip), the Wochenplan only ever has seven days, all loaded up front — so
+  the mobile view renders all seven day-columns and shows one at a time with a client-only
+  `x-data="{ focused: N }"` wrapper, no Livewire call involved in paging. **The wrapping container uses a
+  fixed `h-[calc(100dvh-4rem)]`, not `min-h-`** — copied from the Zeitplan's own mobile view on purpose:
+  the blocks inside position themselves with percentage `top`/`height`, which only resolves against a
+  *definite* ancestor height. `min-height` lets the container auto-size to its content instead, which
+  silently breaks every percentage down the chain (found by comparing computed styles against the
+  Zeitplan's identical-looking markup, which works, until the `min-h-`/`h-` difference turned out to be
+  the only difference).
+- **Pausing** (Ferien, sick days, …) is **`App\Models\SchedulePause`** (`schedule_pauses`: `user_id,
+  date, note?`, one row per date, unique per `(user_id, date)`) — deliberately one row per day rather
+  than a date range, so a single day inside a longer pause can be switched back on independently (the
+  requirement was explicitly "für einzelne Tage", not just whole ranges). `SchedulePause::pauseRange()`
+  bulk-inserts (`insertOrIgnore`) one row per date in a Von–Bis span; `collapseToRanges()` re-groups a
+  date-ascending list back into consecutive `[start, end]` runs for display (a gap of even one day starts
+  a new range), so the "Pausen & Ferien" card can show "14.7.–3.8." instead of fifteen separate rows,
+  while every row inside a range still expands into individual day-chips.
+- **The pause is enforced in exactly one place: `ScheduleEvent::scopeVisible()`.** It now also excludes
+  any template-sourced row (`template_id` not null) whose `date` has a matching `SchedulePause`, via a
+  `whereNotExists` correlated subquery — manually placed events (`template_id` null) are always exempt,
+  since a pause suspends the *template*, never something typed in by hand for that specific day. Every
+  consumer that already reads through `visible()` — the Zeitplan, the dashboard's focus timer
+  (`TaskBoard::scheduleToday`), both push-notification commands, `PrepareTomorrow` — is correctly
+  pause-aware for free, with no changes to any of that code. **Pausing never touches `ScheduleEvent` rows
+  at all** — it only ever inserts/deletes `SchedulePause` markers. This is deliberate: it means pausing
+  is trivially reversible (un-pausing shows exactly what was there before, with zero regeneration logic),
+  and a date that's paused before ever being viewed/materialised just never gets template rows in the
+  first place, without `materializeRange()` needing to know pauses exist. `WeekPlan::unpauseDate()`/
+  `unpauseRange()` additionally call `materializeRange()` for the freed date(s) immediately, so the normal
+  blocks reappear without waiting for a separate Zeitplan visit.
+- **The Zeitplan shows a quiet, non-alarming hint** on a paused day (a small "FERIEN" label under the
+  day number, desktop; "· Ferien" appended to the date line, mobile) plus one summary line above the grid
+  ("`N` Tage diese Woche pausiert — der Wochenplan füllt sie nicht. Verwalten →") linking back to
+  `/app/weekplan` — an empty day should read as intentional, not broken.
+- **Two signature moments, different budgets.** The header line ("So sieht dein normaler {Wochentag}
+  aus.") is deliberately *not* the protected signature moment — just a cheap, good default that costs
+  nothing and needs no special handling in review. The real signature moment is the **ripple**: saving a
+  block that spans more than one weekday dispatches a browser event
+  (`$this->dispatch('weekplan-ripple', days: [...])`) that a small `Livewire.on('weekplan-ripple', …)`
+  listener in `resources/js/app.js` picks up, staggering a `.weekplan-ripple` CSS class (a 650ms
+  `box-shadow` wash, `app.css`) across each affected day column roughly 70ms apart — a visible, immediate
+  answer to "does this really apply to all of these days now" at the exact moment that becomes true,
+  rather than something you'd otherwise only trust an abstract chip list about. A single-weekday save
+  never dispatches it — nothing to visually connect.
+- Not touched by this feature: the API/Shortcuts, a spontaneous "pause just today" shortcut from the
+  Zeitplan itself (management stays centralised on the Wochenplan page), and overlapping-block layout on
+  the grid (a pre-existing Zeitplan limitation, not newly solved here).
 
 ### Agenda — Hausaufgaben & Prüfungen (built)
 - A deliberately standalone page (`/app/agenda`, `route('agenda')`) for school deadlines — homework and
@@ -1308,6 +1389,39 @@ key makes Livewire's morph treat it as a genuinely new node — destroy the old,
 re-runs `x-data` with the current date. Same underlying lesson as the focus ring's `wire:key` (§7 Schedule):
 any `x-data`/`x-init` that closes over server-rendered values needs a key tied to those values, or Alpine
 will silently keep serving the values from first mount.
+
+### `min-h-` instead of `h-` on a flex ancestor silently breaks percentage-based positioning inside it
+**Symptom:** on the Wochenplan's mobile view, every block rendered as a squat, auto-sized pill pinned near
+the top of its column instead of a properly time-scaled rectangle — `x-bind:style="top:${top}%;
+height:${height}%"` (the same `scheduleEvent` component the Zeitplan already uses successfully) was
+producing valid, sane percentage values, but they visibly weren't being applied.
+**Cause:** the mobile wrapper used `class="flex min-h-[calc(100dvh-4rem)] flex-col …"` where the Zeitplan's
+own (working) mobile view uses `h-[calc(100dvh-4rem)]`. `min-height` lets the element auto-size to its
+content instead of committing to a definite height — and a CSS percentage `height` several levels down
+only resolves against an ancestor with a *definite* height. One copy-paste letter (`min-h-` vs `h-`) was
+the only difference from the Zeitplan's identical-looking, working markup; `getBoundingClientRect()` on
+the intermediate `.flex.h-full` wrapper read `0` even though its own parent measured a correct ~600px,
+which is what gave it away — a definite-looking parent height doesn't help if *it* isn't definite either.
+**Fix:** use a fixed `h-[…]`, not `min-h-[…]`, on any flex ancestor that a percentage-positioned descendant
+(anything using `top:%`/`height:%` for layout, not just padding) needs to resolve against. If more content
+has to go below a fixed-height block like this, put it in a separate sibling section after the fixed-height
+one closes, rather than loosening the fixed height to fit it in.
+
+### PHPUnit's default 128M `memory_limit` (`php.ini`) becomes too small as the suite grows
+**Symptom:** `php artisan test` (no filter, the full suite) dies with `Fatal error: Allowed memory size of
+134217728 bytes exhausted`, deep inside Livewire's test JSON encode/decode — but the same test passes
+instantly and cleanly when run alone or filtered to its own file. Bisecting (`tests/Unit` alone,
+`tests/Feature` alone) showed both halves passing individually; only running the *whole* suite in one
+PHP process (no `--process-isolation`) crossed the ceiling.
+**Cause:** PHPUnit runs every test in a single long-lived PHP process by default, so nothing from earlier
+tests is freed before later ones run — the 128M limit is a `php.ini` default shared with `php artisan
+serve`, sized for one request, not hundreds of accumulated test cases. This was latent, not something any
+one test caused; it surfaces as "whichever test happens to be running when the total finally tips over."
+**Fix:** raise `memory_limit` for test runs only, via `<ini name="memory_limit" value="512M"/>` in
+`phpunit.xml`'s `<php>` block — scoped to PHPUnit, leaves the shared `php.ini` (and therefore `php artisan
+serve`/production) untouched. A CLI `-d memory_limit=…` flag on the `php artisan test` invocation does
+**not** reliably propagate to the process that actually runs PHPUnit; the `phpunit.xml` `<ini>` directive
+does, since PHPUnit applies it directly via `ini_set()` before running.
 
 ---
 

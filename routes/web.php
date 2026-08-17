@@ -12,6 +12,7 @@ use App\Livewire\Progress;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\TaskBoard;
+use App\Livewire\WeekPlan;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -60,6 +61,10 @@ Route::get('/app/emergency', EmergencyMode::class)
 Route::get('/app/schedule', Schedule::class)
     ->middleware('auth')
     ->name('schedule');
+
+Route::get('/app/weekplan', WeekPlan::class)
+    ->middleware('auth')
+    ->name('weekplan');
 
 Route::get('/app/prepare', PrepareTomorrow::class)
     ->middleware('auth')

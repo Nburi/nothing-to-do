@@ -18,6 +18,10 @@
         </include>
     </source>
     <php>
+        <!-- The suite has grown past the 128M default (`php.ini`'s global memory_limit,
+             shared with `php artisan serve`) — PHPUnit runs every test in one process,
+             so nothing is freed between tests. Scoped to test runs only. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

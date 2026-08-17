@@ -56,11 +56,21 @@
                 </div>
             @endif
 
+            {{-- Quiet hint, not a banner — a paused day should read as intentional,
+                 not broken, but "why is this empty" still deserves an answer. --}}
+            @if (! empty($this->pausedDates))
+                <div class="mb-3 flex items-center gap-1.5 text-xs text-ink-faint">
+                    <span>{{ count($this->pausedDates) }} {{ count($this->pausedDates) === 1 ? 'Tag' : 'Tage' }} diese Woche pausiert — der Wochenplan füllt sie nicht.</span>
+                    <a href="{{ route('weekplan') }}" wire:navigate class="font-medium text-overprint hover:underline">Verwalten →</a>
+                </div>
+            @endif
+
             <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
                 {{-- Day headers --}}
                 <div class="flex border-b border-line">
                     <div class="w-12 flex-none"></div>
                     @foreach ($this->weekDays as $day)
+                        @php $isPaused = in_array($day->toDateString(), $this->pausedDates, true); @endphp
                         <button
                             wire:click="openEventForm('{{ $day->toDateString() }}')"
                             @class([
@@ -70,6 +80,9 @@
                         >
                             <div class="text-[11px] uppercase tracking-wide text-ink-faint">{{ $wd[$day->dayOfWeekIso - 1] }}</div>
                             <div class="tnum text-sm font-medium {{ $day->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $day->day }}</div>
+                            @if ($isPaused)
+                                <div class="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-ink-faint">Ferien</div>
+                            @endif
                         </button>
                     @endforeach
                 </div>
@@ -157,7 +170,12 @@
                     </button>
                     <button wire:click="goToday" class="text-center leading-tight">
                         <div class="text-sm font-medium {{ $focused->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $relDay }}</div>
-                        <div class="tnum text-[11px] text-ink-faint">{{ $wd[$focused->dayOfWeekIso - 1] }} · {{ $focused->isoFormat('D.M.') }}</div>
+                        <div class="tnum text-[11px] text-ink-faint">
+                            {{ $wd[$focused->dayOfWeekIso - 1] }} · {{ $focused->isoFormat('D.M.') }}
+                            @if (in_array($focusedDate, $this->pausedDates, true))
+                                · Ferien
+                            @endif
+                        </div>
                     </button>
                     <button wire:click="nextDay" class="grid h-8 w-8 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Nächster Tag">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>

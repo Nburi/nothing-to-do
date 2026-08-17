@@ -199,6 +199,27 @@ window.newProjectDropZone = function (el, wire) {
     return el._sortable;
 };
 
+/**
+ * Week plan ripple (see WeekPlan::saveEventForm and the .weekplan-ripple
+ * keyframes in app.css) — after a block is saved spanning more than one
+ * weekday, briefly flashes each affected day column in sequence, so "this
+ * now applies here too" is something you see happen, not something you
+ * have to trust an abstract chip list about.
+ */
+document.addEventListener('livewire:init', () => {
+    Livewire.on('weekplan-ripple', ({ days }) => {
+        [...days].sort((a, b) => a - b).forEach((day, i) => {
+            setTimeout(() => {
+                document.querySelectorAll(`[data-grid][data-weekday="${day}"]`).forEach((el) => {
+                    el.classList.remove('weekplan-ripple');
+                    void el.offsetWidth; // restart the animation if this day rippled moments ago
+                    el.classList.add('weekplan-ripple');
+                });
+            }, i * 70);
+        });
+    });
+});
+
 document.addEventListener('alpine:init', () => {
     /**
      * Shared draw state: which category chip — or typed Termin title — is

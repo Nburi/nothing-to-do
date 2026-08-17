@@ -91,6 +91,17 @@ class EventTemplate extends Model
         return $this->is_recurring && in_array($date->dayOfWeekIso, $this->recurrenceDays(), true);
     }
 
+    /** Minute-math helpers for the week-plan grid, mirroring ScheduleEvent's. */
+    public function startMinutes(): int
+    {
+        return ScheduleEvent::toMinutes($this->default_start ?: '08:00');
+    }
+
+    public function endMinutes(): int
+    {
+        return $this->startMinutes() + $this->duration;
+    }
+
     /** The live category name, falling back to the template's own snapshot. */
     public function displayName(): string
     {
