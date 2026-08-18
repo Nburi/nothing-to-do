@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\QuickCapture;
+use App\Models\AgendaSpace;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -369,6 +370,17 @@ class QuickCaptureTest extends TestCase
             ->test(QuickCapture::class)
             ->dispatch('quick-capture-opened', target: 'craft')
             ->assertSet('target', 'craft');
+    }
+
+    public function test_opening_the_panel_straight_onto_agenda_defaults_the_users_only_class(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->dispatch('quick-capture-opened', target: 'agenda')
+            ->assertSet('agendaSpaceId', $space->id);
     }
 
     public function test_an_unknown_preselected_target_falls_back_to_inbox(): void
