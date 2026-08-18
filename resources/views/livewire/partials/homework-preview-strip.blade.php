@@ -46,6 +46,26 @@
 
                     <p class="truncate text-[10px] text-ink-faint">{{ $entry->subject }}</p>
                     <p class="truncate text-[12px] font-medium text-ink">{{ $entry->title }}</p>
+
+                    @if ($preview = $entry->notesPreview())
+                        <div x-data="{ notesOpen: false }">
+                            <button
+                                type="button"
+                                @click.stop="notesOpen = !notesOpen"
+                                class="mt-0.5 block max-w-full truncate rounded text-left text-[10.5px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                                :aria-expanded="notesOpen.toString()"
+                                aria-label="Notiz ein-/ausklappen: {{ $entry->title }}"
+                            >
+                                <span x-show="!notesOpen">{{ $preview }}</span>
+                                <span x-show="notesOpen" style="display: none;">Notiz ausblenden</span>
+                            </button>
+                            <p
+                                x-show="notesOpen"
+                                style="display: none;"
+                                class="mt-0.5 whitespace-pre-line break-words text-[10.5px] text-ink-soft"
+                            >{{ $entry->notes }}</p>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>
