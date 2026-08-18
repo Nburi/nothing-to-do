@@ -75,11 +75,15 @@
                                 >{{ $space->shortName() }}</button>
                             @endforeach
                         </div>
-                        @if ($formSpaceId !== null)
-                            <p class="mt-1.5 text-[11.5px] text-ink-faint">
+                        {{-- Always named, private included — so an accidentally-private
+                             choice is never the quiet option next to an explained one. --}}
+                        <p class="mt-1.5 text-[11.5px] text-ink-faint">
+                            @if ($formSpaceId !== null)
                                 Alle in dieser Klasse sehen den Eintrag. Abhaken tut jede:r für sich.
-                            </p>
-                        @endif
+                            @else
+                                Nur du siehst diesen Eintrag.
+                            @endif
+                        </p>
                         @error('formSpaceId') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                     </div>
                 @endif
