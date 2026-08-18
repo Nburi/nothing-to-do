@@ -111,7 +111,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (563 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (682 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -1104,45 +1104,86 @@ thing became a Project, which is exactly what made that column unreadable (see �
   dedicated `/app/crafts` page.
 
 ### Fortschritt & Motivation (built)
-- "How did today go", made visible without inventing a second bookkeeping system: everything here
-  reads from **`tasks.completed_at`**, the one field the app already writes. No XP/points — the
-  "game" feel comes from a streak counter and a GitHub-style completion heatmap, both well-worn,
-  calm patterns, not a scoring system.
-- **`App\Services\ProgressStats`** (stateless, like `PomodoroCycle`/`TaskSuggestor`) turns that one
-  column into every number this feature needs: `completedCountsByDay()` (one query, reused by
-  everything else — never call this in a loop), `todayCount()`, `currentStreak()` (consecutive
-  **local calendar days** — `User::localToday()`, deliberately *not* `completedWindowStart()`, which
-  is a separate, board-only "how long do completed cards stay visible" concept), `bestStreak()`,
-  `bestDailyCount()`, `heatmap()` (12 weeks × 7 days, level 0–4 **relative to the user's own daily
-  goal** rather than a fixed absolute count, so the heatmap doesn't read as permanently full/empty
-  depending on the goal chosen), and `streakTier()` (0–4, drives every streak color escalation).
-  `completedCountsByDay()` shifts each timestamp using the user's offset **at that instant**
-  (`User::utcOffsetMinutes($task->completed_at)`), not "now" — a DST-auto user has a different offset
-  in July than in January, and this spans their whole history.
+- "How did today go", made visible without inventing a second bookkeeping system for most of it —
+  volume stats read from **`tasks.completed_at`**, the one field the app already writes. No
+  XP/points — the "game" feel comes from a streak counter and a GitHub-style completion heatmap,
+  both well-worn, calm patterns, not a scoring system.
+- **Two distinct bases, deliberately not unified.** "How much did you do" (today's ring, the
+  heatmap, the lifetime total, the goal/record celebrations) is raw **completion count**. "Did you
+  succeed" (the streak, perfect-day stats, the perfect-day celebration) is **whether every task
+  flagged "today" got done** — a stricter, binary measure the user asked for explicitly after using
+  the count-based version for a day: "you completed a day for the streak if you've done every today
+  task". The two live side by side in `ProgressStats` rather than one replacing the other.
+- **`tasks.today_date`** — a nullable date recording which local day a task was flagged "today"
+  *for*, distinct from `is_today` itself (a live flag with no date attached, never auto-reset —
+  confirmed by grepping every write site before building this: nothing clears it overnight). Without
+  this there was no way to ask "was day X's today-list fully cleared" for any past day, only infer
+  from the live board state. Stamped by **`Task::todayDateFor(bool $newIsToday, ?Carbon $targetDate)`**
+  — a pure helper reading the task's *current* (not-yet-saved) state: stamps `$targetDate` only when
+  actually **entering** today (`is_today` was false); leaves an already-true flag's date **untouched**
+  (so reordering within the Today zone, or `PrepareTomorrow` re-touching something already flagged,
+  can't silently re-date an old leftover task to "now"); always **clears** to null on exit. Called
+  from every one of the (many) places that write `is_today`: `TaskBoard` (`setToday`, `reorder`,
+  `swipeIntent`, `assignTaskToProject`), `ProjectPage::assignToProject`, `ManagesTasks::saveEdit`
+  (the edit sheet's three ways to move a task off the board's Today lists), `PrepareTomorrow::markToday`
+  (using its own `targetDate` — evening mode flags *tomorrow's* tasks tonight, so stamping "now" would
+  wrongly attribute them to the still-running today), and both API `TaskController` endpoints. Purely
+  additive — nothing reads it for board/API display logic, and pre-migration `is_today=true` rows get
+  no retroactive value (unreconstructable, so the streak effectively starts a clean count from ship day).
+- **`App\Services\ProgressStats`** (stateless, like `PomodoroCycle`/`TaskSuggestor`):
+  - Volume side: `completedCountsByDay()` (one query, reused by everything below it — never call in a
+    loop), `todayCount()`, `bestDailyCount()`, `heatmap()` (12 weeks × 7 days, level 0–4 relative to
+    the user's own daily goal, not a fixed absolute count), all keyed by **local calendar day**
+    (`User::localToday()`, deliberately *not* `completedWindowStart()`, a separate board-only "how
+    long do completed cards stay visible" concept). Each timestamp is shifted using the user's offset
+    **at that instant** (`User::utcOffsetMinutes($task->completed_at)`), not "now" — DST-auto users
+    have a different offset in July than in January, and this spans their whole history.
+  - Streak side: `todayListStatsByDay()` (one query, groups by `today_date` into `{total, done}` —
+    a day is simply **absent** as a key if no task was ever flagged today for it, not `{0,0}`),
+    `dailySuccessMap()` (derives `total > 0 && done === total` per day), `currentStreak()`/
+    `bestStreak()` (consecutive/longest runs of *successful* days — same shape as the old
+    count-based version, just fed the success map instead), `perfectDaysCount()`, `perfectDayRate()`
+    (null, not 0%, when no today-list has ever existed — "not applicable" reads differently from
+    "you always fail"). **Always a live read, never a nightly-frozen snapshot**: finishing an old,
+    left-over today-task days later can retroactively turn its original day into a success and heal
+    a streak gap — there's no "close the day" ritual to freeze anything against, and it's honestly
+    earned. A day with completions but **no** today-list at all does not count (same as the old
+    "nothing completed" break) — using the today mechanism is now what the streak measures.
+  - `streakTier()` (0–4, drives every streak color escalation, unaffected by the rework).
 - **`App\Livewire\Progress`** (`/app/progress`, `route('progress')`) — a read-only page (three stat
-  tiles: today-vs-goal ring, streak + best streak, lifetime total; then the heatmap; then a
-  best-single-day callout). Reachable from the header "Mehr" menu like every other feature page.
+  tiles: today-vs-goal ring, streak + best streak — with a second subtitle line for lifetime
+  perfect-day count/rate once any today-list has ever existed — and lifetime total; then the
+  heatmap; then a best-single-day callout). Reachable from the **profile dropdown** (next to
+  Profil/Einstellungen — moved there from the "Mehr" menu: Fortschritt is about the account, not a
+  workflow tool like Zeitplan/Agenda/Bastelideen, and the move restores a permanent entry point for a
+  streak of 0, which the header badge alone doesn't provide).
 - **The header streak badge** (hand-drawn `<x-flame-icon>`, no emoji) sits next to "Mehr" — rendered
   **only once `currentStreak() >= 1`**, so a fresh account's header looks exactly like it always did
   (no sad "0" state). Color escalates with `streakTier()` but is **capped at `forest`**: this app
   reserves `signal` for danger/urgency (armed delete, overdue, active emergency mode), so a positive
   streak never routes through it — a deliberate correction made during this feature's plan review.
-- **Milestone celebration** — a non-blocking overlay (concentric topographic rings + a dozen flying
+- **Milestone celebration** — a non-blocking overlay (concentric topographic rings + flying
   line-mark particles, `resources/js/app.js`'s `celebration` Alpine store, mounted **once** in
   `layouts/app.blade.php` rather than inside any one Livewire component, so it fires no matter which
   page a task gets completed from) triggered by a `celebrate` browser event carrying `{kind, label}`.
-  Fires for exactly two milestones, computed by **`ProgressStats::celebrationFor(User $user, int
-  $beforeCount): ?array`** — called from both real "mark a task done" sites
+  Fires for exactly three milestones, computed by **`ProgressStats::celebrationFor(User $user, Task
+  $task, int $beforeCount): ?array`** — called from both real "mark a task done" sites
   (`ManagesTasks::toggleComplete()`, used by the board and `ProjectPage`; and the duplicated
   `Schedule::toggleDeadlineTaskDone()` on the Zeitplan's deadline strip), which each capture
-  `$beforeCount = ProgressStats::todayCount($user)` **before** the `$task->update(...)` so the
-  crossing can be detected precisely instead of re-comparing aggregates after the fact (a naive
-  after-the-write comparison either misfires on every later completion of a record day, or can't tell
-  "just tied the record" from "already led it two tasks ago"):
-  - **Tagesziel erreicht** — the exact completion where today's count first reaches `daily_task_goal`.
-  - **Neuer Bestwert** — the exact completion where today's count first exceeds the all-time daily
-    record. Wins over a simultaneous goal-crossing (rarer, bigger achievement). A record can only be
-    *broken*, never *set from nothing* — the first tasks ever completed don't celebrate "record: 1".
+  `$beforeCount = ProgressStats::todayCount($user)` **before** the `$task->update(...)` so goal/record
+  crossings can be detected precisely instead of re-comparing aggregates after the fact. Checked in
+  priority order, never more than one at once:
+  1. **Perfekter Tag** — `$task->today_date` is today, and completing it just brought today's open
+     today-tasks to zero (checked live post-update via `whereDate('today_date', ...)` — a plain
+     `where()` against a *value*, not `whereDate()`, silently matches nothing here: a bare `'date'`
+     cast still stores full datetime precision with a zeroed time-of-day, so an exact string
+     comparison fails; see §10). The rarest, most personally-defined win, so it wins over a
+     simultaneous goal/record on the same completion, and gets its own warmer/bigger overlay variant
+     (18 particles vs. 12, `contour`-tinted not `forest`/`overprint`, 2.2s vs. 1.7s) rather than just a
+     recolor — see the `celebration` store's `big` branch in `app.js`.
+  2. **Neuer Bestwert** — today's count just exceeded the all-time daily record. Can only be
+     *broken*, never *set from nothing* — the first tasks ever completed don't celebrate "record: 1".
+  3. **Tagesziel erreicht** — today's count just reached `daily_task_goal`.
   Deliberately **not** wired into the API controllers — there is no browser there to show anything to.
   No sound in this pass (autoplay-policy risk, hard to verify headless — see `TODO.md`).
 - **Settings** has a **Fortschritt** tab: `daily_task_goal` (1–30, default 5, `saveDailyGoal()` —
@@ -1154,9 +1195,11 @@ thing became a Project, which is exactly what made that column unreadable (see �
     once that time has passed, if today still has open "Heute"-flagged board tasks. Dedup:
     `daily_reminder_sent_on`.
   - **Serie in Gefahr** (`notify_streak_risk`, fixed `User::STREAK_RISK_DUE_TIME` = 21:00, **not**
-    user-configurable — a plain last-call warning, not another field to tune) — once that time has
-    passed, if `currentStreak()` is still > 0 (it counts through yesterday while today is empty — see
-    above) but nothing has been completed yet today. Dedup: `streak_risk_sent_on`.
+    user-configurable) — once that time has passed, if today isn't already a perfect day but a real
+    trailing streak exists (`currentStreak()` counts through yesterday whenever today isn't a success
+    yet — see above). The message is built from the same `todayListStatsByDay()` data the streak
+    itself uses, so it names exactly how many today-tasks are still open (or nudges to set a list at
+    all, if there is none) instead of a generic warning. Dedup: `streak_risk_sent_on`.
   Both dedup columns are "already sent today", not an exact-minute match, matching every other
   reminder command in this app.
 
@@ -1349,6 +1392,31 @@ strict `assertSame(int, ...)` test fails with "900.0 is identical to 900" on dow
 **Fix:** cast to int at the call site: `(int) $today->diffInDays($date)` / `(int) $start->diffInSeconds($now,
 false)`. Check overdue separately with `lessThan()`. (See `Task::effectiveDateLabel`,
 `ScheduleEvent::pomodoroPhaseNow`.)
+
+### An exact `where()` against a `'date'`-cast column can silently match nothing
+**Symptom:** a query like `->where('some_date_column', $carbon->toDateString())` returns zero rows even
+though a matching row visibly exists (confirmed via `->fresh()` or the model's own casted accessor) — no
+error, no exception, just an empty result. In this app's case: `ProgressStats::celebrationFor()`'s
+"is today's today-list fully cleared" check always found `stillOpen === 0`, so it fired the perfect-day
+celebration on the very first completion of any day regardless of what else was still open.
+**Cause:** a bare `'date'` cast (`'today_date' => 'date'`, not `'date:Y-m-d'`) still stores full datetime
+precision — a zeroed time-of-day (`'2026-08-16 00:00:00'`), not a plain `'2026-08-16'` string. Reading the
+column back through Eloquent's cast (`$task->today_date->toDateString()`) normalizes it correctly, which
+is why the *other* half of the same check (comparing `$task->today_date?->toDateString()` against
+`$today->toDateString()`) worked fine and masked the bug — only the *raw SQL* comparison
+(`where('today_date', $today->toDateString())`) was broken, silently matching against the wrong stored
+format. `json_encode()`/`toArray()` on a fetched model is *also* misleading here — Eloquent's JSON
+serialization applies its own ISO-8601 formatting (`'2026-08-16T00:00:00.000000Z'`), which is neither the
+raw DB value nor what an exact `where()` compares against; use `DB::table(...)->get()` (bypassing casts
+entirely) to see the true stored string when debugging this.
+**Fix:** use `whereDate('today_date', $today->toDateString())` instead of `where(...)` for any exact-day
+equality check against a `'date'`-cast column — `whereDate()` wraps the comparison in the grammar's own
+`DATE()` extraction, so it works regardless of stored precision. (`<=`/`COALESCE` comparisons elsewhere in
+this app, e.g. `Task::scopeBoardOrdered()`'s deadline threshold, happen to tolerate the mismatch because a
+shorter date string sorts before a longer one that starts with it — only *exact equality* is actually
+broken by this, which is why it went unnoticed until the first `where()`-equality check against a date
+column was written.) Caught by a dedicated test (`ProgressStatsTest::
+test_celebration_does_not_fire_perfect_day_while_other_today_tasks_are_still_open`) before this shipped.
 
 ### PHP 8.2+ forbids accessing a trait's own constant via the trait's name
 **Symptom:** `Cannot access trait constant App\Livewire\Concerns\X::FOO directly` — thrown at the call site,

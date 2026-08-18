@@ -113,7 +113,10 @@ class PrepareTomorrow extends Component
             return;
         }
 
-        $task->update(['is_today' => true]);
+        $task->update([
+            'is_today' => true,
+            'today_date' => $task->todayDateFor(true, $this->targetDate),
+        ]);
     }
 
     /**

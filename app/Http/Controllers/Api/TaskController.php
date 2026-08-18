@@ -149,6 +149,7 @@ class TaskController extends Controller
                 $updates['project_id'] = $data['project_id'];
                 $updates['list'] = 'projects';
                 $updates['is_today'] = false;
+                $updates['today_date'] = null;
             } else {
                 $updates['project_id'] = null;
                 $updates['list'] = $data['list'] ?? 'inbox';
@@ -158,6 +159,7 @@ class TaskController extends Controller
             $updates['project_id'] = null;
             if (! in_array($data['list'], Task::TODAY_LISTS, true)) {
                 $updates['is_today'] = false;
+                $updates['today_date'] = null;
             }
         }
 
@@ -167,6 +169,7 @@ class TaskController extends Controller
 
             if (in_array($finalList, Task::TODAY_LISTS, true) && $finalProjectId === null) {
                 $updates['is_today'] = $data['is_today'];
+                $updates['today_date'] = $task->todayDateFor($data['is_today'], $request->user()->localToday());
             }
         }
 
@@ -198,6 +201,7 @@ class TaskController extends Controller
 
         $list = $data['list'];
         $today = in_array($list, ['inbox', 'projects'], true) ? false : ($data['today'] ?? false);
+        $targetDate = $today ? $request->user()->localToday() : null;
 
         foreach (array_values($data['ids']) as $position => $id) {
             $task = $request->user()->tasks()->find((int) $id);
@@ -209,6 +213,7 @@ class TaskController extends Controller
             $updates = [
                 'list' => $list,
                 'is_today' => $today,
+                'today_date' => $task->todayDateFor($today, $targetDate),
                 'sort_order' => $position,
             ];
 

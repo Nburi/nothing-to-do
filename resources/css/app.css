@@ -311,6 +311,18 @@
     .celebrate-ring--record {
         border-color: rgb(var(--overprint));
     }
+    /* Perfect day (every today-task cleared) is the rarest, most personally-
+       defined win — a warmer, more spread-out burst than goal/record, not
+       just a recolor. See the 'celebration' store's `big` branch in app.js. */
+    @keyframes celebrate-ring-big {
+        0% { transform: scale(0.5); opacity: 0.9; }
+        100% { transform: scale(2.5); opacity: 0; }
+    }
+    .celebrate-ring--perfect-day {
+        border-color: rgb(var(--contour));
+        animation-name: celebrate-ring-big;
+        animation-duration: 1.6s;
+    }
     @keyframes celebrate-particle {
         0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
         100% { transform: translate(calc(-50% + var(--dx, 40px)), calc(-50% + var(--dy, 40px))) rotate(var(--rotate, 90deg)); opacity: 0; }
@@ -327,6 +339,10 @@
     }
     .celebrate-particle--record {
         background: rgb(var(--overprint));
+    }
+    .celebrate-particle--perfect-day {
+        background: rgb(var(--contour));
+        animation-duration: 1.3s;
     }
 
     /* Week plan ripple (WeekPlan::saveEventForm, via resources/js/app.js's

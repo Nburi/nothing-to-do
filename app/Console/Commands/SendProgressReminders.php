@@ -102,23 +102,35 @@ class SendProgressReminders extends Command
             return false;
         }
 
-        $counts = ProgressStats::completedCountsByDay($user);
+        $todayStats = ProgressStats::todayListStatsByDay($user);
+        $successMap = ProgressStats::dailySuccessMap($todayStats);
 
-        if (ProgressStats::todayCount($user, $counts) > 0) {
-            return false; // already safe for today
+        if ($successMap[$today->toDateString()] ?? false) {
+            return false; // today is already a perfect day
         }
 
-        $streak = ProgressStats::currentStreak($user, $counts);
+        // currentStreak() starts counting from yesterday whenever today isn't
+        // (yet) a success — which we just confirmed above — so this is exactly
+        // the trailing streak that's actually at risk of breaking tonight.
+        $streak = ProgressStats::currentStreak($user, $successMap);
 
         if ($streak === 0) {
             return false; // nothing trailing to protect
         }
 
+        $streakPhrase = $streak === 1 ? 'Deine Serie' : "Deine Serie von {$streak} Tagen";
+        $stats = $todayStats[$today->toDateString()] ?? null;
+        $open = $stats ? $stats['total'] - $stats['done'] : 0;
+
+        $body = match (true) {
+            $stats === null => "{$streakPhrase} reisst — noch keine Heute-Liste für heute.",
+            $open === 1 => "{$streakPhrase} reisst — noch 1 offene Heute-Aufgabe.",
+            default => "{$streakPhrase} reisst — noch {$open} offene Heute-Aufgaben.",
+        };
+
         $pushNotifier->notify($user, [
             'title' => 'Serie in Gefahr',
-            'body' => $streak === 1
-                ? 'Deine Serie reisst, wenn du heute nichts erledigst.'
-                : "Deine Serie von {$streak} Tagen reisst, wenn du heute nichts erledigst.",
+            'body' => $body,
             'url' => '/app',
         ]);
 

@@ -255,6 +255,7 @@ class ProjectPage extends Component
             'group_id' => null,
             'list' => 'projects',
             'is_today' => false,
+            'today_date' => null,
         ]);
 
         $this->afterGroupMayHaveShrunk($oldGroup);

@@ -68,7 +68,7 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'agenda', 'emergency', 'crafts', 'progress']);
+                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'agenda', 'emergency', 'crafts']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
                         @endphp
@@ -176,25 +176,6 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
                                     Bastelideen
                                 </a>
-                                <a href="{{ route('progress') }}" wire:navigate @class([
-                                    'flex items-center justify-between gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-paper font-medium text-ink' => request()->routeIs('progress'),
-                                    'text-ink-soft hover:text-ink' => !request()->routeIs('progress'),
-                                ]) @if(request()->routeIs('progress')) aria-current="page" @endif>
-                                    <span class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16.5V11m5.5 5.5V6M15 16.5V9"/></svg>
-                                        Fortschritt
-                                    </span>
-                                    @if ($currentStreak > 0)
-                                        <span @class([
-                                            'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none',
-                                            'bg-paper text-ink-faint' => $streakTier <= 1,
-                                            'bg-contour-soft text-contour' => $streakTier === 2,
-                                            'bg-forest-soft text-forest' => $streakTier === 3,
-                                            'bg-forest text-white' => $streakTier === 4,
-                                        ])>{{ $currentStreak }}</span>
-                                    @endif
-                                </a>
                                 {{-- Notfall is always listed here now (no longer conditionally
                                      hidden from the header) — an "Aktiv" badge communicates the
                                      running state instead of the item's presence/absence. --}}
@@ -271,6 +252,18 @@
                                 <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Einstellungen
                                 </a>
+                                <a href="{{ route('progress') }}" wire:navigate class="flex items-center justify-between gap-2 px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Fortschritt
+                                    @if ($currentStreak > 0)
+                                        <span @class([
+                                            'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none',
+                                            'bg-paper text-ink-faint' => $streakTier <= 1,
+                                            'bg-contour-soft text-contour' => $streakTier === 2,
+                                            'bg-forest-soft text-forest' => $streakTier === 3,
+                                            'bg-forest text-white' => $streakTier === 4,
+                                        ])>{{ $currentStreak }}</span>
+                                    @endif
+                                </a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
@@ -330,21 +323,31 @@
                             <template x-for="n in 3" :key="n">
                                 <div
                                     class="celebrate-ring"
-                                    :class="{ 'celebrate-ring--record': $store.celebration.kind === 'record' }"
+                                    :class="{
+                                        'celebrate-ring--record': $store.celebration.kind === 'record',
+                                        'celebrate-ring--perfect-day': $store.celebration.kind === 'perfect-day',
+                                    }"
                                     :style="`animation-delay: ${(n - 1) * 140}ms`"
                                 ></div>
                             </template>
                             <template x-for="p in $store.celebration.particles" :key="p.id">
                                 <div
                                     class="celebrate-particle"
-                                    :class="{ 'celebrate-particle--record': $store.celebration.kind === 'record' }"
+                                    :class="{
+                                        'celebrate-particle--record': $store.celebration.kind === 'record',
+                                        'celebrate-particle--perfect-day': $store.celebration.kind === 'perfect-day',
+                                    }"
                                     :style="`--dx: ${p.dx}px; --dy: ${p.dy}px; --rotate: ${p.rotate}deg; animation-delay: ${p.delay}ms`"
                                 ></div>
                             </template>
                         </div>
                         <p
                             class="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium shadow-map"
-                            :class="$store.celebration.kind === 'record' ? 'bg-overprint text-white' : 'bg-forest text-white'"
+                            :class="{
+                                'bg-overprint text-white': $store.celebration.kind === 'record',
+                                'bg-contour text-white': $store.celebration.kind === 'perfect-day',
+                                'bg-forest text-white': $store.celebration.kind === 'goal',
+                            }"
                             x-text="$store.celebration.label"
                         ></p>
                     </div>

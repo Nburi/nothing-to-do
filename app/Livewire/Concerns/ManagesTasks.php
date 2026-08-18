@@ -103,7 +103,7 @@ trait ManagesTasks
             'completed_at' => $done ? now() : null,
         ]);
 
-        if ($done && ($celebration = ProgressStats::celebrationFor($user, $before)) !== null) {
+        if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
             $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
         }
     }
@@ -171,12 +171,14 @@ trait ManagesTasks
             $updates['group_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
+            $updates['today_date'] = null;
         } elseif ($newList === 'projects') {
             // Standalone project task (no specific project)
             $updates['project_id'] = null;
             $updates['group_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
+            $updates['today_date'] = null;
         } else {
             // Regular board list — clear any project assignment
             $updates['project_id'] = null;
@@ -184,6 +186,7 @@ trait ManagesTasks
             $updates['list'] = $newList;
             if (! in_array($newList, Task::TODAY_LISTS, true)) {
                 $updates['is_today'] = false;
+                $updates['today_date'] = null;
             }
         }
 

@@ -35,16 +35,43 @@ class Progress extends Component
         return auth()->user()->dailyTaskGoal();
     }
 
+    /** Every local day with a today-list, mapped to {total, done} — the streak's one query. */
+    #[Computed]
+    public function todayListStats(): array
+    {
+        return ProgressStats::todayListStatsByDay(auth()->user());
+    }
+
+    /** Days where the today-list was fully cleared — the streak's basis, distinct from raw completion count. */
+    #[Computed]
+    public function successMap(): array
+    {
+        return ProgressStats::dailySuccessMap($this->todayListStats);
+    }
+
     #[Computed]
     public function currentStreak(): int
     {
-        return ProgressStats::currentStreak(auth()->user(), $this->counts);
+        return ProgressStats::currentStreak(auth()->user(), $this->successMap);
     }
 
     #[Computed]
     public function bestStreak(): int
     {
-        return ProgressStats::bestStreak($this->counts);
+        return ProgressStats::bestStreak($this->successMap);
+    }
+
+    #[Computed]
+    public function perfectDaysCount(): int
+    {
+        return ProgressStats::perfectDaysCount($this->successMap);
+    }
+
+    /** Null when no today-list has ever been set — "not applicable" rather than a misleading 0%. */
+    #[Computed]
+    public function perfectDayRate(): ?int
+    {
+        return ProgressStats::perfectDayRate($this->successMap);
     }
 
     #[Computed]
