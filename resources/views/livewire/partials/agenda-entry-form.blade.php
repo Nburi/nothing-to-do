@@ -19,6 +19,10 @@
         class="fixed inset-x-0 bottom-0 z-50 md:inset-0 md:m-auto md:h-fit md:max-w-md"
         style="display: none;"
     >
+        {{-- This user's own draft is kept fresh by the ambient banner's poll
+             (agenda.blade.php calls heartbeatDraft() from there, not here) —
+             one poll per page rather than two independent timers on the same
+             component, which is what caused them to occasionally collide. --}}
         <div class="mx-auto max-h-[88dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map md:rounded-card">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-base font-medium text-ink">{{ $editingId ? 'Eintrag bearbeiten' : 'Neuer Eintrag' }}</h2>
@@ -107,7 +111,7 @@
                     <label class="mb-1 block text-[12px] font-medium text-ink-faint">Fach</label>
                     <input
                         type="text"
-                        wire:model="formSubject"
+                        wire:model.live.debounce.800ms="formSubject"
                         @focus="open = true"
                         @input="open = true"
                         @keydown.tab="handleTab($event)"

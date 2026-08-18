@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesAgendaSpaces;
+use App\Models\AgendaDraft;
 use App\Models\AgendaEntry;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -121,6 +122,97 @@ class Agenda extends Component
             ->pluck('subject');
     }
 
+    /** Everyone else's active draft across every space this user belongs to. */
+    #[Computed]
+    public function activeDrafts(): Collection
+    {
+        $spaceIds = $this->spaces->pluck('id');
+
+        if ($spaceIds->isEmpty()) {
+            return collect();
+        }
+
+        return AgendaDraft::query()
+            ->whereIn('agenda_space_id', $spaceIds)
+            ->excluding(auth()->user())
+            ->active()
+            ->with(['user:id,name', 'entry:id,title'])
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    /**
+     * One ready-to-render line per space that currently has someone active,
+     * respecting the current space filter — a class you've filtered away isn't
+     * something you need to hear about right now. Grouped rather than one row
+     * per person, so three classmates drafting at once doesn't triple the banner.
+     *
+     * @return Collection<int, array{space: \App\Models\AgendaSpace, text: string}>
+     */
+    #[Computed]
+    public function draftLines(): Collection
+    {
+        if ($this->filterSpace === 'mine') {
+            return collect(); // the private view has nothing shared to report
+        }
+
+        $drafts = $this->activeDrafts;
+
+        if ($this->filterSpace !== 'all') {
+            $drafts = $drafts->where('agenda_space_id', (int) $this->filterSpace);
+        }
+
+        return $drafts
+            ->groupBy('agenda_space_id')
+            ->map(function (Collection $group) {
+                $space = $this->spaces->firstWhere('id', $group->first()->agenda_space_id);
+
+                return $space === null ? null : ['space' => $space, 'text' => $this->describeDrafters($group)];
+            })
+            ->filter()
+            ->values();
+    }
+
+    /** "Lisa erstellt gerade eine Hausaufgabe zu Mathematik" and its variants. */
+    private function describeDrafters(Collection $drafts): string
+    {
+        if ($drafts->count() === 1) {
+            $draft = $drafts->first();
+            $name = $draft->user->name;
+
+            if ($draft->agenda_entry_id !== null) {
+                // Editing already names a concrete, existing entry — strictly
+                // more specific than type + subject would be, so the type is
+                // left out here on purpose (unlike the "creating" branch below,
+                // where type + subject is *all* there is to go on).
+                return $draft->entry !== null
+                    ? "{$name} bearbeitet gerade „{$draft->entry->title}\u{201c}"
+                    : "{$name} bearbeitet gerade einen Eintrag";
+            }
+
+            // Type matters here: a Hausaufgabe and a Prüfung for the same Fach
+            // are not the duplicate the whole feature exists to catch. Direct
+            // lookup, no fallback — AgendaDraft::syncFor() never persists a
+            // type outside AgendaEntry::TYPES.
+            $typeLabel = AgendaEntry::TYPES[$draft->type];
+
+            return trim($draft->subject) !== ''
+                ? "{$name} erstellt gerade eine {$typeLabel} zu {$draft->subject}"
+                : "{$name} erstellt gerade eine {$typeLabel}";
+        }
+
+        $names = $drafts->pluck('user.name');
+        $extra = $names->count() - 2;
+
+        $who = match (true) {
+            $names->count() === 2 => $names->implode(' und '),
+            $extra === 1 => $names->take(2)->implode(', ').' und eine weitere Person',
+            default => $names->take(2)->implode(', ')." und {$extra} weitere Personen",
+        };
+
+        return "{$who} sind gerade aktiv";
+    }
+
     private function memberLabel(int $count): string
     {
         return $count.' '.($count === 1 ? 'Mitglied' : 'Mitglieder');
@@ -204,6 +296,7 @@ class Agenda extends Component
         $this->formSpaceId = is_numeric($this->filterSpace) ? (int) $this->filterSpace : null;
         $this->resetValidation();
         $this->showForm = true;
+        $this->syncDraft();
     }
 
     public function startEdit(int $id): void
@@ -219,12 +312,14 @@ class Agenda extends Component
         $this->formSpaceId = $entry->agenda_space_id;
         $this->resetValidation();
         $this->showForm = true;
+        $this->syncDraft();
     }
 
     public function cancelForm(): void
     {
         $this->showForm = false;
         $this->editingId = null;
+        AgendaDraft::clearFor(auth()->user());
     }
 
     public function saveEntry(): void
@@ -260,6 +355,7 @@ class Agenda extends Component
 
         $this->showForm = false;
         $this->editingId = null;
+        AgendaDraft::clearFor(auth()->user());
     }
 
     /**
@@ -278,6 +374,51 @@ class Agenda extends Component
         if ($this->editingId === $id) {
             $this->cancelForm();
         }
+    }
+
+    // ── Drafting presence ────────────────────────────────────────────
+    //
+    // Broadcasts "I'm working on this" to the rest of a shared class while the
+    // form is open, so two people don't write the same homework down twice.
+    // formType/formSpaceId sync immediately (pill clicks are already a request
+    // each); formSubject syncs on a debounce (see the .live.debounce.800ms
+    // binding in the form partial) so typing doesn't fire a request per key.
+
+    public function updatedFormType(): void
+    {
+        $this->syncDraft();
+    }
+
+    public function updatedFormSpaceId(): void
+    {
+        $this->syncDraft();
+    }
+
+    public function updatedFormSubject(): void
+    {
+        $this->syncDraft();
+    }
+
+    private function syncDraft(): void
+    {
+        if (! $this->showForm) {
+            return;
+        }
+
+        AgendaDraft::syncFor(auth()->user(), $this->formSpaceId, $this->editingId, $this->formType, $this->formSubject);
+    }
+
+    /**
+     * The open form's own keep-alive, called from the ambient banner's 8s poll
+     * (agenda.blade.php) while the form is open — re-syncing with the same
+     * values simply refreshes the TTL. Without this, a long pause between
+     * keystrokes (re-reading the assignment, say) would let the draft quietly
+     * expire for everyone else even though the form is still open right in
+     * front of you.
+     */
+    public function heartbeatDraft(): void
+    {
+        $this->syncDraft();
     }
 
     /**

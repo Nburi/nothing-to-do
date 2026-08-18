@@ -151,6 +151,34 @@
                 {{ $groupBySpace ? 'nach Klasse' : 'nach Datum' }}
             </button>
         </div>
+
+        {{-- Soft ambient hint that a classmate is actively creating or editing an
+             entry right now — the whole point is to notice before you write the
+             same thing down twice. Always rendered (just collapsed to nothing)
+             rather than an @if, so appearing/disappearing is a smooth height +
+             opacity transition instead of a hard DOM swap on the next poll.
+             This is also the one poll for the whole drafting feature: the same
+             tick that refreshes what classmates are up to doubles as this
+             user's own heartbeat (heartbeatDraft() no-ops unless their own form
+             is open) — a second, independent poll on the create-form sheet used
+             to run alongside this one and occasionally collided with it. --}}
+        <div
+            wire:poll.8s.visible="heartbeatDraft"
+            @class([
+                'overflow-hidden transition-all duration-300 ease-out',
+                'mt-3 max-h-40 opacity-100' => $this->draftLines->isNotEmpty(),
+                'mt-0 max-h-0 opacity-0' => $this->draftLines->isEmpty(),
+            ])
+        >
+            <div class="space-y-1.5 rounded-card bg-paper px-3 py-2">
+                @foreach ($this->draftLines as $line)
+                    <p wire:key="draft-line-{{ $line['space']->id }}" class="flex items-center gap-2 text-[12.5px] text-ink-soft">
+                        <span class="h-1.5 w-1.5 flex-none animate-pulse rounded-full bg-forest" aria-hidden="true"></span>
+                        <span class="truncate">{{ $line['text'] }}{{ $this->spaces->count() > 1 ? ' — '.$line['space']->shortName() : '' }}</span>
+                    </p>
+                @endforeach
+            </div>
+        </div>
     @endif
 
     @if ($this->openEntries->isEmpty())
