@@ -32,6 +32,20 @@ class BoardHomeworkPreviewTest extends TestCase
         $this->assertTrue($preview->contains($entry));
     }
 
+    public function test_an_entrys_note_is_visible_on_the_dashboard_preview_card(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-13')->setTime(9, 0));
+        $user = User::factory()->create(['timezone_offset' => 0, 'homework_preview_enabled' => true]);
+        AgendaEntry::factory()->for($user)->homework()->create([
+            'date' => '2026-08-14',
+            'notes' => 'Seite 12 bis 15 rechnen, Taschenrechner mitbringen.',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TaskBoard::class)
+            ->assertSee('Seite 12 bis 15 rechnen, Taschenrechner mitbringen.');
+    }
+
     public function test_the_preview_is_empty_when_the_setting_is_off(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-13')->setTime(9, 0));
