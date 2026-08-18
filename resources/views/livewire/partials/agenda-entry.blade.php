@@ -60,6 +60,16 @@
             'font-medium text-ink' => !$done,
             'text-ink-faint line-through' => $done,
         ])>{{ $entry->title }}</p>
+
+        @if ($preview = $entry->notesPreview())
+            <button
+                type="button"
+                wire:click="startEdit({{ $entry->id }})"
+                class="mt-0.5 block max-w-full truncate rounded text-left text-[11.5px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                title="{{ $preview }}"
+                aria-label="Notiz anzeigen: {{ $entry->title }}"
+            >{{ $preview }}</button>
+        @endif
     </div>
 
     @if ($entry->isShared() && $memberCount > 0)
