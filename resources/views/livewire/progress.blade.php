@@ -29,7 +29,7 @@
                     <p class="tnum text-2xl font-medium leading-none text-ink">
                         {{ $this->todayCount }}<span class="text-sm font-normal text-ink-faint"> / {{ $this->goal }}</span>
                     </p>
-                    <p class="mt-1.5 text-xs text-ink-soft">Heute erledigt</p>
+                    <p class="mt-1.5 text-xs text-ink-soft">Aufgaben heute erledigt</p>
                 </div>
             </div>
         </div>
@@ -84,7 +84,11 @@
                                 'bg-forest/55' => $day['level'] === 2,
                                 'bg-forest/80' => $day['level'] === 3,
                                 'bg-forest' => $day['level'] === 4,
-                                'ring-1 ring-inset ring-overprint' => $day['isToday'],
+                                // Plain "you are here" marker — deliberately ink, not a
+                                // palette color that also means something else on this
+                                // page (overprint = record, contour = perfect day, forest
+                                // = goal/volume), so it never reads as a success signal.
+                                'ring-1 ring-inset ring-ink' => $day['isToday'],
                             ])
                         ></div>
                     @endif
