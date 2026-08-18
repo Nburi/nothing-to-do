@@ -50,6 +50,12 @@
                     <p class="mt-1.5 text-xs text-ink-soft">
                         {{ $this->currentStreak === 1 ? 'Tag Serie' : 'Tage Serie' }} · Bestwert {{ $this->bestStreak }}
                     </p>
+                    @if ($this->perfectDayRate !== null)
+                        <p class="mt-0.5 text-xs text-ink-faint">
+                            {{ $this->perfectDaysCount }} {{ $this->perfectDaysCount === 1 ? 'perfekter Tag' : 'perfekte Tage' }} ·
+                            {{ $this->perfectDayRate }}% Erfolgsquote
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>

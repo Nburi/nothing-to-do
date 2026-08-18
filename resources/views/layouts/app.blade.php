@@ -302,21 +302,31 @@
                             <template x-for="n in 3" :key="n">
                                 <div
                                     class="celebrate-ring"
-                                    :class="{ 'celebrate-ring--record': $store.celebration.kind === 'record' }"
+                                    :class="{
+                                        'celebrate-ring--record': $store.celebration.kind === 'record',
+                                        'celebrate-ring--perfect-day': $store.celebration.kind === 'perfect-day',
+                                    }"
                                     :style="`animation-delay: ${(n - 1) * 140}ms`"
                                 ></div>
                             </template>
                             <template x-for="p in $store.celebration.particles" :key="p.id">
                                 <div
                                     class="celebrate-particle"
-                                    :class="{ 'celebrate-particle--record': $store.celebration.kind === 'record' }"
+                                    :class="{
+                                        'celebrate-particle--record': $store.celebration.kind === 'record',
+                                        'celebrate-particle--perfect-day': $store.celebration.kind === 'perfect-day',
+                                    }"
                                     :style="`--dx: ${p.dx}px; --dy: ${p.dy}px; --rotate: ${p.rotate}deg; animation-delay: ${p.delay}ms`"
                                 ></div>
                             </template>
                         </div>
                         <p
                             class="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium shadow-map"
-                            :class="$store.celebration.kind === 'record' ? 'bg-overprint text-white' : 'bg-forest text-white'"
+                            :class="{
+                                'bg-overprint text-white': $store.celebration.kind === 'record',
+                                'bg-contour text-white': $store.celebration.kind === 'perfect-day',
+                                'bg-forest text-white': $store.celebration.kind === 'goal',
+                            }"
                             x-text="$store.celebration.label"
                         ></p>
                     </div>

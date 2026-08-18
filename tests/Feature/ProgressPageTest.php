@@ -99,6 +99,26 @@ class ProgressPageTest extends TestCase
         $this->assertSame(50, $page->perfectDayRate());
     }
 
+    public function test_the_page_shows_perfect_day_stats_once_a_today_list_has_ever_existed(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->todos()->todayOn('2026-08-15')->completed()->create(['completed_at' => '2026-08-15 09:00:00']);
+
+        Livewire::test(Progress::class)
+            ->assertSee('1 perfekter Tag')
+            ->assertSee('100% Erfolgsquote');
+    }
+
+    public function test_the_page_omits_perfect_day_stats_for_a_user_who_never_used_today(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(Progress::class)->assertDontSee('Erfolgsquote');
+    }
+
     public function test_the_heatmap_spans_twelve_full_weeks(): void
     {
         Carbon::setTestNow('2026-08-16 18:00:00');

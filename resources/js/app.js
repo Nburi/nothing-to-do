@@ -216,12 +216,18 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.store('projectPicker', { taskId: null });
     /**
      * Non-blocking "something happened" celebration — topographic rings plus a
-     * handful of line-mark particles, fired only by the two real milestones in
+     * handful of line-mark particles, fired only by the real milestones in
      * ProgressStats::celebrationFor() (daily goal reached, new all-time daily
-     * record) via a 'celebrate' browser event dispatched from wherever a task
-     * was just completed (board, project page, or the Zeitplan deadline strip
-     * — see the overlay mounted once in layouts/app.blade.php). Auto-hides
-     * itself; there is nothing to confirm or dismiss, unlike a dialog.
+     * record, or a perfect day — every today-task cleared) via a 'celebrate'
+     * browser event dispatched from wherever a task was just completed (board,
+     * project page, or the Zeitplan deadline strip — see the overlay mounted
+     * once in layouts/app.blade.php). Auto-hides itself; there is nothing to
+     * confirm or dismiss, unlike a dialog.
+     *
+     * 'perfect-day' is deliberately bigger and slower than goal/record — it's
+     * the rarest, most personally-defined win (see CLAUDE.md's Fortschritt
+     * section), so it gets a warmer, more spread-out burst instead of reusing
+     * the same size for every kind.
      */
     window.Alpine.store('celebration', {
         visible: false,
@@ -230,23 +236,26 @@ document.addEventListener('alpine:init', () => {
         particles: [],
         _timer: null,
         fire(kind, label) {
+            const big = kind === 'perfect-day';
+            const count = big ? 18 : 12;
+
             this.kind = kind;
             this.label = label;
-            this.particles = Array.from({ length: 12 }, (_, i) => {
-                const angle = (Math.PI * 2 * i) / 12 + (Math.random() * 0.35 - 0.175);
-                const distance = 46 + Math.random() * 36;
+            this.particles = Array.from({ length: count }, (_, i) => {
+                const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.35 - 0.175);
+                const distance = (big ? 58 : 46) + Math.random() * (big ? 46 : 36);
 
                 return {
                     id: i,
                     dx: Math.round(Math.cos(angle) * distance),
                     dy: Math.round(Math.sin(angle) * distance),
                     rotate: Math.round(Math.random() * 360),
-                    delay: Math.round(Math.random() * 120),
+                    delay: Math.round(Math.random() * (big ? 160 : 120)),
                 };
             });
             this.visible = true;
             clearTimeout(this._timer);
-            this._timer = setTimeout(() => { this.visible = false; }, 1700);
+            this._timer = setTimeout(() => { this.visible = false; }, big ? 2200 : 1700);
         },
     });
     /**
