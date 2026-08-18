@@ -54,22 +54,76 @@ class ProgressStats
     }
 
     /**
-     * Consecutive local days, ending today or yesterday, with ≥1 completed
-     * task. A day not yet done today doesn't break the streak until tomorrow
-     * starts without it — it's counted through yesterday instead, "at risk"
-     * rather than already broken (see the streak-risk reminder).
+     * Every local day that has ≥1 task ever flagged "today" FOR it (see
+     * Task::todayDateFor()), mapped to {total, done} — the today_date
+     * equivalent of completedCountsByDay(), reused by every "cleared the
+     * day" stat below. One query. A day simply isn't a key here at all if no
+     * task was ever flagged today for it — distinct from {total:0, done:0},
+     * which can't occur (todayDateFor never stamps a date with nothing on it).
+     *
+     * @return array<string, array{total: int, done: int}>
      */
-    public static function currentStreak(User $user, ?array $counts = null): int
+    public static function todayListStatsByDay(User $user): array
     {
-        $counts ??= self::completedCountsByDay($user);
+        $stats = [];
 
-        $cursor = ($counts[$user->localToday()->toDateString()] ?? 0) > 0
+        foreach (Task::query()->forUser($user)->whereNotNull('today_date')->get(['today_date', 'is_completed']) as $task) {
+            $key = $task->today_date->toDateString();
+            $stats[$key] ??= ['total' => 0, 'done' => 0];
+            $stats[$key]['total']++;
+
+            if ($task->is_completed) {
+                $stats[$key]['done']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Days where every task flagged "today" got completed — the streak's
+     * basis. A day with no today-list at all is simply absent here (not
+     * success, not failure) — the streak logic below treats "absent" as a
+     * break, same as it always treated "nothing completed" as a break.
+     *
+     * This is always a live read, not a nightly-frozen snapshot: finishing
+     * an old, left-over today-task days later can retroactively turn its
+     * original day into a success (and heal a streak gap) — there's no
+     * "close the day" ritual in this app to freeze anything against, and
+     * eventually finishing what you flagged honestly earns the day.
+     *
+     * @param  array<string, array{total: int, done: int}>  $todayStats
+     * @return array<string, bool>
+     */
+    public static function dailySuccessMap(array $todayStats): array
+    {
+        $map = [];
+
+        foreach ($todayStats as $date => $stats) {
+            $map[$date] = $stats['total'] > 0 && $stats['done'] === $stats['total'];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Consecutive local days, ending today or yesterday, that were "perfect"
+     * (every today-task cleared). A day not yet perfect today doesn't break
+     * the streak until tomorrow starts without it — it's counted through
+     * yesterday instead, "at risk" rather than already broken (see the
+     * streak-risk reminder).
+     */
+    public static function currentStreak(User $user, ?array $successMap = null): int
+    {
+        $successMap ??= self::dailySuccessMap(self::todayListStatsByDay($user));
+
+        $cursor = ($successMap[$user->localToday()->toDateString()] ?? false)
             ? $user->localToday()
             : $user->localToday()->subDay();
 
         $streak = 0;
 
-        while (($counts[$cursor->toDateString()] ?? 0) > 0) {
+        while ($successMap[$cursor->toDateString()] ?? false) {
             $streak++;
             $cursor = $cursor->subDay();
         }
@@ -77,10 +131,10 @@ class ProgressStats
         return $streak;
     }
 
-    /** The longest run of consecutive local days with ≥1 completed task, ever. */
-    public static function bestStreak(array $counts): int
+    /** The longest run of consecutive "perfect" local days, ever. */
+    public static function bestStreak(array $successMap): int
     {
-        $dates = collect(array_keys(array_filter($counts, fn (int $c) => $c > 0)))
+        $dates = collect(array_keys(array_filter($successMap)))
             ->map(fn (string $d) => Carbon::parse($d))
             ->sort()
             ->values();
@@ -100,6 +154,27 @@ class ProgressStats
         }
 
         return $best;
+    }
+
+    /** Lifetime count of "perfect" days — a different axis from raw completion volume. */
+    public static function perfectDaysCount(array $successMap): int
+    {
+        return count(array_filter($successMap));
+    }
+
+    /**
+     * Of the days you set a today-list at all, what share did you fully
+     * clear — a consistency measure, not a volume one. Null (not 0) when
+     * you've never set a today-list, since 0% would misleadingly read as
+     * "you always fail" rather than "not applicable yet".
+     */
+    public static function perfectDayRate(array $successMap): ?int
+    {
+        if ($successMap === []) {
+            return null;
+        }
+
+        return (int) round(100 * count(array_filter($successMap)) / count($successMap));
     }
 
     /** The most tasks ever completed in a single local day, optionally excluding one date. */
@@ -186,21 +261,45 @@ class ProgressStats
     }
 
     /**
-     * Whether *this* completion (the one that just moved today's count from
-     * $beforeCount to $beforeCount+1) crosses a real milestone — the daily
-     * goal, or an all-time daily record. Never both at once: a record is the
-     * rarer, bigger achievement, so it wins if both are true on the same
-     * completion. A record can only be "broken", never "set" out of nothing
-     * — the very first tasks ever completed don't celebrate a record of 1.
+     * Whether completing $task just crossed a real milestone. Checked in
+     * priority order — the rarer/more meaningful one wins if several are
+     * true on the same completion, never more than one at once:
      *
-     * @return array{kind: 'record'|'goal', label: string}|null
+     *   1. Perfect day — $task was itself part of today's today-list, and
+     *      completing it just brought today's open today-tasks to zero.
+     *      Checked against the live DB state, which by the time this runs
+     *      already reflects $task's own completion (called post-update).
+     *   2. Record — today's count (given as $beforeCount, captured before
+     *      the write) just moved past the all-time daily best. A record can
+     *      only be "broken", never "set" out of nothing — the very first
+     *      tasks ever completed don't celebrate a record of 1.
+     *   3. Goal — today's count just reached the configured daily goal.
+     *
+     * @return array{kind: 'perfect-day'|'record'|'goal', label: string}|null
      */
-    public static function celebrationFor(User $user, int $beforeCount): ?array
+    public static function celebrationFor(User $user, Task $task, int $beforeCount): ?array
     {
+        $today = $user->localToday();
+
+        if ($task->today_date?->toDateString() === $today->toDateString()) {
+            // whereDate(), not where(): a bare 'date' cast still stores full
+            // datetime precision (a zeroed time-of-day), so an exact-string
+            // where() against a plain 'Y-m-d' value would silently match
+            // nothing — whereDate() normalizes the column for comparison.
+            $stillOpen = Task::query()
+                ->forUser($user)
+                ->whereDate('today_date', $today->toDateString())
+                ->where('is_completed', false)
+                ->count();
+
+            if ($stillOpen === 0) {
+                return ['kind' => 'perfect-day', 'label' => 'Perfekter Tag'];
+            }
+        }
+
         $counts = self::completedCountsByDay($user);
-        $today = $user->localToday()->toDateString();
         $afterCount = $beforeCount + 1;
-        $priorBest = self::bestDailyCount($counts, excluding: $today);
+        $priorBest = self::bestDailyCount($counts, excluding: $today->toDateString());
         $goal = $user->dailyTaskGoal();
 
         if ($priorBest > 0 && $beforeCount <= $priorBest && $afterCount > $priorBest) {
