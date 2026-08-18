@@ -249,6 +249,7 @@ class ProjectPage extends Component
             'project_id' => $this->projectId,
             'list' => 'projects',
             'is_today' => false,
+            'today_date' => null,
         ]);
     }
 

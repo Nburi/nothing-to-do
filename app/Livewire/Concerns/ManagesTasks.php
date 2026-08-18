@@ -128,17 +128,20 @@ trait ManagesTasks
             $updates['project_id'] = $newProjectId;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
+            $updates['today_date'] = null;
         } elseif ($newList === 'projects') {
             // Standalone project task (no specific project)
             $updates['project_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
+            $updates['today_date'] = null;
         } else {
             // Regular board list — clear any project assignment
             $updates['project_id'] = null;
             $updates['list'] = $newList;
             if (! in_array($newList, Task::TODAY_LISTS, true)) {
                 $updates['is_today'] = false;
+                $updates['today_date'] = null;
             }
         }
 

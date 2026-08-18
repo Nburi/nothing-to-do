@@ -382,6 +382,7 @@ class TaskBoard extends Component
             'project_id' => $project->id,
             'list' => 'projects',
             'is_today' => false,
+            'today_date' => null,
         ]);
     }
 
@@ -410,7 +411,10 @@ class TaskBoard extends Component
             return;
         }
 
-        $task->update(['is_today' => $value]);
+        $task->update([
+            'is_today' => $value,
+            'today_date' => $task->todayDateFor($value, auth()->user()->localToday()),
+        ]);
     }
 
     /**
@@ -430,6 +434,7 @@ class TaskBoard extends Component
 
         // Inbox and project list have no Today area.
         $today = in_array($list, ['inbox', 'projects'], true) ? false : $today;
+        $targetDate = $today ? auth()->user()->localToday() : null;
 
         foreach (array_values($ids) as $position => $id) {
             $task = auth()->user()->tasks()->find((int) $id);
@@ -441,6 +446,7 @@ class TaskBoard extends Component
             $updates = [
                 'list' => $list,
                 'is_today' => $today,
+                'today_date' => $task->todayDateFor($today, $targetDate),
                 'sort_order' => $position,
             ];
 
@@ -461,8 +467,11 @@ class TaskBoard extends Component
         match ($intent) {
             'todos' => $task->update(['list' => 'todos']),
             'tasks' => $task->update(['list' => 'tasks']),
-            'today' => $task->isInbox() ? null : $task->update(['is_today' => true]),
-            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
+            'today' => $task->isInbox() ? null : $task->update([
+                'is_today' => true,
+                'today_date' => $task->todayDateFor(true, auth()->user()->localToday()),
+            ]),
+            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false, 'today_date' => null]),
             default => null,
         };
     }
