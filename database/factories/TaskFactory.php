@@ -33,6 +33,7 @@ class TaskFactory extends Factory
             'title' => fake()->randomElement($titles),
             'list' => 'inbox',
             'is_today' => false,
+            'today_date' => null,
             'is_important' => false,
             'deadline' => null,
             'due_date' => null,
@@ -63,6 +64,17 @@ class TaskFactory extends Factory
         return $this->state(fn (array $attrs) => [
             'list' => $attrs['list'] === 'inbox' ? 'todos' : $attrs['list'],
             'is_today' => true,
+            'today_date' => now()->toDateString(),
+        ]);
+    }
+
+    /** Flagged "today" for a specific local date — for backdating a day's today-list in tests. */
+    public function todayOn(string $date): static
+    {
+        return $this->state(fn (array $attrs) => [
+            'list' => $attrs['list'] === 'inbox' ? 'todos' : $attrs['list'],
+            'is_today' => true,
+            'today_date' => $date,
         ]);
     }
 

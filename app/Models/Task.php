@@ -34,6 +34,7 @@ class Task extends Model
         'project_id',
         'emergency_list',
         'is_today',
+        'today_date',
         'is_important',
         'deadline',
         'due_date',
@@ -50,6 +51,7 @@ class Task extends Model
     {
         return [
             'is_today' => 'boolean',
+            'today_date' => 'date',
             'is_important' => 'boolean',
             'is_completed' => 'boolean',
             'deadline' => 'date',
@@ -161,6 +163,28 @@ class Task extends Model
     public function isInProject(): bool
     {
         return $this->project_id !== null;
+    }
+
+    /**
+     * The `today_date` value to write alongside a new `is_today`, read from
+     * this task's CURRENT (not-yet-saved) state — so every one of the several
+     * places that set `is_today` can just splice this into their own
+     * `update([...])` call instead of hand-rolling the same guard.
+     *
+     * Stamps `$targetDate` only when actually ENTERING today (is_today was
+     * false); leaves an already-true flag's date untouched, so reordering
+     * within the Today zone — or PrepareTomorrow re-touching something
+     * already flagged — doesn't silently re-date an old leftover task to
+     * "now"; always clears to null when leaving. See ProgressStats for what
+     * this date is used for (it's never read by board display logic).
+     */
+    public function todayDateFor(bool $newIsToday, ?Carbon $targetDate = null): ?string
+    {
+        if (! $newIsToday) {
+            return null;
+        }
+
+        return $this->is_today ? $this->today_date?->toDateString() : $targetDate?->toDateString();
     }
 
     /** True when the effective date comes from a hard deadline (not a soft due date). */
