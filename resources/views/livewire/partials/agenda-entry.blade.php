@@ -62,13 +62,23 @@
         ])>{{ $entry->title }}</p>
 
         @if ($preview = $entry->notesPreview())
-            <button
-                type="button"
-                wire:click="startEdit({{ $entry->id }})"
-                class="mt-0.5 block max-w-full truncate rounded text-left text-[11.5px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-                title="{{ $preview }}"
-                aria-label="Notiz anzeigen: {{ $entry->title }}"
-            >{{ $preview }}</button>
+            <div x-data="{ notesOpen: false }">
+                <button
+                    type="button"
+                    @click.stop="notesOpen = !notesOpen"
+                    class="mt-0.5 block max-w-full truncate rounded text-left text-[11.5px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    :aria-expanded="notesOpen.toString()"
+                    aria-label="Notiz ein-/ausklappen: {{ $entry->title }}"
+                >
+                    <span x-show="!notesOpen">{{ $preview }}</span>
+                    <span x-show="notesOpen" style="display: none;">Notiz ausblenden</span>
+                </button>
+                <p
+                    x-show="notesOpen"
+                    style="display: none;"
+                    class="mt-0.5 whitespace-pre-line break-words text-[12.5px] text-ink-soft"
+                >{{ $entry->notes }}</p>
+            </div>
         @endif
     </div>
 
