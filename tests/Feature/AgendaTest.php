@@ -111,6 +111,17 @@ class AgendaTest extends TestCase
         $this->assertDatabaseHas('agenda_entries', ['id' => $entry->id, 'title' => 'Neue Prüfung']);
     }
 
+    public function test_an_entrys_note_is_visible_on_the_list_without_opening_the_edit_form(): void
+    {
+        $user = User::factory()->create();
+        $entry = AgendaEntry::factory()->for($user)->create(['notes' => 'Seite 12 bis 15 rechnen, Taschenrechner mitbringen.']);
+
+        Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->assertSee('Seite 12 bis 15 rechnen, Taschenrechner mitbringen.')
+            ->assertSet('showForm', false);
+    }
+
     public function test_an_entry_can_be_deleted(): void
     {
         $user = User::factory()->create();

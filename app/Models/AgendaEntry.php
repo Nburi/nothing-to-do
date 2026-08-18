@@ -24,6 +24,9 @@ class AgendaEntry extends Model
     /** How many weekdays ahead the dashboard homework preview looks — weekends don't count as lookahead. */
     public const DASHBOARD_PREVIEW_WEEKDAYS = 3;
 
+    /** Word count for the one-line note snippet shown on the entry row, mirroring Task::NOTES_PREVIEW_WORDS. */
+    public const NOTES_PREVIEW_WORDS = 8;
+
     protected $fillable = [
         'type',
         'subject',
@@ -119,6 +122,21 @@ class AgendaEntry extends Model
             $days <= 6 => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][$this->date->dayOfWeek],
             default => $this->date->format('d.m.'),
         };
+    }
+
+    /** One-line snippet of the note for the entry row, truncated by word count. Plain text — Agenda notes carry no Markdown. */
+    public function notesPreview(int $words = self::NOTES_PREVIEW_WORDS): ?string
+    {
+        $text = trim(preg_replace('/\s+/', ' ', (string) $this->notes));
+
+        if ($text === '') {
+            return null;
+        }
+
+        $parts = explode(' ', $text);
+        $preview = implode(' ', array_slice($parts, 0, $words));
+
+        return count($parts) > $words ? $preview.'…' : $preview;
     }
 
     public function typeLabel(): string
