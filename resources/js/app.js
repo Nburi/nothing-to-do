@@ -112,16 +112,324 @@ window.boardSortable = function (el, wire, handle = null) {
         handle: handle ?? undefined,
         delay: 60,
         delayOnTouchOnly: true,
-        // Mark the page as dragging so project cards can show a drop affordance.
-        onStart: () => document.body.classList.add('dragging-task'),
+        ...sortableGroupBands(),
+        // Mark the page as dragging so project cards can show a drop affordance,
+        // and start watching the pointer for the group band (see groupZone.track).
+        onStart: (evt) => {
+            document.body.classList.add('dragging-task');
+            groupZone.startTracking(evt.item);
+        },
+        // Hovering the middle band of another card arms "drop here to group
+        // these two" and — critically — blocks Sortable's own reorder shift
+        // for as long as the pointer stays there (see groupZone below).
+        onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
+            const armedId = groupZone.disarm();
+            groupZone.stopTracking();
+            const draggedId = evt.item.dataset.id;
+
+            // An armed grouping wins over the ordinary reorder: the server moves
+            // the task itself, so persisting the destination's order here too
+            // would fight it with a stale picture of the column.
+            if (armedId && draggedId && armedId !== draggedId) {
+                wire.groupTasks(parseInt(draggedId, 10), parseInt(armedId, 10));
+                return;
+            }
+
             const to = evt.to;
-            // A drop onto a project card lands in a zone with no data-list; the
-            // project drop zone's own onAdd handles that. Only persist real columns.
+            // A drop onto a project card or group box lands in a zone with no
+            // data-list; those zones' own onAdd handles it. Only persist real columns.
             if (to.dataset.list === undefined) return;
             const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
             wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
+ * A small label that follows the cursor while a card is armed for grouping
+ * (see groupZone below). Deliberately NOT just a ring around the target
+ * card: while dragging, the card being carried — or the browser's own
+ * native drag-image snapshot — sits right on top of whatever is under the
+ * cursor, which is exactly where a ring on the target would be. A label
+ * pinned to the cursor itself is the one thing guaranteed to render above
+ * that, in every browser.
+ */
+const groupArmLabel = (() => {
+    let el = null;
+    const ensure = () => {
+        if (el) return el;
+        el = document.createElement('div');
+        el.className = 'group-arm-label';
+        el.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(el);
+        return el;
+    };
+    return {
+        show(text, x, y) {
+            const node = ensure();
+            node.textContent = text;
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.style.display = 'block';
+        },
+        move(x, y) {
+            if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; }
+        },
+        hide() {
+            if (el) el.style.display = 'none';
+        },
+    };
+})();
+
+/**
+ * "Hover the middle of another card to group with it" — the desktop gesture
+ * for creating a task group (see TaskBoard::groupTasks).
+ *
+ * Each card is split into three vertical bands: the top and bottom quarters
+ * are ordinary reorder territory (SortableJS shifts siblings immediately,
+ * same as always), the middle half is the group band. Returning `false`
+ * from Sortable's onMove while the pointer sits in that middle band tells
+ * Sortable not to touch the DOM at all — the hovered card stays exactly
+ * where it is, no gap opens, nothing "slips away" — so the only way to see
+ * a sibling move is to be in a reorder band, and the only way to arm a
+ * group is to NOT be moving anything. The two states can never be
+ * ambiguous. Arming is instant (no dwell timer): the band boundary itself
+ * is the commitment, the same way crossing a card's own vertical midline
+ * already decides above/below during a plain reorder.
+ *
+ * The armed card gets .group-arm (an indent + forest bracket, see app.css) —
+ * a secondary cue that helps once the drag image is small enough to peek
+ * past, but the cursor label above is the reliable indicator, since the
+ * carried card (or the browser's own drag-image snapshot) usually sits
+ * right on top of the card underneath it.
+ */
+/**
+ * Sortable's `invertedSwapThreshold`, mirrored here so groupZone's own band
+ * math can't drift from the one Sortable actually reorders by. 0.5 means the
+ * outer quarter at each end is a reorder band and the middle half is the
+ * group band — see GROUP_BAND_FRACTION below and the sortableGroupBands()
+ * options both zones spread into their config.
+ */
+const INVERTED_SWAP_THRESHOLD = 0.5;
+
+/** Fraction of a card's height taken by ONE reorder band, at each end. */
+const GROUP_BAND_FRACTION = INVERTED_SWAP_THRESHOLD / 2;
+
+/**
+ * The Sortable options that make the three bands real.
+ *
+ * `invertSwap: true` is the load-bearing one, and the whole reason the
+ * earlier version of this gesture did not work. With Sortable's default
+ * (`invertSwap: false`, `swapThreshold: 1`) the swap zone is the *entire*
+ * card — see _getSwapDirection in sortablejs: the regular branch tests
+ * `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2`, which
+ * with swapThreshold 1 is simply "anywhere inside the target". So the
+ * hovered card is reordered out from under the cursor the instant the
+ * pointer touches its leading edge, long before the pointer can reach the
+ * middle. No onMove guard can rescue that, because by the time the pointer
+ * is in the middle band the card that was there has already moved.
+ *
+ * `invertSwap: true` switches to the inverted branch, which swaps only in
+ * the outer `invertedSwapThreshold / 2` of each end and returns 0 —
+ * literally "no swap" — everywhere in between. Sortable itself then holds
+ * the card still in the middle band, so it stays put under the cursor and
+ * can be grouped onto. The direction it returns in the outer bands is
+ * `mouseOnAxis > mid ? 1 : -1`: the top band inserts the dragged card
+ * *before* the target (order it above), the bottom band after it.
+ */
+const sortableGroupBands = () => ({
+    invertSwap: true,
+    invertedSwapThreshold: INVERTED_SWAP_THRESHOLD,
+});
+
+const groupZone = {
+    el: null,
+    draggedEl: null,
+    lastX: 0,
+    lastY: 0,
+
+    /** True when `y` sits in the middle (group) band of `rect`. */
+    isGroupBand(rect, y) {
+        const band = rect.height * GROUP_BAND_FRACTION;
+        return y > rect.top + band && y < rect.bottom - band;
+    },
+
+    /**
+     * Arming is driven from here — a pointer listener of our own — and
+     * deliberately NOT from Sortable's `onMove`.
+     *
+     * `onMove` looks like the natural hook, and it is a trap: Sortable's
+     * `_onDragOver` bails at `if (direction === 0 || sibling === target)
+     * return completed(false);` *before* it ever calls `_onMove`. Since
+     * `invertSwap` makes the middle band return direction 0 by design, the
+     * one region where grouping must arm is exactly the region where
+     * `onMove` is guaranteed never to fire. Arming there is unreachable.
+     *
+     * So we track the pointer ourselves for the duration of the drag
+     * (`dragover` covers desktop's native HTML5 drag, `pointermove`/
+     * `touchmove` the touch + forceFallback paths) and resolve the hovered
+     * card with elementFromPoint. Independent of Sortable's internals, and
+     * it works the same in every drag mode.
+     */
+    track(x, y) {
+        this.lastX = x;
+        this.lastY = y;
+        groupArmLabel.move(x, y);
+
+        const under = document.elementFromPoint(x, y);
+        const card = under ? under.closest('[data-id]') : null;
+
+        // The dragged card itself stays in the DOM as the placeholder; it is
+        // never its own drop target.
+        if (!card || card === this.draggedEl || !card.dataset.id) {
+            this.reset();
+            return;
+        }
+
+        if (!this.isGroupBand(card.getBoundingClientRect(), y)) {
+            this.reset();
+            return;
+        }
+
+        if (card !== this.el) {
+            this.reset();
+            this.el = card;
+            card.classList.add('group-arm');
+            const title = card.dataset.title;
+            groupArmLabel.show(title ? `Gruppieren mit „${title}“` : 'Gruppieren', x, y);
+        }
+    },
+
+    /** Bound once so add/removeEventListener see the same reference. */
+    _onPointer: null,
+
+    startTracking(draggedEl) {
+        this.draggedEl = draggedEl ?? null;
+        if (!this._onPointer) {
+            this._onPointer = (event) => {
+                const point = event.touches?.[0] ?? event;
+                if (point && typeof point.clientX === 'number' && (point.clientX || point.clientY)) {
+                    this.track(point.clientX, point.clientY);
+                }
+            };
+        }
+        document.addEventListener('dragover', this._onPointer, true);
+        document.addEventListener('pointermove', this._onPointer, true);
+        document.addEventListener('touchmove', this._onPointer, true);
+    },
+
+    stopTracking() {
+        if (this._onPointer) {
+            document.removeEventListener('dragover', this._onPointer, true);
+            document.removeEventListener('pointermove', this._onPointer, true);
+            document.removeEventListener('touchmove', this._onPointer, true);
+        }
+        this.draggedEl = null;
+    },
+
+    /**
+     * Sortable's `onMove`, kept purely as a safety net: `invertSwap` already
+     * returns 0 across the middle band, so this normally never even runs
+     * there. It only matters in the edge cases that reach `_onMove` anyway
+     * (a cross-list drop, `differentLevel`), where a reorder must still not
+     * happen while a group is armed. Pure predicate — no state changes.
+     */
+    consider(related, relatedRect, originalEvent) {
+        const point = originalEvent?.touches?.[0] ?? originalEvent;
+
+        if (!related?.dataset?.id || !relatedRect || !point || typeof point.clientY !== 'number') {
+            return true;
+        }
+
+        return !this.isGroupBand(relatedRect, point.clientY);
+    },
+
+    /** Clear any highlight, keeping nothing armed. */
+    reset() {
+        if (this.el) this.el.classList.remove('group-arm');
+        this.el = null;
+        groupArmLabel.hide();
+    },
+
+    /** Read out whatever was armed at drop time, then clean up. */
+    disarm() {
+        const id = this.el ? this.el.dataset.id : null;
+        this.reset();
+        return id;
+    },
+};
+
+/**
+ * A group box, both as a drop target and as a source: dropping a card here
+ * (from anywhere) assigns it to the group and keeps its list — an Inbox card
+ * lands in that group's Inbox. Dragging a card OUT of the box (to a plain
+ * board column) releases it again, the reverse gesture.
+ *
+ * `sort: false` — the box only ever previews up to two tasks (never the full
+ * group), so reordering within that partial view isn't meaningful; the true
+ * order is only set from inside the group's own dashboard.
+ *
+ * `handle` mirrors boardSortable's: mobile restricts the drag start to the
+ * card's grip icon (its body is already claimed by swipeCard's gestures),
+ * desktop leaves the whole card draggable.
+ */
+window.groupDropZone = function (el, wire, handle = null) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: 'board',
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
+        sort: false,
+        draggable: '[data-id]',
+        delay: 60,
+        delayOnTouchOnly: true,
+        ...sortableGroupBands(),
+        onStart: (evt) => {
+            document.body.classList.add('dragging-task');
+            groupZone.startTracking(evt.item);
+        },
+        onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
+        onAdd: (evt) => {
+            const taskId = evt.item.dataset.id;
+            const groupId = el.dataset.groupId;
+            evt.item.remove(); // the server decides what the box shows next
+            if (taskId && groupId) {
+                wire.assignTaskToGroup(parseInt(taskId, 10), parseInt(groupId, 10));
+            }
+        },
+        onEnd: (evt) => {
+            document.body.classList.remove('dragging-task');
+            const armedId = groupZone.disarm();
+            groupZone.stopTracking();
+            const taskId = evt.item.dataset.id;
+
+            // Held over the group band of another card on the way out: merge
+            // into that card's group (or a fresh one) instead — same as
+            // boardSortable's own onEnd, and takes priority over a plain drop.
+            if (armedId && taskId && armedId !== taskId) {
+                wire.groupTasks(parseInt(taskId, 10), parseInt(armedId, 10));
+                return;
+            }
+
+            const to = evt.to;
+            if (to === el) return; // dropped back into the same box — nothing changed
+
+            // Any other receiving zone (a project card, another group's box,
+            // the "new project" zone) already fully handles the move via its
+            // own onAdd, including releasing this box's group membership —
+            // only a plain board column has no such handler of its own.
+            if (to.dataset.list === undefined) return;
+            if (!taskId) return;
+
+            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
+            wire.ungroupTask(parseInt(taskId, 10));
         },
     });
     return el._sortable;
@@ -282,16 +590,22 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.store('quickCapture', {
         open: false,
         returnFocusTo: null,
-        show(trigger = null, target = null) {
+        show(trigger = null, target = null, groupId = null) {
             if (this.open) return;
             this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
             this.open = true;
+            // Page-level defaults, set on <body> by the layout. Read here rather
+            // than passed by each trigger so the N shortcut — which knows nothing
+            // about the page — opens on exactly the same chip the "+" would.
+            const defaults = document.body.dataset;
+            target = target ?? defaults.captureTarget ?? null;
+            groupId = groupId ?? (defaults.captureGroup ? parseInt(defaults.captureGroup, 10) : null);
             // Wipe whatever the last session left behind (title, dates, the
             // confirmation line, validation errors) — the round trip lands
             // while the panel is still animating in. `target` lets a page whose
             // subject matches one of the chips open straight on that chip;
             // null means the usual Inbox default.
-            window.Livewire?.dispatch('quick-capture-opened', { target });
+            window.Livewire?.dispatch('quick-capture-opened', { target, groupId });
             // Alpine.nextTick, not requestAnimationFrame: the panel's x-show has an
             // x-transition, so Alpine doesn't flip it off display:none synchronously —
             // nextTick is Alpine's own "wait until my DOM updates are flushed" API,

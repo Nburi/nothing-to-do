@@ -1,7 +1,7 @@
 {{-- Desktop task card. A SortableJS item (data-id) when active. Tap body = important, circle = done. --}}
 <div
     wire:key="task-{{ $task->id }}"
-    @unless($task->is_completed) data-id="{{ $task->id }}" @endunless
+    @unless($task->is_completed) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
     x-data="{
         dateOpen: false,
         deadline: '{{ $task->deadline?->toDateString() }}',

@@ -16,7 +16,7 @@
 
 <div
     wire:key="m-task-{{ $task->id }}"
-    @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" @endunless
+    @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
     class="relative select-none"
     x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}' })"
 >

@@ -23,7 +23,26 @@ few days:**
 If anything about per-person completion turns out wrong before then, rolling back is still lossless — the
 old column still holds the pre-migration state.
 
+### Local dev DB still carries a dead `tasks.task_group_id` column
+
+Left over from the deleted first task-groups attempt (2026-07-31). Its migration file is gone with the
+branch, so `migrate:rollback` cannot remove it, and SQLite refuses `ALTER TABLE … DROP COLUMN` for a column
+that appears in a foreign-key definition — dropping it needs a full table rebuild, which is not worth
+risking on a database with real tasks in it. The orphaned `task_groups` table, the `start_hint` column and
+both stale `migrations` rows were removed; nothing in the code reads `task_group_id`.
+
+**Production never had any of it** (those branches were never merged or pushed), so there is nothing to
+deploy. Clean it up whenever the local database is next rebuilt from scratch.
+
 ## Ideas, not committed
+
+- **Task groups in the API (Sanctum).** `tasks.group_id` is invisible to Shortcuts: a task cannot be filed
+  into a group or read back with its group over the API, and there is no groups endpoint. Worth doing with
+  the same care as the Agenda endpoints below rather than bolting on one field.
+- **A markdown-notes partial shared by projects and groups.** `partials/group-notes.blade.php` and the
+  brainstorm panel in `project-page.blade.php` are now two implementations of the same editor (toolbar,
+  autosize, autosave, read/edit toggle). Worth folding into one parameterised partial — but as its own
+  refactor, not smuggled into a feature branch.
 
 - **Agenda API endpoints (Sanctum).** The Agenda is the only feature with no REST surface, so Apple
   Shortcuts can't reach homework at all. Shared spaces make this more interesting (a Shortcut that files

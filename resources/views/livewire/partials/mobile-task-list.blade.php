@@ -9,8 +9,9 @@
     $emergencyTasks = $emergencyTasks ?? collect();
     $importantRest = $importantRest ?? collect();
     $done = $done ?? collect();
+    $groupBoxes = $groupBoxes ?? collect();
     $allEmpty = $today->isEmpty() && $emergencyTasks->isEmpty() && $importantRest->isEmpty()
-        && $normalRest->isEmpty() && $done->isEmpty();
+        && $normalRest->isEmpty() && $done->isEmpty() && $groupBoxes->isEmpty();
 @endphp
 
 @if ($today->isNotEmpty())
@@ -28,6 +29,11 @@
 @endif
 
 @include('livewire.partials.emergency-mobile-section', compact('emergencyProject', 'emergencyTasks', 'importantRest'))
+
+{{-- Task groups that have open work in this list. --}}
+@foreach ($groupBoxes as $box)
+    @include('livewire.partials.task-group-box', ['box' => $box, 'mobile' => true])
+@endforeach
 
 <div x-data="{ showAll: {{ $emergencyProject ? 'false' : 'true' }} }">
     @if ($emergencyProject && $normalRest->isNotEmpty())

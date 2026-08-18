@@ -7,6 +7,7 @@ use App\Models\AgendaEntry;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Models\TaskGroup;
 use App\Services\PomodoroSessionService;
 use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
@@ -22,6 +23,11 @@ class TaskBoard extends Component
 
     /** Active mobile page: inbox | todos | tasks | today | projects. */
     public string $mobileTab = 'inbox';
+
+    /** The just-created group whose inline name field is open, if any. */
+    public ?int $namingGroupId = null;
+
+    public string $groupNameDraft = '';
 
     /**
      * Capture happens in the app-wide QuickCapture panel now, which is a
@@ -52,6 +58,15 @@ class TaskBoard extends Component
             ->forUser(auth()->user())
             ->onBoard()
             ->inList($list)
+            // A grouped task lives inside its group's box, not loose in the
+            // column — unless it's flagged important or for today. Those two are
+            // explicit "this one matters now" signals and outrank the bundling,
+            // so they show up as ordinary cards (see CLAUDE.md §7 Task-Gruppen).
+            ->where(function ($q) {
+                $q->whereNull('group_id')
+                    ->orWhere('is_important', true)
+                    ->orWhere('is_today', true);
+            })
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -132,6 +147,79 @@ class TaskBoard extends Component
     public function projectTasks(): Collection
     {
         return $this->boardTasks('projects');
+    }
+
+    /**
+     * The user's task groups with their working set — one query for the cards,
+     * one for the completed counts, regardless of how many groups there are.
+     *
+     * @return Collection<int, TaskGroup>
+     */
+    #[Computed]
+    public function taskGroups(): Collection
+    {
+        return TaskGroup::query()
+            ->forUser(auth()->user())
+            ->ordered()
+            ->withCount(['tasks as done_count' => fn ($q) => $q->where('is_completed', true)])
+            ->with('activeTasks')
+            ->get();
+    }
+
+    /**
+     * The group boxes to render inside one board column.
+     *
+     * A group appears in To-Dos and in Tasks whenever it has open work there,
+     * previewing its next two entries. A group with no open board work at all
+     * (everything still in its own inbox, or everything done) would otherwise
+     * be invisible on the board — so it gets one compact box in the Tasks
+     * column instead, which is the difference between "tucked away" and "lost".
+     *
+     * @return Collection<int, array{group: TaskGroup, preview: Collection<int, Task>, more: int, done: int, total: int, inbox: int, compact: bool}>
+     */
+    public function groupBoxesFor(string $list): Collection
+    {
+        // The Inbox column never shows group boxes: a group's own inbox is
+        // triage that belongs inside the group, and mixing it into the board's
+        // inbox would put two different kinds of "unsorted" in one pile.
+        if ($list === 'inbox') {
+            return collect();
+        }
+
+        return $this->taskGroups
+            ->map(function (TaskGroup $group) use ($list) {
+                $active = $group->activeTasks;
+                $inList = $active->where('list', $list)->values();
+                $hasBoardWork = $active->whereIn('list', ['todos', 'tasks'])->isNotEmpty();
+
+                // The compact fallback lives in Tasks and only for groups that
+                // have nothing to show in either working column.
+                $compact = ! $hasBoardWork;
+
+                if ($compact && $list !== 'tasks') {
+                    return null;
+                }
+
+                if (! $compact && $inList->isEmpty()) {
+                    return null;
+                }
+
+                // Important / today tasks already render as ordinary cards in
+                // this column, so previewing them again would just duplicate.
+                $previewable = $inList->where('is_important', false)->where('is_today', false)->values();
+
+                return [
+                    'group' => $group,
+                    'preview' => $previewable->take(2),
+                    'more' => max($inList->count() - $previewable->take(2)->count(), 0),
+                    'done' => (int) $group->done_count,
+                    'total' => $active->count() + (int) $group->done_count,
+                    'inbox' => $active->where('list', 'inbox')->count(),
+                    'compact' => $compact,
+                ];
+            })
+            ->filter()
+            ->values();
     }
 
     /** The project currently in "emergency mode", or null if not active. */
@@ -349,10 +437,19 @@ class TaskBoard extends Component
     #[Computed]
     public function counts(): array
     {
+        // Grouped tasks count towards the column they surface in, whether they
+        // show as an ordinary card or inside their group's box.
+        $grouped = fn (string $list) => $this->taskGroups
+            ->sum(fn (TaskGroup $g) => $g->activeTasks
+                ->where('list', $list)
+                ->where('is_important', false)
+                ->where('is_today', false)
+                ->count());
+
         return [
             'inbox' => $this->inbox->where('is_completed', false)->count() + $this->emergencyTasksFor('inbox')->count(),
-            'todos' => $this->todosAll->where('is_completed', false)->count() + $this->emergencyTasksFor('todos')->count(),
-            'tasks' => $this->tasksAll->where('is_completed', false)->count() + $this->emergencyTasksFor('tasks')->count(),
+            'todos' => $this->todosAll->where('is_completed', false)->count() + $this->emergencyTasksFor('todos')->count() + $grouped('todos'),
+            'tasks' => $this->tasksAll->where('is_completed', false)->count() + $this->emergencyTasksFor('tasks')->count() + $grouped('tasks'),
             'today' => $this->today->count(),
             'projects' => $this->projects->count() + $this->projectTasks->where('is_completed', false)->count(),
         ];
@@ -377,12 +474,132 @@ class TaskBoard extends Component
     {
         $task = $this->userTask($taskId);
         $project = auth()->user()->projects()->findOrFail($projectId);
+        $oldGroup = $task->group; // a task belongs to a project or a group, never both
 
         $task->update([
             'project_id' => $project->id,
+            'group_id' => null,
             'list' => 'projects',
             'is_today' => false,
         ]);
+
+        $oldGroup?->pruneIfTooSmall();
+    }
+
+    /**
+     * Desktop drag & drop: one task card held over another for ~350 ms and
+     * dropped there (see boardSortable's grouping arm in app.js). Bundles both
+     * into a fresh group and opens its inline name field — the group exists
+     * immediately, naming it is the next, optional step, so the gesture never
+     * blocks on a dialog.
+     *
+     * The dragged task adopts the target's list: that's the column the user
+     * dropped it in, and anything else would silently move the card back.
+     */
+    public function groupTasks(int $taskId, int $targetTaskId): void
+    {
+        if ($taskId === $targetTaskId) {
+            return;
+        }
+
+        $task = $this->userTask($taskId);
+        $target = $this->userTask($targetTaskId);
+
+        // A task belongs to a project or to a group, never both.
+        if ($task->isInProject() || $target->isInProject()) {
+            return;
+        }
+
+        // Captured before the merge — the dragged task may already have
+        // belonged to a different group, which this join then leaves behind.
+        $oldGroup = $task->group;
+
+        // Dropped onto a card that is already grouped? Then this is simply
+        // "add to that group" — no reason to make the user undo one first.
+        $group = $target->group ?? auth()->user()->taskGroups()->create([
+            'name' => TaskGroup::DEFAULT_NAME,
+            'sort_order' => 0,
+        ]);
+
+        $target->update(['group_id' => $group->id]);
+        $task->update(['group_id' => $group->id, 'list' => $target->list]);
+
+        if ($oldGroup !== null && $oldGroup->id !== $group->id) {
+            $oldGroup->pruneIfTooSmall();
+        }
+
+        // Only a brand-new group opens its name field; adding to an existing
+        // one shouldn't ask for a name it already has.
+        if ($group->wasRecentlyCreated) {
+            $this->namingGroupId = $group->id;
+            $this->groupNameDraft = '';
+        }
+    }
+
+    /** Drop onto an existing group box — the task keeps its list, so an inbox task lands in the group's inbox. */
+    public function assignTaskToGroup(int $taskId, int $groupId): void
+    {
+        $task = $this->userTask($taskId);
+        $group = auth()->user()->taskGroups()->findOrFail($groupId);
+
+        if ($task->isInProject()) {
+            return;
+        }
+
+        $oldGroup = $task->group;
+
+        $task->update(['group_id' => $group->id]);
+
+        if ($oldGroup !== null && $oldGroup->id !== $group->id) {
+            $oldGroup->pruneIfTooSmall();
+        }
+    }
+
+    /**
+     * Desktop drag & drop: a card dragged out of its group's box and dropped
+     * onto a plain board column (see groupDropZone's onEnd in app.js, which
+     * also calls reorder() for the new position). Releases the task and, if
+     * that leaves the group with one task or none, dissolves it — a bundle of
+     * one is not a group.
+     */
+    public function ungroupTask(int $taskId): void
+    {
+        $task = $this->userTask($taskId);
+        $group = $task->group;
+
+        if ($group === null) {
+            return;
+        }
+
+        $task->update(['group_id' => null]);
+        $group->pruneIfTooSmall();
+    }
+
+    /** Save the inline name of a freshly created group. Empty simply keeps the default. */
+    public function saveGroupName(): void
+    {
+        if ($this->namingGroupId === null) {
+            return;
+        }
+
+        $this->groupNameDraft = trim($this->groupNameDraft);
+
+        $this->validate(
+            ['groupNameDraft' => ['nullable', 'string', 'max:255']],
+            ['groupNameDraft.max' => 'Höchstens 255 Zeichen.'],
+        );
+
+        if ($this->groupNameDraft !== '') {
+            auth()->user()->taskGroups()->find($this->namingGroupId)
+                ?->update(['name' => $this->groupNameDraft]);
+        }
+
+        $this->stopNamingGroup();
+    }
+
+    public function stopNamingGroup(): void
+    {
+        $this->reset(['namingGroupId', 'groupNameDraft']);
     }
 
     /**
@@ -392,6 +609,7 @@ class TaskBoard extends Component
     public function createProjectFromTask(int $taskId): void
     {
         $task = $this->userTask($taskId);
+        $group = $task->group;
 
         auth()->user()->projects()->create([
             'name' => $task->title,
@@ -399,6 +617,7 @@ class TaskBoard extends Component
         ]);
 
         $task->delete();
+        $group?->pruneIfTooSmall();
     }
 
     /** Set/clear the Today focus. Inbox & project tasks can never be Today. */

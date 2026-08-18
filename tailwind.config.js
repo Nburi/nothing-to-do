@@ -9,6 +9,14 @@ export default {
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',
         './app/View/**/*.php',
+        // REQUIRED, not optional: every drag/drop feedback class (.board-ghost,
+        // .board-chosen, .group-arm, .group-arm-label) is declared in app.css's
+        // `@layer components` but applied *only* from JavaScript. Tailwind
+        // tree-shakes `@layer components` rules whose class name it never sees
+        // in a content file, so without this glob all four are silently purged
+        // out of the build and drag-and-drop ends up with no visual feedback
+        // whatsoever — see CLAUDE.md §10.
+        './resources/js/**/*.js',
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
     ],
     theme: {

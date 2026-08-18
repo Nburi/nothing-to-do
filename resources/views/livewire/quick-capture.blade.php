@@ -15,7 +15,7 @@
         /* Optional fields appear as soon as there is something to attach them to.
            Agenda is always open: its fields are required, not optional. */
         get showExtra() {
-            if ($wire.target === 'agenda') return true;
+            if ($wire.target === 'agenda' || $wire.target === 'group') return true;
             return this.forced !== null ? this.forced : this.typed.trim().length > 0;
         },
         cycle(dir) {
@@ -63,6 +63,7 @@
                         project: 'Wie heisst das Projekt?',
                         craft: 'Was möchtest du basteln?',
                         agenda: 'Was ist aufgegeben?',
+                        group: 'Was gehört zur Gruppe?',
                     }[$wire.target] ?? 'Was steht an?'"
                     autocomplete="off"
                     @input="typed = $event.target.value"
@@ -98,7 +99,7 @@
                 {{-- Hidden for Agenda: its fields are required, so there is nothing to fold away. --}}
                 <button
                     type="button"
-                    x-show="$wire.target !== 'agenda'"
+                    x-show="$wire.target !== 'agenda' && $wire.target !== 'group'"
                     @click="forced = !showExtra"
                     class="ml-auto flex items-center gap-1 rounded-card px-1.5 py-1 text-xs text-ink-faint transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
@@ -134,6 +135,82 @@
 
                     <div class="mt-3">
                         @include('livewire.partials.notes-editor', ['fieldName' => 'notes', 'htmlProperty' => 'notesHtml', 'idPrefix' => 'qc'])
+                    </div>
+                </div>
+
+                {{-- Group: which group and which of its lists. Required, like the
+                     Agenda's fields — a task with no group isn't a group capture. --}}
+                <div x-show="$wire.target === 'group'" style="display: none;" class="flex flex-col gap-3">
+                    <div>
+                        <span class="mb-1 block text-[11px] font-medium text-ink-faint">Gruppe</span>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            @foreach ($this->taskGroups as $g)
+                                <button
+                                    type="button"
+                                    wire:key="qc-group-{{ $g->id }}"
+                                    wire:click="$set('groupId', {{ $g->id }})"
+                                    @class([
+                                        'max-w-[16ch] truncate rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                        'border-forest bg-forest text-white' => $groupId === $g->id,
+                                        'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $groupId !== $g->id,
+                                    ])
+                                    aria-pressed="{{ $groupId === $g->id ? 'true' : 'false' }}"
+                                >{{ $g->name }}</button>
+                            @endforeach
+                            <button
+                                type="button"
+                                wire:click="$set('groupId', null)"
+                                @class([
+                                    'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                    'border-forest bg-forest text-white' => $groupId === null,
+                                    'border-dashed border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $groupId !== null,
+                                ])
+                                aria-pressed="{{ $groupId === null ? 'true' : 'false' }}"
+                            >+ Neue Gruppe</button>
+                        </div>
+                    </div>
+
+                    @if ($groupId === null)
+                        <div>
+                            <label for="qc-group-name" class="mb-1 block text-[11px] font-medium text-ink-faint">Name der neuen Gruppe</label>
+                            <input
+                                id="qc-group-name"
+                                type="text"
+                                wire:model="newGroupName"
+                                placeholder="z. B. Vortrag Klimawandel"
+                                autocomplete="off"
+                                class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                            />
+                        </div>
+                    @endif
+
+                    <div>
+                        <span class="mb-1 block text-[11px] font-medium text-ink-faint">Liste in der Gruppe</span>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            @foreach (['inbox' => 'Inbox', 'todos' => 'To-Do', 'tasks' => 'Task'] as $value => $label)
+                                <button
+                                    type="button"
+                                    wire:click="$set('groupList', '{{ $value }}')"
+                                    @class([
+                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                        'border-contour bg-contour text-white' => $groupList === $value,
+                                        'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $groupList !== $value,
+                                    ])
+                                    aria-pressed="{{ $groupList === $value ? 'true' : 'false' }}"
+                                >{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="qc-group-deadline" class="mb-1 block text-[11px] font-medium text-ink-faint">Deadline · hart</label>
+                            <input id="qc-group-deadline" type="date" wire:model="deadline" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                        </div>
+                        <div>
+                            <label for="qc-group-due" class="mb-1 block text-[11px] font-medium text-ink-faint">Wunschtermin · weich</label>
+                            <input id="qc-group-due" type="date" wire:model="dueDate" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                        </div>
                     </div>
                 </div>
 
@@ -249,6 +326,9 @@
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('date')
+                    <span class="text-signal">{{ $message }}</span>
+                @enderror
+                @error('newGroupName')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
 

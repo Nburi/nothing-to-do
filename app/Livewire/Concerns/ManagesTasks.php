@@ -3,6 +3,7 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Task;
+use App\Models\TaskGroup;
 use App\Services\ProgressStats;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
@@ -10,10 +11,9 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
 /**
- * Shared task mutations + the inline edit sheet. Used by both the main
- * TaskBoard and the per-project ProjectPage so the two surfaces behave
- * identically. Every write resolves the task through the owner relationship,
- * so an id alone is never trusted.
+ * Shared task mutations + the inline edit sheet. Used by TaskBoard, ProjectPage
+ * and GroupPage so the three surfaces behave identically. Every write resolves
+ * the task through the owner relationship, so an id alone is never trusted.
  */
 trait ManagesTasks
 {
@@ -32,10 +32,29 @@ trait ManagesTasks
 
     public ?int $editProjectId = null;
 
+    /** The task group this task belongs to (board lists only — never together with a project). */
+    public ?int $editGroupId = null;
+
     /** Always resolve a task through the owner relationship — never trust an id alone. */
     protected function userTask(int $id): Task
     {
         return auth()->user()->tasks()->findOrFail($id);
+    }
+
+    /**
+     * Called after a task may have left a group as part of one of this
+     * trait's mutations (saveEdit, deleteTask) — dissolves the group if that
+     * leaves it with one task or none (see TaskGroup::pruneIfTooSmall()).
+     *
+     * GroupPage overrides this to also redirect away when the group being
+     * dissolved is the one its own page is showing: this trait has no notion
+     * of "the current page's group", so on its own it can only do the
+     * generic half (TaskBoard/ProjectPage never need the redirect, since
+     * neither page's identity depends on a specific group existing).
+     */
+    protected function afterGroupMayHaveShrunk(?TaskGroup $group): void
+    {
+        $group?->pruneIfTooSmall();
     }
 
     /** Projects available to assign in the edit sheet. */
@@ -43,6 +62,17 @@ trait ManagesTasks
     public function editableProjects(): Collection
     {
         return auth()->user()->projects()->ordered()->get();
+    }
+
+    /**
+     * Task groups available in the edit sheet. This is the touch equivalent of
+     * desktop's drag-onto-a-group-box: on a phone there is no drag, so the edit
+     * sheet is where a task gets bundled or released.
+     */
+    #[Computed]
+    public function editableGroups(): Collection
+    {
+        return auth()->user()->taskGroups()->ordered()->get();
     }
 
     /** The notes buffer rendered to safe HTML for the edit sheet's preview. */
@@ -88,6 +118,7 @@ trait ManagesTasks
         $this->editNotes = (string) ($task->notes ?? '');
         $this->editList = $task->list;
         $this->editProjectId = $task->project_id;
+        $this->editGroupId = $task->group_id;
     }
 
     public function saveEdit(): void
@@ -105,9 +136,16 @@ trait ManagesTasks
             'editNotes' => ['nullable', 'string', 'max:5000'],
             'editList' => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
+            'editGroupId' => ['nullable', 'integer', Rule::exists('task_groups', 'id')->where('user_id', auth()->id())],
         ]);
 
         $task = $this->userTask($this->editingId);
+
+        // Captured before the update — if the task leaves this group, it's
+        // pruned (dissolved if only one task would be left) once the new
+        // state is saved. Reading it now, not after, since group_id may be
+        // overwritten below.
+        $oldGroup = $task->group;
 
         $notes = trim((string) $data['editNotes']);
 
@@ -123,19 +161,26 @@ trait ManagesTasks
         $newProjectId = $data['editProjectId'] ? (int) $data['editProjectId'] : null;
         $newList = $data['editList'];
 
+        // A task belongs to a project or to a group — never to both. Anything
+        // that lands in the Projekte list therefore leaves its group behind.
+        $newGroupId = $data['editGroupId'] ? (int) $data['editGroupId'] : null;
+
         if ($newProjectId !== null) {
             // Assigned to a specific project
             $updates['project_id'] = $newProjectId;
+            $updates['group_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
         } elseif ($newList === 'projects') {
             // Standalone project task (no specific project)
             $updates['project_id'] = null;
+            $updates['group_id'] = null;
             $updates['list'] = 'projects';
             $updates['is_today'] = false;
         } else {
             // Regular board list — clear any project assignment
             $updates['project_id'] = null;
+            $updates['group_id'] = $newGroupId;
             $updates['list'] = $newList;
             if (! in_array($newList, Task::TODAY_LISTS, true)) {
                 $updates['is_today'] = false;
@@ -143,6 +188,10 @@ trait ManagesTasks
         }
 
         $task->update($updates);
+
+        if ($oldGroup !== null && $oldGroup->id !== $newGroupId) {
+            $this->afterGroupMayHaveShrunk($oldGroup);
+        }
 
         $this->cancelEdit();
     }
@@ -171,12 +220,16 @@ trait ManagesTasks
 
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editNotes', 'editList', 'editProjectId']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editNotes', 'editList', 'editProjectId', 'editGroupId']);
     }
 
     public function deleteTask(int $id): void
     {
-        $this->userTask($id)->delete();
+        $task = $this->userTask($id);
+        $group = $task->group;
+
+        $task->delete();
+        $this->afterGroupMayHaveShrunk($group);
 
         if ($this->editingId === $id) {
             $this->cancelEdit();

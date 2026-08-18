@@ -10,9 +10,11 @@
 @php
     $emergencyProject = $emergencyProject ?? null;
     $emergencyTasks = $emergencyTasks ?? collect();
+    $groupBoxes = $groupBoxes ?? collect();
     $importantRest = $emergencyProject ? $rest->where('is_important', true)->values() : collect();
     $normalRest = $emergencyProject ? $rest->where('is_important', false)->values() : $rest;
-    $columnTrulyEmpty = $emergencyTasks->isEmpty() && $importantRest->isEmpty() && $normalRest->isEmpty() && (($completed ?? collect())->isEmpty());
+    $columnTrulyEmpty = $emergencyTasks->isEmpty() && $importantRest->isEmpty() && $normalRest->isEmpty()
+        && (($completed ?? collect())->isEmpty()) && $groupBoxes->isEmpty();
 @endphp
 <section class="flex min-h-[55vh] flex-col">
     <header class="mb-3 flex items-center justify-between px-1">
@@ -69,6 +71,12 @@
             </div>
         @endif
     @endif
+
+    {{-- Task groups with open work in this column — above the loose cards, since
+         a bundle is a bigger unit than a single task. --}}
+    @foreach ($groupBoxes as $box)
+        @include('livewire.partials.task-group-box', ['box' => $box, 'mobile' => false])
+    @endforeach
 
     <div x-data="{ showAll: {{ $emergencyProject ? 'false' : 'true' }} }" class="flex flex-1 flex-col">
         @if ($emergencyProject && $normalRest->isNotEmpty())

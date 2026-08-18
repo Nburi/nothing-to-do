@@ -919,6 +919,130 @@ here applies to the single-user rest of the app.
     (that's "Verlassen", which hands ownership over properly). `transferOwnership()` exists so that leaving
     isn't the only way to pass on the admin role.
 
+### Task-Gruppen (built)
+
+The middle size between a single task and a Project: a bundle of steps that belong together — a
+presentation, rearranging a room — where a Project would be too heavy. Before this, every multi-step
+thing became a Project, which is exactly what made that column unreadable (see §1).
+
+- **`App\Models\TaskGroup`** — `user_id, name, sort_order, timestamps`. `hasMany Task` (FK
+  `tasks.group_id`), `activeTasks` is the ordered working set, scopes `forUser/ordered`. `hasMany GroupNote`
+  (`notes()`, ordered) — see below. `DEFAULT_NAME` ("Neue Gruppe") is what a group created by a gesture is
+  called until it is named.
+- **`App\Models\GroupNote`** (`group_notes` table: `task_group_id, content, sort_order, timestamps`,
+  `cascadeOnDelete`) — the Notizen column is a **stack of separate note cards**, not one growing document: a
+  group can hold a few unrelated things worth jotting down (a checklist, a quote, a deadline reminder), and
+  one blob made finding any single one of them slower as it grew. `contentHtml()` renders through
+  `TaskGroup::renderNotes()` (static, shared so the safety options — `html_input=strip`,
+  `allow_unsafe_links=false`, same as the project brainstorm field — live in one place). Cascades on group
+  delete: unlike a task, a note has no meaning outside the group it was written for, so there is nothing to
+  release it back to (contrast with `tasks.group_id`'s `nullOnDelete` just below).
+  `GroupPage` keeps only one card editable at a time (`editingNoteId`/`noteDraft`, same single-editor
+  pattern as the task edit sheet); switching to another card or leaving one completely empty on "Fertig"
+  deletes it rather than leaving a blank tile.
+- **`tasks.group_id`** is **orthogonal to `list`**, exactly like `is_today` — a grouped task still lives in
+  `inbox`/`todos`/`tasks`, it just surfaces inside its group instead of loose on the board. That is why
+  dropping an Inbox card onto a group files it in the *group's* Inbox: nothing about the task's list
+  changes, only where it is shown. The FK is `nullOnDelete`, so dissolving a group can never take tasks
+  with it. A task belongs to a **project or a group, never both** — every write path enforces it
+  (`ManagesTasks::saveEdit`, `TaskBoard::groupTasks/assignTaskToGroup`, `GroupPage::assignToGroup`).
+- **`Task::scopeGroupOrdered()`** is `boardOrdered()` **minus the leading `is_important` sort**. Inside a
+  group the star is a marker only and must not pull a task to the top — a deliberate product decision, and
+  the one place in the app where important does not reorder. Deadlines still do.
+- **Board integration** (`TaskBoard`) — `boardTasks()` hides grouped tasks from their column *unless* they
+  are `is_important` or `is_today`: both are explicit "this one matters now" signals that outrank the
+  bundling, so those show as ordinary cards (and are therefore left out of the box preview, or they'd
+  appear twice). `groupBoxesFor(list)` builds the boxes: name, progress and the next two entries, rendered
+  by `partials/task-group-box.blade.php` in both `partials/column.blade.php` (desktop) and
+  `partials/mobile-task-list.blade.php`. Two rules worth knowing:
+  - **The Inbox column never shows a group box.** A group's own inbox is triage that belongs inside the
+    group; mixing it into the board's inbox puts two different kinds of "unsorted" in one pile.
+  - **A group with no open board work gets one compact box in Tasks** ("3 Aufgaben in der Gruppen-Inbox").
+    Without it, a group whose tasks all sit in its own inbox would be invisible on the board — the
+    difference between tucked away and lost.
+  `counts()` adds the grouped tasks of a column, since they are genuinely visible there.
+- **Creating one by drag (desktop)** — each card is split into three vertical bands: the middle 50% is the
+  "group" band, the top/bottom 25% are ordinary reorder territory (`groupZone` in `resources/js/app.js`,
+  hooked into `boardSortable`'s `onMove`/`onEnd`). This replaced an earlier dwell-time design (hold a card
+  over another for 350ms) that was unreachable in practice.
+  **The load-bearing part of the fix is `invertSwap: true` + `invertedSwapThreshold: 0.5` on the Sortable
+  instances** (`sortableGroupBands()` in `app.js`), not the `onMove` guard. With Sortable's defaults
+  (`invertSwap: false`, `swapThreshold: 1`) the swap zone is the *entire* card — `_getSwapDirection` in
+  sortablejs tests `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2`, which at
+  swapThreshold 1 is just "anywhere inside the target" — so the hovered card is reordered out from under
+  the cursor the instant the pointer crosses its leading edge. That is why *both* the dwell design and a
+  first attempt at a middle-band `onMove` guard failed: by the time the pointer reaches the middle, the
+  card that was there has already moved away, so no guard checked at that point can help. `invertSwap`
+  switches Sortable to its inverted branch, which swaps only within `invertedSwapThreshold / 2` of each
+  end and returns `0` — literally "no swap" — everywhere between, so Sortable itself holds the card still
+  in the middle band. Its direction in the outer bands (`mouseOnAxis > mid ? 1 : -1`) also gives the
+  intended semantics for free: the top band orders the dragged card *above* the target, the bottom band
+  below it. **Arming is driven by `groupZone.track()`, a pointer listener of our own (`dragover` +
+  `pointermove`/`touchmove`, attached in `onStart`, removed in `onEnd`), deliberately not by Sortable's
+  `onMove`** — `_onDragOver` returns at `if (direction === 0 …)` *before* calling `_onMove`, and the middle
+  band is exactly where direction is 0, so `onMove` provably never fires there (see *Known Issues*).
+  `groupZone.consider()` stays wired to `onMove` purely as a safety net for the edge cases that do reach it;
+  its band fraction is derived from the same `INVERTED_SWAP_THRESHOLD` constant so the cue can never
+  disagree with what a release actually does. The armed card gets
+  `.group-arm` — an indent plus a forest-coloured bracket on its leading edge (`app.css`), echoing the left
+  accent a real group box gets — a secondary cue only, since the dragged card (or the browser's own
+  drag-image snapshot) sits directly on top of whatever's under the cursor and would hide it otherwise. The
+  reliable indicator is a small "Gruppieren mit «Titel»" label pinned to the cursor itself (`groupArmLabel`
+  in `app.js`, styled `.group-arm-label`), which always renders above the drag image. An armed drop calls
+  `TaskBoard::groupTasks()` and **returns before `reorder()`** —
+  the server moves the task itself, so persisting the destination order too would fight it with a stale
+  picture. Dropping onto an *already grouped* card just joins that group (no name prompt). A fresh group
+  opens an inline name field on its own box (`namingGroupId`/`groupNameDraft`/`saveGroupName`); leaving it
+  empty simply keeps `DEFAULT_NAME`, so the gesture never blocks on a dialog.
+- **Dragging a task back out** of a group box — `groupDropZone` (`app.js`) is a full two-way Sortable zone,
+  not receive-only: dropping onto a plain board column releases the task (`TaskBoard::ungroupTask()`) and
+  persists its new position there via the same `reorder()` call an ordinary cross-column move already
+  makes. `sort: false` on this zone, since the box only ever previews up to two tasks — reordering that
+  partial view wouldn't mean anything. Hovering the group band of another card on the way out merges
+  into *that* card's group instead (takes priority, mirrors `boardSortable`'s own onEnd). Dropping onto a
+  project card, another group's box, or the "new project" zone is already fully handled by that zone's own
+  `onAdd`, so `groupDropZone`'s `onEnd` only has to act when the destination is a plain column.
+- **`TaskGroup::pruneIfTooSmall()`** — dissolves a group the moment it would hold one task or none; a
+  bundle of one is not a group, and leaving the user to notice and clean up the leftover shell by hand would
+  just be busywork. Returns whether it dissolved. Every write path that can shrink a group's membership
+  calls it on the task's *previous* group (captured **before** the update, since `group_id` may already have
+  moved on by the time the caller checks): the drag-out gesture above, `groupTasks`/`assignTaskToGroup` when
+  the dragged task already belonged to a *different* group, the edit sheet's Gruppe field
+  (`ManagesTasks::saveEdit`), deleting a grouped task (`ManagesTasks::deleteTask`), and `GroupPage`'s own
+  `removeFromGroup`/`moveTaskToGroup`. `ManagesTasks::afterGroupMayHaveShrunk(?TaskGroup $group)` is the
+  shared hook both `saveEdit()` and `deleteTask()` funnel through — its default (used by `TaskBoard`/
+  `ProjectPage`) just prunes; **`GroupPage` overrides it** to also redirect to the board (`route('app')`)
+  when the group being dissolved is the one *its own page* is showing — otherwise it would try to re-render
+  a group that no longer exists. `TaskBoard`'s own group-mutating methods aren't part of the shared trait,
+  so they call `pruneIfTooSmall()` directly; they never need the redirect since the board's identity never
+  depends on one specific group.
+  > Auditing every `group_id` write site for this turned up two pre-existing gaps, fixed alongside it:
+  > `TaskBoard::assignTaskToProject()` and `ProjectPage::assignToProject()` (drag onto a project card, or
+  > pull one from the inbox picker) never cleared `group_id` — a grouped task dropped there could end up
+  > with both a project *and* a group at once, violating the "never both" rule everywhere else in this
+  > feature. Both now clear it and prune the vacated group.
+- **Three more ways in**, because desktop drag is not enough — phones have no drag, and "file this into the
+  group" is wanted from everywhere:
+  - **QuickCapture's `group` target** — pick an existing group or name a new one, plus which of the
+    group's lists the task lands in. A group is only ever created *together with its first task* (an empty
+    group has no reason to exist), and the chosen group survives a save the way the Agenda's Fach does.
+  - **The edit sheet's Gruppe field** (`ManagesTasks::$editGroupId`/`editableGroups`) — shown for board
+    lists only, `wire:key`ed on the group count so a newly created group actually appears (the frozen
+    `x-data` trap, §10).
+  - **The mobile long-press sheet** lists groups above projects; inside a group's dashboard the same
+    gesture opens the mirror image (`partials/group-task-picker-sheet.blade.php`): release the task, or
+    hand it to another group.
+- **`App\Livewire\GroupPage`** (`/app/groups/{group}`, `route('group.show')`, `use ManagesTasks`) — the
+  group's own dashboard, deliberately the main board's shape so nothing new has to be learned: Kanban on
+  desktop, bottom-navigation on mobile, Inbox/To-Dos/Tasks plus a **Notizen** column of note cards where the
+  board has its Projekte column. Per-column quick-add (`newTitle` keyed by list), drag-reorder through the same
+  `boardSortable`, the same swipe intents, an "Aus der Inbox hinzufügen" picker like the project page.
+  **No "Heute" area** — the day's focus is owned by the main board alone; a group task can still be flagged
+  for today and then appears in the board's Heute tab. `dissolveGroup()` is non-destructive: the tasks stay
+  exactly where they are and simply become loose again (armed double-click all the same — it is an
+  irreversible structural change, even if nothing is lost).
+- Not touched by this feature: the API/Shortcuts (see `TODO.md`), Notfallmodus, Vorbereitung.
+
 ### Bastelideen (built)
 - A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
   to Task/Project, and it doesn't surface on the board, in Vorbereitung, or in Notfallmodus.
@@ -1422,6 +1546,77 @@ one test caused; it surfaces as "whichever test happens to be running when the t
 serve`/production) untouched. A CLI `-d memory_limit=…` flag on the `php artisan test` invocation does
 **not** reliably propagate to the process that actually runs PHPUnit; the `phpunit.xml` `<ini>` directive
 does, since PHPUnit applies it directly via `ini_set()` before running.
+
+### CSS classes applied only from JavaScript are silently purged out of the build
+**Symptom:** a rule written in `resources/css/app.css` simply does not exist at runtime — no typo, no
+specificity fight, no cascade problem. `getComputedStyle` returns the untouched defaults, and searching
+`document.styleSheets` for the class name finds nothing. Drag & drop was the worst case: **every** piece of
+its visual feedback (`.board-ghost`, `.board-chosen`, `.group-arm`, `.group-arm-label`) was missing, so
+dragging a card gave no indication of anything at all and the task-group gesture looked completely dead
+even though its logic was running correctly.
+**Cause:** those rules live in app.css's `@layer components`, and **Tailwind v3 tree-shakes
+`@layer components` / `@layer utilities` rules whose class name never appears in a file matched by
+`content` in `tailwind.config.js`** (unlike `@layer base`, which is always emitted). The content globs
+listed Blade and PHP only. These particular classes are applied exclusively from `resources/js/app.js` —
+either by hand (`card.classList.add('group-arm')`) or as SortableJS options (`ghostClass: 'board-ghost'`) —
+so Tailwind never saw them and dropped all four. Verify with
+`grep -c board-ghost public/build/assets/app-*.css` → `0`.
+**Fix:** `./resources/js/**/*.js` is in the `content` array — keep it there. Any new class that is only
+ever added from JS needs its name to appear in a scanned file; putting the rule in `@layer base` instead
+also works, but the glob is the honest fix. **After changing `tailwind.config.js`, restart the Vite dev
+server** — a running `npm run dev` does not reliably pick up a config change, so the old purged CSS keeps
+being served and it looks like the fix did nothing.
+
+### SortableJS never calls `onMove` for the one region a drop-onto-card gesture needs
+**Symptom:** with `invertSwap` correctly configured (previous entry), the middle band genuinely stops
+reordering — cards hold still exactly as intended — but the gesture built on it still does nothing: no
+highlight, no label, and releasing creates nothing. Instrumenting shows `_onDragOver` firing while the
+pointer crosses the card, yet the `onMove` callback is never invoked and the DOM correctly never changes.
+**Cause:** `_onDragOver` computes `direction` and then bails early —
+`if (direction === 0 || sibling === target) { return completed(false); }` — **before** it reaches
+`_onMove(...)`. `invertSwap` makes the middle band return `direction === 0` by design. So the single region
+where a "drop onto this card" gesture must arm is precisely the region where `onMove` is guaranteed never
+to fire. Any arming logic living in `onMove` is unreachable there, no matter how correct its band math is.
+**Fix:** don't hang the gesture off `onMove`. Track the pointer independently for the duration of the drag
+and resolve the hovered card yourself:
+```js
+onStart: (evt) => groupZone.startTracking(evt.item),   // adds document listeners
+onEnd:   (evt) => { const id = groupZone.disarm(); groupZone.stopTracking(); /* … */ },
+```
+listening to `dragover` (desktop's native HTML5 drag), plus `pointermove`/`touchmove` (touch and
+`forceFallback`), and finding the target with `document.elementFromPoint(x, y).closest('[data-id]')`
+— skipping the dragged element itself, which stays in the DOM as the placeholder. Keep the `onMove`
+predicate as a safety net for the edge cases that *do* reach `_onMove` (cross-list drops, `differentLevel`),
+but never as the place arming happens. See `groupZone.track()` in `resources/js/app.js`.
+> Also worth knowing when debugging Sortable: it binds **per-instance** copies of its private methods in
+> the constructor (`this[fn] = this[fn].bind(this)`), so wrapping `Sortable.prototype._onDragOver` after
+> instances exist observes nothing — wrap the methods on the instance. And `forceFallback` cannot be
+> toggled via `.option()` after construction: `nativeDraggable` is computed once in the constructor.
+
+### A "drop one card onto another" gesture is impossible until you set `invertSwap` on the Sortable
+**Symptom:** any gesture that needs the pointer to rest *on* another card — dwell-to-group, or a
+middle-of-the-card drop band — never triggers. The target card slides out from under the cursor before you
+can release on it, and with a reorder-on-approach it can oscillate: you chase the card up and down and can
+never land on it. `onMove` guards that check "am I in the middle of the target?" appear correct but never
+help.
+**Cause:** SortableJS's default swap zone is the **entire** target card. `_getSwapDirection`
+(`node_modules/sortablejs/modular/sortable.esm.js`) takes the regular branch when `invertSwap` is false and
+tests `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2 && mouseOnAxis < targetS2 - …`; with
+the default `swapThreshold: 1` both margins are 0, so the test is simply "anywhere inside the target" and a
+swap is triggered the moment the pointer crosses the card's leading edge. The pointer therefore *cannot*
+reach the card's middle while that card is still there — it has already been reordered away, and what sits
+under the cursor is the dragged element's own placeholder (which Sortable then ignores). Checking anything
+in `onMove` at middle-of-card time is checking a state that can no longer occur.
+**Fix:** change *where Sortable swaps*, don't try to veto it after the fact. Set `invertSwap: true` plus an
+explicit `invertedSwapThreshold` (0.5 gives 25% / 50% / 25% bands). That routes Sortable to its inverted
+branch, which swaps only within `invertedSwapThreshold / 2` of each end and `return 0`s — no swap at all —
+everywhere in between, so the card genuinely holds still in the middle band and can be dropped onto. Bonus:
+the inverted branch's direction (`mouseOnAxis > targetS1 + targetLength / 2 ? 1 : -1`) means the top band
+inserts the dragged item *before* the target and the bottom band after it, which is usually exactly the
+intended reorder semantics. Keep an `onMove` guard returning `false` for the same middle band as belt and
+braces / to drive the visual cue, and derive its band size from the same threshold constant so the two can
+never disagree. See `sortableGroupBands()` and `groupZone` in `resources/js/app.js` (Task-Gruppen §7); an
+earlier 350ms-dwell design and a first `onMove`-only attempt both failed to this exact cause.
 
 ---
 

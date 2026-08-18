@@ -16,6 +16,7 @@
                     'completed' => $this->inbox->where('is_completed', true)->values(),
                     'empty' => 'Posteingang leer. Saubere Ausgangslage.',
                     'emergencyProject' => $this->emergencyProject, 'emergencyTasks' => $this->emergencyTasksFor('inbox'),
+                    'groupBoxes' => $this->groupBoxesFor('inbox'),
                 ])
                 @include('livewire.partials.column', [
                     'list' => 'todos', 'title' => 'To-Dos', 'count' => $this->counts['todos'],
@@ -23,6 +24,7 @@
                     'completed' => $this->todosAll->where('is_completed', true)->values(),
                     'empty' => 'Keine To-Dos. Zieh etwas aus der Inbox herüber.',
                     'emergencyProject' => $this->emergencyProject, 'emergencyTasks' => $this->emergencyTasksFor('todos'),
+                    'groupBoxes' => $this->groupBoxesFor('todos'),
                 ])
                 @include('livewire.partials.column', [
                     'list' => 'tasks', 'title' => 'Tasks', 'count' => $this->counts['tasks'],
@@ -30,6 +32,7 @@
                     'completed' => $this->tasksAll->where('is_completed', true)->values(),
                     'empty' => 'Keine Tasks. Grössere Brocken landen hier.',
                     'emergencyProject' => $this->emergencyProject, 'emergencyTasks' => $this->emergencyTasksFor('tasks'),
+                    'groupBoxes' => $this->groupBoxesFor('tasks'),
                 ])
 
                 {{-- Projects: one card per project, opens the project page. --}}
@@ -137,6 +140,7 @@
                             'emergencyProject' => $emergencyProject,
                             'emergencyTasks' => $emergencyTasks,
                             'importantRest' => $importantRest,
+                            'groupBoxes' => $this->groupBoxesFor('inbox'),
                             'emptyMessage' => 'Posteingang leer. Saubere Ausgangslage.',
                         ])
                         @break
@@ -157,6 +161,7 @@
                             'emergencyProject' => $emergencyProject,
                             'emergencyTasks' => $emergencyTasks,
                             'importantRest' => $importantRest,
+                            'groupBoxes' => $this->groupBoxesFor('todos'),
                             'emptyMessage' => 'Keine To-Dos. Wisch eine Inbox-Aufgabe nach rechts.',
                         ])
                         @break
@@ -177,6 +182,7 @@
                             'emergencyProject' => $emergencyProject,
                             'emergencyTasks' => $emergencyTasks,
                             'importantRest' => $importantRest,
+                            'groupBoxes' => $this->groupBoxesFor('tasks'),
                             'emptyMessage' => 'Keine Tasks. Grössere Brocken landen hier.',
                         ])
                         @break

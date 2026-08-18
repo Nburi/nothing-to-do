@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
+use App\Livewire\GroupPage;
 use App\Livewire\JoinAgendaSpace;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
@@ -53,6 +54,10 @@ Route::get('/app', TaskBoard::class)
 Route::get('/app/projects/{project}', ProjectPage::class)
     ->middleware('auth')
     ->name('project.show');
+
+Route::get('/app/groups/{group}', GroupPage::class)
+    ->middleware('auth')
+    ->name('group.show');
 
 Route::get('/app/emergency', EmergencyMode::class)
     ->middleware('auth')

@@ -27,7 +27,7 @@ class QuickCapture extends Component
      * are also the task `list` value they write; the last two go to entirely
      * different tables, which is why this isn't just Task::BOARD_LISTS.
      */
-    public const TARGETS = ['inbox', 'todos', 'tasks', 'project', 'craft', 'agenda'];
+    public const TARGETS = ['inbox', 'todos', 'tasks', 'group', 'project', 'craft', 'agenda'];
 
     /** Targets that create a Task — the value doubles as the `list` column. */
     public const TASK_TARGETS = ['inbox', 'todos', 'tasks'];
@@ -60,6 +60,18 @@ class QuickCapture extends Component
     public ?int $agendaSpaceId = null;
 
     /**
+     * Group target. Either an existing group id, or null plus a name in
+     * $newGroupName — which is how a group gets created from the keyboard at
+     * all, since a group with no first task would be an empty shell.
+     */
+    public ?int $groupId = null;
+
+    public string $newGroupName = '';
+
+    /** Which of the group's own lists the task lands in. */
+    public string $groupList = 'inbox';
+
+    /**
      * The thing captured last, echoed back as a confirmation line so the panel
      * can stay open for the next entry without leaving any doubt that the
      * previous one landed. Null until something has been captured.
@@ -74,6 +86,7 @@ class QuickCapture extends Component
         return match ($target) {
             'todos' => 'To-Do',
             'tasks' => 'Task',
+            'group' => 'Gruppe',
             'project' => 'Projekt',
             'craft' => 'Bastelidee',
             'agenda' => 'Agenda',
@@ -91,6 +104,13 @@ class QuickCapture extends Component
             ->distinct()
             ->orderBy('subject')
             ->pluck('subject');
+    }
+
+    /** The task groups a captured task can be filed into. */
+    #[Computed]
+    public function taskGroups(): Collection
+    {
+        return auth()->user()->taskGroups()->ordered()->get();
     }
 
     /** The classes this user can file an agenda entry into. Empty for most users. */
@@ -116,10 +136,17 @@ class QuickCapture extends Component
         $this->target = $target;
 
         // Fields that don't exist for the new target would otherwise be carried
-        // along invisibly and written on the next save.
-        if (! in_array($target, self::TASK_TARGETS, true)) {
+        // along invisibly and written on the next save. A group capture writes a
+        // task, so it keeps the task fields.
+        if (! in_array($target, [...self::TASK_TARGETS, 'group'], true)) {
             $this->dueDate = null;
             $this->notes = '';
+        }
+
+        if ($target !== 'group') {
+            $this->groupId = null;
+            $this->newGroupName = '';
+            $this->groupList = 'inbox';
         }
 
         if ($target !== 'craft') {
@@ -150,13 +177,21 @@ class QuickCapture extends Component
      * unknown value falls back to the Inbox default rather than being trusted.
      */
     #[On('quick-capture-opened')]
-    public function resetPanel(?string $target = null): void
+    public function resetPanel(?string $target = null, ?int $groupId = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
             $this->target = $target;
+        }
+
+        // Opened from inside a group: preselect it, so the panel doesn't ask for
+        // a name for a new group while standing in an existing one. Checked
+        // against the user's own groups — the id comes from the page, but it is
+        // still an id arriving from the client.
+        if ($groupId !== null && $this->taskGroups->contains('id', $groupId)) {
+            $this->groupId = $groupId;
         }
     }
 
@@ -170,6 +205,7 @@ class QuickCapture extends Component
         $this->title = trim($this->title);
         $this->whereToBegin = trim($this->whereToBegin);
         $this->subject = trim($this->subject);
+        $this->newGroupName = trim($this->newGroupName);
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
@@ -191,11 +227,48 @@ class QuickCapture extends Component
             $rules['agendaSpaceId'] = ['nullable', 'integer', Rule::in($this->agendaSpaces->pluck('id'))];
         }
 
+        // A group capture needs a group: either an existing one, or a name for a
+        // new one. Requiring one of the two is what keeps empty shells from
+        // being created — a group's reason to exist is the tasks in it.
+        if ($this->target === 'group') {
+            $rules['groupId'] = ['nullable', 'integer', Rule::in($this->taskGroups->pluck('id'))];
+            $rules['newGroupName'] = [$this->groupId === null ? 'required' : 'nullable', 'string', 'max:255'];
+            $rules['groupList'] = ['required', Rule::in(Task::BOARD_LISTS)];
+        }
+
         $this->validate($rules);
 
         $user = auth()->user();
         $title = $this->title;
         $notes = trim($this->notes);
+
+        if ($this->target === 'group') {
+            $group = $this->groupId !== null
+                ? $this->taskGroups->firstWhere('id', $this->groupId)
+                : $user->taskGroups()->create(['name' => $this->newGroupName, 'sort_order' => 0]);
+
+            $user->tasks()->create([
+                'title' => $title,
+                'list' => $this->groupList,
+                'group_id' => $group->id,
+                'deadline' => $this->deadline ?: null,
+                'due_date' => $this->dueDate ?: null,
+                'notes' => $notes !== '' ? $notes : null,
+                'sort_order' => 0,
+            ]);
+
+            // A group created here becomes the selected one, so the next capture
+            // lands in it too — writing down three steps of one thing in a row
+            // is the normal case, exactly like the Agenda's Fach.
+            $this->groupId = $group->id;
+            $this->newGroupName = '';
+
+            $this->captured = ['title' => $title, 'label' => 'Gruppe · '.$group->name];
+            $this->reset(['title', 'deadline', 'dueDate', 'notes', 'whereToBegin']);
+            $this->dispatch('captured');
+
+            return;
+        }
 
         match ($this->target) {
             'project' => $user->projects()->create([
@@ -258,6 +331,8 @@ class QuickCapture extends Component
             'subject.max' => 'Das Fach ist zu lang — höchstens 100 Zeichen.',
             'date.required' => 'Für die Agenda fehlt noch das Datum.',
             'date.date' => 'Das ist kein gültiges Datum.',
+            'newGroupName.required' => 'Wähle eine Gruppe oder gib einer neuen einen Namen.',
+            'newGroupName.max' => 'Der Gruppenname ist zu lang — höchstens 255 Zeichen.',
         ];
     }
 
