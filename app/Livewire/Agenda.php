@@ -26,6 +26,9 @@ class Agenda extends Component
      */
     public string $filterSpace = 'all';
 
+    /** 'all' or one exact subject string, matched against `existingSubjects()`. */
+    public string $filterSubject = 'all';
+
     /**
      * Sort by date (false, the default) or group into one section per class.
      * Date wins by default because "what is due next" is the actual question;
@@ -138,6 +141,10 @@ class Agenda extends Component
             $query->ofType($this->filterType);
         }
 
+        if ($this->filterSubject !== 'all') {
+            $query->where('subject', $this->filterSubject);
+        }
+
         if ($this->filterSpace === 'mine') {
             $query->inSpace(null);
         } elseif ($this->filterSpace !== 'all') {
@@ -167,6 +174,13 @@ class Agenda extends Component
             : 'all';
     }
 
+    public function setSubjectFilter(string $subject): void
+    {
+        $this->filterSubject = $subject === 'all' || $this->existingSubjects->contains($subject)
+            ? $subject
+            : 'all';
+    }
+
     public function toggleGrouping(): void
     {
         $this->groupBySpace = ! $this->groupBySpace;
@@ -176,7 +190,9 @@ class Agenda extends Component
     {
         $this->editingId = null;
         $this->formType = 'homework';
-        $this->formSubject = '';
+        // Follow the filter, same reasoning as $formSpaceId below: with "Mathematik"
+        // on screen, the entry you're about to write is almost certainly for it.
+        $this->formSubject = $this->filterSubject !== 'all' ? $this->filterSubject : '';
         $this->formTitle = '';
         $this->formDate = '';
         $this->formNotes = '';

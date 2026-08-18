@@ -56,6 +56,60 @@
         @endforeach
     </div>
 
+    {{-- The whole subject filter only exists once there's at least one subject to
+         filter by — an agenda with no entries yet shows no empty dropdown. --}}
+    @if ($this->existingSubjects->isNotEmpty())
+        <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false" class="relative mt-2.5 inline-block">
+            <button
+                type="button"
+                @click="open = !open"
+                @class([
+                    'flex items-center gap-1.5 rounded-card border px-2.5 py-1.5 text-[12.5px] transition',
+                    'border-contour/40 bg-contour-soft text-contour' => $filterSubject !== 'all',
+                    'border-line text-ink-soft hover:bg-surface hover:text-ink' => $filterSubject === 'all',
+                ])
+            >
+                <span>Fach: {{ $filterSubject === 'all' ? 'Alle' : $filterSubject }}</span>
+                <svg class="h-3 w-3 transition" :class="open ? '-scale-y-100' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/>
+                </svg>
+            </button>
+
+            <div
+                x-show="open"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                class="absolute left-0 z-10 mt-1 max-h-52 w-44 overflow-y-auto rounded-card border border-line bg-surface p-1 shadow-map"
+                style="display: none;"
+            >
+                <button
+                    type="button"
+                    @click="open = false"
+                    wire:click="setSubjectFilter('all')"
+                    @class([
+                        'block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition',
+                        'bg-contour-soft font-medium text-contour' => $filterSubject === 'all',
+                        'text-ink-soft hover:bg-paper hover:text-ink' => $filterSubject !== 'all',
+                    ])
+                >Alle Fächer</button>
+                @foreach ($this->existingSubjects as $subject)
+                    <button
+                        type="button"
+                        wire:key="subject-filter-{{ $subject }}"
+                        @click="open = false"
+                        wire:click="setSubjectFilter('{{ $subject }}')"
+                        @class([
+                            'block w-full truncate rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition',
+                            'bg-contour-soft font-medium text-contour' => $filterSubject === $subject,
+                            'text-ink-soft hover:bg-paper hover:text-ink' => $filterSubject !== $subject,
+                        ])
+                    >{{ $subject }}</button>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- The whole space row only exists once there is a class to filter by, so
          a solo user's Agenda looks exactly as it always did. --}}
     @if ($this->spaces->isNotEmpty())
@@ -110,7 +164,7 @@
             <p class="text-sm text-ink-faint">
                 @if ($this->doneEntries->isNotEmpty())
                     Alles erledigt.
-                @elseif ($filterSpace !== 'all' || $filterType !== 'all')
+                @elseif ($filterSpace !== 'all' || $filterType !== 'all' || $filterSubject !== 'all')
                     Hier ist gerade nichts offen.
                 @else
                     Keine Einträge — leg deine erste Hausaufgabe oder Prüfung an.
