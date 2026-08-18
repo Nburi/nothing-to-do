@@ -92,6 +92,12 @@ class User extends Authenticatable
         return $this->hasMany(PushSubscription::class);
     }
 
+    /** @return HasMany<SchedulePause, $this> */
+    public function schedulePauses(): HasMany
+    {
+        return $this->hasMany(SchedulePause::class);
+    }
+
     /** @return HasMany<AgendaEntry, $this> */
     public function agendaEntries(): HasMany
     {

@@ -64,6 +64,19 @@ trait ManagesSchedule
         return auth()->user()->eventCategories()->ordered()->get();
     }
 
+    /**
+     * True while editing a recurring occurrence (not a one-off) — the event
+     * form's delete button then hints at pausing the week plan instead of
+     * deleting occurrences one by one, since that's a whole extra feature
+     * (see Wochenplan) a user has no other way to discover from here.
+     */
+    #[Computed]
+    public function editingEventIsRecurring(): bool
+    {
+        return $this->editingEventId !== null
+            && $this->userEvent($this->editingEventId)->template_id !== null;
+    }
+
     public function openEventForm(?string $date = null): void
     {
         $this->reset(['editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId', 'eventRecurring', 'eventDays', 'eventSaveAsTemplate']);

@@ -55,7 +55,7 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'agenda', 'emergency', 'crafts', 'progress']);
+                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'agenda', 'emergency', 'crafts', 'progress']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
                         @endphp
@@ -138,6 +138,14 @@
                                 ]) @if(request()->routeIs('schedule')) aria-current="page" @endif>
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
                                     Zeitplan
+                                </a>
+                                <a href="{{ route('weekplan') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('weekplan'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('weekplan'),
+                                ]) @if(request()->routeIs('weekplan')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                    Wochenplan &amp; Ferien
                                 </a>
                                 <a href="{{ route('agenda') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',

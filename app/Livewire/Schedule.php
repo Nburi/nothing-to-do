@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesSchedule;
 use App\Models\AgendaEntry;
+use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Services\ProgressStats;
@@ -65,6 +66,20 @@ class Schedule extends Component
     public function focusedEvents(): Collection
     {
         return $this->events->get($this->focusedDate, collect());
+    }
+
+    /** Paused (Wochenplan "Ferien") dates within the visible week, as Y-m-d strings. */
+    #[Computed]
+    public function pausedDates(): array
+    {
+        $start = Carbon::parse($this->weekStart);
+        $end = $start->copy()->endOfWeek();
+
+        return SchedulePause::forUser(auth()->user())
+            ->forRange($start, $end)
+            ->get()
+            ->map(fn (SchedulePause $pause) => $pause->date->toDateString())
+            ->all();
     }
 
     /**

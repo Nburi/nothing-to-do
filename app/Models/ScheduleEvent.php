@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A concrete dated block on the timeline — either a free-text Termin
@@ -73,10 +74,28 @@ class ScheduleEvent extends Model
         return $query->where('user_id', $user->id);
     }
 
-    /** Visible events only — cancelled recurring occurrences are hidden. */
+    /**
+     * Visible events only — cancelled recurring occurrences are hidden, and
+     * so are template-sourced occurrences on a date the week plan is paused
+     * for (see SchedulePause). Manually placed events (no template_id) are
+     * exempt: a pause suspends the *template*, never something the user
+     * typed in by hand for that specific day. This is the single gate every
+     * consumer already reads through (the Schedule page, the focus timer,
+     * push notifications, task suggestions), so pausing a date correctly
+     * affects all of them at once without touching any of that code.
+     */
     public function scopeVisible(Builder $query): Builder
     {
-        return $query->where('is_cancelled', false);
+        return $query->where('is_cancelled', false)
+            ->where(function (Builder $q) {
+                $q->whereNull('template_id')
+                    ->orWhereNotExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('schedule_pauses')
+                            ->whereColumn('schedule_pauses.user_id', 'schedule_events.user_id')
+                            ->whereColumn('schedule_pauses.date', 'schedule_events.date');
+                    });
+            });
     }
 
     public function scopeForDay(Builder $query, Carbon|string $date): Builder

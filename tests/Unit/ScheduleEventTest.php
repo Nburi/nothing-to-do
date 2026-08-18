@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\EventCategory;
 use App\Models\EventTemplate;
+use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -190,6 +191,56 @@ class ScheduleEventTest extends TestCase
         ScheduleEvent::materializeRange($user, $start->copy(), $end->copy());
 
         $this->assertSame(1, ScheduleEvent::forUser($user)->count()); // tombstone kept, not duplicated
+        $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->count());
+    }
+
+    public function test_visible_hides_a_template_sourced_event_on_a_paused_date(): void
+    {
+        $user = User::factory()->create();
+        $template = EventTemplate::factory()->recurring('1')->create(['user_id' => $user->id]); // Mondays
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'));
+        SchedulePause::pauseRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'), null);
+
+        $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->count());
+        // The row itself is untouched, not deleted — un-pausing must restore it as-is.
+        $this->assertSame(1, ScheduleEvent::forUser($user)->count());
+        $this->assertFalse(ScheduleEvent::forUser($user)->first()->is_cancelled);
+    }
+
+    public function test_visible_keeps_a_manually_placed_event_visible_on_a_paused_date(): void
+    {
+        $user = User::factory()->create();
+        ScheduleEvent::factory()->for($user)->on('2026-06-22')->create(['template_id' => null, 'title' => 'Zahnarzt']);
+        SchedulePause::pauseRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'), null);
+
+        // A pause suspends the template, never something typed in by hand for that day.
+        $this->assertSame(1, ScheduleEvent::forUser($user)->visible()->count());
+    }
+
+    public function test_visible_is_unaffected_by_a_pause_on_a_different_date(): void
+    {
+        $user = User::factory()->create();
+        $template = EventTemplate::factory()->recurring('1,3')->create(['user_id' => $user->id]); // Mon, Wed
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-24'));
+        SchedulePause::pauseRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'), null); // pause Monday only
+
+        $visible = ScheduleEvent::forUser($user)->visible()->get();
+        $this->assertSame(1, $visible->count());
+        $this->assertSame('2026-06-24', $visible->first()->date->toDateString()); // Wednesday still shows
+    }
+
+    public function test_a_cancelled_tombstone_stays_hidden_after_the_date_is_unpaused(): void
+    {
+        $user = User::factory()->create();
+        $template = EventTemplate::factory()->recurring('1')->create(['user_id' => $user->id]);
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-22'), Carbon::parse('2026-06-22'));
+        ScheduleEvent::forUser($user)->first()->update(['is_cancelled' => true]);
+
+        // Pausing then un-pausing (deleting the pause row) must never resurrect a
+        // deliberately user-deleted occurrence — pausing never touches is_cancelled.
+        $pause = $user->schedulePauses()->create(['date' => '2026-06-22']);
+        $pause->delete();
+
         $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->count());
     }
 }
