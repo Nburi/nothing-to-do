@@ -169,6 +169,62 @@ class AgendaTest extends TestCase
             ->assertDontSee('HOMEWORK-ENTRY');
     }
 
+    public function test_subject_filter_only_shows_the_matching_subject(): void
+    {
+        $user = User::factory()->create();
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Mathematik', 'title' => 'MATH-ENTRY']);
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Physik', 'title' => 'PHYSICS-ENTRY']);
+
+        Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->call('setSubjectFilter', 'Mathematik')
+            ->assertSee('MATH-ENTRY')
+            ->assertDontSee('PHYSICS-ENTRY')
+            ->call('setSubjectFilter', 'all')
+            ->assertSee('MATH-ENTRY')
+            ->assertSee('PHYSICS-ENTRY');
+    }
+
+    public function test_subject_filter_combines_with_the_type_filter(): void
+    {
+        $user = User::factory()->create();
+        AgendaEntry::factory()->for($user)->homework()->create(['subject' => 'Mathematik', 'title' => 'MATH-HOMEWORK']);
+        AgendaEntry::factory()->for($user)->exam()->create(['subject' => 'Mathematik', 'title' => 'MATH-EXAM']);
+
+        Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->call('setFilter', 'exam')
+            ->call('setSubjectFilter', 'Mathematik')
+            ->assertSee('MATH-EXAM')
+            ->assertDontSee('MATH-HOMEWORK');
+    }
+
+    public function test_subject_filter_rejects_a_subject_the_user_has_never_used(): void
+    {
+        $user = User::factory()->create();
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Mathematik', 'title' => 'MATH-ENTRY']);
+
+        $component = Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->call('setSubjectFilter', 'Nicht Existiert')
+            ->assertSee('MATH-ENTRY');
+
+        $this->assertSame('all', $component->instance()->filterSubject);
+    }
+
+    public function test_creating_from_a_filtered_subject_prefills_the_form(): void
+    {
+        $user = User::factory()->create();
+        AgendaEntry::factory()->for($user)->create(['subject' => 'Mathematik']);
+
+        $component = Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->call('setSubjectFilter', 'Mathematik')
+            ->call('openCreateForm');
+
+        $this->assertSame('Mathematik', $component->instance()->formSubject);
+    }
+
     public function test_existing_subjects_are_distinct_sorted_and_scoped_to_the_user(): void
     {
         $user = User::factory()->create();
