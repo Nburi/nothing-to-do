@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\AgendaEntry;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -95,6 +96,18 @@ class TaskApiTest extends TestCase
         $task->refresh();
         $this->assertTrue($task->is_completed);
         $this->assertNotNull($task->completed_at);
+    }
+
+    public function test_completing_a_homework_derived_task_via_patch_also_completes_the_agenda_entry(): void
+    {
+        $user = User::factory()->create();
+        $entry = AgendaEntry::factory()->for($user)->homework()->create();
+        $task = Task::factory()->for($user)->todos()->create(['agenda_entry_id' => $entry->id]);
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/tasks/{$task->id}", ['is_completed' => true])->assertOk();
+
+        $this->assertTrue($entry->fresh()->isDoneFor($user));
     }
 
     public function test_it_sets_today_focus_only_for_todos_and_tasks(): void

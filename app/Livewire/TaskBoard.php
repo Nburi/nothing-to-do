@@ -417,10 +417,117 @@ class TaskBoard extends Component
         return AgendaEntry::homeworkPreviewFor($user);
     }
 
-    /** Marks a previewed homework entry done for this person — it then drops out of the preview on its own. */
+    /**
+     * Homework entries already pulled into today's focus (an active task with
+     * a matching agenda_entry_id exists) — lets the preview strip mark a card
+     * "already in Today" instead of inviting a duplicate drag/swipe. One
+     * query, read alongside homeworkPreview() rather than per-card.
+     */
+    #[Computed]
+    public function promotedHomeworkEntryIds(): array
+    {
+        return Task::query()
+            ->forUser(auth()->user())
+            ->active()
+            ->whereNotNull('agenda_entry_id')
+            ->pluck('agenda_entry_id')
+            ->all();
+    }
+
+    /**
+     * Marks a previewed homework entry done for this person — it then drops
+     * out of the preview on its own. If it's already been dragged/swiped
+     * into today's focus, routes through toggleComplete() on the linked
+     * task instead of touching the entry a second time, so the two stay in
+     * sync (completion side effects like celebrations included) no matter
+     * which checkbox you actually tap — without this, ticking the entry
+     * done here while its promoted task sits open elsewhere on the board
+     * would leave a stale, seemingly-forgotten task behind.
+     */
     public function toggleHomeworkPreviewDone(int $id): void
     {
-        AgendaEntry::visibleTo(auth()->user())->findOrFail($id)->toggleDoneFor(auth()->user());
+        $user = auth()->user();
+        $entry = AgendaEntry::visibleTo($user)->findOrFail($id);
+
+        $task = Task::query()
+            ->forUser($user)
+            ->where('agenda_entry_id', $entry->id)
+            ->orderBy('is_completed') // active (not yet done) first
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if ($task) {
+            $this->toggleComplete($task->id);
+
+            return;
+        }
+
+        $entry->toggleDoneFor($user);
+    }
+
+    /**
+     * Drag (desktop) or swipe-up (mobile) a homework preview card into
+     * today's focus. Reuses an already-active linked task if one exists
+     * (dragging the same homework twice just re-confirms it, never
+     * duplicates); otherwise spins up a new task carrying the homework's
+     * title, subject, due date and note along with it, so acting on it
+     * doesn't mean re-typing what it already says in the Agenda.
+     *
+     * $list is either 'todos'/'tasks' (a real desktop drop zone) or the
+     * mobile swipe's fixed 'today' sentinel — anything that isn't a genuine
+     * Today list falls back to 'tasks', the closer-sized default for a piece
+     * of schoolwork.
+     */
+    public function promoteHomeworkToday(int $agendaEntryId, string $list): void
+    {
+        $user = auth()->user();
+        $entry = AgendaEntry::query()->visibleTo($user)->findOrFail($agendaEntryId);
+        $targetList = in_array($list, Task::TODAY_LISTS, true) ? $list : 'tasks';
+
+        $existing = Task::query()
+            ->forUser($user)
+            ->active()
+            ->where('agenda_entry_id', $entry->id)
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'list' => $targetList,
+                'is_today' => true,
+                'today_date' => $existing->todayDateFor(true, $user->localToday()),
+            ]);
+
+            return;
+        }
+
+        $user->tasks()->create([
+            'title' => "{$entry->subject}: {$entry->title}",
+            'list' => $targetList,
+            'is_today' => true,
+            'today_date' => $user->localToday(),
+            'deadline' => $entry->date,
+            'notes' => $this->agendaNoteForTask($entry->notes),
+            'agenda_entry_id' => $entry->id,
+            'sort_order' => 0,
+        ]);
+    }
+
+    /**
+     * Agenda notes are plain text (see AgendaEntry::notesPreview()); Task
+     * notes are Markdown source rendered on the card/edit sheet. Escaping
+     * just a leading list/heading marker stops a note like "- Seite 12"
+     * from silently turning into an actual bullet once it's living on a
+     * task, without mangling the far more common case of ordinary prose.
+     */
+    private function agendaNoteForTask(?string $notes): ?string
+    {
+        $notes = trim((string) $notes);
+
+        if ($notes === '') {
+            return null;
+        }
+
+        return preg_replace('/^([-*+#]|\d+[.)])(\s)/', '\\\\$1$2', $notes);
     }
 
     /** Ends emergency mode — the project and its task order are left exactly as arranged. */

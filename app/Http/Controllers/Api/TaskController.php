@@ -175,6 +175,10 @@ class TaskController extends Controller
 
         $task->update($updates);
 
+        if (array_key_exists('is_completed', $updates)) {
+            $task->syncLinkedAgendaEntry($request->user(), $updates['is_completed']);
+        }
+
         return (new TaskResource($task->fresh()))->response();
     }
 
