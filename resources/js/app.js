@@ -155,12 +155,21 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
- * Desktop drag source for the dashboard's "Bald fällige Hausaufgaben" strip —
- * drag a homework card into a Today zone to pull it into today's focus (see
- * TaskBoard::promoteHomeworkToday()). Deliberately its own small Sortable
- * instance rather than folding into boardSortable: this list holds
- * AgendaEntry ids, not Task ids, and must never be reorderable or feed
- * wire.reorder() the way a real board zone does.
+ * Desktop drag source AND drop target for the dashboard's "Bald fällige
+ * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
+ * instance:
+ *
+ * OUT: drag a homework card into a Today zone to pull it into today's focus
+ * (see TaskBoard::promoteHomeworkToday()). Deliberately its own instance
+ * rather than folding into boardSortable: this list holds AgendaEntry ids,
+ * not Task ids, and must never be reorderable or feed wire.reorder() the
+ * way a real board zone does.
+ *
+ * IN: drag a homework-DERIVED task card back onto the strip to undo that —
+ * see TaskBoard::removeHomeworkFromToday(). `put` only accepts a dragged
+ * element carrying `data-homework="true"` (set on the task card only when
+ * task.agenda_entry_id is non-null, see task-card.blade.php) — an ordinary
+ * task dropped here bounces back like anywhere else it isn't welcome.
  *
  * onEnd fires on the ORIGIN instance (this one) with evt.to telling us where
  * the card landed — the exact same pattern boardSortable's own onEnd already
@@ -172,7 +181,10 @@ window.boardSortable = function (el, wire, handle = null) {
 window.homeworkDragSource = function (el, wire) {
     if (el._sortable) return el._sortable;
     el._sortable = Sortable.create(el, {
-        group: { name: 'homework-preview', put: false },
+        group: {
+            name: 'homework-preview',
+            put: (to, from, dragEl) => dragEl.dataset.homework === 'true',
+        },
         sort: false,
         // An already-promoted card has no data-id (see the Blade partial) —
         // without this, Sortable would still let you pick it up, and the
@@ -185,6 +197,15 @@ window.homeworkDragSource = function (el, wire) {
         chosenClass: 'board-chosen',
         delay: 60,
         delayOnTouchOnly: true,
+        onAdd: (evt) => {
+            // A homework-linked task card landed here from a board zone —
+            // undo the promotion. The server re-render is the real state
+            // (the strip's own card goes back to normal), so don't leave
+            // the raw task card sitting inside this AgendaEntry-shaped list.
+            const taskId = evt.item.dataset.id;
+            evt.item.remove();
+            if (taskId) wire.removeHomeworkFromToday(parseInt(taskId, 10));
+        },
         onEnd: (evt) => {
             const to = evt.to;
             if (to === el || to.dataset.today !== 'true') return;

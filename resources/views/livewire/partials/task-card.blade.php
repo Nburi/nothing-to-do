@@ -2,6 +2,7 @@
 <div
     wire:key="task-{{ $task->id }}"
     @unless($task->is_completed) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
+    @if ($task->agenda_entry_id) data-homework="true" @endif
     x-data="{
         dateOpen: false,
         deadline: '{{ $task->deadline?->toDateString() }}',

@@ -986,11 +986,28 @@ A small, deliberately narrow bridge between two systems this app otherwise keeps
   derived task on its card face — `task-card.blade.php`, `task-card-mobile.blade.php`, and
   `project-task-card.blade.php` all check `$task->agenda_entry_id`, since the edit sheet can still move such
   a task into a project later and the icon should follow it there.
+- **Dragging a homework-derived task card back onto the strip undoes the promotion** —
+  `TaskBoard::removeHomeworkFromToday(int $id)` deletes the task (guarded: a no-op unless
+  `agenda_entry_id` is actually set, defense-in-depth against the client-side gate ever being wrong) and
+  leaves the Agenda entry itself completely untouched, so it simply becomes open and re-promotable again,
+  exactly as if it had never been dragged in — the desktop-only mirror image of `promoteHomeworkToday()`.
+  Both directions share **one** Sortable instance (`window.homeworkDragSource`, desktop only — see
+  mobile note below): its `group.put` is a **function**, not the `true`/array shorthand used elsewhere,
+  checking `dragEl.dataset.homework === 'true'` (set on `task-card.blade.php`'s root only when
+  `agenda_entry_id` is non-null) — an ordinary task dropped on the strip bounces back untouched, the same
+  as dropping on any other zone it isn't welcome in. The incoming drop is handled by `onAdd` (mirroring
+  `projectDropZone`'s exact shape: read `evt.item.dataset.id`, `evt.item.remove()`, call the wire method);
+  the *outgoing* promote drop still needs no changes to `window.boardSortable` at all — a card dropped on
+  the strip lands in a zone with no `data-list`, so `boardSortable`'s own pre-existing
+  `to.dataset.list === undefined` guard (written for "dropped onto a project card") already makes its
+  `onEnd` bail out silently, exactly the same free ride `projectDropZone`/`newProjectDropZone` already get.
+  **Mobile has no equivalent gesture** — deliberately: mobile's `swipeCard` already spends both directions
+  on a Today-flagged task (`right: 'untoday'`, `left: 'edit'`), and the existing armed-double-click delete
+  button already reaches the identical end state (task gone, entry untouched, re-promotable), so a mobile
+  swipe-to-remove would only duplicate a path that already exists rather than add one.
 - Deliberately out of scope for this pass: exam entries (`type=exam`, the strip itself only ever shows
   homework); any promotion entry point on the Agenda page itself, QuickCapture, or the Zeitplan's deadline
-  strip (only its *existing* `toggleDeadlineTaskDone` gained the completion echo, no new gesture there);
-  an "un-promote" action from the strip (reversal goes through the normal task UI — delete, un-flag, or
-  un-complete).
+  strip (only its *existing* `toggleDeadlineTaskDone` gained the completion echo, no new gesture there).
 
 ### Task-Gruppen (built)
 

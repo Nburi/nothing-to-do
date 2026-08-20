@@ -513,6 +513,26 @@ class TaskBoard extends Component
     }
 
     /**
+     * The reverse of promoteHomeworkToday(): drag a homework-derived task
+     * card back onto the "Bald fällige Hausaufgaben" strip to undo the
+     * promotion. Deletes the task — the Agenda entry itself is never
+     * touched, so it simply becomes open and re-promotable again, exactly
+     * as if it had never been dragged in. A no-op for an ordinary task
+     * (guards against the destination accepting anything that isn't
+     * actually agenda-linked, in case the client-side gate is ever wrong).
+     */
+    public function removeHomeworkFromToday(int $id): void
+    {
+        $task = $this->userTask($id);
+
+        if ($task->agenda_entry_id === null) {
+            return;
+        }
+
+        $this->deleteTask($task->id);
+    }
+
+    /**
      * Agenda notes are plain text (see AgendaEntry::notesPreview()); Task
      * notes are Markdown source rendered on the card/edit sheet. Escaping
      * just a leading list/heading marker stops a note like "- Seite 12"

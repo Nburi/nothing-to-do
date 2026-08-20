@@ -185,6 +185,43 @@ class HomeworkPromoteToTodayTest extends TestCase
         $this->assertTrue($entry->fresh()->isDoneFor($user));
     }
 
+    public function test_dragging_a_homework_derived_task_back_to_the_strip_deletes_it_and_reopens_promotion(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-19')->setTime(9, 0));
+        $user = $this->actingUser();
+        $entry = AgendaEntry::factory()->for($user)->homework()->create(['date' => '2026-08-20']);
+        $task = Task::factory()->for($user)->tasks()->today()->create(['agenda_entry_id' => $entry->id]);
+
+        $component = Livewire::test(TaskBoard::class);
+        $component->call('removeHomeworkFromToday', $task->id);
+
+        $this->assertNull($task->fresh());
+        $this->assertSame([], $component->instance()->promotedHomeworkEntryIds());
+        // The entry itself is untouched — still open, still in the preview.
+        $this->assertFalse($entry->fresh()->isDoneFor($user));
+        $this->assertTrue($component->instance()->homeworkPreview()->contains($entry));
+    }
+
+    public function test_removing_an_ordinary_task_via_this_action_is_a_no_op(): void
+    {
+        $user = $this->actingUser();
+        $task = Task::factory()->for($user)->tasks()->today()->create();
+
+        Livewire::test(TaskBoard::class)->call('removeHomeworkFromToday', $task->id);
+
+        $this->assertNotNull($task->fresh());
+    }
+
+    public function test_a_foreign_task_cannot_be_removed_this_way(): void
+    {
+        $this->actingUser();
+        $stranger = Task::factory()->for(User::factory())->tasks()->create(['agenda_entry_id' => null]);
+
+        $this->expectException(ModelNotFoundException::class);
+
+        Livewire::test(TaskBoard::class)->call('removeHomeworkFromToday', $stranger->id);
+    }
+
     public function test_deleting_the_agenda_entry_unlinks_the_task_without_deleting_it(): void
     {
         $user = $this->actingUser();
