@@ -288,15 +288,43 @@ class Agenda extends Component
         $this->formTitle = '';
         $this->formDate = '';
         $this->formNotes = '';
-        // Follow the filter: with "Klasse 4b" on screen, the entry you're about
-        // to write is almost certainly for 4b. Same idea as QuickCapture's
-        // target following the page you opened it from. Defaults to private
-        // whenever the filter isn't pointed at one specific class, so nothing
-        // is ever shared by accident.
-        $this->formSpaceId = is_numeric($this->filterSpace) ? (int) $this->filterSpace : null;
+        $this->formSpaceId = $this->defaultFormSpaceId();
         $this->resetValidation();
         $this->showForm = true;
         $this->syncDraft();
+    }
+
+    /**
+     * The "Für" default for a fresh entry.
+     *
+     * Filtered to one specific class: that class — with "Klasse 4b" on screen,
+     * the entry is almost certainly for it (same idea as QuickCapture's target
+     * following the page it was opened from). Filtered to "Nur ich": private —
+     * asking to see only private entries is itself a signal of intent.
+     *
+     * "Alle Räume" used to fall back to private unconditionally, on the theory
+     * that an unfocused filter shouldn't guess. In practice that made the very
+     * first entry a brand-new class member writes silently private, since
+     * "Alle Räume" is the view joining a class lands you on — the opposite of
+     * why they joined. Belonging to exactly one class removes the guesswork
+     * ("which class" has only one possible answer), so that case now defaults
+     * to it. Two or more classes is still genuinely ambiguous and stays
+     * private, same as before — narrowed to the case that's actually unclear,
+     * rather than solved outright. That remaining gap is mitigated, not
+     * hidden: the "Für" row always names the current choice, private included
+     * (see agenda-entry-form.blade.php).
+     */
+    private function defaultFormSpaceId(): ?int
+    {
+        if (is_numeric($this->filterSpace)) {
+            return (int) $this->filterSpace;
+        }
+
+        if ($this->filterSpace === 'mine') {
+            return null;
+        }
+
+        return $this->spaces->count() === 1 ? $this->spaces->first()->id : null;
     }
 
     public function startEdit(int $id): void

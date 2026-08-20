@@ -856,8 +856,17 @@ else is shared, and a private entry stays private.
   grouping into one section per class. **The whole row only renders once the user is in a class**, so a solo
   Agenda looks exactly as it did before this feature.
 - **Creating** — a "Für" pill row (`Nur ich` / each class) in both the entry form and QuickCapture's agenda
-  target, again only rendered for someone actually in a class. `openCreateForm()` pre-selects the class the
-  list is filtered to and otherwise defaults to private, so nothing is shared by accident. QuickCapture's
+  target, again only rendered for someone actually in a class. `Agenda::defaultFormSpaceId()` (and
+  QuickCapture's equivalent `defaultAgendaSpaceId()`) pick the default: filtered to one specific class, that
+  class; filtered to "Nur ich", private; otherwise (including QuickCapture, which has no filter to follow)
+  private too, **unless the user belongs to exactly one class**, in which case that one class — "which
+  class" has only one possible answer, so there's nothing left to guess wrong. Two or more classes is still
+  ambiguous and stays private. This landed after a user-simulation test caught the previous unconditional
+  "otherwise private" default silently filing a brand-new class member's first-ever entry as private while
+  they were looking at "Alle Räume" — the view joining a class lands you on, and exactly the moment sharing
+  is most likely intended. The remaining two-or-more-classes gap is mitigated, not solved: the entry form's
+  "Für" row always names the current choice in a caption line, private included (previously only the shared
+  state had one), so an accidentally-private pick is never the one that stays quiet. QuickCapture's
   confirmation line names the class (`→ Agenda · Klasse 4b`) — sharing is its one capture with a consequence
   beyond your own list. Fach suggestions now read from every *visible* entry, so a classmate's "Französisch"
   autocompletes for everyone.

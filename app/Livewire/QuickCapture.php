@@ -120,6 +120,17 @@ class QuickCapture extends Component
         return auth()->user()->agendaSpaces()->ordered()->get();
     }
 
+    /**
+     * The "Für" default when the agenda target is freshly selected — same
+     * reasoning as Agenda::openCreateForm()'s equivalent default: which class
+     * is meant is only unambiguous when there's exactly one. Two or more stays
+     * private, same as before.
+     */
+    private function defaultAgendaSpaceId(): ?int
+    {
+        return $this->agendaSpaces->count() === 1 ? $this->agendaSpaces->first()->id : null;
+    }
+
     /** The notes buffer rendered to safe HTML for the panel's preview (task targets only). */
     #[Computed]
     public function notesHtml(): string
@@ -162,6 +173,7 @@ class QuickCapture extends Component
             $this->agendaSpaceId = null;
         } else {
             $this->deadline = null;
+            $this->agendaSpaceId = $this->defaultAgendaSpaceId();
         }
 
         $this->resetValidation();
@@ -184,6 +196,12 @@ class QuickCapture extends Component
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
             $this->target = $target;
+        }
+
+        // Opened straight onto the agenda target (e.g. Agenda's own page-matching
+        // preselect) gets the same single-class default as setTarget() below.
+        if ($this->target === 'agenda') {
+            $this->agendaSpaceId = $this->defaultAgendaSpaceId();
         }
 
         // Opened from inside a group: preselect it, so the panel doesn't ask for

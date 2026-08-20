@@ -334,8 +334,38 @@ class AgendaSpacesTest extends TestCase
             ->call('setSpaceFilter', (string) $space->id)
             ->call('openCreateForm')
             ->assertSet('formSpaceId', $space->id)
-            // …but never shares by accident when the filter isn't on one class.
-            ->call('setSpaceFilter', 'all')
+            // An explicit "Nur ich" filter still means private even though the
+            // user has a class — asking to see only private entries is itself
+            // a signal of intent.
+            ->call('setSpaceFilter', 'mine')
+            ->call('openCreateForm')
+            ->assertSet('formSpaceId', null);
+    }
+
+    public function test_the_create_form_defaults_to_the_users_only_class_even_when_unfiltered(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+
+        // "Alle Räume" is the view joining a class lands you on — exactly where
+        // a brand-new member is most likely to open the form, and exactly where
+        // silently defaulting to private used to hide the choice.
+        Livewire::actingAs($user)->test(Agenda::class)
+            ->assertSet('filterSpace', 'all')
+            ->call('openCreateForm')
+            ->assertSet('formSpaceId', $space->id);
+    }
+
+    public function test_the_create_form_stays_private_when_unfiltered_with_two_or_more_classes(): void
+    {
+        $user = User::factory()->create();
+        AgendaSpace::factory()->for($user, 'owner')->create();
+        AgendaSpace::factory()->for($user, 'owner')->create();
+
+        // Which of two classes is meant is genuinely ambiguous, so this stays
+        // private — the same gap as before, just narrowed to the case that's
+        // actually unclear.
+        Livewire::actingAs($user)->test(Agenda::class)
             ->call('openCreateForm')
             ->assertSet('formSpaceId', null);
     }
@@ -415,6 +445,29 @@ class AgendaSpacesTest extends TestCase
             ->assertHasErrors('agendaSpaceId');
 
         $this->assertDatabaseCount('agenda_entries', 0);
+    }
+
+    public function test_quick_capture_defaults_the_class_when_the_user_has_only_one(): void
+    {
+        $user = User::factory()->create();
+        $space = AgendaSpace::factory()->for($user, 'owner')->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'agenda')
+            ->assertSet('agendaSpaceId', $space->id);
+    }
+
+    public function test_quick_capture_stays_private_with_two_or_more_classes(): void
+    {
+        $user = User::factory()->create();
+        AgendaSpace::factory()->for($user, 'owner')->create();
+        AgendaSpace::factory()->for($user, 'owner')->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->call('setTarget', 'agenda')
+            ->assertSet('agendaSpaceId', null);
     }
 
     public function test_switching_away_from_agenda_clears_the_chosen_class(): void
