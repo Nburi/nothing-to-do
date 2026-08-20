@@ -2,6 +2,7 @@
 <div
     wire:key="task-{{ $task->id }}"
     @unless($task->is_completed) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
+    @if ($task->agenda_entry_id) data-homework="true" @endif
     x-data="{
         dateOpen: false,
         deadline: '{{ $task->deadline?->toDateString() }}',
@@ -48,7 +49,13 @@
                     'line-through text-ink-faint' => $task->is_completed,
                     'font-medium text-ink' => !$task->is_completed && $task->is_important,
                     'text-ink' => !$task->is_completed && !$task->is_important,
-                ])>{{ $task->title }}</span>
+                ])>
+                    @if ($task->agenda_entry_id)
+                        {{-- From the Agenda's Hausaufgaben preview — same icon as the strip's own header badge. --}}
+                        <svg class="-mt-0.5 mr-1 inline h-3 w-3 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H13l3 3v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 16V7"/><path d="M13 4v3h3"/></svg>
+                    @endif
+                    {{ $task->title }}
+                </span>
             </button>
         </div>
 

@@ -154,6 +154,26 @@ class ScheduleDeadlineItemsTest extends TestCase
         $this->assertTrue($task->refresh()->is_completed);
     }
 
+    public function test_toggling_a_homework_derived_task_via_the_deadline_strip_also_completes_the_agenda_entry(): void
+    {
+        $user = $this->actingUser();
+        $entry = AgendaEntry::factory()->for($user)->homework()->create(['date' => now()->toDateString()]);
+        $task = Task::factory()->for($user)->tasks()->create([
+            'deadline' => now()->toDateString(),
+            'agenda_entry_id' => $entry->id,
+        ]);
+
+        Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $task->id);
+
+        $this->assertTrue($task->refresh()->is_completed);
+        $this->assertTrue($entry->fresh()->isDoneFor($user));
+
+        Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $task->id);
+
+        $this->assertFalse($task->refresh()->is_completed);
+        $this->assertFalse($entry->fresh()->isDoneFor($user));
+    }
+
     public function test_toggling_an_agenda_entry_marks_it_done_for_the_user(): void
     {
         $user = $this->actingUser();

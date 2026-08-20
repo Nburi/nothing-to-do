@@ -928,6 +928,96 @@ here applies to the single-user rest of the app.
     (that's "Verlassen", which hands ownership over properly). `transferOwnership()` exists so that leaving
     isn't the only way to pass on the admin role.
 
+### Dashboard — Hausaufgaben-Vorschau & Tagesfokus-Brücke (built)
+
+A small, deliberately narrow bridge between two systems this app otherwise keeps isolated (see
+"Agenda — Hausaufgaben & Prüfungen" above): Agenda homework and the board's Today focus.
+
+- **The preview strip** (`partials/homework-preview-strip.blade.php`, included from `task-board.blade.php`
+  on both desktop and mobile, `TaskBoard::homeworkPreview()` → `AgendaEntry::homeworkPreviewFor()`) shows
+  open homework due within `AgendaEntry::DASHBOARD_PREVIEW_WEEKDAYS` weekdays as a horizontally-scrolling
+  row of compact cards — date badge, subject, title, expandable note, and its own "mark done" checkbox
+  (`toggleHomeworkPreviewDone`). Gated by `users.homework_preview_enabled` (default true, Settings toggle);
+  zero footprint when off or nothing's due, same pattern as every other optional dashboard card.
+- **Promoting a card into Today** — desktop drags a card into a Todos/Tasks column's Heute zone; mobile
+  swipes a card **up** (deliberately vertical, not the horizontal swipe used everywhere else for tasks —
+  the strip itself scrolls horizontally, so a horizontal swipe-to-act on a card inside it would fight that
+  native scroll on every touch; vertical is the one axis nothing else in the strip is already using). Both
+  call **`TaskBoard::promoteHomeworkToday(int $agendaEntryId, string $list)`**: reuses an already-active
+  linked task if one exists (dragging/swiping the same homework twice re-confirms it, never duplicates —
+  keyed on a new nullable **`tasks.agenda_entry_id`** FK, `nullOnDelete` like `group_id`/`project_id`),
+  otherwise creates one carrying the homework's `subject: title`, its date as the task's `deadline`, and
+  its note (escaped for a leading `-`/`*`/`#`/ordered-list marker only — Agenda notes are plain text, Task
+  notes are Markdown source, and an unescaped note starting with one of those would silently render as a
+  bullet/heading once living on the task; ordinary prose is untouched). `$list` is `'todos'`/`'tasks'` for
+  a real desktop drop zone, or the mobile swipe's `'today'` sentinel, which — like anything else that isn't
+  a genuine Today list — falls back to `'tasks'`. An already-promoted card loses its `data-id` (mirroring
+  the completed-task-card convention) so a second drag/swipe is impossible rather than silently harmless,
+  and shows a quiet forest "Heute" chip instead of its date badge — `TaskBoard::promotedHomeworkEntryIds()`
+  (one query, active tasks with a non-null `agenda_entry_id`) drives this without N+1.
+  - **Desktop mechanics** (`resources/js/app.js`) — `window.homeworkDragSource(el, wire)` is its own small
+    Sortable instance (`group: { name: 'homework-preview', put: false }`, `draggable: '[data-id]'` so an
+    already-promoted card can't even be picked up, `sort: false` since the strip has no manual order),
+    deliberately separate from `boardSortable` since this list holds AgendaEntry ids, not Task ids, and
+    must never feed `wire.reorder()`. `window.boardSortable`'s own `group` option is now conditional —
+    only a Today zone (`el.dataset.today === 'true'`) becomes `{ name: 'board', put: ['board',
+    'homework-preview'] }`; every other column stays plain `'board'` and therefore can't accept a homework
+    drop at all. `homeworkDragSource`'s `onEnd` fires on the *origin* (this instance) with `evt.to` naming
+    the destination — the exact same pattern `boardSortable`'s own `onEnd` already relies on for "dropped
+    onto a project card" (its `to.dataset.list === undefined` guard). A rejected drop (anywhere without
+    `data-today="true"`) just leaves `evt.to === el`, a no-op.
+  - **Mobile mechanics** — `homeworkSwipeCard`, a small dedicated Alpine component (not a reuse of the
+    board's own `swipeCard`, which is hardcoded to the horizontal axis and to `$wire.swipeIntent`): same
+    lock-on-dominant-axis / resist-the-dead-side / spring-back shape, read on `dy` instead of `dx`. A
+    downward drag is the dead side (resists, never commits); reaching the threshold upward flies the card
+    off and calls `$wire.promoteHomeworkToday(id, 'today')`, mirroring `swipeCard.fire()`'s own
+    fly-then-call timing. `touch-pan-x` (not the task cards' `touch-pan-y`) lets the strip's native
+    horizontal scroll through on an unlocked gesture.
+  - **The same card partial serves both breakpoints** — unlike full task cards (`task-card.blade.php` vs
+    `task-card-mobile.blade.php`), a homework preview card is identically shaped at both sizes, so
+    `homework-preview-strip.blade.php` takes an `$interaction` param (`'drag'` at the desktop include site,
+    `'swipe'` at the mobile one — same pattern `$spacing` already used for a different reason) rather than
+    forking into two files: only the `x-init`/`x-data` wiring branches, the card markup is written once.
+- **The signature moment — finishing the loop, quietly.** Completing a homework-derived task also completes
+  the linked Agenda entry, and un-completing reverses it — no second trip to Agenda, no risk of doing the
+  same homework "twice" (once on the board, once forgotten in Agenda). **`Task::syncLinkedAgendaEntry(User
+  $user, bool $done)`** is the one place this logic lives (a no-op whenever `agenda_entry_id` is null, i.e.
+  for every ordinary task): it's wired into all three places a task's completion can flip —
+  `ManagesTasks::toggleComplete()` (board/project/group pages), `Schedule::toggleDeadlineTaskDone()` (which
+  already deliberately duplicates `toggleComplete()`, see that section above), and the API's `PATCH
+  /tasks/{id}` when `is_completed` is part of the payload (Shortcuts-driven completion behaves identically
+  to the UI). The strip's own checkbox (`toggleHomeworkPreviewDone`) is the mirror image: if an already-
+  promoted task exists (active or completed — whichever is more recently touched wins the rare case where
+  both somehow exist), it routes through `$this->toggleComplete($task->id)` instead of touching the entry a
+  second time directly, so the usual completion side effects (celebrations included) fire no matter which
+  checkbox you actually tap, and the two records can't drift out of sync.
+- **A small provenance icon** (the same document glyph as the strip's own header badge) marks a homework-
+  derived task on its card face — `task-card.blade.php`, `task-card-mobile.blade.php`, and
+  `project-task-card.blade.php` all check `$task->agenda_entry_id`, since the edit sheet can still move such
+  a task into a project later and the icon should follow it there.
+- **Dragging a homework-derived task card back onto the strip undoes the promotion** —
+  `TaskBoard::removeHomeworkFromToday(int $id)` deletes the task (guarded: a no-op unless
+  `agenda_entry_id` is actually set, defense-in-depth against the client-side gate ever being wrong) and
+  leaves the Agenda entry itself completely untouched, so it simply becomes open and re-promotable again,
+  exactly as if it had never been dragged in — the desktop-only mirror image of `promoteHomeworkToday()`.
+  Both directions share **one** Sortable instance (`window.homeworkDragSource`, desktop only — see
+  mobile note below): its `group.put` is a **function**, not the `true`/array shorthand used elsewhere,
+  checking `dragEl.dataset.homework === 'true'` (set on `task-card.blade.php`'s root only when
+  `agenda_entry_id` is non-null) — an ordinary task dropped on the strip bounces back untouched, the same
+  as dropping on any other zone it isn't welcome in. The incoming drop is handled by `onAdd` (mirroring
+  `projectDropZone`'s exact shape: read `evt.item.dataset.id`, `evt.item.remove()`, call the wire method);
+  the *outgoing* promote drop still needs no changes to `window.boardSortable` at all — a card dropped on
+  the strip lands in a zone with no `data-list`, so `boardSortable`'s own pre-existing
+  `to.dataset.list === undefined` guard (written for "dropped onto a project card") already makes its
+  `onEnd` bail out silently, exactly the same free ride `projectDropZone`/`newProjectDropZone` already get.
+  **Mobile has no equivalent gesture** — deliberately: mobile's `swipeCard` already spends both directions
+  on a Today-flagged task (`right: 'untoday'`, `left: 'edit'`), and the existing armed-double-click delete
+  button already reaches the identical end state (task gone, entry untouched, re-promotable), so a mobile
+  swipe-to-remove would only duplicate a path that already exists rather than add one.
+- Deliberately out of scope for this pass: exam entries (`type=exam`, the strip itself only ever shows
+  homework); any promotion entry point on the Agenda page itself, QuickCapture, or the Zeitplan's deadline
+  strip (only its *existing* `toggleDeadlineTaskDone` gained the completion echo, no new gesture there).
+
 ### Task-Gruppen (built)
 
 The middle size between a single task and a Project: a bundle of steps that belong together — a

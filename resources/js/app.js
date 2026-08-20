@@ -103,8 +103,14 @@ window.currentPushSubscription = async function () {
  */
 window.boardSortable = function (el, wire, handle = null) {
     if (el._sortable) return el._sortable;
+    // A Today zone additionally accepts a drop from the homework preview
+    // strip (see homeworkDragSource below); every other board column stays
+    // 'board'-only, so this never opens Inbox/plain Todos/Tasks to it.
+    const group = el.dataset.today === 'true'
+        ? { name: 'board', put: ['board', 'homework-preview'] }
+        : 'board';
     el._sortable = Sortable.create(el, {
-        group: 'board',
+        group,
         animation: 160,
         easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
         ghostClass: 'board-ghost',
@@ -143,6 +149,73 @@ window.boardSortable = function (el, wire, handle = null) {
             if (to.dataset.list === undefined) return;
             const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
             wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
+ * Desktop drag source AND drop target for the dashboard's "Bald fällige
+ * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
+ * instance:
+ *
+ * OUT: drag a homework card into a Today zone to pull it into today's focus
+ * (see TaskBoard::promoteHomeworkToday()). Deliberately its own instance
+ * rather than folding into boardSortable: this list holds AgendaEntry ids,
+ * not Task ids, and must never be reorderable or feed wire.reorder() the
+ * way a real board zone does.
+ *
+ * IN: drag a homework-DERIVED task card back onto the strip to undo that —
+ * see TaskBoard::removeHomeworkFromToday(). `put` only accepts a dragged
+ * element carrying `data-homework="true"` (set on the task card only when
+ * task.agenda_entry_id is non-null, see task-card.blade.php) — an ordinary
+ * task dropped here bounces back like anywhere else it isn't welcome.
+ *
+ * onEnd fires on the ORIGIN instance (this one) with evt.to telling us where
+ * the card landed — the exact same pattern boardSortable's own onEnd already
+ * relies on for "dropped onto a project card" (see its `to.dataset.list ===
+ * undefined` guard above). Only a Today zone's `put` allowlist (above)
+ * accepts this group at all, so evt.to is either back here (rejected drop,
+ * evt.to === el) or a genuine Today zone.
+ */
+window.homeworkDragSource = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: {
+            name: 'homework-preview',
+            put: (to, from, dragEl) => dragEl.dataset.homework === 'true',
+        },
+        sort: false,
+        // An already-promoted card has no data-id (see the Blade partial) —
+        // without this, Sortable would still let you pick it up, and the
+        // onEnd below would remove it from the DOM with no wire call to
+        // bring it back until an unrelated re-render happened to.
+        draggable: '[data-id]',
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onAdd: (evt) => {
+            // A homework-linked task card landed here from a board zone —
+            // undo the promotion. The server re-render is the real state
+            // (the strip's own card goes back to normal), so don't leave
+            // the raw task card sitting inside this AgendaEntry-shaped list.
+            const taskId = evt.item.dataset.id;
+            evt.item.remove();
+            if (taskId) wire.removeHomeworkFromToday(parseInt(taskId, 10));
+        },
+        onEnd: (evt) => {
+            const to = evt.to;
+            if (to === el || to.dataset.today !== 'true') return;
+            const entryId = evt.item.dataset.id;
+            // The server re-render is the real state (either back in the
+            // strip, un-promoted, or showing its "already in Today" badge) —
+            // don't leave the raw card sitting inside a Task-shaped zone
+            // until that response arrives.
+            evt.item.remove();
+            if (entryId) wire.promoteHomeworkToday(parseInt(entryId, 10), to.dataset.list);
         },
     });
     return el._sortable;
@@ -763,6 +836,91 @@ document.addEventListener('alpine:init', () => {
             setTimeout(() => {
                 this.$wire.swipeIntent(this.id, intent);
             }, 150);
+        },
+    }));
+
+    /**
+     * homeworkSwipeCard — mobile's equivalent of homeworkDragSource: swipe a
+     * homework preview card UP to pull it into today's focus.
+     *
+     * Deliberately vertical, and deliberately its own small component rather
+     * than reusing swipeCard above: the homework strip scrolls HORIZONTALLY
+     * (overflow-x-auto), so a horizontal swipe-to-act gesture on a card
+     * inside it would fight the strip's own native scroll on every touch.
+     * Vertical is the one axis nothing else in this strip is already using.
+     * Same lock-on-dominant-axis / resist-the-dead-side / spring-back shape
+     * as swipeCard, just read on dy instead of dx.
+     */
+    window.Alpine.data('homeworkSwipeCard', (cfg = {}) => ({
+        id: cfg.id,
+        dy: 0,
+        dragging: false,
+        flying: false,
+        locked: null,
+        sx: 0,
+        sy: 0,
+        threshold: 56,
+
+        get progress() {
+            return Math.min(Math.abs(this.dy) / this.threshold, 1);
+        },
+        get reached() {
+            return this.dy < 0 && Math.abs(this.dy) >= this.threshold;
+        },
+
+        down(e) {
+            if (e.pointerType === 'mouse' || this.flying) return;
+            this.sx = e.clientX;
+            this.sy = e.clientY;
+            this.dragging = true;
+            this.locked = null;
+        },
+
+        move(e) {
+            if (!this.dragging) return;
+            const dx = e.clientX - this.sx;
+            const dy = e.clientY - this.sy;
+
+            if (this.locked === null) {
+                if (Math.abs(dy) > Math.abs(dx) + 6) {
+                    this.locked = 'v';
+                } else if (Math.abs(dx) > Math.abs(dy) + 6) {
+                    // Horizontal — the strip's own native scroll wins, not us.
+                    this.locked = 'h';
+                    this.dragging = false;
+                    return;
+                } else return;
+            }
+
+            if (this.locked === 'v') {
+                if (e.cancelable) e.preventDefault();
+                if (dy > 0) {
+                    this.dy = dy * 0.18; // downward — dead side, resist, never commit
+                    return;
+                }
+                const abs = Math.abs(dy);
+                const max = this.threshold * 1.6;
+                this.dy = -(abs <= max ? abs : max + (abs - max) * 0.22);
+            }
+        },
+
+        up() {
+            if (!this.dragging && this.locked !== 'v') {
+                this.dy = 0;
+                return;
+            }
+            const commit = this.locked === 'v' && this.reached;
+            this.dragging = false;
+            this.locked = null;
+            if (commit) {
+                this.flying = true;
+                this.dy = -140;
+                setTimeout(() => {
+                    this.$wire.promoteHomeworkToday(this.id, 'today');
+                }, 150);
+            } else {
+                this.dy = 0;
+            }
         },
     }));
 

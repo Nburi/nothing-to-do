@@ -7,7 +7,7 @@
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
             @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-6'])
+            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-6', 'interaction' => 'drag'])
 
             <div class="grid grid-cols-4 gap-5">
                 @include('livewire.partials.column', [
@@ -120,7 +120,7 @@
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
             @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-4'])
+            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-4', 'interaction' => 'swipe'])
 
             <div class="flex flex-col gap-2.5">
                 @switch($mobileTab)
