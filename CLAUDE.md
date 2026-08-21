@@ -1226,9 +1226,12 @@ thing became a Project, which is exactly what made that column unreadable (see �
   `swipeIntent`, `assignTaskToProject`), `ProjectPage::assignToProject`, `ManagesTasks::saveEdit`
   (the edit sheet's three ways to move a task off the board's Today lists), `PrepareTomorrow::markToday`
   (using its own `targetDate` — evening mode flags *tomorrow's* tasks tonight, so stamping "now" would
-  wrongly attribute them to the still-running today), and both API `TaskController` endpoints. Purely
-  additive — nothing reads it for board/API display logic, and pre-migration `is_today=true` rows get
-  no retroactive value (unreconstructable, so the streak effectively starts a clean count from ship day).
+  wrongly attribute them to the still-running today), `GroupPage` (`setToday`, `reorder`, `swipeIntent`
+  — added 2026-08-21, see *Known Issues*: these three were missed when `today_date` was first wired up,
+  since Task-Gruppen already existed by then and wasn't re-audited), and both API `TaskController`
+  endpoints. Purely additive — nothing reads it for board/API display logic, and pre-migration
+  `is_today=true` rows get no retroactive value (unreconstructable, so the streak effectively starts a
+  clean count from ship day).
 - **`App\Services\ProgressStats`** (stateless, like `PomodoroCycle`/`TaskSuggestor`):
   - Volume side: `completedCountsByDay()` (one query, reused by everything below it — never call in a
     loop), `todayCount()`, `bestDailyCount()`, `heatmap()` (12 weeks × 7 days, level 0–4 relative to
@@ -1516,6 +1519,34 @@ shorter date string sorts before a longer one that starts with it — only *exac
 broken by this, which is why it went unnoticed until the first `where()`-equality check against a date
 column was written.) Caught by a dedicated test (`ProgressStatsTest::
 test_celebration_does_not_fire_perfect_day_while_other_today_tasks_are_still_open`) before this shipped.
+
+### A new invariant added after a feature already exists needs an audit pass over that feature too
+**Symptom:** the header streak badge (and other Fortschritt numbers) had gone quiet for real accounts with
+real usage, with no error anywhere — `ProgressStats::currentStreak()` just kept returning 0.
+**Cause:** `Task::todayDateFor()` and the "every `is_today` write must also write `today_date`" invariant
+were introduced by the `today_date` migration (2026-08-18, commit `30201ac`) — but **Task-Gruppen already
+existed on main by then** (commit `115ad56`, earlier), and `GroupPage::reorder()`/`swipeIntent()`/
+`setToday()` were never updated to the new contract. They kept writing `is_today` alone, exactly as every
+site correctly did before `today_date` existed. The result was silent, two-directional data corruption:
+flagging a task "today" from inside a group page left `today_date` null (invisible to `ProgressStats`,
+so a day with only group-flagged tasks could show zero total); unflagging it (or dragging it back to the
+Inbox) left a stale `today_date` stamped (marooning that day as permanently "imperfect", since nothing
+ever re-clears it). `currentStreak()` requires today-or-yesterday to be a fully perfect day, so either
+corruption anywhere in the last day or two silently zeroed the streak — with no exception, no log line,
+nothing to grep for, because both writes "succeeded" from the database's point of view. Confirmed live in
+the dev DB: 6 real rows across 2 real users showed exactly this shape before the fix.
+**Fix:** wired all three `GroupPage` sites to call `Task::todayDateFor()`, mirroring `TaskBoard`'s own
+`reorder()`/`swipeIntent()`/`setToday()` exactly (see the `todayDateFor` list above, now updated to
+include `GroupPage`). Existing corrupted rows were repaired by a one-off data migration
+(`2026_08_21_000001_repair_today_date_missed_by_group_page.php`) — safe on a fresh install (no matching
+rows), and idempotent — plus regression tests in `TaskGroupsTest` for all three sites and an end-to-end
+test asserting `ProgressStats::currentStreak()` directly. **The general lesson:** when a new invariant is
+added to an existing column/flag, grep every write site across the *whole* app before considering the
+feature done, not just the sites touched by the commit that's adding the invariant — a site that predates
+the invariant is exactly the one most likely to be missed, because nothing about editing it that day would
+naturally draw your attention there. The Task-Gruppen section above documents the same lesson learned once
+already (`group_id` vs. `assignTaskToProject`/`assignToProject`); this is the same mistake shape recurring
+across a different pair of features.
 
 ### PHP 8.2+ forbids accessing a trait's own constant via the trait's name
 **Symptom:** `Cannot access trait constant App\Livewire\Concerns\X::FOO directly` — thrown at the call site,
