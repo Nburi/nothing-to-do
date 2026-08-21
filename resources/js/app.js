@@ -620,16 +620,17 @@ document.addEventListener('alpine:init', () => {
      * Non-blocking "something happened" celebration — topographic rings plus a
      * handful of line-mark particles, fired only by the real milestones in
      * ProgressStats::celebrationFor() (daily goal reached, new all-time daily
-     * record, or a perfect day — every today-task cleared) via a 'celebrate'
-     * browser event dispatched from wherever a task was just completed (board,
-     * project page, or the Zeitplan deadline strip — see the overlay mounted
-     * once in layouts/app.blade.php). Auto-hides itself; there is nothing to
-     * confirm or dismiss, unlike a dialog.
+     * record, a perfect day — every today-task cleared — or a new all-time
+     * streak record) via a 'celebrate' browser event dispatched from wherever
+     * a task was just completed (board, project page, or the Zeitplan
+     * deadline strip — see the overlay mounted once in layouts/app.blade.php).
+     * Auto-hides itself; there is nothing to confirm or dismiss, unlike a dialog.
      *
-     * 'perfect-day' is deliberately bigger and slower than goal/record — it's
-     * the rarest, most personally-defined win (see CLAUDE.md's Fortschritt
-     * section), so it gets a warmer, more spread-out burst instead of reusing
-     * the same size for every kind.
+     * Three escalating tiers, indexed 0–2: goal/record is the baseline: a
+     * perfect day is bigger and slower — the rarest, most personally-defined
+     * win short of a streak record (see CLAUDE.md's Fortschritt section); a
+     * new streak record is bigger and slower still — it's a perfect day that
+     * *also* just beat every streak ever run before it.
      */
     window.Alpine.store('celebration', {
         visible: false,
@@ -638,26 +639,30 @@ document.addEventListener('alpine:init', () => {
         particles: [],
         _timer: null,
         fire(kind, label) {
-            const big = kind === 'perfect-day';
-            const count = big ? 18 : 12;
+            const tier = kind === 'streak-record' ? 2 : kind === 'perfect-day' ? 1 : 0;
+            const count = [12, 18, 24][tier];
+            const distanceBase = [46, 58, 72][tier];
+            const distanceRange = [36, 46, 56][tier];
+            const delayRange = [120, 160, 200][tier];
+            const duration = [1700, 2200, 2700][tier];
 
             this.kind = kind;
             this.label = label;
             this.particles = Array.from({ length: count }, (_, i) => {
                 const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.35 - 0.175);
-                const distance = (big ? 58 : 46) + Math.random() * (big ? 46 : 36);
+                const distance = distanceBase + Math.random() * distanceRange;
 
                 return {
                     id: i,
                     dx: Math.round(Math.cos(angle) * distance),
                     dy: Math.round(Math.sin(angle) * distance),
                     rotate: Math.round(Math.random() * 360),
-                    delay: Math.round(Math.random() * (big ? 160 : 120)),
+                    delay: Math.round(Math.random() * delayRange),
                 };
             });
             this.visible = true;
             clearTimeout(this._timer);
-            this._timer = setTimeout(() => { this.visible = false; }, big ? 2200 : 1700);
+            this._timer = setTimeout(() => { this.visible = false; }, duration);
         },
     });
     /**
