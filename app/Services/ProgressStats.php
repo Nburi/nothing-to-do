@@ -265,17 +265,23 @@ class ProgressStats
      * priority order — the rarer/more meaningful one wins if several are
      * true on the same completion, never more than one at once:
      *
-     *   1. Perfect day — $task was itself part of today's today-list, and
-     *      completing it just brought today's open today-tasks to zero.
-     *      Checked against the live DB state, which by the time this runs
-     *      already reflects $task's own completion (called post-update).
-     *   2. Record — today's count (given as $beforeCount, captured before
+     *   1. Streak record — $task was part of today's today-list, completing
+     *      it just brought today's open today-tasks to zero (today is now a
+     *      "perfect" day), AND the resulting currentStreak() just moved past
+     *      the best streak ever run before today. Can only be "broken", never
+     *      "set" out of nothing — day one of a first-ever streak doesn't
+     *      celebrate a "record" of 1.
+     *   2. Perfect day — same "today's open today-tasks just hit zero" check,
+     *      without a new streak record. Checked against the live DB state,
+     *      which by the time this runs already reflects $task's own
+     *      completion (called post-update).
+     *   3. Record — today's count (given as $beforeCount, captured before
      *      the write) just moved past the all-time daily best. A record can
      *      only be "broken", never "set" out of nothing — the very first
      *      tasks ever completed don't celebrate a record of 1.
-     *   3. Goal — today's count just reached the configured daily goal.
+     *   4. Goal — today's count just reached the configured daily goal.
      *
-     * @return array{kind: 'perfect-day'|'record'|'goal', label: string}|null
+     * @return array{kind: 'streak-record'|'perfect-day'|'record'|'goal', label: string}|null
      */
     public static function celebrationFor(User $user, Task $task, int $beforeCount): ?array
     {
@@ -293,6 +299,18 @@ class ProgressStats
                 ->count();
 
             if ($stillOpen === 0) {
+                $successMap = self::dailySuccessMap(self::todayListStatsByDay($user));
+                $streak = self::currentStreak($user, $successMap);
+
+                // "Prior" excludes today's own contribution, mirroring
+                // bestDailyCount(..., excluding: today) below.
+                unset($successMap[$today->toDateString()]);
+                $priorBestStreak = self::bestStreak($successMap);
+
+                if ($priorBestStreak > 0 && $streak > $priorBestStreak) {
+                    return ['kind' => 'streak-record', 'label' => "Neue Bestserie: {$streak} Tage"];
+                }
+
                 return ['kind' => 'perfect-day', 'label' => 'Perfekter Tag'];
             }
         }

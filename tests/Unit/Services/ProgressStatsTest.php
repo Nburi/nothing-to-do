@@ -333,4 +333,60 @@ class ProgressStatsTest extends TestCase
 
         $this->assertSame('perfect-day', $celebration['kind']);
     }
+
+    // ── celebrationFor: streak record ──────────────────────────────────────
+
+    public function test_celebration_fires_a_streak_record_when_beating_the_all_time_best_streak(): void
+    {
+        Carbon::setTestNow('2026-08-20 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 20]);
+
+        // A historical best streak of 3, well separated from the current run.
+        $this->todayListOn($user, '2026-08-10', total: 1, done: 1);
+        $this->todayListOn($user, '2026-08-11', total: 1, done: 1);
+        $this->todayListOn($user, '2026-08-12', total: 1, done: 1);
+
+        // A fresh run already 3 days long going into today — completing
+        // today's last task will make it 4, beating the historical best of 3.
+        $this->todayListOn($user, '2026-08-17', total: 1, done: 1);
+        $this->todayListOn($user, '2026-08-18', total: 1, done: 1);
+        $this->todayListOn($user, '2026-08-19', total: 1, done: 1);
+        $lastOne = Task::factory()->for($user)->todos()->todayOn('2026-08-20')->completed()->create(['completed_at' => now()]);
+
+        $celebration = ProgressStats::celebrationFor($user, $lastOne, beforeCount: 0);
+
+        $this->assertSame('streak-record', $celebration['kind']);
+        $this->assertSame('Neue Bestserie: 4 Tage', $celebration['label']);
+    }
+
+    public function test_celebration_falls_back_to_perfect_day_when_the_streak_hasnt_beaten_the_record_yet(): void
+    {
+        Carbon::setTestNow('2026-08-20 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 20]);
+
+        // A historical best streak of 5 — well out of reach of today's run.
+        for ($i = 10; $i <= 14; $i++) {
+            $this->todayListOn($user, "2026-08-{$i}", total: 1, done: 1);
+        }
+
+        // Today is only the 2nd day of a fresh run.
+        $this->todayListOn($user, '2026-08-19', total: 1, done: 1);
+        $lastOne = Task::factory()->for($user)->todos()->todayOn('2026-08-20')->completed()->create(['completed_at' => now()]);
+
+        $celebration = ProgressStats::celebrationFor($user, $lastOne, beforeCount: 0);
+
+        $this->assertSame('perfect-day', $celebration['kind']);
+    }
+
+    public function test_the_very_first_streak_ever_is_not_celebrated_as_a_streak_record(): void
+    {
+        Carbon::setTestNow('2026-08-20 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 20]);
+
+        $lastOne = Task::factory()->for($user)->todos()->todayOn('2026-08-20')->completed()->create(['completed_at' => now()]);
+
+        $celebration = ProgressStats::celebrationFor($user, $lastOne, beforeCount: 0);
+
+        $this->assertSame('perfect-day', $celebration['kind']);
+    }
 }

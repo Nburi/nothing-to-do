@@ -326,6 +326,7 @@
                                     :class="{
                                         'celebrate-ring--record': $store.celebration.kind === 'record',
                                         'celebrate-ring--perfect-day': $store.celebration.kind === 'perfect-day',
+                                        'celebrate-ring--streak-record': $store.celebration.kind === 'streak-record',
                                     }"
                                     :style="`animation-delay: ${(n - 1) * 140}ms`"
                                 ></div>
@@ -336,6 +337,7 @@
                                     :class="{
                                         'celebrate-particle--record': $store.celebration.kind === 'record',
                                         'celebrate-particle--perfect-day': $store.celebration.kind === 'perfect-day',
+                                        'celebrate-particle--streak-record': $store.celebration.kind === 'streak-record',
                                     }"
                                     :style="`--dx: ${p.dx}px; --dy: ${p.dy}px; --rotate: ${p.rotate}deg; animation-delay: ${p.delay}ms`"
                                 ></div>
@@ -345,7 +347,7 @@
                             class="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium shadow-map"
                             :class="{
                                 'bg-overprint text-white': $store.celebration.kind === 'record',
-                                'bg-contour text-white': $store.celebration.kind === 'perfect-day',
+                                'bg-contour text-white': $store.celebration.kind === 'perfect-day' || $store.celebration.kind === 'streak-record',
                                 'bg-forest text-white': $store.celebration.kind === 'goal',
                             }"
                             x-text="$store.celebration.label"

@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
+use App\Services\ProgressStats;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -373,6 +374,82 @@ class TaskGroupsTest extends TestCase
 
         $this->assertSame('tasks', $a->fresh()->list);
         $this->assertSame('inbox', $outsider->fresh()->list, 'A task outside the group must be ignored.');
+    }
+
+    // Regression coverage for a real bug: reorder()/swipeIntent()/setToday()
+    // used to write `is_today` without ever touching `today_date` (unlike
+    // every other write site — TaskBoard, ProjectPage, ManagesTasks, the
+    // API), silently corrupting ProgressStats' data foundation for anyone
+    // flagging "today" from inside a group page. See Task::todayDateFor().
+
+    public function test_reordering_into_the_inbox_clears_the_today_date(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $task = Task::factory()->for($user)->todos()->today()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('reorder', 'inbox', false, [$task->id]);
+
+        $task->refresh();
+        $this->assertFalse((bool) $task->is_today);
+        $this->assertNull($task->today_date, 'Leaving today via a group reorder must clear today_date or the day stays marooned as imperfect.');
+    }
+
+    public function test_swipe_intent_today_and_untoday_keep_the_today_date_in_sync(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $task = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('swipeIntent', $task->id, 'today');
+
+        $task->refresh();
+        $this->assertTrue((bool) $task->is_today);
+        $this->assertSame($user->localToday()->toDateString(), $task->today_date?->toDateString());
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('swipeIntent', $task->id, 'untoday');
+
+        $this->assertNull($task->fresh()->today_date);
+    }
+
+    public function test_set_today_stamps_and_clears_the_today_date(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $task = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('setToday', $task->id, true);
+
+        $task->refresh();
+        $this->assertTrue((bool) $task->is_today);
+        $this->assertSame($user->localToday()->toDateString(), $task->today_date?->toDateString());
+
+        Livewire::actingAs($user)
+            ->test(GroupPage::class, ['group' => $group])
+            ->call('setToday', $task->id, false);
+
+        $this->assertNull($task->fresh()->today_date);
+    }
+
+    public function test_a_perfect_day_flagged_entirely_through_a_group_page_counts_toward_the_streak(): void
+    {
+        $user = User::factory()->create();
+        $group = TaskGroup::factory()->for($user)->create();
+        $task = Task::factory()->for($user)->todos()->create(['group_id' => $group->id]);
+
+        $page = Livewire::actingAs($user)->test(GroupPage::class, ['group' => $group]);
+        $page->call('setToday', $task->id, true);
+        $page->call('toggleComplete', $task->id);
+
+        $this->assertSame(1, ProgressStats::currentStreak($user->fresh()));
     }
 
     public function test_dissolving_a_group_keeps_every_task(): void

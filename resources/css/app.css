@@ -323,6 +323,20 @@
         animation-name: celebrate-ring-big;
         animation-duration: 1.6s;
     }
+    /* A streak record is a perfect day that also just beat every streak ever
+       run before it — the rarest of the four kinds, so it escalates once
+       more past perfect-day rather than introducing a new color: this app's
+       four-tone Topografie palette has no fifth tone to spare, and forest/
+       overprint are already goal/record's own colors. */
+    @keyframes celebrate-ring-huge {
+        0% { transform: scale(0.5); opacity: 0.9; }
+        100% { transform: scale(3.1); opacity: 0; }
+    }
+    .celebrate-ring--streak-record {
+        border-color: rgb(var(--contour));
+        animation-name: celebrate-ring-huge;
+        animation-duration: 2.1s;
+    }
     @keyframes celebrate-particle {
         0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
         100% { transform: translate(calc(-50% + var(--dx, 40px)), calc(-50% + var(--dy, 40px))) rotate(var(--rotate, 90deg)); opacity: 0; }
@@ -343,6 +357,10 @@
     .celebrate-particle--perfect-day {
         background: rgb(var(--contour));
         animation-duration: 1.3s;
+    }
+    .celebrate-particle--streak-record {
+        background: rgb(var(--contour));
+        animation-duration: 1.7s;
     }
 
     /* Week plan ripple (WeekPlan::saveEventForm, via resources/js/app.js's

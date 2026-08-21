@@ -231,11 +231,14 @@ class GroupPage extends Component
                 continue;
             }
 
+            // Moving into the Inbox drops the today flag, same as the board.
+            $isToday = $list === 'inbox' ? false : $task->is_today;
+
             $task->update([
                 'list' => $list,
                 'sort_order' => $position,
-                // Moving into the Inbox drops the today flag, same as the board.
-                'is_today' => $list === 'inbox' ? false : $task->is_today,
+                'is_today' => $isToday,
+                'today_date' => $task->todayDateFor($isToday, auth()->user()->localToday()),
             ]);
         }
     }
@@ -248,8 +251,11 @@ class GroupPage extends Component
         match ($intent) {
             'todos' => $task->update(['list' => 'todos']),
             'tasks' => $task->update(['list' => 'tasks']),
-            'today' => $task->isInbox() ? null : $task->update(['is_today' => true]),
-            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false]),
+            'today' => $task->isInbox() ? null : $task->update([
+                'is_today' => true,
+                'today_date' => $task->todayDateFor(true, auth()->user()->localToday()),
+            ]),
+            'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false, 'today_date' => null]),
             default => null,
         };
     }
@@ -436,7 +442,10 @@ class GroupPage extends Component
             return;
         }
 
-        $task->update(['is_today' => $value]);
+        $task->update([
+            'is_today' => $value,
+            'today_date' => $task->todayDateFor($value, auth()->user()->localToday()),
+        ]);
     }
 
     /** Groups a task can be moved to from the mobile picker sheet. */
