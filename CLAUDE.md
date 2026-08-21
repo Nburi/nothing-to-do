@@ -1268,24 +1268,33 @@ thing became a Project, which is exactly what made that column unreadable (see �
   line-mark particles, `resources/js/app.js`'s `celebration` Alpine store, mounted **once** in
   `layouts/app.blade.php` rather than inside any one Livewire component, so it fires no matter which
   page a task gets completed from) triggered by a `celebrate` browser event carrying `{kind, label}`.
-  Fires for exactly three milestones, computed by **`ProgressStats::celebrationFor(User $user, Task
+  Fires for exactly four milestones, computed by **`ProgressStats::celebrationFor(User $user, Task
   $task, int $beforeCount): ?array`** — called from both real "mark a task done" sites
   (`ManagesTasks::toggleComplete()`, used by the board and `ProjectPage`; and the duplicated
   `Schedule::toggleDeadlineTaskDone()` on the Zeitplan's deadline strip), which each capture
   `$beforeCount = ProgressStats::todayCount($user)` **before** the `$task->update(...)` so goal/record
   crossings can be detected precisely instead of re-comparing aggregates after the fact. Checked in
   priority order, never more than one at once:
-  1. **Perfekter Tag** — `$task->today_date` is today, and completing it just brought today's open
+  1. **Neue Bestserie** (added 2026-08-21) — same "today just hit zero open today-tasks" trigger as
+     Perfekter Tag below, but the resulting `currentStreak()` *also* just moved past `bestStreak()` as it
+     stood before today (`unset($successMap[$today])` before calling `bestStreak()`, mirroring
+     `bestDailyCount(..., excluding: $today)` for Neuer Bestwert below). Same "broken, never set from
+     nothing" guard as Neuer Bestwert — day one of a first-ever streak doesn't celebrate "Bestserie: 1
+     Tag". The rarest of the four (a perfect day that *also* beats every streak ever run), so it wins
+     over a plain Perfekter Tag on the same completion, and escalates the overlay a size further still
+     (24 particles, 2.7s) — see the `celebration` store's tiered `fire()` in `app.js`. Reuses `contour`
+     rather than a new color: the four-tone Topografie palette has no fifth tone to spare, and `forest`/
+     `overprint` are already Tagesziel/Neuer-Bestwert's own colors.
+  2. **Perfekter Tag** — `$task->today_date` is today, and completing it just brought today's open
      today-tasks to zero (checked live post-update via `whereDate('today_date', ...)` — a plain
      `where()` against a *value*, not `whereDate()`, silently matches nothing here: a bare `'date'`
      cast still stores full datetime precision with a zeroed time-of-day, so an exact string
-     comparison fails; see §10). The rarest, most personally-defined win, so it wins over a
-     simultaneous goal/record on the same completion, and gets its own warmer/bigger overlay variant
-     (18 particles vs. 12, `contour`-tinted not `forest`/`overprint`, 2.2s vs. 1.7s) rather than just a
-     recolor — see the `celebration` store's `big` branch in `app.js`.
-  2. **Neuer Bestwert** — today's count just exceeded the all-time daily record. Can only be
+     comparison fails; see §10). Wins over a simultaneous goal/record on the same completion, and gets
+     its own warmer/bigger overlay variant (18 particles vs. 12, `contour`-tinted not `forest`/
+     `overprint`, 2.2s vs. 1.7s) rather than just a recolor.
+  3. **Neuer Bestwert** — today's count just exceeded the all-time daily record. Can only be
      *broken*, never *set from nothing* — the first tasks ever completed don't celebrate "record: 1".
-  3. **Tagesziel erreicht** — today's count just reached `daily_task_goal`.
+  4. **Tagesziel erreicht** — today's count just reached `daily_task_goal`.
   Deliberately **not** wired into the API controllers — there is no browser there to show anything to.
   No sound in this pass (autoplay-policy risk, hard to verify headless — see `TODO.md`).
 - **Settings** has a **Fortschritt** tab: `daily_task_goal` (1–30, default 5, `saveDailyGoal()` —
