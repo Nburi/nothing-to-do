@@ -273,7 +273,8 @@
 
         <div class="space-y-2">
             @forelse ($this->categories as $category)
-                <div wire:key="cat-{{ $category->id }}" x-data="{ colorOpen: false }" class="flex items-center gap-3 rounded-card border border-line bg-paper/60 px-3 py-2.5">
+                <div wire:key="cat-{{ $category->id }}" x-data="{ colorOpen: false }" class="rounded-card border border-line bg-paper/60 px-3 py-2.5">
+                <div class="flex items-center gap-3">
                     <div class="relative flex-none">
                         <button type="button" @click="colorOpen = !colorOpen" class="h-4 w-4 rounded-full transition hover:scale-110 {{ $swatches[$category->color] ?? 'bg-contour' }}" aria-label="Farbe ändern"></button>
                         <div
@@ -327,6 +328,18 @@
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
                     </button>
                 </div>
+                @if ($category->pomodoro_enabled)
+                    <button
+                        type="button"
+                        wire:click="manageCategoryLink({{ $category->id }})"
+                        aria-label="Aufgaben-Verknüpfung für {{ $category->name }} verwalten — aktuell: {{ $category->taskSourceLabel() ?? 'keine' }}"
+                        class="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full border border-line bg-paper/70 px-2.5 py-1 text-xs text-ink-soft transition hover:border-overprint/50 hover:bg-paper hover:text-ink"
+                    >
+                        <svg class="h-3 w-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
+                        <span class="truncate">{{ $category->taskSourceLabel() ?? '+ Aufgaben verknüpfen' }}</span>
+                    </button>
+                @endif
+                </div>
             @empty
                 <p class="text-sm text-ink-faint">Noch keine Kategorien.</p>
             @endforelse
@@ -360,6 +373,8 @@
         </form>
         @error('newCategoryName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
         </div>
+
+        @include('livewire.partials.category-link-sheet')
 
         {{-- Pomodoro --}}
         <form

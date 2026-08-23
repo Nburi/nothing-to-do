@@ -33,6 +33,7 @@ class PomodoroSessionService
             'pomodoro_phase' => PomodoroCycle::WORK,
             'pomodoro_cycle' => 1,
             'pomodoro_started_at' => now(),
+            'pomodoro_linked_notified' => false,
         ]);
     }
 
@@ -43,6 +44,7 @@ class PomodoroSessionService
             'pomodoro_started_at' => null,
             'pomodoro_phase' => null,
             'pomodoro_cycle' => 1,
+            'pomodoro_linked_notified' => false,
         ]);
     }
 

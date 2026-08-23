@@ -552,11 +552,13 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **`App\Services\TaskSuggestor`** — "what to work on" for the focus card, tiered by the *effective* current
   Pomodoro cycle number (`TaskBoard::taskSuggestion()` — while frozen awaiting a continue, "effective" means
   `next_phase`/`next_cycle`, not the just-finished ones, so the preview matches what a continue would
-  start): cycle 1 nudges to clear the ToDos list (falling through if none are open), any cycle then prefers
-  the top active **today** task (board order), and once today's list is empty it falls back to a
-  deterministic pick between a project's next task and another todos/tasks-list task — seeded by
-  `(event id, cycle)` via `crc32()` so the choice stays stable across the ring's 5s poll instead of
-  reshuffling every request. Hidden whenever the effective phase is a break. Rendered by
+  start): after Notfallmodus (still the outright top tier) and the running session's own **category task
+  link** (see "Kategorie-Aufgaben-Verknüpfung" below — applies on *every* cycle, not just the first, and
+  only when it actually has something to offer), cycle 1 nudges to clear the ToDos list (falling through if
+  none are open), any cycle then prefers the top active **today** task (board order), and once today's list
+  is empty it falls back to a deterministic pick between a project's next task and another todos/tasks-list
+  task — seeded by `(event id, cycle)` via `crc32()` so the choice stays stable across the ring's 5s poll
+  instead of reshuffling every request. Hidden whenever the effective phase is a break. Rendered by
   `partials/schedule-strip-suggestion.blade.php` in every focus-card state that has a work-phase context; a
   task suggestion opens the existing inline edit sheet (`startEdit`), a project suggestion links to its
   project page.
@@ -676,6 +678,89 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   without deep-linking to the specific item. **Settings** has a matching **"Vorschau auf Termine"**
   card (`users.deadline_preview_enabled` default `true`, `deadline_preview_days` default `2`,
   max `14`) saved together via `saveDeadlinePreview()`, same form pattern as the Pomodoro card.
+
+### Kategorie-Aufgaben-Verknüpfung (built)
+
+A Pomodoro-enabled category can be pointed at something specific to work on, so a "Training" block's
+focus sessions suggest *your race-prep project*, not whatever `TaskSuggestor`'s generic cross-app tiers
+would otherwise pick. Six mutually-exclusive **`event_categories.task_source`** values (`'tasks'`,
+`'project'`, `'group'`, `'agenda_entry'`, `'agenda_generic'`, `'text'`, or `null` = no link):
+
+- **`tasks`** — a handful of individually pinned `Task`s (`category_task_links`: `category_id, task_id,
+  sort_order`, unique per pair, both FKs `cascadeOnDelete` — a pin has no meaning outside the category
+  that made it, unlike `linked_project_id`/etc. below). `EventCategory::pinnedTasks()` (`belongsToMany`,
+  ordered by the pivot's `sort_order`) suggests the next *active* one, skipping completed pins without
+  ever un-pinning them (a finished pin just stops being suggested; unpinning is always a separate,
+  explicit click). **The picker defaults to tasks due within 2 days or with a Wunschtermin today**
+  (`Settings::linkTaskCandidates()`) — the moment you open "bestimmte Aufgaben" you're not staring at a
+  blank search box, the things most likely worth pinning are already in front of you. Typing in the
+  search box searches every active board task instead, so something outside that window is still
+  reachable. **Gotcha hit while building this:** the deadline/due-date window originally used
+  `whereBetween`/`orWhere` directly against `deadline`/`due_date` — both plain `'date'` casts, which (per
+  the `today_date` entry below) store full datetime precision under the hood, so an exact `orWhere('due_date',
+  $today)` silently matched nothing. Fixed with `whereDate()` on both sides, same fix shape as that entry.
+- **`project`** / **`group`** — `linked_project_id`/`linked_group_id` (nullable FKs, `nullOnDelete`, same
+  safety pattern as `category_id` on `ScheduleEvent`/`EventTemplate` — deleting the target reverts the
+  category to having no suggestion, it never breaks). Suggests the linked `Project`/`TaskGroup`'s own
+  `activeTasks()->first()`, i.e. its normal next-up task.
+- **`agenda_entry`** — `linked_agenda_entry_id` (nullable FK, `nullOnDelete`), a single homework or exam
+  entry; suggested until `isDoneFor($user)`, then treated as empty.
+- **`agenda_generic`** — no target column at all: counts every open Agenda homework entry
+  (`AgendaEntry::visibleTo($user)->ofType('homework')->openFor($user)`) and nudges "Hausaufgaben
+  erledigen · N offen", mirroring the existing cycle-1 ToDos nudge's shape — deliberately homework-only,
+  not exams, matching the "HAs erledigen" framing this was asked for.
+- **`text`** — `linked_text`, a free label with no backing record at all (e.g. "Zimmer aufräumen") for
+  the thing that isn't in any list yet. Always suggests the same text; has no "done" state (see below).
+
+**`TaskSuggestor::suggest()`** gained a `?EventCategory $category` parameter and a new tier, sitting right
+after Notfallmodus (which still outranks everything) and before the cycle-1 ToDos nudge — so a category
+link applies on **every** cycle of a session, not just the first. Each `task_source` branch returns `null`
+the moment its target is empty, deleted, or (for `agenda_entry`) already done, and `suggest()` just falls
+through to the normal generic tiers below — the existing "never a dead suggestion" contract extends
+unchanged to a link that's run dry. New suggestion `kind`s (`category_group`, `category_agenda`,
+`agenda_generic`, `category_text`) got their own branches in `schedule-strip-suggestion.blade.php`; `tasks`
+and `project` links reuse the *existing* `task`/`project` kinds unchanged, since a pinned task or a linked
+project's next task renders identically to what those kinds already showed.
+
+**Settings' Kategorien card** — each Pomodoro-enabled category row grows a small link-status line
+(`EventCategory::taskSourceLabel()`, e.g. "Wettkampfvorbereitung" or "3 Aufgaben"; `null` → "Keine
+Aufgaben-Verknüpfung") that opens **`partials/category-link-sheet.blade.php`**, a bottom-sheet mirroring
+`edit-sheet.blade.php`'s shape (`animate-rise`, no leave-transition) rather than the Alpine-store-driven
+`project-picker-sheet.blade.php` pattern — this sheet needs several *server* computeds gated behind which
+category is open (`Settings::$linkingCategoryId`, `linkingCategory()` eager-loading every possible target
+relation at once), which the client-only-store pattern has no room for. Six chips (Keine / Bestimmte
+Aufgaben / Projekt / Gruppe / Agenda / Text) switch which sub-picker shows via a **client-only** `x-data="{
+reveal }"` seeded from the category's current `task_source` — chip clicks that can't commit anything by
+themselves yet (Projekt/Gruppe/Agenda/Text — picking *which* one is a separate click) only update `reveal`
+locally; "Keine" and "Bestimmte Aufgaben" commit immediately on the chip itself (`clearCategoryLink()` /
+`setCategoryTasksMode()`), matching the rest of this card's immediate-save convention. Every write
+(`linkCategoryToProject/Group/AgendaEntry/AgendaGeneric`, `saveCategoryLinkText`, `togglePinnedTask`) is
+ownership-scoped through `auth()->user()->eventCategories()->findOrFail()` and starts by calling
+**`EventCategory::clearTaskLink()`** (resets every `linked_*` column and detaches every pinned task) — the
+one place the "genau eine Verknüpfungsart" rule is enforced, so switching from "Bestimmte Aufgaben" to
+"Projekt" can never leave a stale pin or FK behind.
+
+**Signature moment — the list-just-finished notice.** Completing the last active item in a category's
+linked source while its session is running (or frozen awaiting a continue — anything past "Bereit, never
+started") shows a quiet, self-dismissing line in the focus card where the suggestion normally sits:
+"Wettkampfvorbereitung ist fertig." — then it fades back to normal on its own, no click needed.
+`schedule_events.pomodoro_linked_notified` (boolean, reset to `false` by both
+`PomodoroSessionService::start()` and `stop()` — a fresh session always gets a fresh chance to notify) is
+the guard: `TaskBoard::linkedSourceNotice()` is a **pure, repeatable read** — `TaskSuggestor
+::linkedSourceRemainingCount($category, $user)` (the same empty-check the suggestion tier already needs,
+exposed as its own method) hits exactly `0` and the flag is still `false` — deliberately *not* an
+event-driven push at the moment of completion, since the task that finishes the list can be completed from
+any page (`ProjectPage`, `GroupPage`, the Zeitplan's own deadline-strip checkbox…), not only from the
+dashboard that shows the focus card. A poll-based read sees it regardless of where the completion happened;
+an event dispatched from `ManagesTasks::toggleComplete()` would only reach a browser tab that happened to
+already be open on the dashboard at that exact moment. The notice is rendered once
+(`x-init="setTimeout(() => $wire.dismissLinkedSourceNotice(), 4000)"` on the `<p>` itself) and that call
+stamps the flag — an explicit, client-timed dismiss rather than a server-side "already shown" window,
+mirroring `PrepareTomorrow::dismissPreparePrompt()`'s shape more than any polling mechanism elsewhere in
+the app. **`text` links never fire this** — `EventCategory::taskSourceFinishedMessage()` returns `null` for
+`text` (and for any link whose target no longer resolves), since free text has no "done" state to detect;
+`linkedSourceRemainingCount()` likewise returns `null` (not `0`) for it, so the guard never even gets to
+the message.
 
 ### Wochenplan (built)
 
