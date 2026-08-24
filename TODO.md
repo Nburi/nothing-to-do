@@ -70,3 +70,22 @@ deploy. Clean it up whenever the local database is next rebuilt from scratch.
   explicitly avoided for, just at a coarser grain. If it starts feeling routine, raising the default (or
   making the celebration itself rarer, e.g. only on a fresh streak-day) would be the fix, not more visual
   intensity.
+- **Category task links (Kategorie-Aufgaben-Verknüpfung) in the API (Sanctum).** Shortcuts can toggle a
+  Pomodoro timer but can't see or change what a category is linked to — same gap as task groups above, and
+  worth doing together rather than as two separate passes over `EventCategoryController`.
+- **Manual reordering of pinned tasks** (`task_source = 'tasks'`) — the picker only supports add/remove
+  today, in the pivot's insertion order. A small drag list (or up/down buttons) inside the sheet would let
+  someone sequence which pinned task comes first, mirroring the emergency-mode arrange screen, but felt
+  like more UI than the first pass needed.
+- **Push notification when a category's linked list runs dry** — right now the "list just finished" moment
+  is a quiet in-app notice (see CLAUDE.md, Kategorie-Aufgaben-Verknüpfung) that only shows if the dashboard
+  happens to be open. A push would reach a session running with the tab closed, but risks being noisy for
+  something this minor — worth watching whether the in-app version already feels sufficient before adding it.
+- **A category whose linked project/group/Agenda entry gets deleted keeps `task_source` set even though the
+  target is gone** (the FK itself correctly goes `null` via `nullOnDelete` — see CLAUDE.md). The category
+  row's own label already self-heals ("Keine Aufgaben-Verknüpfung", since it reads the resolved relation,
+  not the raw `task_source` string), but the link sheet's chip row would still show e.g. "Projekt" as the
+  active chip with nothing selected underneath, until someone picks a new target or explicitly clears it.
+  Fixing this for real means deciding *where* a deletion should reach back and clear `task_source` too (a
+  model observer on `Project`/`TaskGroup`/`AgendaEntry`, most likely) — an architectural add, not a quick
+  patch, and the externally-visible behavior (the row label) is already honest in the meantime.

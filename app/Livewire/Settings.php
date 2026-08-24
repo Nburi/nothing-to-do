@@ -2,9 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Models\AgendaEntry;
+use App\Models\EventCategory;
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
+use App\Models\Task;
+use App\Services\HeaderBadges;
 use App\Services\PushNotifier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -60,6 +65,13 @@ class Settings extends Component
     public string $newCategoryName = '';
 
     public string $newCategoryColor = 'contour';
+
+    // Category task-link sheet (which category, if any, is being edited)
+    public ?int $linkingCategoryId = null;
+
+    public string $linkTextDraft = '';
+
+    public string $linkTaskSearch = '';
 
     public function mount(): void
     {
@@ -204,6 +216,60 @@ class Settings extends Component
         $user = auth()->user();
         $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+    }
+
+    // ── Header badges ─────────────────────────────────────────────────
+
+    /**
+     * Every catalog badge, in the user's current order, with its enabled
+     * flag — the "Header-Badges" card's drag/toggle list. See
+     * HeaderBadges::preferenceRowsFor() for the merge/default logic.
+     *
+     * @return Collection<int, array{key: string, enabled: bool, label: string}>
+     */
+    #[Computed]
+    public function headerBadgeRows(): Collection
+    {
+        return collect(HeaderBadges::preferenceRowsFor(auth()->user()))
+            ->map(fn (array $row) => $row + ['label' => HeaderBadges::CATALOG[$row['key']]['label']]);
+    }
+
+    public function toggleHeaderBadge(string $key): void
+    {
+        $rows = HeaderBadges::preferenceRowsFor(auth()->user());
+
+        $rows = array_map(
+            fn (array $row) => $row['key'] === $key ? [...$row, 'enabled' => ! $row['enabled']] : $row,
+            $rows,
+        );
+
+        auth()->user()->update(['header_badges' => $rows]);
+        unset($this->headerBadgeRows);
+    }
+
+    /**
+     * @param  list<string>  $order  every catalog key, in the new order — from the drag handler
+     */
+    public function reorderHeaderBadges(array $order): void
+    {
+        $current = collect(HeaderBadges::preferenceRowsFor(auth()->user()))->keyBy('key');
+
+        $rows = collect($order)
+            ->filter(fn ($key) => $current->has($key))
+            ->map(fn ($key) => $current->get($key))
+            ->values()
+            ->all();
+
+        // Anything the drag handler didn't report (shouldn't happen — every
+        // row is draggable — but never silently drop a badge) stays, appended.
+        foreach ($current as $key => $row) {
+            if (! in_array($key, $order, true)) {
+                $rows[] = $row;
+            }
+        }
+
+        auth()->user()->update(['header_badges' => $rows]);
+        unset($this->headerBadgeRows);
     }
 
     /** The presence toggle only means something to someone who is in a class. */
@@ -403,6 +469,175 @@ class Settings extends Component
     public function deleteCategory(int $id): void
     {
         auth()->user()->eventCategories()->whereKey($id)->delete();
+    }
+
+    // ── Category task links (Pomodoro focus-session suggestions) ────────
+
+    /** Opens the link sheet for one category — closes/replaces whatever was open before. */
+    public function manageCategoryLink(int $id): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+
+        $this->linkingCategoryId = $category->id;
+        $this->linkTextDraft = $category->task_source === 'text' ? (string) $category->linked_text : '';
+        $this->linkTaskSearch = '';
+    }
+
+    public function closeCategoryLink(): void
+    {
+        $this->linkingCategoryId = null;
+    }
+
+    /** The category currently open in the link sheet, with every possible link target eager-loaded. */
+    #[Computed]
+    public function linkingCategory(): ?EventCategory
+    {
+        if ($this->linkingCategoryId === null) {
+            return null;
+        }
+
+        return auth()->user()->eventCategories()
+            ->with(['linkedProject', 'linkedGroup', 'linkedAgendaEntry', 'pinnedTasks'])
+            ->find($this->linkingCategoryId);
+    }
+
+    #[Computed]
+    public function linkableProjects(): Collection
+    {
+        return auth()->user()->projects()->ordered()->get();
+    }
+
+    #[Computed]
+    public function linkableGroups(): Collection
+    {
+        return auth()->user()->taskGroups()->ordered()->get();
+    }
+
+    /** Open homework/exam entries this user can see — for picking a single Agenda link. */
+    #[Computed]
+    public function linkableAgendaEntries(): Collection
+    {
+        $user = auth()->user();
+
+        return AgendaEntry::visibleTo($user)->openFor($user)->ordered()->get();
+    }
+
+    /**
+     * Candidates for "bestimmte Aufgaben": with no search typed, tasks due within the
+     * next 2 days or with a Wunschtermin today — the moment the picker opens, before
+     * the user has to think of a title. Typing a search searches every active board
+     * task instead, so something outside that window can still be found and pinned.
+     */
+    #[Computed]
+    public function linkTaskCandidates(): Collection
+    {
+        $user = auth()->user();
+        $query = Task::forUser($user)->active()->onBoard();
+
+        if ($this->linkTaskSearch !== '') {
+            return $query->where('title', 'like', '%'.$this->linkTaskSearch.'%')->boardOrdered()->get();
+        }
+
+        $today = $user->localToday()->toDateString();
+        $horizon = $user->localToday()->addDays(2)->toDateString();
+
+        // whereDate(), not whereBetween()/where() on the raw column: 'deadline'/'due_date' are
+        // plain 'date' casts, which store full datetime precision under the hood (see CLAUDE.md
+        // "An exact where() against a 'date'-cast column can silently match nothing") — whereDate()
+        // wraps both sides in the grammar's own DATE() extraction so the comparison is exact
+        // regardless of stored precision, both for the range and for the due-date equality check.
+        return $query->where(function (Builder $q) use ($today, $horizon) {
+            $q->where(fn (Builder $d) => $d->whereDate('deadline', '>=', $today)->whereDate('deadline', '<=', $horizon))
+                ->orWhereDate('due_date', $today);
+        })->boardOrdered()->get();
+    }
+
+    public function clearCategoryLink(int $id): void
+    {
+        auth()->user()->eventCategories()->findOrFail($id)->clearTaskLink();
+        unset($this->linkingCategory);
+    }
+
+    public function linkCategoryToProject(int $id, int $projectId): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+        $project = auth()->user()->projects()->findOrFail($projectId);
+
+        $category->clearTaskLink();
+        $category->update(['task_source' => 'project', 'linked_project_id' => $project->id]);
+        unset($this->linkingCategory);
+    }
+
+    public function linkCategoryToGroup(int $id, int $groupId): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+        $group = auth()->user()->taskGroups()->findOrFail($groupId);
+
+        $category->clearTaskLink();
+        $category->update(['task_source' => 'group', 'linked_group_id' => $group->id]);
+        unset($this->linkingCategory);
+    }
+
+    public function linkCategoryToAgendaEntry(int $id, int $agendaEntryId): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+        $entry = AgendaEntry::visibleTo(auth()->user())->findOrFail($agendaEntryId);
+
+        $category->clearTaskLink();
+        $category->update(['task_source' => 'agenda_entry', 'linked_agenda_entry_id' => $entry->id]);
+        unset($this->linkingCategory);
+    }
+
+    public function linkCategoryToAgendaGeneric(int $id): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+
+        $category->clearTaskLink();
+        $category->update(['task_source' => 'agenda_generic']);
+        unset($this->linkingCategory);
+    }
+
+    public function saveCategoryLinkText(int $id): void
+    {
+        $data = $this->validate(['linkTextDraft' => ['required', 'string', 'max:255']]);
+
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+        $category->clearTaskLink();
+        $category->update(['task_source' => 'text', 'linked_text' => trim($data['linkTextDraft'])]);
+        unset($this->linkingCategory);
+    }
+
+    /** Switches into "bestimmte Aufgaben" mode with nothing pinned yet — the task picker appears once this is set. */
+    public function setCategoryTasksMode(int $id): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+
+        if ($category->task_source !== 'tasks') {
+            $category->clearTaskLink();
+            $category->update(['task_source' => 'tasks']);
+            unset($this->linkingCategory);
+        }
+    }
+
+    /** Adds or removes one task from a category's pinned set — only meaningful once setCategoryTasksMode() has run. */
+    public function togglePinnedTask(int $id, int $taskId): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+
+        if ($category->task_source !== 'tasks') {
+            return;
+        }
+
+        $task = auth()->user()->tasks()->findOrFail($taskId);
+
+        if ($category->pinnedTasks()->whereKey($task->id)->exists()) {
+            $category->pinnedTasks()->detach($task->id);
+        } else {
+            $nextOrder = (int) ($category->pinnedTasks()->max('category_task_links.sort_order') ?? -1);
+            $category->pinnedTasks()->attach($task->id, ['sort_order' => $nextOrder + 1]);
+        }
+
+        unset($this->linkingCategory);
     }
 
     // ── Shortcuts & API tokens ──────────────────────────────────────────

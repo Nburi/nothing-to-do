@@ -223,6 +223,53 @@
         </form>
         </div>
 
+        {{-- Header-Badges — which ambient shortcuts show in the header, and in
+             what order. Drag reorders the whole list (enabled and disabled
+             rows alike, same as Kategorien below); the switch toggles one row
+             without disturbing its position. See App\Services\HeaderBadges. --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Header-Badges</h3>
+            <p class="mb-5 text-sm text-ink-soft leading-relaxed">
+                Kleine Kurzwahl-Symbole oben im Header — ein Klick springt direkt zur passenden Seite.
+                Ein Badge erscheint nur, wenn es gerade etwas zu zeigen gibt (z. B. eine offene Aufgabe
+                oder einen laufenden Termin).
+            </p>
+            <div
+                x-data
+                x-init="window.headerBadgesSortable($el, $wire)"
+                class="space-y-2"
+            >
+                @foreach ($this->headerBadgeRows as $row)
+                    <div
+                        wire:key="badge-row-{{ $row['key'] }}"
+                        data-key="{{ $row['key'] }}"
+                        class="flex items-center gap-2 rounded-card border border-line bg-paper py-2 pl-2 pr-3"
+                    >
+                        <span class="grid h-7 w-7 flex-none cursor-grab place-items-center rounded-card text-ink-faint active:cursor-grabbing" aria-hidden="true">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="4" r="1.1"/><circle cx="5" cy="8" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="11" cy="4" r="1.1"/><circle cx="11" cy="8" r="1.1"/><circle cx="11" cy="12" r="1.1"/></svg>
+                        </span>
+                        <span @class(['flex-1 text-sm', 'text-ink' => $row['enabled'], 'text-ink-faint' => ! $row['enabled']])>{{ $row['label'] }}</span>
+                        <button
+                            type="button"
+                            wire:click="toggleHeaderBadge('{{ $row['key'] }}')"
+                            @class([
+                                'relative h-6 w-10 flex-none rounded-full transition',
+                                'bg-forest' => $row['enabled'],
+                                'bg-line' => ! $row['enabled'],
+                            ])
+                            aria-label="{{ $row['label'] }} {{ $row['enabled'] ? 'ausblenden' : 'anzeigen' }}"
+                        >
+                            <span @class([
+                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                                'left-[1.125rem]' => $row['enabled'],
+                                'left-0.5' => ! $row['enabled'],
+                            ])></span>
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
         {{-- Presence. Lives under "Allgemein" rather than "Benachrichtigungen":
              it governs what other people see about you, not what the app sends
              you. Only rendered for someone actually in a class — for everyone
@@ -273,7 +320,8 @@
 
         <div class="space-y-2">
             @forelse ($this->categories as $category)
-                <div wire:key="cat-{{ $category->id }}" x-data="{ colorOpen: false }" class="flex items-center gap-3 rounded-card border border-line bg-paper/60 px-3 py-2.5">
+                <div wire:key="cat-{{ $category->id }}" x-data="{ colorOpen: false }" class="rounded-card border border-line bg-paper/60 px-3 py-2.5">
+                <div class="flex items-center gap-3">
                     <div class="relative flex-none">
                         <button type="button" @click="colorOpen = !colorOpen" class="h-4 w-4 rounded-full transition hover:scale-110 {{ $swatches[$category->color] ?? 'bg-contour' }}" aria-label="Farbe ändern"></button>
                         <div
@@ -327,6 +375,18 @@
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
                     </button>
                 </div>
+                @if ($category->pomodoro_enabled)
+                    <button
+                        type="button"
+                        wire:click="manageCategoryLink({{ $category->id }})"
+                        aria-label="Aufgaben-Verknüpfung für {{ $category->name }} verwalten — aktuell: {{ $category->taskSourceLabel() ?? 'keine' }}"
+                        class="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full border border-line bg-paper/70 px-2.5 py-1 text-xs text-ink-soft transition hover:border-overprint/50 hover:bg-paper hover:text-ink"
+                    >
+                        <svg class="h-3 w-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
+                        <span class="truncate">{{ $category->taskSourceLabel() ?? '+ Aufgaben verknüpfen' }}</span>
+                    </button>
+                @endif
+                </div>
             @empty
                 <p class="text-sm text-ink-faint">Noch keine Kategorien.</p>
             @endforelse
@@ -360,6 +420,8 @@
         </form>
         @error('newCategoryName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
         </div>
+
+        @include('livewire.partials.category-link-sheet')
 
         {{-- Pomodoro --}}
         <form

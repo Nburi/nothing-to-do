@@ -73,26 +73,19 @@
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
                         @endphp
                         <div class="flex items-center gap-1.5">
-                        {{-- Ambient streak indicator — only takes up header space once a streak
-                             actually exists (no sad "0" state). Colour escalates with the streak
-                             but is capped at forest; signal is this app's warning colour and stays
-                             reserved for that. See ProgressStats::streakTier(). --}}
-                        @if ($currentStreak > 0)
-                            <a
-                                href="{{ route('progress') }}"
-                                wire:navigate
-                                @class([
-                                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition',
-                                    'border border-line text-ink-faint hover:text-ink' => $streakTier <= 1,
-                                    'bg-contour-soft text-contour hover:brightness-95' => $streakTier === 2,
-                                    'bg-forest-soft text-forest hover:brightness-95' => $streakTier === 3,
-                                    'bg-forest text-white hover:brightness-110' => $streakTier === 4,
-                                ])
-                                title="{{ $currentStreak === 1 ? '1 Tag Serie' : $currentStreak.' Tage Serie' }} — Fortschritt ansehen"
-                            >
-                                <x-flame-icon class="h-3.5 w-3.5" />
-                                <span class="tnum">{{ $currentStreak }}</span>
-                            </a>
+                        {{-- The header badge row — a user-configured, ordered set of ambient
+                             shortcuts (Settings' "Header-Badges" card). Each one only takes up
+                             space once it actually has something to show — no sad 0/empty state
+                             — and disappears entirely otherwise. overflow-x-auto is the safety
+                             net for a wide selection on a narrow phone (same pattern as the
+                             homework preview strip). See App\Services\HeaderBadges. --}}
+                        @php $headerBadges = \App\Services\HeaderBadges::visibleFor(auth()->user()); @endphp
+                        @if (count($headerBadges) > 0)
+                            <div class="flex max-w-[38vw] items-center gap-1.5 overflow-x-auto sm:max-w-none">
+                                @foreach ($headerBadges as $badge)
+                                    @include('partials.header-badge', ['badge' => $badge])
+                                @endforeach
+                            </div>
                         @endif
 
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills

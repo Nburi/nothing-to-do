@@ -30,6 +30,22 @@ class TaskBoard extends Component
     public string $groupNameDraft = '';
 
     /**
+     * The "Heute" header badge (HeaderBadges::todayBadge()) links here with
+     * ?tab=today so its click behaves like an actual shortcut on mobile, not
+     * just a generic link to the board — desktop has no separate Today view
+     * to jump to (Heute-flagged tasks already surface pinned inside their
+     * own column), so the query param is simply inert there.
+     */
+    public function mount(): void
+    {
+        $tab = request()->query('tab');
+
+        if (in_array($tab, ['inbox', 'todos', 'tasks', 'today', 'projects'], true)) {
+            $this->mobileTab = $tab;
+        }
+    }
+
+    /**
      * Capture happens in the app-wide QuickCapture panel now, which is a
      * separate component — so a new entry doesn't re-render this one on its
      * own. Listening for its event is what keeps the board in sync.
@@ -363,7 +379,7 @@ class TaskBoard extends Component
         $phase = $this->focusPhase;
 
         if ($phase === null) {
-            return TaskSuggestor::suggest(auth()->user(), 1, $session->id);
+            return TaskSuggestor::suggest(auth()->user(), 1, $session->id, $session->category);
         }
 
         // While frozen between phases, judge relevance by what's coming next.
@@ -374,7 +390,43 @@ class TaskBoard extends Component
             return null;
         }
 
-        return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id);
+        return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id, $session->category);
+    }
+
+    /**
+     * Signature moment: a quiet, self-dismissing notice the moment a
+     * category-linked list is cleared out during a session that has actually
+     * been started (Läuft or frozen awaiting a continue — never the
+     * never-started "Bereit" state, since nothing "just finished" there).
+     * Stays null forever for a 'text' link or once dismissLinkedSourceNotice()
+     * has stamped this session as already notified.
+     */
+    #[Computed]
+    public function linkedSourceNotice(): ?string
+    {
+        $session = $this->focusSession;
+
+        if ($session === null || $session->pomodoro_phase === null || $session->pomodoro_linked_notified) {
+            return null;
+        }
+
+        $category = $session->category;
+
+        if ($category === null) {
+            return null;
+        }
+
+        if (TaskSuggestor::linkedSourceRemainingCount($category, auth()->user()) !== 0) {
+            return null;
+        }
+
+        return $category->taskSourceFinishedMessage();
+    }
+
+    /** Auto-called by the focus card a few seconds after the notice above appears, so it shows once per session. */
+    public function dismissLinkedSourceNotice(): void
+    {
+        $this->focusSession?->update(['pomodoro_linked_notified' => true]);
     }
 
     /**

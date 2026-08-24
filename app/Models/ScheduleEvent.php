@@ -36,6 +36,7 @@ class ScheduleEvent extends Model
         'pomodoro_started_at',
         'pomodoro_phase',
         'pomodoro_cycle',
+        'pomodoro_linked_notified',
         'notified_at',
         'notified_upcoming_at',
     ];
@@ -47,6 +48,7 @@ class ScheduleEvent extends Model
             'is_cancelled' => 'boolean',
             'pomodoro_started_at' => 'datetime',
             'pomodoro_cycle' => 'integer',
+            'pomodoro_linked_notified' => 'boolean',
             'notified_at' => 'datetime',
             'notified_upcoming_at' => 'datetime',
         ];

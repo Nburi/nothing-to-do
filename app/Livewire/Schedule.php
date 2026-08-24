@@ -30,11 +30,33 @@ class Schedule extends Component
     /** The single day shown on mobile. */
     public string $focusedDate = '';
 
+    /**
+     * The event the "Zeitplan" header badge (HeaderBadges::scheduleBadge())
+     * pointed at, if the page was reached via its ?event= link — the badge
+     * doesn't just navigate here, it proves it by landing you on the exact
+     * block it was showing, briefly highlighted (see partials/schedule-event.blade.php
+     * and the .badge-jump-highlight keyframe in app.css).
+     */
+    public ?int $highlightEventId = null;
+
     public function mount(): void
     {
         $today = auth()->user()->localToday();
         $this->weekStart = $today->copy()->startOfWeek()->toDateString();
         $this->focusedDate = $today->toDateString();
+
+        $eventId = request()->query('event');
+
+        if ($eventId !== null && ctype_digit((string) $eventId)) {
+            // Best-effort only: a stale/foreign/deleted id just means no
+            // highlight, never a broken page load.
+            $event = ScheduleEvent::forUser(auth()->user())->visible()->find((int) $eventId);
+
+            if ($event !== null) {
+                $this->highlightEventId = $event->id;
+                $this->focusDate($event->date);
+            }
+        }
     }
 
     /** The seven Carbon dates of the visible week. */

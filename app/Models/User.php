@@ -29,6 +29,7 @@ use Laravel\Sanctum\HasApiTokens;
     'daily_task_goal',
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
     'notify_streak_risk', 'streak_risk_sent_on',
+    'header_badges',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -381,6 +382,7 @@ class User extends Authenticatable
             'daily_reminder_sent_on' => 'date',
             'notify_streak_risk' => 'boolean',
             'streak_risk_sent_on' => 'date',
+            'header_badges' => 'array',
         ];
     }
 }

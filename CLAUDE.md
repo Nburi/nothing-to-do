@@ -552,11 +552,13 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
 - **`App\Services\TaskSuggestor`** — "what to work on" for the focus card, tiered by the *effective* current
   Pomodoro cycle number (`TaskBoard::taskSuggestion()` — while frozen awaiting a continue, "effective" means
   `next_phase`/`next_cycle`, not the just-finished ones, so the preview matches what a continue would
-  start): cycle 1 nudges to clear the ToDos list (falling through if none are open), any cycle then prefers
-  the top active **today** task (board order), and once today's list is empty it falls back to a
-  deterministic pick between a project's next task and another todos/tasks-list task — seeded by
-  `(event id, cycle)` via `crc32()` so the choice stays stable across the ring's 5s poll instead of
-  reshuffling every request. Hidden whenever the effective phase is a break. Rendered by
+  start): after Notfallmodus (still the outright top tier) and the running session's own **category task
+  link** (see "Kategorie-Aufgaben-Verknüpfung" below — applies on *every* cycle, not just the first, and
+  only when it actually has something to offer), cycle 1 nudges to clear the ToDos list (falling through if
+  none are open), any cycle then prefers the top active **today** task (board order), and once today's list
+  is empty it falls back to a deterministic pick between a project's next task and another todos/tasks-list
+  task — seeded by `(event id, cycle)` via `crc32()` so the choice stays stable across the ring's 5s poll
+  instead of reshuffling every request. Hidden whenever the effective phase is a break. Rendered by
   `partials/schedule-strip-suggestion.blade.php` in every focus-card state that has a work-phase context; a
   task suggestion opens the existing inline edit sheet (`startEdit`), a project suggestion links to its
   project page.
@@ -676,6 +678,89 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   without deep-linking to the specific item. **Settings** has a matching **"Vorschau auf Termine"**
   card (`users.deadline_preview_enabled` default `true`, `deadline_preview_days` default `2`,
   max `14`) saved together via `saveDeadlinePreview()`, same form pattern as the Pomodoro card.
+
+### Kategorie-Aufgaben-Verknüpfung (built)
+
+A Pomodoro-enabled category can be pointed at something specific to work on, so a "Training" block's
+focus sessions suggest *your race-prep project*, not whatever `TaskSuggestor`'s generic cross-app tiers
+would otherwise pick. Six mutually-exclusive **`event_categories.task_source`** values (`'tasks'`,
+`'project'`, `'group'`, `'agenda_entry'`, `'agenda_generic'`, `'text'`, or `null` = no link):
+
+- **`tasks`** — a handful of individually pinned `Task`s (`category_task_links`: `category_id, task_id,
+  sort_order`, unique per pair, both FKs `cascadeOnDelete` — a pin has no meaning outside the category
+  that made it, unlike `linked_project_id`/etc. below). `EventCategory::pinnedTasks()` (`belongsToMany`,
+  ordered by the pivot's `sort_order`) suggests the next *active* one, skipping completed pins without
+  ever un-pinning them (a finished pin just stops being suggested; unpinning is always a separate,
+  explicit click). **The picker defaults to tasks due within 2 days or with a Wunschtermin today**
+  (`Settings::linkTaskCandidates()`) — the moment you open "bestimmte Aufgaben" you're not staring at a
+  blank search box, the things most likely worth pinning are already in front of you. Typing in the
+  search box searches every active board task instead, so something outside that window is still
+  reachable. **Gotcha hit while building this:** the deadline/due-date window originally used
+  `whereBetween`/`orWhere` directly against `deadline`/`due_date` — both plain `'date'` casts, which (per
+  the `today_date` entry below) store full datetime precision under the hood, so an exact `orWhere('due_date',
+  $today)` silently matched nothing. Fixed with `whereDate()` on both sides, same fix shape as that entry.
+- **`project`** / **`group`** — `linked_project_id`/`linked_group_id` (nullable FKs, `nullOnDelete`, same
+  safety pattern as `category_id` on `ScheduleEvent`/`EventTemplate` — deleting the target reverts the
+  category to having no suggestion, it never breaks). Suggests the linked `Project`/`TaskGroup`'s own
+  `activeTasks()->first()`, i.e. its normal next-up task.
+- **`agenda_entry`** — `linked_agenda_entry_id` (nullable FK, `nullOnDelete`), a single homework or exam
+  entry; suggested until `isDoneFor($user)`, then treated as empty.
+- **`agenda_generic`** — no target column at all: counts every open Agenda homework entry
+  (`AgendaEntry::visibleTo($user)->ofType('homework')->openFor($user)`) and nudges "Hausaufgaben
+  erledigen · N offen", mirroring the existing cycle-1 ToDos nudge's shape — deliberately homework-only,
+  not exams, matching the "HAs erledigen" framing this was asked for.
+- **`text`** — `linked_text`, a free label with no backing record at all (e.g. "Zimmer aufräumen") for
+  the thing that isn't in any list yet. Always suggests the same text; has no "done" state (see below).
+
+**`TaskSuggestor::suggest()`** gained a `?EventCategory $category` parameter and a new tier, sitting right
+after Notfallmodus (which still outranks everything) and before the cycle-1 ToDos nudge — so a category
+link applies on **every** cycle of a session, not just the first. Each `task_source` branch returns `null`
+the moment its target is empty, deleted, or (for `agenda_entry`) already done, and `suggest()` just falls
+through to the normal generic tiers below — the existing "never a dead suggestion" contract extends
+unchanged to a link that's run dry. New suggestion `kind`s (`category_group`, `category_agenda`,
+`agenda_generic`, `category_text`) got their own branches in `schedule-strip-suggestion.blade.php`; `tasks`
+and `project` links reuse the *existing* `task`/`project` kinds unchanged, since a pinned task or a linked
+project's next task renders identically to what those kinds already showed.
+
+**Settings' Kategorien card** — each Pomodoro-enabled category row grows a small link-status line
+(`EventCategory::taskSourceLabel()`, e.g. "Wettkampfvorbereitung" or "3 Aufgaben"; `null` → "Keine
+Aufgaben-Verknüpfung") that opens **`partials/category-link-sheet.blade.php`**, a bottom-sheet mirroring
+`edit-sheet.blade.php`'s shape (`animate-rise`, no leave-transition) rather than the Alpine-store-driven
+`project-picker-sheet.blade.php` pattern — this sheet needs several *server* computeds gated behind which
+category is open (`Settings::$linkingCategoryId`, `linkingCategory()` eager-loading every possible target
+relation at once), which the client-only-store pattern has no room for. Six chips (Keine / Bestimmte
+Aufgaben / Projekt / Gruppe / Agenda / Text) switch which sub-picker shows via a **client-only** `x-data="{
+reveal }"` seeded from the category's current `task_source` — chip clicks that can't commit anything by
+themselves yet (Projekt/Gruppe/Agenda/Text — picking *which* one is a separate click) only update `reveal`
+locally; "Keine" and "Bestimmte Aufgaben" commit immediately on the chip itself (`clearCategoryLink()` /
+`setCategoryTasksMode()`), matching the rest of this card's immediate-save convention. Every write
+(`linkCategoryToProject/Group/AgendaEntry/AgendaGeneric`, `saveCategoryLinkText`, `togglePinnedTask`) is
+ownership-scoped through `auth()->user()->eventCategories()->findOrFail()` and starts by calling
+**`EventCategory::clearTaskLink()`** (resets every `linked_*` column and detaches every pinned task) — the
+one place the "genau eine Verknüpfungsart" rule is enforced, so switching from "Bestimmte Aufgaben" to
+"Projekt" can never leave a stale pin or FK behind.
+
+**Signature moment — the list-just-finished notice.** Completing the last active item in a category's
+linked source while its session is running (or frozen awaiting a continue — anything past "Bereit, never
+started") shows a quiet, self-dismissing line in the focus card where the suggestion normally sits:
+"Wettkampfvorbereitung ist fertig." — then it fades back to normal on its own, no click needed.
+`schedule_events.pomodoro_linked_notified` (boolean, reset to `false` by both
+`PomodoroSessionService::start()` and `stop()` — a fresh session always gets a fresh chance to notify) is
+the guard: `TaskBoard::linkedSourceNotice()` is a **pure, repeatable read** — `TaskSuggestor
+::linkedSourceRemainingCount($category, $user)` (the same empty-check the suggestion tier already needs,
+exposed as its own method) hits exactly `0` and the flag is still `false` — deliberately *not* an
+event-driven push at the moment of completion, since the task that finishes the list can be completed from
+any page (`ProjectPage`, `GroupPage`, the Zeitplan's own deadline-strip checkbox…), not only from the
+dashboard that shows the focus card. A poll-based read sees it regardless of where the completion happened;
+an event dispatched from `ManagesTasks::toggleComplete()` would only reach a browser tab that happened to
+already be open on the dashboard at that exact moment. The notice is rendered once
+(`x-init="setTimeout(() => $wire.dismissLinkedSourceNotice(), 4000)"` on the `<p>` itself) and that call
+stamps the flag — an explicit, client-timed dismiss rather than a server-side "already shown" window,
+mirroring `PrepareTomorrow::dismissPreparePrompt()`'s shape more than any polling mechanism elsewhere in
+the app. **`text` links never fire this** — `EventCategory::taskSourceFinishedMessage()` returns `null` for
+`text` (and for any link whose target no longer resolves), since free text has no "done" state to detect;
+`linkedSourceRemainingCount()` likewise returns `null` (not `0`) for it, so the guard never even gets to
+the message.
 
 ### Wochenplan (built)
 
@@ -1059,6 +1144,68 @@ A small, deliberately narrow bridge between two systems this app otherwise keeps
 - Deliberately out of scope for this pass: exam entries (`type=exam`, the strip itself only ever shows
   homework); any promotion entry point on the Agenda page itself, QuickCapture, or the Zeitplan's deadline
   strip (only its *existing* `toggleDeadlineTaskDone` gained the completion echo, no new gesture there).
+
+### Header-Badges (built)
+
+Small ambient shortcuts in the header — an icon plus a short count/snippet that links straight to the
+page it's about, fully user-configured (which ones, in what order). Before this, the header only ever
+showed one hardcoded indicator (the streak), always in the same spot.
+
+- **`App\Services\HeaderBadges`** — stateless, like `ProgressStats`/`TaskSuggestor`. `CATALOG` is the
+  fixed set of six possible badges (`streak`, `agenda`, `today`, `schedule`, `goal`, `emergency`), each
+  with a label, target route, and a flat Topografie `tone` (`ink` = neutral border, same look the streak
+  badge used at its lowest tier; `emergency` = `signal`, matching that badge's colour everywhere else in
+  the app). `DEFAULT_ENABLED = ['streak', 'agenda']` — the two explicitly asked for; the other four ship
+  in the catalog but disabled, opt-in via Settings.
+  - **`preferenceRowsFor(User)`** — every catalog key, in the user's order, with its `enabled` flag.
+    `users.header_badges` (nullable JSON) is `null` for anyone who has never opened the card: that reads
+    as "use `DEFAULT_ENABLED`", not an empty header — the point is that the feature is visible on day one
+    for existing accounts, not just newly-registered ones. The moment a user saves *any* change, their
+    own `{key, enabled}` list is stored and used **verbatim** from then on; a catalog key missing from
+    that stored list (either because a future release adds one, or because of the stored/never-customised
+    split above) is appended at the end, **disabled** — a new badge type never silently activates itself
+    inside a list someone already curated.
+  - **`visibleFor(User)`** — the enabled rows, in order, each resolved to real content; a resolver
+    returns `null` the moment it has nothing to show and the row is dropped **entirely**, never rendered
+    as a "0" or empty pill — the same rule the streak badge already followed before this existed, now
+    generalised to all six. `schedule`'s resolver is deliberately scoped to **today only** (current event,
+    else the next one still to come today, else hidden) — a header badge answers "what's next", reaching
+    into tomorrow is what the Zeitplan page itself is for.
+  - `layouts/app.blade.php` computes `HeaderBadges::visibleFor(auth()->user())` once per page load (it's
+    plain Blade in the shared layout, not a Livewire component, so it does **not** live-update on an
+    in-page Livewire action — same limitation the old hardcoded streak badge already had; a badge's count
+    catches up on the next full navigation) and loops over `partials/header-badge.blade.php`, one `<a
+    wire:navigate>` per badge. The row sits in a `overflow-x-auto` wrapper (`max-w-[38vw]` on mobile) —
+    the safety net for more than a couple of enabled badges on a narrow phone, same pattern as the
+    homework preview strip.
+- **Settings' "Header-Badges" card** (Allgemein tab) — one draggable list of **every** catalog badge
+  (enabled and disabled alike), each row a drag handle + label + the same immediate-save toggle switch
+  used elsewhere in Settings. `Settings::toggleHeaderBadge()`/`reorderHeaderBadges()` both round-trip
+  through `HeaderBadges::preferenceRowsFor()` so the persisted shape is always the full six-row list, not
+  a partial diff. Dragging is `window.headerBadgesSortable` (`resources/js/app.js`), a copy of the
+  existing `emergencySortable` pattern (own group name, `onEnd` persists the whole order) — no new gesture
+  code, and no `x-init` re-registration guard needed either: that gotcha (§10) is specifically about a
+  Livewire **component root**, and this sortable container is a plain nested element, same as
+  `emergencySortable`'s own container.
+- **Signature moment — the Zeitplan badge proves its destination.** Its link is `?event={id}`, not a bare
+  `/app/schedule` — `Schedule::mount()` reads that query param, resolves it ownership-scoped
+  (`ScheduleEvent::forUser($user)->visible()->find()`, silently ignored if stale/foreign/missing, never a
+  broken page load), and calls the existing `focusDate()` so the event's own day is what's on screen even
+  outside the current week. `Schedule::$highlightEventId` flows automatically into
+  `partials/schedule-event.blade.php` (a Livewire component's public properties reach every `@include`d
+  partial without being passed explicitly) as a `badge-jump-highlight` class — a single-fire, 1.4s
+  `box-shadow` wash in `contour` (`app.css`, modelled directly on the existing `weekplan-ripple` keyframe,
+  just slower/calmer since it's greeting a page load rather than confirming a save). The other badges
+  don't get an equivalent: `agenda`/`today` point at a list, not one specific row, so there's nothing
+  singular to prove.
+- **The `today` badge's mobile deep link** — its href carries `?tab=today`; `TaskBoard::mount()` (new —
+  the component previously had none) reads it and seeds `$mobileTab` directly. Desktop has no separate
+  Today view to jump to (Heute-flagged tasks already surface pinned inside their own board column), so the
+  param is simply inert there — not worth a bespoke desktop treatment for one query string.
+- Deliberately out of scope for this pass: a hover/long-press preview popover for any badge, a live
+  in-page header update the instant a badge's underlying count changes (it updates on the next navigation,
+  same as the pre-existing streak badge always did), and API/Shortcuts support for reading or writing
+  `header_badges`.
 
 ### Task-Gruppen (built)
 

@@ -8,6 +8,7 @@
     $focus = $this->focusSession;
     $phase = $this->focusPhase;
     $suggestion = $this->taskSuggestion;
+    $linkedNotice = $this->linkedSourceNotice;
     $pct = fn ($min) => max(0, min(100, ($min - $dayStart) / $span * 100));
 
     $stripColor = fn ($token) => match ($token) {
@@ -44,7 +45,9 @@
                         <span class="rounded bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">Bereit</span>
                     </div>
                     <p class="truncate text-[15px] font-medium text-ink">{{ $nextLabel }}</p>
-                    @if ($suggestion)
+                    @if ($linkedNotice)
+                        <p x-data x-init="setTimeout(() => $wire.dismissLinkedSourceNotice(), 4000)" class="truncate text-xs font-medium text-forest">{{ $linkedNotice }}</p>
+                    @elseif ($suggestion)
                         @include('livewire.partials.schedule-strip-suggestion')
                     @endif
                     <a href="{{ route('schedule') }}" wire:navigate class="truncate text-xs text-ink-soft hover:text-ink">Zeitplan öffnen</a>
@@ -95,7 +98,9 @@
                         'long_break' => 'Lange Pause',
                         default => $focus->displayTitle(),
                     } }}</p>
-                    @if ($suggestion)
+                    @if ($linkedNotice)
+                        <p x-data x-init="setTimeout(() => $wire.dismissLinkedSourceNotice(), 4000)" class="truncate text-xs font-medium text-forest">{{ $linkedNotice }}</p>
+                    @elseif ($suggestion)
                         @include('livewire.partials.schedule-strip-suggestion')
                     @endif
                     <a href="{{ route('schedule') }}" wire:navigate class="truncate text-xs text-ink-soft hover:text-ink">Zeitplan öffnen</a>
