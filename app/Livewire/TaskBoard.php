@@ -43,6 +43,19 @@ class TaskBoard extends Component
         if (in_array($tab, ['inbox', 'todos', 'tasks', 'today', 'projects'], true)) {
             $this->mobileTab = $tab;
         }
+
+        // The Zeitplan's "tap the linked-task icon twice" gesture (schedule-event.blade.php)
+        // lands here — best-effort only: a stale/foreign/deleted id just opens nothing,
+        // never a broken page load, same pattern as Schedule::mount()'s own ?event=.
+        $taskId = request()->query('task');
+
+        if ($taskId !== null && ctype_digit((string) $taskId)) {
+            $task = auth()->user()->tasks()->find((int) $taskId);
+
+            if ($task !== null) {
+                $this->startEdit($task->id);
+            }
+        }
     }
 
     /**
@@ -379,7 +392,7 @@ class TaskBoard extends Component
         $phase = $this->focusPhase;
 
         if ($phase === null) {
-            return TaskSuggestor::suggest(auth()->user(), 1, $session->id, $session->category);
+            return TaskSuggestor::suggest(auth()->user(), 1, $session->id, $session->category, $session->linkedTask);
         }
 
         // While frozen between phases, judge relevance by what's coming next.
@@ -390,16 +403,18 @@ class TaskBoard extends Component
             return null;
         }
 
-        return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id, $session->category);
+        return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id, $session->category, $session->linkedTask);
     }
 
     /**
      * Signature moment: a quiet, self-dismissing notice the moment a
-     * category-linked list is cleared out during a session that has actually
+     * linked task/list is cleared out during a session that has actually
      * been started (Läuft or frozen awaiting a continue — never the
      * never-started "Bereit" state, since nothing "just finished" there).
      * Stays null forever for a 'text' link or once dismissLinkedSourceNotice()
-     * has stamped this session as already notified.
+     * has stamped this session as already notified. The event's own task
+     * link (more specific, see TaskSuggestor) is checked before the
+     * category's — once it exists it's authoritative for this occurrence.
      */
     #[Computed]
     public function linkedSourceNotice(): ?string
@@ -408,6 +423,12 @@ class TaskBoard extends Component
 
         if ($session === null || $session->pomodoro_phase === null || $session->pomodoro_linked_notified) {
             return null;
+        }
+
+        $task = $session->linkedTask;
+
+        if ($task !== null) {
+            return $task->is_completed ? "{$task->title} ist erledigt." : null;
         }
 
         $category = $session->category;

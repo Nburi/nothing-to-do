@@ -6,6 +6,7 @@ use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -242,5 +243,25 @@ class ScheduleEventTest extends TestCase
         $pause->delete();
 
         $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->count());
+    }
+
+    public function test_linked_task_resolves_the_bound_task(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->todos()->create(['title' => 'Testlauf mit Tempowechseln']);
+        $event = ScheduleEvent::factory()->for($user)->create(['linked_task_id' => $task->id]);
+
+        $this->assertSame('Testlauf mit Tempowechseln', $event->linkedTask->title);
+    }
+
+    public function test_deleting_the_linked_task_nulls_the_link_instead_of_breaking_it(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->todos()->create();
+        $event = ScheduleEvent::factory()->for($user)->create(['linked_task_id' => $task->id]);
+
+        $task->delete();
+
+        $this->assertNull($event->refresh()->linked_task_id);
     }
 }

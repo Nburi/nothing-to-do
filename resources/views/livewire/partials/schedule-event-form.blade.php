@@ -130,6 +130,65 @@
                     </div>
                 @endif
 
+                {{-- Bind one existing task to this specific occurrence — never to a recurring
+                     template, since a task is a one-time thing (see ManagesSchedule::saveEventForm). --}}
+                @unless ($eventRecurring)
+                    <div x-data="{ taskPickerOpen: false }">
+                        <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Aufgabe</label>
+
+                        @if ($eventLinkedTaskId !== null)
+                            <div class="flex items-center gap-2 rounded-card border border-line bg-paper/70 px-3 py-2">
+                                <svg class="h-3.5 w-3.5 flex-none text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
+                                <span class="min-w-0 flex-1 truncate text-sm text-ink">{{ $eventLinkedTaskTitle }}</span>
+                                <button type="button" wire:click="clearEventLinkedTask" aria-label="Aufgaben-Verknüpfung entfernen" class="grid h-6 w-6 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-signal-soft hover:text-signal">
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        @else
+                            <button
+                                type="button"
+                                @click="taskPickerOpen = !taskPickerOpen"
+                                :aria-expanded="taskPickerOpen"
+                                aria-label="Eine bestehende Aufgabe mit diesem Eintrag verknüpfen"
+                                class="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper/70 px-2.5 py-1 text-xs text-ink-soft transition hover:border-overprint/50 hover:bg-paper hover:text-ink"
+                            >
+                                <svg class="h-3 w-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
+                                <span>+ Aufgabe verknüpfen</span>
+                            </button>
+
+                            <div x-show="taskPickerOpen" x-transition.opacity.duration.100ms class="mt-2" style="display: none">
+                                <input
+                                    type="text"
+                                    wire:model.live.debounce.300ms="eventTaskSearch"
+                                    placeholder="Aufgabe suchen…"
+                                    autocomplete="off"
+                                    class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                                />
+                                <div class="mt-1.5 max-h-40 space-y-0.5 overflow-y-auto">
+                                    @forelse ($this->eventTaskCandidates as $candidate)
+                                        <button
+                                            type="button"
+                                            wire:key="etask-{{ $candidate->id }}"
+                                            wire:click="setEventLinkedTask({{ $candidate->id }})"
+                                            @click="taskPickerOpen = false"
+                                            class="flex w-full items-center gap-2 rounded-card px-2.5 py-1.5 text-left text-sm text-ink transition hover:bg-paper"
+                                        >
+                                            <span class="min-w-0 flex-1 truncate">{{ $candidate->title }}</span>
+                                            @if ($candidate->effectiveDateLabel())
+                                                <span class="flex-none text-xs text-ink-faint">{{ $candidate->effectiveDateLabel() }}</span>
+                                            @endif
+                                        </button>
+                                    @empty
+                                        <p class="px-2.5 py-1.5 text-xs text-ink-faint">
+                                            {{ $eventTaskSearch === '' ? 'Nichts Passendes fällig — probier die Suche.' : 'Keine Treffer.' }}
+                                        </p>
+                                    @endforelse
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @endunless
+
                 @if ($editingEventId === null)
                     <div x-data="{ rec: $wire.entangle('eventRecurring'), days: $wire.entangle('eventDays') }" class="rounded-card border border-line bg-paper/60 p-3">
                         <label class="flex cursor-pointer items-center justify-between">

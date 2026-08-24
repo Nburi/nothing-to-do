@@ -3,6 +3,8 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\ScheduleEvent;
+use App\Models\Task;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -45,6 +47,14 @@ trait ManagesSchedule
 
     public bool $eventSaveAsTemplate = false;
 
+    /** The task bound to this one occurrence, if any — set via setEventLinkedTask()/clearEventLinkedTask(). */
+    public ?int $eventLinkedTaskId = null;
+
+    /** Cached display title for eventLinkedTaskId, so the form doesn't need a query just to show what's picked. */
+    public string $eventLinkedTaskTitle = '';
+
+    public string $eventTaskSearch = '';
+
     protected function userEvent(int $id): ScheduleEvent
     {
         return auth()->user()->scheduleEvents()->findOrFail($id);
@@ -79,7 +89,11 @@ trait ManagesSchedule
 
     public function openEventForm(?string $date = null): void
     {
-        $this->reset(['editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId', 'eventRecurring', 'eventDays', 'eventSaveAsTemplate']);
+        $this->reset([
+            'editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId',
+            'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
+            'eventLinkedTaskId', 'eventLinkedTaskTitle', 'eventTaskSearch',
+        ]);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
         $this->eventDate = $date ?: auth()->user()->localToday()->toDateString();
@@ -104,7 +118,54 @@ trait ManagesSchedule
         $this->eventRecurring = false;
         $this->eventDays = [];
         $this->eventSaveAsTemplate = false;
+        $this->eventLinkedTaskId = $event->linked_task_id;
+        $this->eventLinkedTaskTitle = $event->linkedTask?->title ?? '';
+        $this->eventTaskSearch = '';
         $this->showEventForm = true;
+    }
+
+    /** Candidates for the event form's task picker, anchored to the entry's own date (not "today" —
+     *  the entry might be for next week) — defaults to tasks due within 2 days of it or with a
+     *  Wunschtermin on it, same shape as Settings::linkTaskCandidates() for the category picker.
+     *  Typing a search looks across every active board task instead. */
+    #[Computed]
+    public function eventTaskCandidates(): Collection
+    {
+        $user = auth()->user();
+        $query = Task::forUser($user)->active()->onBoard();
+
+        if ($this->eventTaskSearch !== '') {
+            return $query->where('title', 'like', '%'.$this->eventTaskSearch.'%')->boardOrdered()->get();
+        }
+
+        try {
+            $anchor = Carbon::parse($this->eventDate);
+        } catch (\Throwable) {
+            return collect();
+        }
+
+        $anchorDate = $anchor->toDateString();
+        $horizon = $anchor->copy()->addDays(2)->toDateString();
+
+        return $query->where(function (Builder $q) use ($anchorDate, $horizon) {
+            $q->where(fn (Builder $d) => $d->whereDate('deadline', '>=', $anchorDate)->whereDate('deadline', '<=', $horizon))
+                ->orWhereDate('due_date', $anchorDate);
+        })->boardOrdered()->get();
+    }
+
+    public function setEventLinkedTask(int $taskId): void
+    {
+        $task = auth()->user()->tasks()->findOrFail($taskId);
+
+        $this->eventLinkedTaskId = $task->id;
+        $this->eventLinkedTaskTitle = $task->title;
+        $this->eventTaskSearch = '';
+    }
+
+    public function clearEventLinkedTask(): void
+    {
+        $this->eventLinkedTaskId = null;
+        $this->eventLinkedTaskTitle = '';
     }
 
     public function saveEventForm(): void
@@ -141,6 +202,12 @@ trait ManagesSchedule
             $color = $data['eventColor'];
         }
 
+        // Re-checked here, not just at pick time (setEventLinkedTask already scopes by owner,
+        // but eventLinkedTaskId is a plain property and this is the point it actually persists).
+        $linkedTaskId = $this->eventLinkedTaskId !== null && auth()->user()->tasks()->whereKey($this->eventLinkedTaskId)->exists()
+            ? $this->eventLinkedTaskId
+            : null;
+
         if ($this->editingEventId !== null) {
             $event = $this->userEvent($this->editingEventId);
             $origTemplate = $event->template_id;
@@ -153,6 +220,7 @@ trait ManagesSchedule
 
             $event->update($event->withNotifiedReset([
                 'category_id' => $categoryId,
+                'linked_task_id' => $linkedTaskId,
                 'title' => $title,
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
@@ -218,6 +286,7 @@ trait ManagesSchedule
 
             auth()->user()->scheduleEvents()->create([
                 'category_id' => $categoryId,
+                'linked_task_id' => $linkedTaskId,
                 'title' => $title,
                 'color' => $color,
                 'date' => $data['eventDate'],
@@ -234,7 +303,25 @@ trait ManagesSchedule
         $this->reset([
             'showEventForm', 'editingEventId', 'eventTitle',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
+            'eventLinkedTaskId', 'eventLinkedTaskTitle', 'eventTaskSearch',
         ]);
+    }
+
+    /**
+     * Signature moment's second tap (schedule-event.blade.php): sends the user
+     * straight to the linked task's edit sheet on the board, mirroring how the
+     * "Zeitplan" header badge deep-links back with ?event= (see
+     * Schedule::mount()) — TaskBoard::mount() reads ?task= the same way.
+     */
+    public function navigateToLinkedTask(int $eventId): void
+    {
+        $event = $this->userEvent($eventId);
+
+        if ($event->linked_task_id === null) {
+            return;
+        }
+
+        $this->redirectRoute('app', ['task' => $event->linked_task_id], navigate: true);
     }
 
     /** Delete a one-off; cancel (tombstone) a recurring occurrence so it can't regenerate. */

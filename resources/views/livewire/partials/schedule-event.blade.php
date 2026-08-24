@@ -52,11 +52,28 @@
     @endif
 
     <div class="overflow-hidden pl-1.5 {{ $compact ? '' : 'pr-6' }}">
-        <p class="flex items-center gap-1 truncate text-[12px] font-medium text-ink">
+        <p class="flex items-center gap-1 truncate text-[12px] font-medium text-ink" x-data="{ revealed: false, _t: null }">
             @if ($event->category?->pomodoro_enabled)
                 <svg class="h-3 w-3 flex-none {{ $styles['tx'] }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/></svg>
             @endif
-            <span class="truncate">{{ $event->displayTitle() }}</span>
+            @if ($event->linked_task_id !== null)
+                {{-- Signature moment: tap briefly reveals the linked task's title in place
+                     of the entry's own title; a second tap (within the same window) opens
+                     it on the board. Same "armed window" shape as this app's destructive
+                     double-click confirms, repurposed here for a reveal-then-navigate. --}}
+                <button
+                    type="button"
+                    @pointerdown.stop
+                    @click.stop="if (revealed) { $wire.navigateToLinkedTask({{ $event->id }}); clearTimeout(_t); revealed = false; } else { revealed = true; clearTimeout(_t); _t = setTimeout(() => revealed = false, 2000); }"
+                    aria-label="Verknüpfte Aufgabe {{ $event->linkedTask?->title }} — antippen zum Öffnen"
+                    class="flex-none {{ $styles['tx'] }} transition hover:opacity-70"
+                >
+                    <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
+                </button>
+                <span class="truncate" :class="revealed && 'italic'" x-text="revealed ? @js($event->linkedTask?->title ?? '') : @js($event->displayTitle())"></span>
+            @else
+                <span class="truncate">{{ $event->displayTitle() }}</span>
+            @endif
         </p>
         @unless ($compact)
             <p class="tnum truncate text-[11px] {{ $styles['tx'] }}">{{ $event->start_time }}–{{ $event->end_time }}</p>

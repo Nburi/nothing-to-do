@@ -27,6 +27,7 @@ class ScheduleEvent extends Model
     protected $fillable = [
         'template_id',
         'category_id',
+        'linked_task_id',
         'title',
         'color',
         'date',
@@ -67,6 +68,17 @@ class ScheduleEvent extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(EventCategory::class);
+    }
+
+    /**
+     * A task bound to this one occurrence specifically — more specific than
+     * its category's own task link (EventCategory::task_source), so it wins
+     * when both exist (see TaskSuggestor). Never carried over to other
+     * occurrences of a recurring series; each materialised row is independent.
+     */
+    public function linkedTask(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'linked_task_id');
     }
 
     // ── Scopes ────────────────────────────────────────────────────────
