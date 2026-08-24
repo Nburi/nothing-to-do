@@ -223,6 +223,53 @@
         </form>
         </div>
 
+        {{-- Header-Badges — which ambient shortcuts show in the header, and in
+             what order. Drag reorders the whole list (enabled and disabled
+             rows alike, same as Kategorien below); the switch toggles one row
+             without disturbing its position. See App\Services\HeaderBadges. --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Header-Badges</h3>
+            <p class="mb-5 text-sm text-ink-soft leading-relaxed">
+                Kleine Kurzwahl-Symbole oben im Header — ein Klick springt direkt zur passenden Seite.
+                Ein Badge erscheint nur, wenn es gerade etwas zu zeigen gibt (z. B. eine offene Aufgabe
+                oder einen laufenden Termin).
+            </p>
+            <div
+                x-data
+                x-init="window.headerBadgesSortable($el, $wire)"
+                class="space-y-2"
+            >
+                @foreach ($this->headerBadgeRows as $row)
+                    <div
+                        wire:key="badge-row-{{ $row['key'] }}"
+                        data-key="{{ $row['key'] }}"
+                        class="flex items-center gap-2 rounded-card border border-line bg-paper py-2 pl-2 pr-3"
+                    >
+                        <span class="grid h-7 w-7 flex-none cursor-grab place-items-center rounded-card text-ink-faint active:cursor-grabbing" aria-hidden="true">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="4" r="1.1"/><circle cx="5" cy="8" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="11" cy="4" r="1.1"/><circle cx="11" cy="8" r="1.1"/><circle cx="11" cy="12" r="1.1"/></svg>
+                        </span>
+                        <span @class(['flex-1 text-sm', 'text-ink' => $row['enabled'], 'text-ink-faint' => ! $row['enabled']])>{{ $row['label'] }}</span>
+                        <button
+                            type="button"
+                            wire:click="toggleHeaderBadge('{{ $row['key'] }}')"
+                            @class([
+                                'relative h-6 w-10 flex-none rounded-full transition',
+                                'bg-forest' => $row['enabled'],
+                                'bg-line' => ! $row['enabled'],
+                            ])
+                            aria-label="{{ $row['label'] }} {{ $row['enabled'] ? 'ausblenden' : 'anzeigen' }}"
+                        >
+                            <span @class([
+                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                                'left-[1.125rem]' => $row['enabled'],
+                                'left-0.5' => ! $row['enabled'],
+                            ])></span>
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
         {{-- Presence. Lives under "Allgemein" rather than "Benachrichtigungen":
              it governs what other people see about you, not what the app sends
              you. Only rendered for someone actually in a class — for everyone

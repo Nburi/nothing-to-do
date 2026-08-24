@@ -534,6 +534,31 @@ window.emergencySortable = function (el, wire) {
 };
 
 /**
+ * Drag & drop for Settings' "Header-Badges" list — every catalog badge (not
+ * just the enabled ones), reordering persists the whole list at once via
+ * Settings::reorderHeaderBadges(). A dedicated, isolated group name, same
+ * reasoning as emergencySortable above.
+ */
+window.headerBadgesSortable = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: 'header-badges',
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: '[data-key] > span:first-child',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const keys = Array.from(evt.to.querySelectorAll('[data-key]')).map((n) => n.dataset.key);
+            wire.reorderHeaderBadges(keys);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * A project card as a drop target: receive-only member of the 'board' group.
  * Dropping a task here assigns it to the project (server is the source of truth),
  * so we pull the moved node straight back out and let Livewire re-render.

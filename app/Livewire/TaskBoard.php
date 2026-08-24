@@ -30,6 +30,22 @@ class TaskBoard extends Component
     public string $groupNameDraft = '';
 
     /**
+     * The "Heute" header badge (HeaderBadges::todayBadge()) links here with
+     * ?tab=today so its click behaves like an actual shortcut on mobile, not
+     * just a generic link to the board — desktop has no separate Today view
+     * to jump to (Heute-flagged tasks already surface pinned inside their
+     * own column), so the query param is simply inert there.
+     */
+    public function mount(): void
+    {
+        $tab = request()->query('tab');
+
+        if (in_array($tab, ['inbox', 'todos', 'tasks', 'today', 'projects'], true)) {
+            $this->mobileTab = $tab;
+        }
+    }
+
+    /**
      * Capture happens in the app-wide QuickCapture panel now, which is a
      * separate component — so a new entry doesn't re-render this one on its
      * own. Listening for its event is what keeps the board in sync.

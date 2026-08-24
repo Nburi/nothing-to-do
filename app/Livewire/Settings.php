@@ -7,6 +7,7 @@ use App\Models\EventCategory;
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\HeaderBadges;
 use App\Services\PushNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -215,6 +216,60 @@ class Settings extends Component
         $user = auth()->user();
         $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+    }
+
+    // ── Header badges ─────────────────────────────────────────────────
+
+    /**
+     * Every catalog badge, in the user's current order, with its enabled
+     * flag — the "Header-Badges" card's drag/toggle list. See
+     * HeaderBadges::preferenceRowsFor() for the merge/default logic.
+     *
+     * @return Collection<int, array{key: string, enabled: bool, label: string}>
+     */
+    #[Computed]
+    public function headerBadgeRows(): Collection
+    {
+        return collect(HeaderBadges::preferenceRowsFor(auth()->user()))
+            ->map(fn (array $row) => $row + ['label' => HeaderBadges::CATALOG[$row['key']]['label']]);
+    }
+
+    public function toggleHeaderBadge(string $key): void
+    {
+        $rows = HeaderBadges::preferenceRowsFor(auth()->user());
+
+        $rows = array_map(
+            fn (array $row) => $row['key'] === $key ? [...$row, 'enabled' => ! $row['enabled']] : $row,
+            $rows,
+        );
+
+        auth()->user()->update(['header_badges' => $rows]);
+        unset($this->headerBadgeRows);
+    }
+
+    /**
+     * @param  list<string>  $order  every catalog key, in the new order — from the drag handler
+     */
+    public function reorderHeaderBadges(array $order): void
+    {
+        $current = collect(HeaderBadges::preferenceRowsFor(auth()->user()))->keyBy('key');
+
+        $rows = collect($order)
+            ->filter(fn ($key) => $current->has($key))
+            ->map(fn ($key) => $current->get($key))
+            ->values()
+            ->all();
+
+        // Anything the drag handler didn't report (shouldn't happen — every
+        // row is draggable — but never silently drop a badge) stays, appended.
+        foreach ($current as $key => $row) {
+            if (! in_array($key, $order, true)) {
+                $rows[] = $row;
+            }
+        }
+
+        auth()->user()->update(['header_badges' => $rows]);
+        unset($this->headerBadgeRows);
     }
 
     /** The presence toggle only means something to someone who is in a class. */

@@ -31,6 +31,10 @@
         $styles['bg'], $styles['bd'],
         'inset-x-1' => $compact,
         'left-[3.75rem] right-2' => ! $compact,
+        // The "Zeitplan" header badge's ?event= link lands here — a brief
+        // highlight proves the badge showed exactly this block, not just
+        // some page. See Schedule::$highlightEventId.
+        'badge-jump-highlight' => ($highlightEventId ?? null) === $event->id,
     ])
     :class="kind ? 'z-20 cursor-grabbing shadow-map ring-1 ring-ink/10' : 'cursor-grab'"
 >

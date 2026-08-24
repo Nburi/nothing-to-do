@@ -1103,6 +1103,68 @@ A small, deliberately narrow bridge between two systems this app otherwise keeps
   homework); any promotion entry point on the Agenda page itself, QuickCapture, or the Zeitplan's deadline
   strip (only its *existing* `toggleDeadlineTaskDone` gained the completion echo, no new gesture there).
 
+### Header-Badges (built)
+
+Small ambient shortcuts in the header — an icon plus a short count/snippet that links straight to the
+page it's about, fully user-configured (which ones, in what order). Before this, the header only ever
+showed one hardcoded indicator (the streak), always in the same spot.
+
+- **`App\Services\HeaderBadges`** — stateless, like `ProgressStats`/`TaskSuggestor`. `CATALOG` is the
+  fixed set of six possible badges (`streak`, `agenda`, `today`, `schedule`, `goal`, `emergency`), each
+  with a label, target route, and a flat Topografie `tone` (`ink` = neutral border, same look the streak
+  badge used at its lowest tier; `emergency` = `signal`, matching that badge's colour everywhere else in
+  the app). `DEFAULT_ENABLED = ['streak', 'agenda']` — the two explicitly asked for; the other four ship
+  in the catalog but disabled, opt-in via Settings.
+  - **`preferenceRowsFor(User)`** — every catalog key, in the user's order, with its `enabled` flag.
+    `users.header_badges` (nullable JSON) is `null` for anyone who has never opened the card: that reads
+    as "use `DEFAULT_ENABLED`", not an empty header — the point is that the feature is visible on day one
+    for existing accounts, not just newly-registered ones. The moment a user saves *any* change, their
+    own `{key, enabled}` list is stored and used **verbatim** from then on; a catalog key missing from
+    that stored list (either because a future release adds one, or because of the stored/never-customised
+    split above) is appended at the end, **disabled** — a new badge type never silently activates itself
+    inside a list someone already curated.
+  - **`visibleFor(User)`** — the enabled rows, in order, each resolved to real content; a resolver
+    returns `null` the moment it has nothing to show and the row is dropped **entirely**, never rendered
+    as a "0" or empty pill — the same rule the streak badge already followed before this existed, now
+    generalised to all six. `schedule`'s resolver is deliberately scoped to **today only** (current event,
+    else the next one still to come today, else hidden) — a header badge answers "what's next", reaching
+    into tomorrow is what the Zeitplan page itself is for.
+  - `layouts/app.blade.php` computes `HeaderBadges::visibleFor(auth()->user())` once per page load (it's
+    plain Blade in the shared layout, not a Livewire component, so it does **not** live-update on an
+    in-page Livewire action — same limitation the old hardcoded streak badge already had; a badge's count
+    catches up on the next full navigation) and loops over `partials/header-badge.blade.php`, one `<a
+    wire:navigate>` per badge. The row sits in a `overflow-x-auto` wrapper (`max-w-[38vw]` on mobile) —
+    the safety net for more than a couple of enabled badges on a narrow phone, same pattern as the
+    homework preview strip.
+- **Settings' "Header-Badges" card** (Allgemein tab) — one draggable list of **every** catalog badge
+  (enabled and disabled alike), each row a drag handle + label + the same immediate-save toggle switch
+  used elsewhere in Settings. `Settings::toggleHeaderBadge()`/`reorderHeaderBadges()` both round-trip
+  through `HeaderBadges::preferenceRowsFor()` so the persisted shape is always the full six-row list, not
+  a partial diff. Dragging is `window.headerBadgesSortable` (`resources/js/app.js`), a copy of the
+  existing `emergencySortable` pattern (own group name, `onEnd` persists the whole order) — no new gesture
+  code, and no `x-init` re-registration guard needed either: that gotcha (§10) is specifically about a
+  Livewire **component root**, and this sortable container is a plain nested element, same as
+  `emergencySortable`'s own container.
+- **Signature moment — the Zeitplan badge proves its destination.** Its link is `?event={id}`, not a bare
+  `/app/schedule` — `Schedule::mount()` reads that query param, resolves it ownership-scoped
+  (`ScheduleEvent::forUser($user)->visible()->find()`, silently ignored if stale/foreign/missing, never a
+  broken page load), and calls the existing `focusDate()` so the event's own day is what's on screen even
+  outside the current week. `Schedule::$highlightEventId` flows automatically into
+  `partials/schedule-event.blade.php` (a Livewire component's public properties reach every `@include`d
+  partial without being passed explicitly) as a `badge-jump-highlight` class — a single-fire, 1.4s
+  `box-shadow` wash in `contour` (`app.css`, modelled directly on the existing `weekplan-ripple` keyframe,
+  just slower/calmer since it's greeting a page load rather than confirming a save). The other badges
+  don't get an equivalent: `agenda`/`today` point at a list, not one specific row, so there's nothing
+  singular to prove.
+- **The `today` badge's mobile deep link** — its href carries `?tab=today`; `TaskBoard::mount()` (new —
+  the component previously had none) reads it and seeds `$mobileTab` directly. Desktop has no separate
+  Today view to jump to (Heute-flagged tasks already surface pinned inside their own board column), so the
+  param is simply inert there — not worth a bespoke desktop treatment for one query string.
+- Deliberately out of scope for this pass: a hover/long-press preview popover for any badge, a live
+  in-page header update the instant a badge's underlying count changes (it updates on the next navigation,
+  same as the pre-existing streak badge always did), and API/Shortcuts support for reading or writing
+  `header_badges`.
+
 ### Task-Gruppen (built)
 
 The middle size between a single task and a Project: a bundle of steps that belong together — a
