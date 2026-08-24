@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Agenda;
 use App\Models\AgendaEntry;
+use App\Models\AgendaSpace;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -241,6 +242,207 @@ class AgendaTest extends TestCase
             ->existingSubjects;
 
         $this->assertSame(['Mathematik', 'Physik'], $subjects->values()->all());
+    }
+
+    // ── Private notes on a shared entry ──────────────────────────────
+
+    public function test_a_private_note_can_be_saved_on_a_shared_entry(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+
+        Livewire::actingAs($owner)
+            ->test(Agenda::class)
+            ->call('openCreateForm')
+            ->set('formSubject', 'Mathematik')
+            ->set('formTitle', 'Kapitel 5')
+            ->set('formDate', now()->addDay()->toDateString())
+            ->set('formSpaceId', $space->id)
+            ->set('formPrivateNotes', 'Nicht vergessen: Taschenrechner mitbringen.')
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        $entry = AgendaEntry::firstOrFail();
+
+        $this->assertDatabaseHas('agenda_entry_notes', [
+            'agenda_entry_id' => $entry->id,
+            'user_id' => $owner->id,
+            'notes' => 'Nicht vergessen: Taschenrechner mitbringen.',
+        ]);
+
+        // The shared note stays untouched by the private one.
+        $this->assertNull($entry->notes);
+    }
+
+    public function test_a_private_note_is_invisible_to_a_classmate(): void
+    {
+        $owner = User::factory()->create();
+        $classmate = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($classmate)->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+        $entry->setPrivateNoteFor($owner, 'Meine ganz eigene Notiz.');
+
+        Livewire::actingAs($classmate)
+            ->test(Agenda::class)
+            ->assertDontSee('Meine ganz eigene Notiz.');
+
+        $this->assertNull($entry->privateNoteFor($classmate));
+    }
+
+    public function test_editing_reloads_only_your_own_private_note_not_a_classmates(): void
+    {
+        $owner = User::factory()->create();
+        $classmate = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($classmate)->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+        $entry->setPrivateNoteFor($owner, 'Notiz von Besitzer:in.');
+        $entry->setPrivateNoteFor($classmate, 'Notiz von Klassenkamerad:in.');
+
+        Livewire::actingAs($classmate)
+            ->test(Agenda::class)
+            ->call('startEdit', $entry->id)
+            ->assertSet('formPrivateNotes', 'Notiz von Klassenkamerad:in.');
+
+        Livewire::actingAs($owner)
+            ->test(Agenda::class)
+            ->call('startEdit', $entry->id)
+            ->assertSet('formPrivateNotes', 'Notiz von Besitzer:in.');
+    }
+
+    public function test_clearing_a_private_note_deletes_its_row(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+        $entry->setPrivateNoteFor($owner, 'Wird gleich wieder gelöscht.');
+
+        Livewire::actingAs($owner)
+            ->test(Agenda::class)
+            ->call('startEdit', $entry->id)
+            ->set('formPrivateNotes', '   ')
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseMissing('agenda_entry_notes', [
+            'agenda_entry_id' => $entry->id,
+            'user_id' => $owner->id,
+        ]);
+    }
+
+    public function test_a_private_note_is_not_stored_for_a_private_entry(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(Agenda::class)
+            ->call('openCreateForm')
+            ->set('formSubject', 'Mathematik')
+            ->set('formTitle', 'Kapitel 5')
+            ->set('formDate', now()->addDay()->toDateString())
+            ->set('formPrivateNotes', 'Sollte nirgends landen.')
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('agenda_entry_notes', 0);
+    }
+
+    public function test_a_classmate_cannot_write_a_private_note_onto_a_foreign_entrys_id_via_another_users_component(): void
+    {
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $entry = AgendaEntry::factory()->for($owner)->create(); // private, no space
+
+        try {
+            Livewire::actingAs($stranger)
+                ->test(Agenda::class)
+                ->call('startEdit', $entry->id);
+            $this->fail('Expected a ModelNotFoundException for a private entry outside any shared space.');
+        } catch (ModelNotFoundException) {
+            // visibleEntry() hides it before any private note could ever be read or written.
+        }
+
+        $this->assertDatabaseCount('agenda_entry_notes', 0);
+    }
+
+    public function test_a_private_note_respects_the_same_length_limit_as_the_shared_note(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+
+        Livewire::actingAs($owner)
+            ->test(Agenda::class)
+            ->call('openCreateForm')
+            ->set('formSubject', 'Mathematik')
+            ->set('formTitle', 'Kapitel 5')
+            ->set('formDate', now()->addDay()->toDateString())
+            ->set('formSpaceId', $space->id)
+            ->set('formPrivateNotes', str_repeat('a', 2001))
+            ->call('saveEntry')
+            ->assertHasErrors(['formPrivateNotes' => 'max']);
+
+        $this->assertDatabaseCount('agenda_entries', 0);
+        $this->assertDatabaseCount('agenda_entry_notes', 0);
+    }
+
+    public function test_deleting_a_shared_entry_deletes_every_members_private_note_with_it(): void
+    {
+        $owner = User::factory()->create();
+        $classmate = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($classmate)->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+        $entry->setPrivateNoteFor($owner, 'Notiz A');
+        $entry->setPrivateNoteFor($classmate, 'Notiz B');
+
+        Livewire::actingAs($owner)
+            ->test(Agenda::class)
+            ->call('deleteEntry', $entry->id);
+
+        $this->assertDatabaseCount('agenda_entry_notes', 0);
+    }
+
+    public function test_switching_a_shared_entry_back_to_private_leaves_its_note_untouched_for_later(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+        $entry->setPrivateNoteFor($owner, 'Bleibt erhalten.');
+
+        // Switch "Für" to "Nur ich" without touching the (now hidden) private field.
+        Livewire::actingAs($owner)
+            ->test(Agenda::class)
+            ->call('startEdit', $entry->id)
+            ->set('formSpaceId', null)
+            ->call('saveEntry')
+            ->assertHasNoErrors();
+
+        // Not deleted — a "Für" toggle is not the same action as clearing the field.
+        $this->assertDatabaseHas('agenda_entry_notes', [
+            'agenda_entry_id' => $entry->id,
+            'user_id' => $owner->id,
+            'notes' => 'Bleibt erhalten.',
+        ]);
+    }
+
+    public function test_a_long_private_note_is_truncated_to_a_preview_like_the_shared_note(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
+        $entry->setPrivateNoteFor($owner, 'eins zwei drei vier fünf sechs sieben acht neun zehn');
+
+        $preview = $entry->privateNotePreview($owner);
+
+        $this->assertSame('eins zwei drei vier fünf sechs sieben acht…', $preview);
+    }
+
+    public function test_a_private_note_works_identically_for_exam_entries(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+        $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->exam()->create();
+        $entry->setPrivateNoteFor($owner, 'Vor der Prüfung nochmal Karteikarten.');
+
+        $this->assertSame('Vor der Prüfung nochmal Karteikarten.', $entry->privateNoteFor($owner));
     }
 
     public function test_picking_a_suggested_subject_fills_the_form_field(): void

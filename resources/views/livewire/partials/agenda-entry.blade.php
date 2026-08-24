@@ -80,6 +80,30 @@
                 >{{ $entry->notes }}</p>
             </div>
         @endif
+
+        {{-- Only you ever see this — never rendered from $entry->notes, always
+             from your own private-note lookup, so a classmate reading this
+             partial for the same entry gets nothing here at all. --}}
+        @if ($entry->isShared() && ($privateNote = $entry->privateNoteFor(auth()->user())))
+            <div x-data="{ notesOpen: false }" class="mt-0.5">
+                <button
+                    type="button"
+                    @click.stop="notesOpen = !notesOpen"
+                    class="flex max-w-full items-center gap-1 truncate rounded text-left text-[11.5px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    :aria-expanded="notesOpen.toString()"
+                    aria-label="Eigene Notiz ein-/ausklappen: {{ $entry->title }}"
+                >
+                    <span class="h-1.5 w-1.5 flex-none rounded-full border border-ink-faint" aria-hidden="true"></span>
+                    <span class="truncate" x-show="!notesOpen">{{ $entry->privateNotePreview(auth()->user()) }}</span>
+                    <span x-show="notesOpen" style="display: none;">Eigene Notiz ausblenden</span>
+                </button>
+                <p
+                    x-show="notesOpen"
+                    style="display: none;"
+                    class="mt-0.5 whitespace-pre-line break-words text-[12.5px] text-ink-soft"
+                >{{ $privateNote }}</p>
+            </div>
+        @endif
     </div>
 
     @if ($entry->isShared() && $memberCount > 0)

@@ -871,6 +871,48 @@ else is shared, and a private entry stays private.
   beyond your own list. Fach suggestions now read from every *visible* entry, so a classmate's "Französisch"
   autocompletes for everyone.
 
+### Agenda — private Notizen auf geteilten Einträgen (built)
+
+A shared entry's `notes` field is genuinely shared — any class member can read and edit it (see
+"Agenda — Klassen teilen" above). This adds a second, independent note per entry that only the
+viewing user ever sees or writes: **`agenda_entry_notes`** (`agenda_entry_id, user_id, notes` text,
+unique per pair, `cascadeOnDelete` both FKs) — same reasoning as `agenda_entry_completions`: a
+private note is inherently per-viewer, so it lives in its own table rather than a column on the
+shared row. Unlike that table this one carries a value, not just presence, so
+`AgendaEntry::setPrivateNoteFor()` deletes the row on an empty/cleared note rather than storing a
+blank one (mirrors the shared `notes` field's own trim-to-null convention). There is deliberately
+**no relation on `AgendaEntry` that returns every user's private notes at once** — the only way to
+reach the table is `privateNoteFor(User)`/`setPrivateNoteFor(User, ?string)`, both always scoped by
+the given user; rendering a list eager-loads the *current* user's own value via
+`scopeWithPrivateNoteFor()`, a correlated subquery (`addSelect`) mirroring
+`scopeWithCompletionState()`'s one-query idea rather than an eager-loaded `hasMany`, so there's no
+code path that could ever load a classmate's note by accident.
+
+- **Only offered once the entry is actually shared** (`formSpaceId !== null` in `Agenda.php`/the
+  form partial) — a "Nur ich" entry already has exactly one viewer, so a second private field on it
+  would just duplicate the note above it.
+- **Edited inline in the same create/edit sheet** as the shared note
+  (`agenda-entry-form.blade.php`), directly below it — not a separate screen. It doesn't exist as a
+  visible field until you tap a small "+ Eigene Notiz · nur du" ghost link (the same ghost-reveal
+  pattern the board uses for a task's own date); the first keystroke turns the ghost into a real
+  textarea, and from then on a small dot-marked disclosure appears next to that entry in the list
+  (`agenda-entry.blade.php`) — the one lasting, personal mark this feature leaves behind.
+- **The shared Notiz field's own label gets a suffix** ("· sichtbar für die ganze Klasse") whenever
+  the entry is shared, right where you're about to type. Added after a Round-4 user-simulation (see
+  the feature-building process) showed a real user correctly avoided writing a personal note into
+  the shared field — but also never discovered the private one at all, and worked around the goal
+  entirely via an unrelated existing feature (promoting the homework into a personal task and using
+  *that* task's own notes) instead of ever finding this one. Both labels now name which note is
+  which before you write into either — not only after opening the private one.
+- Switching a shared entry's "Für" back to "Nur ich" **does not delete** an already-saved private
+  note — `saveEntry()` simply skips writing to `agenda_entry_notes` while `formSpaceId` is null, on
+  the theory that a "Für" toggle isn't the same action as clearing the field. The note picks back up
+  if the entry is ever shared again.
+
+Not touched by this feature: QuickCapture's `agenda` target (it has no notes field for agenda
+entries at all, shared or private), Markdown rendering (private notes stay plain text, matching the
+shared note), the dashboard homework-preview strip.
+
 ### Agenda — Präsenz & Mitgliederverwaltung (built)
 
 Who is in a class, and who is looking at it right now. Both only exist because the agenda is shared; nothing
