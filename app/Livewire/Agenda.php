@@ -52,6 +52,9 @@ class Agenda extends Component
 
     public string $formNotes = '';
 
+    /** This user's own note on the entry — only ever meaningful when formSpaceId is set; see saveEntry(). */
+    public string $formPrivateNotes = '';
+
     /** Null = "nur ich"; a space id = visible to that whole class. */
     public ?int $formSpaceId = null;
 
@@ -67,6 +70,7 @@ class Agenda extends Component
         return AgendaEntry::query()
             ->visibleTo(auth()->user())
             ->withCompletionState(auth()->user())
+            ->withPrivateNoteFor(auth()->user())
             ->findOrFail($id);
     }
 
@@ -225,6 +229,7 @@ class Agenda extends Component
         $query = AgendaEntry::query()
             ->visibleTo($user)
             ->withCompletionState($user)
+            ->withPrivateNoteFor($user)
             // The row shows who wrote a class entry and how many of the class
             // have finished it; both eager-loaded so a long list stays 3 queries.
             ->with(['user:id,name', 'space' => fn ($q) => $q->withCount('members')]);
@@ -288,6 +293,7 @@ class Agenda extends Component
         $this->formTitle = '';
         $this->formDate = '';
         $this->formNotes = '';
+        $this->formPrivateNotes = '';
         $this->formSpaceId = $this->defaultFormSpaceId();
         $this->resetValidation();
         $this->showForm = true;
@@ -337,6 +343,7 @@ class Agenda extends Component
         $this->formTitle = $entry->title;
         $this->formDate = $entry->date->toDateString();
         $this->formNotes = (string) ($entry->notes ?? '');
+        $this->formPrivateNotes = (string) ($entry->privateNoteFor(auth()->user()) ?? '');
         $this->formSpaceId = $entry->agenda_space_id;
         $this->resetValidation();
         $this->showForm = true;
@@ -361,6 +368,10 @@ class Agenda extends Component
             'formTitle' => ['required', 'string', 'max:255'],
             'formDate' => ['required', 'date'],
             'formNotes' => ['nullable', 'string', 'max:2000'],
+            // Only ever surfaced in the form while formSpaceId is set (a
+            // private entry has exactly one viewer already), but validated
+            // unconditionally in case the "Für" pill changes after typing.
+            'formPrivateNotes' => ['nullable', 'string', 'max:2000'],
             // Sharing into a class you don't belong to is not a validation
             // nicety — it's the whole authorization boundary for writes.
             'formSpaceId' => ['nullable', 'integer', Rule::in($this->spaces->pluck('id'))],
@@ -376,9 +387,18 @@ class Agenda extends Component
         ];
 
         if ($this->editingId !== null) {
-            $this->visibleEntry($this->editingId)->update($attributes);
+            $entry = $this->visibleEntry($this->editingId);
+            $entry->update($attributes);
         } else {
-            auth()->user()->agendaEntries()->create($attributes);
+            $entry = auth()->user()->agendaEntries()->create($attributes);
+        }
+
+        // A private note is only meaningful once the entry is actually shared —
+        // a "Nur ich" entry already has exactly one viewer, so leave any
+        // leftover row (from a "Für" switch after typing) untouched rather
+        // than guessing whether it should be deleted.
+        if ($data['formSpaceId'] !== null) {
+            $entry->setPrivateNoteFor(auth()->user(), $data['formPrivateNotes'] ?? null);
         }
 
         $this->showForm = false;

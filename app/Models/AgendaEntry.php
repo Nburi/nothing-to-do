@@ -127,7 +127,18 @@ class AgendaEntry extends Model
     /** One-line snippet of the note for the entry row, truncated by word count. Plain text — Agenda notes carry no Markdown. */
     public function notesPreview(int $words = self::NOTES_PREVIEW_WORDS): ?string
     {
-        $text = trim(preg_replace('/\s+/', ' ', (string) $this->notes));
+        return self::previewOf($this->notes, $words);
+    }
+
+    /** Same shape as notesPreview(), for the private note only $user can see. */
+    public function privateNotePreview(User $user, int $words = self::NOTES_PREVIEW_WORDS): ?string
+    {
+        return self::previewOf($this->privateNoteFor($user), $words);
+    }
+
+    private static function previewOf(?string $text, int $words): ?string
+    {
+        $text = trim(preg_replace('/\s+/', ' ', (string) $text));
 
         if ($text === '') {
             return null;
@@ -137,6 +148,49 @@ class AgendaEntry extends Model
         $preview = implode(' ', array_slice($parts, 0, $words));
 
         return count($parts) > $words ? $preview.'…' : $preview;
+    }
+
+    /**
+     * $user's own private note on this entry — invisible to anyone else, even
+     * the entry's author. Prefers the `private_note_for_me` value that
+     * `scopeWithPrivateNoteFor()` selects alongside the row (same one-query
+     * idea as `isDoneFor()`/`done_for_me`), falling back to a direct lookup
+     * when the entry was loaded without it.
+     */
+    public function privateNoteFor(User $user): ?string
+    {
+        if (array_key_exists('private_note_for_me', $this->attributes)) {
+            return $this->attributes['private_note_for_me'];
+        }
+
+        return AgendaEntryNote::query()
+            ->where('agenda_entry_id', $this->id)
+            ->where('user_id', $user->id)
+            ->value('notes');
+    }
+
+    /**
+     * Write $user's own private note. An empty note deletes the row rather than
+     * storing a blank one — mirrors the shared `notes` field's own
+     * trim-to-null convention. Never touches any other user's row.
+     */
+    public function setPrivateNoteFor(User $user, ?string $text): void
+    {
+        $text = trim((string) $text);
+
+        if ($text === '') {
+            AgendaEntryNote::query()
+                ->where('agenda_entry_id', $this->id)
+                ->where('user_id', $user->id)
+                ->delete();
+
+            return;
+        }
+
+        AgendaEntryNote::query()->updateOrCreate(
+            ['agenda_entry_id' => $this->id, 'user_id' => $user->id],
+            ['notes' => $text]
+        );
     }
 
     public function typeLabel(): string
@@ -249,5 +303,22 @@ class AgendaEntry extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('date')->orderBy('created_at');
+    }
+
+    /**
+     * Select $user's own private note text alongside the row, the same
+     * one-query idea as scopeWithCompletionState() — a correlated subquery
+     * rather than an eager-loaded relation, so there is no `privateNotes`
+     * relation anywhere that could return every class member's notes at once.
+     */
+    public function scopeWithPrivateNoteFor(Builder $query, User $user): Builder
+    {
+        return $query->addSelect([
+            'private_note_for_me' => AgendaEntryNote::query()
+                ->select('notes')
+                ->whereColumn('agenda_entry_id', 'agenda_entries.id')
+                ->where('user_id', $user->id)
+                ->limit(1),
+        ]);
     }
 }

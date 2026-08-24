@@ -177,7 +177,16 @@
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-[12px] font-medium text-ink-faint">Notiz (optional)</label>
+                    <label class="mb-1 block text-[12px] font-medium text-ink-faint">
+                        Notiz (optional)
+                        {{-- A shared entry's Notiz goes to the whole class — said here,
+                             right where you're about to type, not just once further up
+                             next to the "Für" pills. Typing something private into the
+                             wrong box is a worse outcome than not finding the right one. --}}
+                        @if ($formSpaceId !== null)
+                            <span class="font-normal text-ink-faint">· sichtbar für die ganze Klasse</span>
+                        @endif
+                    </label>
                     <textarea
                         wire:model="formNotes"
                         rows="2"
@@ -186,6 +195,41 @@
                     ></textarea>
                     @error('formNotes') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
+
+                {{-- Only meaningful once the entry is actually shared — a "Nur ich"
+                     entry already has exactly one viewer, so a second private field
+                     on it would just duplicate the note above. No empty slot either
+                     way: it doesn't exist until you tap "+ Eigene Notiz", the same
+                     ghost-reveal the board uses for a task's own date. The collapsed
+                     label names "nur du" up front, not only after opening it — the
+                     whole point is telling the two notes apart before you write in
+                     either one, not after. --}}
+                @if ($formSpaceId !== null)
+                    <div x-data="{ open: {{ $formPrivateNotes !== '' ? 'true' : 'false' }} }">
+                        <button
+                            type="button"
+                            x-show="!open"
+                            @click="open = true; $nextTick(() => $refs.agendaPrivateNotesField?.focus())"
+                            class="inline-flex items-center gap-1 rounded px-0.5 py-0.5 text-[12px] font-medium text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        >
+                            <svg class="h-2.5 w-2.5 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                            Eigene Notiz <span class="text-ink-faint">· nur du</span>
+                        </button>
+                        <div x-show="open">
+                            <label class="mb-1 block text-[12px] font-medium text-ink-faint">
+                                Eigene Notiz <span class="font-normal text-ink-faint">· nur du siehst sie</span>
+                            </label>
+                            <textarea
+                                x-ref="agendaPrivateNotesField"
+                                wire:model="formPrivateNotes"
+                                rows="2"
+                                placeholder="Nur für dich…"
+                                class="w-full resize-y rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                            ></textarea>
+                            @error('formPrivateNotes') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                @endif
 
                 <button type="submit" class="w-full rounded-card bg-forest py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
                     {{ $editingId ? 'Speichern' : 'Hinzufügen' }}
