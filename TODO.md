@@ -81,6 +81,26 @@ deploy. Clean it up whenever the local database is next rebuilt from scratch.
   is a quiet in-app notice (see CLAUDE.md, Kategorie-Aufgaben-Verknüpfung) that only shows if the dashboard
   happens to be open. A push would reach a session running with the tab closed, but risks being noisy for
   something this minor — worth watching whether the in-app version already feels sufficient before adding it.
+- **Schedule-entry task links (Zeitplan-Eintrag-Aufgaben-Verknüpfung) in the API (Sanctum).** Same gap as
+  the category link and task groups above — `ScheduleEventController` has no way to read or set an
+  entry's bound tasks (`schedule_event_task_links`). Worth doing together with those rather than as three
+  separate passes.
+- **Drag a task from the board straight onto a Zeitplan block** to link it, instead of only the form's
+  search picker. Would need a cross-page gesture (board and Zeitplan are different routes today), which
+  felt like more scope than the first pass needed — the search picker covers the same outcome in a
+  couple of taps.
+- **Manually reordering an entry's bound tasks.** Same limitation as the category's own pinned-tasks
+  picker — order is currently just pick order (each new one goes to the end), with add/remove but no
+  drag. A small reorder control would let someone fix "I picked these in the wrong order" without
+  unpinning and re-picking.
+- **A hint in the event form when its category already has its own task link.** A Runde-4 simulation for
+  the per-event task link (Zeitplan-Eintrag-Aufgaben-Verknüpfung) never discovered it — not because it was
+  hard to find, but because the coarser category-level link already satisfied the whole scenario, so the
+  simulated user never had a reason to open one specific block's edit form looking for an override. A
+  small note there ("Diese Kategorie ist bereits mit X verknüpft — hier nur für diesen Termin etwas
+  anderes wählen") could make the override's existence visible at the moment someone might actually want
+  it, without waiting for them to stumble onto the form section on their own. Not built now — it's a
+  cross-reference between two already-shipped features, not a fix for either.
 - **A category whose linked project/group/Agenda entry gets deleted keeps `task_source` set even though the
   target is gone** (the FK itself correctly goes `null` via `nullOnDelete` — see CLAUDE.md). The category
   row's own label already self-heals ("Keine Aufgaben-Verknüpfung", since it reads the resolved relation,

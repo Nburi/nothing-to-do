@@ -6,6 +6,7 @@ use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -242,5 +243,64 @@ class ScheduleEventTest extends TestCase
         $pause->delete();
 
         $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->count());
+    }
+
+    public function test_next_linked_task_is_the_first_open_one_in_pivot_order(): void
+    {
+        $user = User::factory()->create();
+        $event = ScheduleEvent::factory()->for($user)->create();
+        $first = Task::factory()->for($user)->todos()->create(['title' => 'First']);
+        $second = Task::factory()->for($user)->todos()->create(['title' => 'Second']);
+        $event->linkedTasks()->attach($second->id, ['sort_order' => 0]);
+        $event->linkedTasks()->attach($first->id, ['sort_order' => 1]);
+
+        $this->assertSame($second->id, $event->nextLinkedTask()->id);
+    }
+
+    public function test_next_linked_task_skips_completed_ones_without_unpinning_them(): void
+    {
+        $user = User::factory()->create();
+        $event = ScheduleEvent::factory()->for($user)->create();
+        $done = Task::factory()->for($user)->todos()->completed()->create();
+        $open = Task::factory()->for($user)->todos()->create();
+        $event->linkedTasks()->attach($done->id, ['sort_order' => 0]);
+        $event->linkedTasks()->attach($open->id, ['sort_order' => 1]);
+
+        $this->assertSame($open->id, $event->nextLinkedTask()->id);
+        $this->assertSame(2, $event->linkedTasks()->count()); // both still pinned
+    }
+
+    public function test_linked_tasks_remaining_count_only_counts_open_ones(): void
+    {
+        $user = User::factory()->create();
+        $event = ScheduleEvent::factory()->for($user)->create();
+        $event->linkedTasks()->attach(Task::factory()->for($user)->todos()->completed()->create()->id, ['sort_order' => 0]);
+        $event->linkedTasks()->attach(Task::factory()->for($user)->todos()->create()->id, ['sort_order' => 1]);
+
+        $this->assertSame(1, $event->linkedTasksRemainingCount());
+    }
+
+    public function test_deleting_a_linked_task_detaches_it_instead_of_breaking_the_event(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->todos()->create();
+        $event = ScheduleEvent::factory()->for($user)->create();
+        $event->linkedTasks()->attach($task->id, ['sort_order' => 0]);
+
+        $task->delete();
+
+        $this->assertSame(0, $event->linkedTasks()->count());
+    }
+
+    public function test_deleting_an_event_detaches_its_linked_tasks_without_deleting_them(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->todos()->create();
+        $event = ScheduleEvent::factory()->for($user)->create();
+        $event->linkedTasks()->attach($task->id, ['sort_order' => 0]);
+
+        $event->delete();
+
+        $this->assertNotNull($task->fresh());
     }
 }

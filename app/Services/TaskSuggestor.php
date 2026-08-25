@@ -12,20 +12,25 @@ use App\Models\User;
  * Picks "what to work on" for a Pomodoro work session. Tiered:
  *
  *   1. Notfallmodus       → the active emergency project's next step, if any.
- *   2. Category link      → the running session's category's linked
+ *   2. Event task link    → the running session's *own* schedule entry has one
+ *                            or more tasks bound directly to it (ScheduleEvent
+ *                            ::linkedTasks) — more specific than its
+ *                            category's link, so the next open one wins for
+ *                            this occurrence.
+ *   3. Category link      → the running session's category's linked
  *                            project/group/pinned tasks/Agenda entry/generic
  *                            homework nudge/free text, if the category has one
  *                            (see EventCategory::$task_source). Applies on
  *                            every cycle of that session, not just the first.
- *   3. Cycle 1            → a generic nudge to clear the ToDos list.
- *   4. Any cycle          → the top active "today" task (board order).
- *   5. Fallback           → a project's next task or another active
+ *   4. Cycle 1            → a generic nudge to clear the ToDos list.
+ *   5. Any cycle          → the top active "today" task (board order).
+ *   6. Fallback           → a project's next task or another active
  *                            todos/tasks-list task, picked deterministically
  *                            (stable across the header ring's 5s poll) from
  *                            a seed tied to the session + cycle.
  *
- * Falls through tiers whenever one has nothing to offer (an empty/deleted
- * category link included), so an emptied linked list doesn't produce a dead
+ * Falls through tiers whenever one has nothing to offer (an empty/deleted/
+ * already-completed link included), so a spent link never produces a dead
  * suggestion — it just quietly hands off to the next tier.
  */
 class TaskSuggestor
@@ -38,7 +43,7 @@ class TaskSuggestor
      *   ['kind' => 'category_group', 'title' => string, 'subtitle' => string, 'group_id' => int]
      *   ['kind' => 'category_agenda', 'title' => string, 'subtitle' => string, 'agenda_entry_id' => int]
      */
-    public static function suggest(User $user, int $cycle, int $seedKey, ?EventCategory $category = null): ?array
+    public static function suggest(User $user, int $cycle, int $seedKey, ?EventCategory $category = null, ?Task $linkedTask = null): ?array
     {
         if ($user->emergency_project_id !== null) {
             $emergency = self::emergencySuggestion($user);
@@ -48,6 +53,14 @@ class TaskSuggestor
             }
 
             // Nothing left in the emergency project — fall through to normal tiers.
+        }
+
+        if ($linkedTask !== null && ! $linkedTask->is_completed) {
+            return [
+                'kind' => 'task',
+                'title' => $linkedTask->title,
+                'task_id' => $linkedTask->id,
+            ];
         }
 
         if ($category !== null && $category->task_source !== null) {
