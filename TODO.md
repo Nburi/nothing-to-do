@@ -34,28 +34,25 @@ both stale `migrations` rows were removed; nothing in the code reads `task_group
 **Production never had any of it** (those branches were never merged or pushed), so there is nothing to
 deploy. Clean it up whenever the local database is next rebuilt from scratch.
 
-### Three feature branches still need merging in the right order
+### Four feature branches still need merging in the right order
 
 `feature/module-settings` (module visibility & default landing page) → `feature/onboarding-tutorial`
-(this branch was built on top of it, since the onboarding tutorial's module-visibility step needs
-`AppModules`/`hidden_modules`/`default_page`) → `main`. Merge/rebase in that order, or squash-merge
-`feature/module-settings` into `main` first and rebase `feature/onboarding-tutorial` onto the result —
-either way, don't merge the onboarding branch to `main` before the module-settings work is in, or
-`AppModules` won't exist yet on the target branch.
+(built on top of it, since the onboarding tutorial's module-visibility step needs
+`AppModules`/`hidden_modules`/`default_page`) → `feature/feature-announcements` (built on top of
+*that* one — reuses nothing code-wise from onboarding, but was branched from it per the same
+"branch from the tip of the chain" approach, and its CLAUDE.md edits sit right after the
+Onboarding-Tutorial section, so a merge the other way round would conflict) → `main`. Merge/rebase
+in that exact order, or squash-merge each into `main` in turn and rebase the next one in the chain
+onto the result each time — don't merge a later branch to `main` before the ones before it are in,
+or its dependencies (`AppModules`, `onboarding_completed_at`, …) won't exist yet on the target branch.
 
 ## Ideas, not committed
 
-- **Admin-authored feature-announcement system** (the third step of the onboarding/accessibility push
-  this branch is step 2 of). Shown to *existing* users when a new feature ships, distinct from the
-  new-user tutorial (`App\Livewire\Onboarding`) this branch adds. No shared "tour engine" was built for
-  it on purpose — an announcement is more likely a small dismissible modal/toast than a multi-step
-  full-screen flow, so the two features' actual UI shape should decide what (if anything) gets
-  extracted, rather than guessing at a generic system now. The one thing worth reusing as-is: the
-  "seen/dismissed timestamp on `User`" convention (`onboarding_completed_at`, `prepared_on`,
-  `prepare_prompt_dismissed_on`, …) — an announcement's own "has this user seen it" state should follow
-  the same shape (per-announcement, most likely a small pivot table mirroring
-  `agenda_entry_completions` rather than one column per announcement).
-
+- **Push notification for a freshly published feature announcement.** Right now the "here's what's
+  new" toast (see CLAUDE.md, Feature-Ankündigungen) only ever appears on the next page load — fine
+  for "little quick", but someone who doesn't open the app for a while won't hear about a feature
+  until they do. Mirrors the same "worth watching whether the in-app version already feels
+  sufficient" caution already noted below for the category-link-empty notice.
 - **Task groups in the API (Sanctum).** `tasks.group_id` is invisible to Shortcuts: a task cannot be filed
   into a group or read back with its group over the API, and there is no groups endpoint. Worth doing with
   the same care as the Agenda endpoints below rather than bolting on one field.

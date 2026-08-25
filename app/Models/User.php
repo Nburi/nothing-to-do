@@ -32,6 +32,7 @@ use Laravel\Sanctum\HasApiTokens;
     'notify_streak_risk', 'streak_risk_sent_on',
     'header_badges',
     'hidden_modules', 'default_page', 'onboarding_completed_at',
+    'is_admin',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -50,6 +51,7 @@ class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'is_admin' => false,
         'show_presence' => true,
         'deadline_preview_enabled' => true,
         'homework_preview_enabled' => true,
@@ -118,6 +120,12 @@ class User extends Authenticatable
     public function craftIdeas(): HasMany
     {
         return $this->hasMany(CraftIdea::class);
+    }
+
+    /** Feature announcements this user has authored — only ever populated for an admin. */
+    public function createdAnnouncements(): HasMany
+    {
+        return $this->hasMany(FeatureAnnouncement::class, 'created_by');
     }
 
     /** Shared class/group agendas this user belongs to (a class, a study group, …). */
@@ -430,6 +438,7 @@ class User extends Authenticatable
             'header_badges' => 'array',
             'hidden_modules' => 'array',
             'onboarding_completed_at' => 'datetime',
+            'is_admin' => 'boolean',
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
+use App\Livewire\Admin\AnnouncementEditor;
 use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
@@ -83,6 +84,12 @@ Route::get('/app/settings', Settings::class)
 Route::get('/app/onboarding', Onboarding::class)
     ->middleware('auth')
     ->name('onboarding');
+
+// Admin-only — gated in AnnouncementEditor::mount(), not middleware (see its
+// docblock for why this app keeps that boundary at the component level).
+Route::get('/app/admin/announcements', AnnouncementEditor::class)
+    ->middleware('auth')
+    ->name('admin.announcements');
 
 Route::get('/app/agenda', Agenda::class)
     ->middleware('auth')

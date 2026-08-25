@@ -69,6 +69,12 @@ I say so, with reasoning.
    resets on outside-click/Escape — click again within that window to actually delete). See *Known
    Issues* for the exact Alpine snippet.
 10. Call me by my name, every time I ask something or give you a task.
+11. **New user-facing feature → draft an announcement.** Whenever a feature ships that a regular user would
+    actually notice (a new page, a new gesture, a new setting worth knowing about — not an internal
+    refactor or a bugfix), also create a draft `App\Models\FeatureAnnouncement` for it (title + one-sentence
+    description, `related_module` set if it maps to an `AppModules::CATALOG` key), or if that's out of scope
+    for the current task, at least flag in the summary that one should be written. Leave it unpublished —
+    publishing is the user's call. See CLAUDE.md §7, "Feature-Ankündigungen".
 
 ---
 
@@ -1399,8 +1405,70 @@ module-visibility/default-landing-page step.
   needing real data like an active project or a populated Wochenplan, would be fragile for one
   pass, whereas this app already has a proven "dedicated full-screen ritual" shape in
   `PrepareTomorrow`/`EmergencyMode`), per-step analytics, a deep link to resume one specific slide,
-  and the admin feature-announcement system this and the module catalog exist to eventually
-  support.
+  and the admin feature-announcement system (see "Feature-Ankündigungen" below) this and the
+  module catalog were built to eventually support.
+
+### Feature-Ankündigungen (built)
+
+The third and last step of the onboarding/accessibility push `AppModules` and the onboarding
+tutorial were built for (see both sections above): a lightweight "here's what's new" toast for
+**existing** users, distinct from the new-user tutorial. Two halves — an admin-only editor that
+authors announcements, and a per-user toast every regular user sees until they dismiss it.
+
+- **`users.is_admin`** (boolean, default `false`) — set directly in the DB, or via
+  `php artisan admin:grant {email}` (`App\Console\Commands\GrantAdmin`, `--revoke` to remove).
+  Deliberately no in-app self-service "become admin" flow, and no middleware layer either — every
+  other authorization boundary in this app already lives at the component/query level
+  (`userTask()`, `visibleEntry()`, …), not in middleware, so `App\Livewire\Admin\AnnouncementEditor`
+  follows the same convention: `abort_unless(auth()->user()->is_admin, 403)` in `mount()`. The
+  artisan command exists because `php artisan tinker --execute` mangles quotes from PowerShell (see
+  *Known Issues*) — flipping one boolean column locally needs a reliable path that isn't that.
+- **`App\Models\FeatureAnnouncement`** — `title, description, related_module?, created_by?,
+  is_published, published_at?`. `related_module` is a key into `AppModules::CATALOG` (or null for
+  "no specific page") — deliberately not a foreign key, since the catalog is a stateless PHP
+  constant, not a table. `published_at` is stamped **the first time** an announcement is published
+  and never moves again on a later unpublish/republish (`AnnouncementEditor::togglePublish()`) — it
+  marks when the feature was actually introduced, not the current toggle state, and it's what
+  orders the unseen queue (oldest-published-first, see below).
+- **"Seen" is per (announcement, person)** — `feature_announcement_dismissals` (`feature_announcement_id,
+  user_id`, unique pair, both FKs `cascadeOnDelete`) mirrors `agenda_entry_completions` exactly
+  (CLAUDE.md, Agenda — Klassen teilen): the same shape already proven for "done" on a shared Agenda
+  entry, reused here for "dismissed" on a shared announcement. `FeatureAnnouncement::dismissFor(User)`
+  does a `syncWithoutDetaching()`, so dismissing twice is a no-op, never a second row or an error.
+- **`App\Livewire\Admin\AnnouncementEditor`** (`/app/admin/announcements`, `route('admin.announcements')`)
+  — one form doubling as create/edit (`editingId` null vs set, same pattern as `Agenda`/`CraftIdeas`),
+  a list of every announcement (draft and published, newest first — an admin needs to see drafts
+  too), a publish/unpublish button, and delete via the standard armed double-click (never `confirm()`).
+  Entry point: a profile-dropdown link (`layouts/app.blade.php`), rendered only for `auth()->user()->is_admin`.
+- **`App\Livewire\FeatureAnnouncementToast`** — mounted once in `layouts/app.blade.php` (same
+  reasoning as the milestone-celebration overlay: it has to appear no matter which page loads
+  first), inside `@auth`. Its `#[Computed] queue()` is every published announcement this user
+  hasn't dismissed, oldest-published-first (`FeatureAnnouncement::scopeUnseenBy()`); `current()` is
+  its head. Renders **nothing at all** when the queue is empty — the same zero-footprint convention
+  as the homework preview strip and the prepare prompt — but the root Blade view still needs a
+  permanent outer `<div>` regardless, since Livewire rejects a root component view that can compile
+  to literally nothing (`RootTagMissingFromViewException`); only the content *inside* that div is
+  conditional. One announcement is shown at a time, never stacked, so a backlog of several unseen
+  entries doesn't overwhelm on the next visit — dismissing advances to the next one in the same
+  queue, and a `wire:key` tied to the current announcement's id makes each card (and its Alpine
+  state) remount fresh rather than mutate in place.
+- **If `related_module` is set**, the card also shows an "X ansehen →" link to that catalog route.
+  Clicking it both navigates (`wire:navigate`) and dismisses (`wire:click="dismiss(...)"`) — the
+  same dual-fire pattern `PrepareTomorrow`'s "Später planen"/"Fertig" buttons already use (a
+  Livewire action and a plain link on the same element both fire independently, see *Known Issues*):
+  visiting the feature the announcement is about already counts as having seen it.
+- **Signature moment — the dismiss button counts itself down.** Rather than a "and 2 more" line
+  elsewhere on the card, the primary "Verstanden" button carries a small trailing badge showing how
+  many *other* unseen announcements remain; clicking it decrements the badge instantly (a local
+  Alpine `remaining`, optimistic — the server's own re-render confirms the true count a beat later
+  via the fresh `wire:key`'d card) and it disappears once nothing is left. The whole "there's a
+  backlog, but you're processing it one bite at a time" feeling lives at the one spot you're already
+  looking at, rather than a separate counter or list.
+- Deliberately out of scope for this pass: editing `related_module` to point anywhere outside
+  `AppModules::CATALOG` (e.g. a specific settings card or a non-module page), scheduling a future
+  publish date, per-announcement analytics (open/click-through), and a push notification for a
+  freshly published announcement — the toast only ever appears on the next page load, matching
+  "little quick" rather than reaching for a channel that works with the tab closed.
 
 ### Task-Gruppen (built)
 

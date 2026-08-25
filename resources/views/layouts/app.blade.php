@@ -291,6 +291,11 @@
                                     @endif
                                 </a>
                                 @endif
+                                @if (auth()->user()->is_admin)
+                                <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Ankündigungen verwalten
+                                </a>
+                                @endif
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
@@ -333,6 +338,12 @@
             @endif
 
             <livewire:quick-capture />
+
+            {{-- "Here's what's new" toast — see App\Livewire\FeatureAnnouncementToast.
+                 Mounted once here, same reasoning as the celebration overlay below:
+                 an unseen announcement has to appear no matter which page is the
+                 first one loaded. Renders nothing when there's nothing unseen. --}}
+            <livewire:feature-announcement-toast />
 
             {{-- Milestone celebration overlay — mounted once here (not inside any one
                  Livewire component) so it fires no matter which page a task gets
