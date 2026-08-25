@@ -7,9 +7,10 @@ use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
 use App\Livewire\GroupPage;
 use App\Livewire\JoinAgendaSpace;
+use App\Livewire\Onboarding;
 use App\Livewire\PrepareTomorrow;
-use App\Livewire\ProjectPage;
 use App\Livewire\Progress;
+use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\TaskBoard;
@@ -78,6 +79,10 @@ Route::get('/app/prepare', PrepareTomorrow::class)
 Route::get('/app/settings', Settings::class)
     ->middleware('auth')
     ->name('settings');
+
+Route::get('/app/onboarding', Onboarding::class)
+    ->middleware('auth')
+    ->name('onboarding');
 
 Route::get('/app/agenda', Agenda::class)
     ->middleware('auth')

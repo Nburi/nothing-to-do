@@ -31,7 +31,7 @@ use Laravel\Sanctum\HasApiTokens;
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
     'notify_streak_risk', 'streak_risk_sent_on',
     'header_badges',
-    'hidden_modules', 'default_page',
+    'hidden_modules', 'default_page', 'onboarding_completed_at',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -377,6 +377,29 @@ class User extends Authenticatable
     }
 
     /**
+     * Whether this account has never opened the onboarding tutorial — true for
+     * a brand-new registration and for any pre-existing account that predates
+     * this feature. Only consulted right after registration
+     * (RegisteredUserController); an existing account is never retroactively
+     * forced through the tutorial just because this is null.
+     */
+    public function needsOnboarding(): bool
+    {
+        return $this->onboarding_completed_at === null;
+    }
+
+    /**
+     * Re-stamped on every run, not just the first — finishing and skipping
+     * both count as "seen it" (mirrors PrepareTomorrow::finish()'s
+     * either-button-counts shape), and a later replay from Settings just
+     * moves the timestamp forward so it doubles as "last viewed on".
+     */
+    public function markOnboardingSeen(): void
+    {
+        $this->update(['onboarding_completed_at' => now()]);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -406,6 +429,7 @@ class User extends Authenticatable
             'streak_risk_sent_on' => 'date',
             'header_badges' => 'array',
             'hidden_modules' => 'array',
+            'onboarding_completed_at' => 'datetime',
         ];
     }
 }

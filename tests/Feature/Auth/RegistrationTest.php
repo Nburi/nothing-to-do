@@ -26,6 +26,9 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        // A brand-new account has never seen the onboarding tutorial, so
+        // registration (unlike login) sends it there first instead of the
+        // board — see RegisteredUserController.
+        $response->assertRedirect(route('onboarding', absolute: false));
     }
 }

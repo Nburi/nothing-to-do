@@ -189,6 +189,29 @@
             </p>
         </div>
 
+        {{-- Tutorial — always offered, whether this account finished it, skipped
+             it, or never even had it (see App\Livewire\Onboarding). Re-running it
+             never resets anything here; it just re-stamps "last viewed on". --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Tutorial</p>
+                    <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
+                        @if (auth()->user()->onboarding_completed_at)
+                            Zuletzt angesehen am {{ auth()->user()->onboarding_completed_at->isoFormat('D.M.YYYY') }}.
+                        @else
+                            Du hast die Einführung noch nicht angesehen.
+                        @endif
+                    </p>
+                </div>
+                <a
+                    href="{{ route('onboarding') }}"
+                    wire:navigate
+                    class="flex-none rounded-card border border-line bg-paper px-3.5 py-1.5 text-sm text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
+                >{{ auth()->user()->onboarding_completed_at ? 'Nochmal ansehen' : 'Tutorial starten' }}</a>
+            </div>
+        </div>
+
         {{-- Hausaufgaben-Vorschau --}}
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <div class="flex items-center justify-between gap-3">
