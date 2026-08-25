@@ -163,7 +163,7 @@
              is open) — a second, independent poll on the create-form sheet used
              to run alongside this one and occasionally collided with it. --}}
         <div
-            wire:poll.8s.visible="heartbeatDraft"
+            wire:poll.3s.visible="heartbeatDraft"
             @class([
                 'overflow-hidden transition-all duration-300 ease-out',
                 'mt-3 max-h-40 opacity-100' => $this->draftLines->isNotEmpty(),

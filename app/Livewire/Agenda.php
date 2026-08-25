@@ -457,7 +457,7 @@ class Agenda extends Component
     }
 
     /**
-     * The open form's own keep-alive, called from the ambient banner's 8s poll
+     * The open form's own keep-alive, called from the ambient banner's 3s poll
      * (agenda.blade.php) while the form is open — re-syncing with the same
      * values simply refreshes the TTL. Without this, a long pause between
      * keystrokes (re-reading the assignment, say) would let the draft quietly

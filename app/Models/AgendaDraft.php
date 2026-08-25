@@ -19,10 +19,10 @@ class AgendaDraft extends Model
     /**
      * How long a draft is trusted without a fresh write. Considerably shorter
      * than User::PRESENCE_TTL_SECONDS: typing a Fach takes seconds, not
-     * minutes, and an open form re-syncs itself every 8s (Agenda::heartbeatDraft(),
-     * driven by the agenda page's own wire:poll — see agenda.blade.php). 2.5x
-     * the poll interval, the same headroom ratio User::PRESENCE_TTL_SECONDS
-     * keeps over its own 60s heartbeat, so one slow/missed tick doesn't flicker
+     * minutes, and an open form re-syncs itself every 3s (Agenda::heartbeatDraft(),
+     * driven by the agenda page's own wire:poll — see agenda.blade.php). Kept
+     * well above the poll interval, the same headroom idea User::PRESENCE_TTL_SECONDS
+     * applies over its own 60s heartbeat, so one slow/missed tick doesn't flicker
      * the banner off.
      */
     public const TTL_SECONDS = 20;
