@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -27,7 +28,6 @@ class ScheduleEvent extends Model
     protected $fillable = [
         'template_id',
         'category_id',
-        'linked_task_id',
         'title',
         'color',
         'date',
@@ -71,14 +71,28 @@ class ScheduleEvent extends Model
     }
 
     /**
-     * A task bound to this one occurrence specifically — more specific than
-     * its category's own task link (EventCategory::task_source), so it wins
-     * when both exist (see TaskSuggestor). Never carried over to other
-     * occurrences of a recurring series; each materialised row is independent.
+     * Tasks bound to this one occurrence specifically — more specific than
+     * its category's own task link (EventCategory::task_source), so the next
+     * open one wins when both exist (see TaskSuggestor). Never carried over
+     * to other occurrences of a recurring series; each materialised row is
+     * independent. Same shape as EventCategory::pinnedTasks().
      */
-    public function linkedTask(): BelongsTo
+    public function linkedTasks(): BelongsToMany
     {
-        return $this->belongsTo(Task::class, 'linked_task_id');
+        return $this->belongsToMany(Task::class, 'schedule_event_task_links')
+            ->withPivot('sort_order')
+            ->orderBy('schedule_event_task_links.sort_order');
+    }
+
+    /** The next open bound task, in pivot order — what TaskSuggestor prefers, skipping completed ones without unpinning them. */
+    public function nextLinkedTask(): ?Task
+    {
+        return $this->linkedTasks()->active()->first();
+    }
+
+    public function linkedTasksRemainingCount(): int
+    {
+        return $this->linkedTasks()->active()->count();
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

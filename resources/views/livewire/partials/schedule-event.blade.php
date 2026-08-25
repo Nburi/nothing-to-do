@@ -16,6 +16,12 @@
         'ink'       => ['bg' => 'bg-surface',        'bd' => 'border-ink-faint/40', 'tx' => 'text-ink',       'bar' => 'bg-ink-faint'],
         default     => ['bg' => 'bg-contour-soft',   'bd' => 'border-contour/40',   'tx' => 'text-contour',   'bar' => 'bg-contour'],
     };
+
+    // One relation load, not one query per helper — pendingLinkedTasks/nextLinkedTask/
+    // extraLinkedCount below all read from this same in-memory collection.
+    $pendingLinkedTasks = $event->linkedTasks->reject(fn ($t) => $t->is_completed)->values();
+    $nextLinkedTask = $pendingLinkedTasks->first();
+    $extraLinkedCount = max(0, $pendingLinkedTasks->count() - 1);
 @endphp
 <div
     wire:key="ev-{{ $event->id }}"
@@ -56,21 +62,26 @@
             @if ($event->category?->pomodoro_enabled)
                 <svg class="h-3 w-3 flex-none {{ $styles['tx'] }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/></svg>
             @endif
-            @if ($event->linked_task_id !== null)
-                {{-- Signature moment: tap briefly reveals the linked task's title in place
-                     of the entry's own title; a second tap (within the same window) opens
-                     it on the board. Same "armed window" shape as this app's destructive
-                     double-click confirms, repurposed here for a reveal-then-navigate. --}}
+            @if ($nextLinkedTask !== null)
+                {{-- Signature moment: tap briefly reveals the next open linked task's title
+                     (the one the focus timer would suggest too — see TaskSuggestor) in place
+                     of the entry's own title, plus a "+N" if more are bound; a second tap
+                     (within the same window) opens that task on the board. Same "armed window"
+                     shape as this app's destructive double-click confirms, repurposed here for
+                     a reveal-then-navigate. --}}
                 <button
                     type="button"
                     @pointerdown.stop
                     @click.stop="if (revealed) { $wire.navigateToLinkedTask({{ $event->id }}); clearTimeout(_t); revealed = false; } else { revealed = true; clearTimeout(_t); _t = setTimeout(() => revealed = false, 2000); }"
-                    aria-label="Verknüpfte Aufgabe {{ $event->linkedTask?->title }} — antippen zum Öffnen"
+                    aria-label="Nächste verknüpfte Aufgabe {{ $nextLinkedTask->title }}{{ $extraLinkedCount > 0 ? ", plus {$extraLinkedCount} weitere" : '' }} — antippen zum Öffnen"
                     class="flex-none {{ $styles['tx'] }} transition hover:opacity-70"
                 >
                     <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
                 </button>
-                <span class="truncate" :class="revealed && 'italic'" x-text="revealed ? @js($event->linkedTask?->title ?? '') : @js($event->displayTitle())"></span>
+                <span class="truncate" :class="revealed && 'italic'" x-text="revealed ? @js($nextLinkedTask->title) : @js($event->displayTitle())"></span>
+                @if ($extraLinkedCount > 0)
+                    <span class="flex-none text-[10px] {{ $styles['tx'] }} opacity-70">+{{ $extraLinkedCount }}</span>
+                @endif
             @else
                 <span class="truncate">{{ $event->displayTitle() }}</span>
             @endif

@@ -392,7 +392,7 @@ class TaskBoard extends Component
         $phase = $this->focusPhase;
 
         if ($phase === null) {
-            return TaskSuggestor::suggest(auth()->user(), 1, $session->id, $session->category, $session->linkedTask);
+            return TaskSuggestor::suggest(auth()->user(), 1, $session->id, $session->category, $session->nextLinkedTask());
         }
 
         // While frozen between phases, judge relevance by what's coming next.
@@ -403,7 +403,7 @@ class TaskBoard extends Component
             return null;
         }
 
-        return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id, $session->category, $session->linkedTask);
+        return TaskSuggestor::suggest(auth()->user(), $effectiveCycle, $session->id, $session->category, $session->nextLinkedTask());
     }
 
     /**
@@ -425,10 +425,8 @@ class TaskBoard extends Component
             return null;
         }
 
-        $task = $session->linkedTask;
-
-        if ($task !== null) {
-            return $task->is_completed ? "{$task->title} ist erledigt." : null;
+        if ($session->linkedTasks()->exists()) {
+            return $session->linkedTasksRemainingCount() === 0 ? 'Die gebundenen Aufgaben sind fertig.' : null;
         }
 
         $category = $session->category;

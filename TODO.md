@@ -82,12 +82,17 @@ deploy. Clean it up whenever the local database is next rebuilt from scratch.
   happens to be open. A push would reach a session running with the tab closed, but risks being noisy for
   something this minor — worth watching whether the in-app version already feels sufficient before adding it.
 - **Schedule-entry task links (Zeitplan-Eintrag-Aufgaben-Verknüpfung) in the API (Sanctum).** Same gap as
-  the category link and task groups above — `ScheduleEventController` has no way to read or set
-  `linked_task_id`. Worth doing together with those rather than as three separate passes.
+  the category link and task groups above — `ScheduleEventController` has no way to read or set an
+  entry's bound tasks (`schedule_event_task_links`). Worth doing together with those rather than as three
+  separate passes.
 - **Drag a task from the board straight onto a Zeitplan block** to link it, instead of only the form's
   search picker. Would need a cross-page gesture (board and Zeitplan are different routes today), which
   felt like more scope than the first pass needed — the search picker covers the same outcome in a
   couple of taps.
+- **Manually reordering an entry's bound tasks.** Same limitation as the category's own pinned-tasks
+  picker — order is currently just pick order (each new one goes to the end), with add/remove but no
+  drag. A small reorder control would let someone fix "I picked these in the wrong order" without
+  unpinning and re-picking.
 - **A hint in the event form when its category already has its own task link.** A Runde-4 simulation for
   the per-event task link (Zeitplan-Eintrag-Aufgaben-Verknüpfung) never discovered it — not because it was
   hard to find, but because the coarser category-level link already satisfied the whole scenario, so the

@@ -12,10 +12,11 @@ use App\Models\User;
  * Picks "what to work on" for a Pomodoro work session. Tiered:
  *
  *   1. Notfallmodus       → the active emergency project's next step, if any.
- *   2. Event task link    → the running session's *own* schedule entry has a
- *                            task bound directly to it (ScheduleEvent::
- *                            linked_task_id) — more specific than its
- *                            category's link, so it wins for this occurrence.
+ *   2. Event task link    → the running session's *own* schedule entry has one
+ *                            or more tasks bound directly to it (ScheduleEvent
+ *                            ::linkedTasks) — more specific than its
+ *                            category's link, so the next open one wins for
+ *                            this occurrence.
  *   3. Category link      → the running session's category's linked
  *                            project/group/pinned tasks/Agenda entry/generic
  *                            homework nudge/free text, if the category has one

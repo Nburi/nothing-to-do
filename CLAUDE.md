@@ -764,49 +764,61 @@ the message.
 
 ### Zeitplan-Eintrag-Aufgaben-Verknüpfung (built)
 
-A companion to the category link above, one level more specific: **`schedule_events.linked_task_id`**
-(nullable FK → `tasks`, `nullOnDelete`) binds one task to **one occurrence** — never to its
-`EventTemplate`, since a recurring Wednesday slot is about something different every week. Works on
-either kind of entry (Termin or Kategorie block); only a Pomodoro-enabled Kategorie block's link feeds
-the focus timer, but a plain Termin still carries the link purely for visibility/navigation, since it
-can never run a Pomodoro session at all under this app's architecture.
+A companion to the category link above, one level more specific: an entry can bind **several** tasks to
+**one occurrence** specifically — never to its `EventTemplate`, since a recurring Wednesday slot is about
+something different every week. Works on either kind of entry (Termin or Kategorie block); only a
+Pomodoro-enabled Kategorie block's link feeds the focus timer, but a plain Termin still carries the link
+purely for visibility/navigation, since it can never run a Pomodoro session at all under this app's
+architecture. Shipped first as a single `linked_task_id` FK, then revised in the same session to several
+— **`schedule_event_task_links`** (`schedule_event_id, task_id, sort_order`, cascade both ways) is the
+same shape as `category_task_links` for a category's own "Bestimmte Aufgaben" source, and
+`ScheduleEvent::linkedTasks()`/`nextLinkedTask()`/`linkedTasksRemainingCount()` mirror
+`EventCategory::pinnedTasks()` and friends directly.
 
-- **`TaskSuggestor::suggest()`** gained a `?Task $linkedTask` parameter and a new top tier — right after
-  Notfallmodus, *before* the category-link tier — so an event's own link always wins over its category's
-  when both exist for the same session. Falls through (to the category tier, then the generic ones) the
-  moment the linked task is completed, exactly the same "never a dead suggestion" contract as every other
-  tier. `TaskBoard::linkedSourceNotice()` mirrors this precedence: the event's own linked task (if any) is
-  checked first and is authoritative for that occurrence — its own "X ist erledigt." notice, not a
-  fallback to the category's.
-- **The picker** (`ManagesSchedule::eventTaskCandidates()`, in `schedule-event-form.blade.php`) is
-  deliberately anchored to **the entry's own `eventDate`, not "today"** — a Termin planned for three
-  weeks out needs candidates relative to *its* date, not the day it happens to be edited on. Same
-  deadline-within-2-days-or-Wunschtermin-on-that-day default as the category picker
-  (`Settings::linkTaskCandidates()`), typing a search overrides it the same way. **Never offered while
-  "Wiederholen" is checked** (`@unless ($eventRecurring)`) — that path creates a template, which has no
-  single date to anchor a task link to; unchecking it again brings back whatever was already picked
-  (the property is never cleared, only hidden), so toggling recurring on and off costs nothing.
-  `saveEventForm()` re-checks ownership of `eventLinkedTaskId` immediately before persisting (not just at
-  pick time in `setEventLinkedTask()`) — the property itself isn't `wire:model`-bound to anything, but a
-  crafted request could still tamper with it, and this is the point it actually reaches the database.
-- **Settings-lesson applied from the start:** both the "+ Aufgabe verknüpfen" trigger and the linked
-  chip's remove button carry an explicit `aria-label` and real visible CTA text from day one — the
-  category-link feature's entry point shipped without one, went undiscovered by a Runde-4 simulation, and
-  had to be fixed after the fact (see that section above). Verified this time by reading the same
-  accessibility tree that caught the earlier miss.
+- **`TaskSuggestor::suggest()` itself never changed** for this revision — it still takes a single
+  `?Task $linkedTask` as its top tier (right after Notfallmodus, before the category-link tier). Only the
+  *source* TaskBoard passes changed: `$session->linkedTask` (the old FK) became `$session->nextLinkedTask()`
+  — the first still-open bound task in pick order, skipping completed ones without unpinning them, same
+  rule as the category's pinned-tasks tier. `TaskBoard::linkedSourceNotice()` mirrors the same precedence
+  (event link checked before category) but now waits for the *last* bound task, not the first —
+  `linkedTasksRemainingCount() === 0` — firing "Die gebundenen Aufgaben sind fertig." once the whole list
+  is cleared, exactly the "list emptied" shape the category's own pinned-tasks notice already had.
+- **The picker** (`ManagesSchedule::eventTaskCandidates()`, in `schedule-event-form.blade.php`) stays
+  anchored to **the entry's own `eventDate`, not "today"** (a Termin planned for three weeks out needs
+  candidates relative to *its* date), and now also excludes whatever's already picked
+  (`whereNotIn('id', $pickedIds)`) so a re-opened search never offers a duplicate. **Never offered while
+  "Wiederholen" is checked** — a recurring block's template has no single date to anchor a link to.
+  `saveEventForm()` re-checks ownership of every id in `eventLinkedTasks` immediately before persisting
+  (not just at pick time in `toggleEventLinkedTask()`), then `sync()`s the whole ordered list onto the
+  (possibly just-created) event in one call — pick order becomes pivot `sort_order`, i.e. suggestion
+  order. The picked set lives in **form state, not the database**, until Save — same as every other field
+  on this form (title, date, colour…), and deliberately unlike the category link sheet's immediate-save
+  convention, since only this form already has its own Speichern/Abbrechen semantics for everything else.
+- **Settings-lesson applied from the start:** the "+ Aufgabe verknüpfen" trigger and each picked chip's
+  own remove button carry an explicit `aria-label` (naming the specific task on remove) and real visible
+  CTA text — the category-link feature's entry point shipped without one, went undiscovered by a Runde-4
+  simulation, and had to be fixed after the fact (see that section above). Verified here by reading the
+  same accessibility tree that caught the earlier miss, both for the single-task and the revised
+  multi-task version.
 - **Signature moment — tap once to peek, tap again to go.** A linked block's icon
   (`schedule-event.blade.php`) sits in the title row next to the (unrelated, purely decorative) Pomodoro
-  clock icon. A tap swaps the block's own title for the linked task's title for **2 seconds**
+  clock icon. A tap swaps the block's own title for the **next open** linked task's title for **2 seconds**
   (`x-data="{ revealed, _t }"` on the title `<p>`, `x-text` ternary between the two, both strings passed
   through `@js()` — never raw Blade interpolation into a JS expression, since a task title can contain
   quotes) — the same "armed window" shape as this app's destructive double-click confirms, repurposed here
-  for a reveal instead of a delete. A second tap *within* that window calls
-  `ManagesSchedule::navigateToLinkedTask()`, which `redirectRoute('app', ['task' => $id], navigate: true)`s
-  straight to the board — `TaskBoard::mount()` reads `?task=` the same best-effort way
-  `Schedule::mount()` already reads `?event=` (silently ignored if stale/foreign/missing, never a broken
-  page load) and opens the task's edit sheet on arrival via the existing `ManagesTasks::startEdit()`. No
-  tap ever partially navigates — `@pointerdown.stop`/`@click.stop` on the icon keep both the reveal and the
-  eventual redirect fully isolated from the card's own drag-move gesture underneath it.
+  for a reveal instead of a delete. A small "+N" badge (outside the revealed/not-revealed swap, so it stays
+  visible either way) names how many *other* open tasks are also bound, computed from one relation load
+  (`$event->linkedTasks`, filtered/counted in PHP) rather than a query per helper. A second tap *within*
+  that window calls `ManagesSchedule::navigateToLinkedTask()`, which resolves the event's own
+  `nextLinkedTask()` (the same one just revealed, not "whichever was pinned first") and
+  `redirectRoute('app', ['task' => $id], navigate: true)`s straight to the board —
+  `TaskBoard::mount()` reads `?task=` the same best-effort way `Schedule::mount()` already reads `?event=`
+  (silently ignored if stale/foreign/missing, never a broken page load) and opens the task's edit sheet on
+  arrival via the existing `ManagesTasks::startEdit()`. No tap ever partially navigates —
+  `@pointerdown.stop`/`@click.stop` on the icon keep both the reveal and the eventual redirect fully
+  isolated from the card's own drag-move gesture underneath it. Completing the revealed task live-advances
+  the icon to the next one and drops the "+N" count on the very next render — verified directly (not just
+  by test) by completing a bound task mid-session and watching the block's own accessible name change.
 
 ### Wochenplan (built)
 

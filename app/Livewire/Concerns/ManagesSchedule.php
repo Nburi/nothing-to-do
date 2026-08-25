@@ -47,11 +47,12 @@ trait ManagesSchedule
 
     public bool $eventSaveAsTemplate = false;
 
-    /** The task bound to this one occurrence, if any — set via setEventLinkedTask()/clearEventLinkedTask(). */
-    public ?int $eventLinkedTaskId = null;
-
-    /** Cached display title for eventLinkedTaskId, so the form doesn't need a query just to show what's picked. */
-    public string $eventLinkedTaskTitle = '';
+    /**
+     * Tasks bound to this one occurrence, as [{id, title}] pairs in pick order — synced to the
+     * schedule_event_task_links pivot on save. A plain array (not a Collection): Livewire public
+     * properties need a simple serialisable type.
+     */
+    public array $eventLinkedTasks = [];
 
     public string $eventTaskSearch = '';
 
@@ -92,7 +93,7 @@ trait ManagesSchedule
         $this->reset([
             'editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
-            'eventLinkedTaskId', 'eventLinkedTaskTitle', 'eventTaskSearch',
+            'eventLinkedTasks', 'eventTaskSearch',
         ]);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
@@ -118,8 +119,10 @@ trait ManagesSchedule
         $this->eventRecurring = false;
         $this->eventDays = [];
         $this->eventSaveAsTemplate = false;
-        $this->eventLinkedTaskId = $event->linked_task_id;
-        $this->eventLinkedTaskTitle = $event->linkedTask?->title ?? '';
+        // All bound tasks, including already-completed ones — the form is where the full set is
+        // managed, so nothing pinned should silently vanish from view here (mirrors the category
+        // link sheet's own "AUSGEWÄHLT" list, which shows the same regardless of completion).
+        $this->eventLinkedTasks = $event->linkedTasks->map(fn (Task $t) => ['id' => $t->id, 'title' => $t->title])->all();
         $this->eventTaskSearch = '';
         $this->showEventForm = true;
     }
@@ -132,7 +135,8 @@ trait ManagesSchedule
     public function eventTaskCandidates(): Collection
     {
         $user = auth()->user();
-        $query = Task::forUser($user)->active()->onBoard();
+        $pickedIds = collect($this->eventLinkedTasks)->pluck('id')->all();
+        $query = Task::forUser($user)->active()->onBoard()->whereNotIn('id', $pickedIds);
 
         if ($this->eventTaskSearch !== '') {
             return $query->where('title', 'like', '%'.$this->eventTaskSearch.'%')->boardOrdered()->get();
@@ -153,19 +157,21 @@ trait ManagesSchedule
         })->boardOrdered()->get();
     }
 
-    public function setEventLinkedTask(int $taskId): void
+    /** Adds or removes one task from the form's picked set — ownership-checked on add, a plain array edit on remove. */
+    public function toggleEventLinkedTask(int $taskId): void
     {
+        $index = collect($this->eventLinkedTasks)->search(fn (array $t) => $t['id'] === $taskId);
+
+        if ($index !== false) {
+            unset($this->eventLinkedTasks[$index]);
+            $this->eventLinkedTasks = array_values($this->eventLinkedTasks);
+
+            return;
+        }
+
         $task = auth()->user()->tasks()->findOrFail($taskId);
-
-        $this->eventLinkedTaskId = $task->id;
-        $this->eventLinkedTaskTitle = $task->title;
+        $this->eventLinkedTasks[] = ['id' => $task->id, 'title' => $task->title];
         $this->eventTaskSearch = '';
-    }
-
-    public function clearEventLinkedTask(): void
-    {
-        $this->eventLinkedTaskId = null;
-        $this->eventLinkedTaskTitle = '';
     }
 
     public function saveEventForm(): void
@@ -202,11 +208,15 @@ trait ManagesSchedule
             $color = $data['eventColor'];
         }
 
-        // Re-checked here, not just at pick time (setEventLinkedTask already scopes by owner,
-        // but eventLinkedTaskId is a plain property and this is the point it actually persists).
-        $linkedTaskId = $this->eventLinkedTaskId !== null && auth()->user()->tasks()->whereKey($this->eventLinkedTaskId)->exists()
-            ? $this->eventLinkedTaskId
-            : null;
+        // Re-checked here, not just at pick time (toggleEventLinkedTask already scopes by owner,
+        // but eventLinkedTasks is a plain property and this is the point it actually persists).
+        // Order is preserved — that order becomes the pivot's sort_order, i.e. suggestion order.
+        $linkedTasksSync = collect($this->eventLinkedTasks)
+            ->pluck('id')
+            ->filter(fn (int $id) => auth()->user()->tasks()->whereKey($id)->exists())
+            ->values()
+            ->mapWithKeys(fn (int $id, int $index) => [$id => ['sort_order' => $index]])
+            ->all();
 
         if ($this->editingEventId !== null) {
             $event = $this->userEvent($this->editingEventId);
@@ -220,7 +230,6 @@ trait ManagesSchedule
 
             $event->update($event->withNotifiedReset([
                 'category_id' => $categoryId,
-                'linked_task_id' => $linkedTaskId,
                 'title' => $title,
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
@@ -228,6 +237,7 @@ trait ManagesSchedule
                 'color' => $color,
                 'template_id' => $movedFromSeries ? null : $event->template_id,
             ]));
+            $event->linkedTasks()->sync($linkedTasksSync);
 
             if ($movedFromSeries) {
                 auth()->user()->scheduleEvents()->create([
@@ -284,15 +294,15 @@ trait ManagesSchedule
                 ]);
             }
 
-            auth()->user()->scheduleEvents()->create([
+            $event = auth()->user()->scheduleEvents()->create([
                 'category_id' => $categoryId,
-                'linked_task_id' => $linkedTaskId,
                 'title' => $title,
                 'color' => $color,
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
             ]);
+            $event->linkedTasks()->sync($linkedTasksSync);
         }
 
         $this->cancelEventForm();
@@ -303,25 +313,27 @@ trait ManagesSchedule
         $this->reset([
             'showEventForm', 'editingEventId', 'eventTitle',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
-            'eventLinkedTaskId', 'eventLinkedTaskTitle', 'eventTaskSearch',
+            'eventLinkedTasks', 'eventTaskSearch',
         ]);
     }
 
     /**
      * Signature moment's second tap (schedule-event.blade.php): sends the user
-     * straight to the linked task's edit sheet on the board, mirroring how the
-     * "Zeitplan" header badge deep-links back with ?event= (see
-     * Schedule::mount()) — TaskBoard::mount() reads ?task= the same way.
+     * straight to the *next open* linked task's edit sheet on the board — the
+     * same one the tap's reveal just showed — mirroring how the "Zeitplan"
+     * header badge deep-links back with ?event= (see Schedule::mount()) —
+     * TaskBoard::mount() reads ?task= the same way.
      */
     public function navigateToLinkedTask(int $eventId): void
     {
         $event = $this->userEvent($eventId);
+        $task = $event->nextLinkedTask();
 
-        if ($event->linked_task_id === null) {
+        if ($task === null) {
             return;
         }
 
-        $this->redirectRoute('app', ['task' => $event->linked_task_id], navigate: true);
+        $this->redirectRoute('app', ['task' => $task->id], navigate: true);
     }
 
     /** Delete a one-off; cancel (tombstone) a recurring occurrence so it can't regenerate. */
