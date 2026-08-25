@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\AppModules;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -30,6 +31,7 @@ use Laravel\Sanctum\HasApiTokens;
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
     'notify_streak_risk', 'streak_risk_sent_on',
     'header_badges',
+    'hidden_modules', 'default_page',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -55,6 +57,7 @@ class User extends Authenticatable
         'notify_daily_reminder' => false,
         'daily_reminder_time' => '19:00',
         'notify_streak_risk' => false,
+        'default_page' => 'app',
     ];
 
     /** @return HasMany<Task, $this> */
@@ -355,6 +358,25 @@ class User extends Authenticatable
     public const STREAK_RISK_DUE_TIME = '21:00';
 
     /**
+     * Which route opens on '/' and after login — the app's own equivalent of
+     * a homepage setting. Self-healing: if the stored choice no longer
+     * resolves to anything visible (the module got hidden after it was
+     * picked), this quietly falls back to the board rather than sending the
+     * user to a page they can't reach through the UI anymore. See
+     * App\Services\AppModules.
+     */
+    public function defaultLandingRouteName(): string
+    {
+        $page = $this->default_page ?? 'app';
+
+        if ($page === 'app' || ! AppModules::isValidLandingPage($this, $page)) {
+            return 'app';
+        }
+
+        return AppModules::CATALOG[$page]['route'];
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -383,6 +405,7 @@ class User extends Authenticatable
             'notify_streak_risk' => 'boolean',
             'streak_risk_sent_on' => 'date',
             'header_badges' => 'array',
+            'hidden_modules' => 'array',
         ];
     }
 }

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return auth()->check()
-        ? redirect()->route('app')
+        ? redirect()->route(auth()->user()->defaultLandingRouteName())
         : view('welcome');
 })->name('home');
 
@@ -108,8 +108,14 @@ Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
     ->middleware('auth')
     ->name('docs.api');
 
-// Breeze posts login/registration through to route('dashboard'); send it to the board.
-Route::redirect('/dashboard', '/app')->name('dashboard');
+// Breeze posts login/registration through to route('dashboard'); send it to
+// whichever page the user has chosen as their default landing page (see
+// User::defaultLandingRouteName() / App\Services\AppModules), falling back to
+// the board for a guest hitting this URL directly (matches the previous
+// static redirect's behavior — /app itself bounces a guest on to login).
+Route::get('/dashboard', function () {
+    return redirect()->route(auth()->check() ? auth()->user()->defaultLandingRouteName() : 'app');
+})->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

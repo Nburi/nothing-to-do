@@ -7,6 +7,7 @@ use App\Models\EventCategory;
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\AppModules;
 use App\Services\HeaderBadges;
 use App\Services\PushNotifier;
 use Illuminate\Database\Eloquent\Builder;
@@ -73,6 +74,9 @@ class Settings extends Component
 
     public string $linkTaskSearch = '';
 
+    // Module visibility & default landing page
+    public string $defaultPage = 'app';
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -95,6 +99,7 @@ class Settings extends Component
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+        $this->defaultPage = $user->default_page ?? 'app';
     }
 
     public function save(): void
@@ -216,6 +221,79 @@ class Settings extends Component
         $user = auth()->user();
         $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+    }
+
+    // ── Module visibility & default landing page ────────────────────────
+
+    /**
+     * The hideable catalog, each row carrying whether the user currently has
+     * it hidden — Settings' "Module" card. See App\Services\AppModules.
+     *
+     * @return list<array{key: string, label: string, description: string, hidden: bool}>
+     */
+    #[Computed]
+    public function moduleRows(): array
+    {
+        return AppModules::rowsFor(auth()->user());
+    }
+
+    /**
+     * Every page currently choosable as the default landing page — recomputed
+     * fresh each render so a module hidden a moment ago in the same request
+     * (see below) is already reflected here.
+     *
+     * @return list<array{key: string, label: string}>
+     */
+    #[Computed]
+    public function landingPageOptions(): array
+    {
+        return AppModules::landingPageOptions(auth()->user());
+    }
+
+    /**
+     * Hides/reveals one module. If the module being hidden is also the
+     * user's current default landing page, that choice is reset to the
+     * board in the same write — a hidden page must never stay selected as
+     * "where the app opens", or the user would land somewhere the nav can no
+     * longer get them back to (self-healing, mirroring
+     * User::defaultLandingRouteName()'s own fallback for the read side).
+     */
+    public function toggleModule(string $key): void
+    {
+        if (! array_key_exists($key, AppModules::CATALOG)) {
+            return;
+        }
+
+        $user = auth()->user();
+        $hidden = AppModules::hiddenKeys($user);
+        $nowHidden = ! in_array($key, $hidden, true);
+
+        $hidden = $nowHidden
+            ? [...$hidden, $key]
+            : array_values(array_diff($hidden, [$key]));
+
+        $updates = ['hidden_modules' => $hidden];
+
+        if ($nowHidden && $this->defaultPage === $key) {
+            $updates['default_page'] = 'app';
+            $this->defaultPage = 'app';
+        }
+
+        $user->update($updates);
+        unset($this->moduleRows, $this->landingPageOptions);
+    }
+
+    /** Which page opens on '/' and right after login — only settable to something currently visible. */
+    public function setDefaultPage(string $key): void
+    {
+        $user = auth()->user();
+
+        if (! AppModules::isValidLandingPage($user, $key)) {
+            return;
+        }
+
+        $this->defaultPage = $key;
+        $user->update(['default_page' => $key]);
     }
 
     // ── Header badges ─────────────────────────────────────────────────

@@ -93,9 +93,29 @@ class HeaderBadges
     }
 
     /**
+     * Which App\Services\AppModules key a badge's target page corresponds
+     * to — a badge whose page the user has hidden in Settings' "Module" card
+     * shouldn't keep pointing at it from the header, since that page is no
+     * longer reachable through the nav either. 'today'/'streak' point at
+     * 'app'/'progress' but aren't listed: 'app' (the board) is never
+     * hideable, and hiding 'streak' independently of the Fortschritt page
+     * itself isn't offered — it's judged as belonging with the badge picker,
+     * not the module list.
+     *
+     * @var array<string, string>
+     */
+    private const MODULE_FOR_BADGE = [
+        'agenda' => 'agenda',
+        'schedule' => 'schedule',
+        'emergency' => 'emergency',
+    ];
+
+    /**
      * The enabled rows, in order, resolved to header content — a row is
      * dropped entirely (not shown as empty/zero) when its resolver finds
-     * nothing to point at right now.
+     * nothing to point at right now, or when the user has hidden the module
+     * it links to (see MODULE_FOR_BADGE — Notfall is the one exception,
+     * since it must stay reachable while actually active).
      *
      * @return list<array{key: string, label: string, route: string, tone: string, icon: string, text: string, title: string, href: string}>
      */
@@ -105,6 +125,15 @@ class HeaderBadges
 
         foreach (self::preferenceRowsFor($user) as $row) {
             if (! $row['enabled']) {
+                continue;
+            }
+
+            $moduleKey = self::MODULE_FOR_BADGE[$row['key']] ?? null;
+
+            if ($moduleKey !== null
+                && ! AppModules::isVisible($user, $moduleKey)
+                && ! ($moduleKey === 'emergency' && $user->isInEmergencyMode())
+            ) {
                 continue;
             }
 

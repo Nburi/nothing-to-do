@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AgendaEntry;
 use App\Models\Task;
+use App\Services\AppModules;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -80,6 +81,31 @@ class QuickCapture extends Component
      */
     public ?array $captured = null;
 
+    /**
+     * TARGETS filtered to modules the user hasn't hidden (Settings' "Module"
+     * card) — 'craft' and 'agenda' map to their App\Services\AppModules key;
+     * every other target is core Board functionality and always offered.
+     * Hiding a module has to remove its capture entry point too, or "hide
+     * everything except Agenda" would stay half-done.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function availableTargets(): array
+    {
+        $user = auth()->user();
+
+        return array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
+            $moduleKey = match ($target) {
+                'craft' => 'crafts',
+                'agenda' => 'agenda',
+                default => null,
+            };
+
+            return $moduleKey === null || AppModules::isVisible($user, $moduleKey);
+        }));
+    }
+
     /** Human label per target — used for the chips and the confirmation line. */
     public static function labelFor(string $target): string
     {
@@ -140,8 +166,8 @@ class QuickCapture extends Component
 
     public function setTarget(string $target): void
     {
-        if (! in_array($target, self::TARGETS, true)) {
-            return; // a target that isn't ours is simply ignored, never trusted
+        if (! in_array($target, $this->availableTargets, true)) {
+            return; // a target that isn't ours — or that's currently hidden — is simply ignored, never trusted
         }
 
         $this->target = $target;
@@ -194,7 +220,7 @@ class QuickCapture extends Component
         $this->reset(['title', 'target', 'deadline', 'dueDate', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
 
-        if ($target !== null && in_array($target, self::TARGETS, true)) {
+        if ($target !== null && in_array($target, $this->availableTargets, true)) {
             $this->target = $target;
         }
 
@@ -227,7 +253,7 @@ class QuickCapture extends Component
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'target' => ['required', Rule::in(self::TARGETS)],
+            'target' => ['required', Rule::in($this->availableTargets)],
             'deadline' => ['nullable', 'date'],
             'dueDate' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
