@@ -60,4 +60,9 @@ class AgendaEntryFactory extends Factory
             fn (AgendaEntry $entry) => $entry->completedBy()->syncWithoutDetaching([$user->id])
         );
     }
+
+    public function duration(int $minutes): static
+    {
+        return $this->state(['duration_minutes' => $minutes]);
+    }
 }

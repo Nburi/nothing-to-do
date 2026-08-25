@@ -40,6 +40,9 @@ class Settings extends Component
     // Hausaufgaben-Vorschau im Dashboard
     public bool $homeworkPreviewEnabled = true;
 
+    // Planer (automatische Wochenplanung)
+    public bool $plannerEnabled = false;
+
     // Timezone
     public float $timezoneOffset = 0;
 
@@ -86,6 +89,7 @@ class Settings extends Component
         $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
         $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
         $this->homeworkPreviewEnabled = $user->homework_preview_enabled ?? true;
+        $this->plannerEnabled = (bool) $user->planner_enabled;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
         $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
@@ -303,6 +307,16 @@ class Settings extends Component
 
         $user->update(['homework_preview_enabled' => $enabled]);
         $this->homeworkPreviewEnabled = $enabled;
+    }
+
+    /** Default off (see CLAUDE.md) — an automatic planner is exactly the kind of thing that can feel intrusive unasked-for, so it opts in rather than lighting up for everyone. */
+    public function togglePlannerEnabled(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->planner_enabled;
+
+        $user->update(['planner_enabled' => $enabled]);
+        $this->plannerEnabled = $enabled;
     }
 
     public function toggleNotifyEventStart(): void

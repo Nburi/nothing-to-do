@@ -7,6 +7,7 @@ use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
 use App\Livewire\GroupPage;
 use App\Livewire\JoinAgendaSpace;
+use App\Livewire\Planner;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
 use App\Livewire\Progress;
@@ -70,6 +71,10 @@ Route::get('/app/schedule', Schedule::class)
 Route::get('/app/weekplan', WeekPlan::class)
     ->middleware('auth')
     ->name('weekplan');
+
+Route::get('/app/planner', Planner::class)
+    ->middleware('auth')
+    ->name('planner');
 
 Route::get('/app/prepare', PrepareTomorrow::class)
     ->middleware('auth')

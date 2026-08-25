@@ -100,4 +100,9 @@ class TaskFactory extends Factory
     {
         return $this->state(['due_date' => $date]);
     }
+
+    public function duration(int $minutes): static
+    {
+        return $this->state(['duration_minutes' => $minutes]);
+    }
 }

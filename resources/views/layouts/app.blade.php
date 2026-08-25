@@ -68,7 +68,7 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'agenda', 'emergency', 'crafts']);
+                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'planner', 'agenda', 'emergency', 'crafts']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
                         @endphp
@@ -153,6 +153,21 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                                     Wochenplan &amp; Ferien
                                 </a>
+                                {{-- Off by default (users.planner_enabled) — the pill itself only
+                                     ever renders once someone has opted in via Settings, so a
+                                     visit to /app/planner while it's off (Planner::mount()) and the
+                                     total absence of this entry from a fresh account's "Mehr" menu
+                                     are the same zero-footprint story. --}}
+                                @if (auth()->user()->planner_enabled)
+                                    <a href="{{ route('planner') }}" wire:navigate @class([
+                                        'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                        'bg-paper font-medium text-ink' => request()->routeIs('planner'),
+                                        'text-ink-soft hover:text-ink' => !request()->routeIs('planner'),
+                                    ]) @if(request()->routeIs('planner')) aria-current="page" @endif>
+                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5"/></svg>
+                                        Planer
+                                    </a>
+                                @endif
                                 <a href="{{ route('agenda') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-paper font-medium text-ink' => request()->routeIs('agenda'),

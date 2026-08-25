@@ -26,6 +26,8 @@ trait ManagesTasks
 
     public ?string $editDueDate = null;
 
+    public ?int $editDuration = null;
+
     public string $editNotes = '';
 
     public string $editList = 'inbox';
@@ -117,6 +119,7 @@ trait ManagesTasks
         $this->editTitle = $task->title;
         $this->editDeadline = $task->deadline?->toDateString();
         $this->editDueDate = $task->due_date?->toDateString();
+        $this->editDuration = $task->duration_minutes;
         $this->editNotes = (string) ($task->notes ?? '');
         $this->editList = $task->list;
         $this->editProjectId = $task->project_id;
@@ -135,6 +138,7 @@ trait ManagesTasks
             'editTitle' => ['required', 'string', 'max:255'],
             'editDeadline' => ['nullable', 'date'],
             'editDueDate' => ['nullable', 'date'],
+            'editDuration' => ['nullable', 'integer', 'min:1', 'max:600'],
             'editNotes' => ['nullable', 'string', 'max:5000'],
             'editList' => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
@@ -155,6 +159,7 @@ trait ManagesTasks
             'title' => $data['editTitle'],
             'deadline' => $data['editDeadline'] ?: null,
             'due_date' => $data['editDueDate'] ?: null,
+            'duration_minutes' => $data['editDuration'] ?: null,
             'notes' => $notes !== '' ? $notes : null,
         ];
 
@@ -223,9 +228,24 @@ trait ManagesTasks
         ]);
     }
 
+    /**
+     * Quick-set the duration estimate from the card face's ghost/badge
+     * popover — same bypass-the-edit-sheet shape as quickSetDates(). Never
+     * required (a null value clears the estimate back to "unset"), and the
+     * card face is the warning: an unset estimate keeps showing the ghost.
+     */
+    public function quickSetDuration(int $id, ?int $minutes): void
+    {
+        if ($minutes !== null && ($minutes < 1 || $minutes > 600)) {
+            return;
+        }
+
+        $this->userTask($id)->update(['duration_minutes' => $minutes]);
+    }
+
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editNotes', 'editList', 'editProjectId', 'editGroupId']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editDuration', 'editNotes', 'editList', 'editProjectId', 'editGroupId']);
     }
 
     public function deleteTask(int $id): void

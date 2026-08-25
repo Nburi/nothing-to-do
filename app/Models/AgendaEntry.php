@@ -34,6 +34,7 @@ class AgendaEntry extends Model
         'notes',
         'date',
         'agenda_space_id',
+        'duration_minutes',
     ];
 
     /**
@@ -47,6 +48,7 @@ class AgendaEntry extends Model
     {
         return [
             'date' => 'date',
+            'duration_minutes' => 'integer',
         ];
     }
 

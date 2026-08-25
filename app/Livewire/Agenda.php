@@ -52,6 +52,9 @@ class Agenda extends Component
 
     public string $formNotes = '';
 
+    /** Homework only — the exam pill never shows this field (see agenda-entry-form.blade.php). */
+    public ?int $formDuration = null;
+
     /** This user's own note on the entry — only ever meaningful when formSpaceId is set; see saveEntry(). */
     public string $formPrivateNotes = '';
 
@@ -293,6 +296,7 @@ class Agenda extends Component
         $this->formTitle = '';
         $this->formDate = '';
         $this->formNotes = '';
+        $this->formDuration = null;
         $this->formPrivateNotes = '';
         $this->formSpaceId = $this->defaultFormSpaceId();
         $this->resetValidation();
@@ -343,6 +347,7 @@ class Agenda extends Component
         $this->formTitle = $entry->title;
         $this->formDate = $entry->date->toDateString();
         $this->formNotes = (string) ($entry->notes ?? '');
+        $this->formDuration = $entry->duration_minutes;
         $this->formPrivateNotes = (string) ($entry->privateNoteFor(auth()->user()) ?? '');
         $this->formSpaceId = $entry->agenda_space_id;
         $this->resetValidation();
@@ -367,6 +372,7 @@ class Agenda extends Component
             'formSubject' => ['required', 'string', 'max:100'],
             'formTitle' => ['required', 'string', 'max:255'],
             'formDate' => ['required', 'date'],
+            'formDuration' => ['nullable', 'integer', 'min:1', 'max:600'],
             'formNotes' => ['nullable', 'string', 'max:2000'],
             // Only ever surfaced in the form while formSpaceId is set (a
             // private entry has exactly one viewer already), but validated
@@ -382,6 +388,10 @@ class Agenda extends Component
             'subject' => $data['formSubject'],
             'title' => $data['formTitle'],
             'date' => $data['formDate'],
+            // Only meaningful for homework — the field isn't even shown for an
+            // exam, but guard explicitly in case the pill was switched without
+            // reopening the form (formDuration wouldn't auto-clear then).
+            'duration_minutes' => $data['formType'] === 'homework' ? $data['formDuration'] : null,
             'notes' => trim($data['formNotes'] ?? '') !== '' ? trim($data['formNotes']) : null,
             'agenda_space_id' => $data['formSpaceId'],
         ];

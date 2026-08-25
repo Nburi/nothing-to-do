@@ -111,7 +111,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (682 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (868 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -819,6 +819,131 @@ same shape as `category_task_links` for a category's own "Bestimmte Aufgaben" so
   isolated from the card's own drag-move gesture underneath it. Completing the revealed task live-advances
   the icon to the next one and drops the "+N" count on the very next render — verified directly (not just
   by test) by completing a bound task mid-session and watching the block's own accessible name change.
+
+### Planer (built)
+
+An automatic scheduler, on top of the manual linking above: distributes open Tasks/Todos/Agenda
+homework into upcoming Pomodoro-enabled work-blocks, so it's visible well before a deadline sneaks
+up whether everything will actually get done in time — the motivating scenario was a stuffed
+competitive-sport schedule where a day silently assumed free turns out to already be gone. **Default
+off** (`users.planner_enabled`, Settings' Planer card, immediate-save toggle same shape as Hausaufgaben-
+Vorschau) — an automatic planner is exactly the kind of thing that can feel intrusive to someone who
+didn't ask for it. Off = zero footprint everywhere: `WorkPlanner`'s every public method no-ops on the
+flag, the `/app/planner` route bounces back to the board (`Planner::mount()`), and the nav pill in the
+"Mehr" dropdown simply isn't rendered.
+
+- **`App\Services\WorkPlanner`** — stateless (all static methods, like `TaskSuggestor`/`PomodoroCycle`).
+  `HORIZON_DAYS = 14` (fixed, not user-configurable). Only Pomodoro-enabled category block occurrences
+  are ever eligible placement targets — never raw free/unscheduled time. A prior, unshipped prototype of
+  this whole app auto-filled *all* free time and felt oppressive; restricting to explicitly-designated
+  work-blocks is the deliberate fix, carried into this build from the start.
+  - **Eligible dated items**: board/project/group Tasks (`list` in `todos|tasks|projects` — never
+    `inbox`, untriaged is out of scope) with a `deadline`/`due_date`, plus open `AgendaEntry` homework
+    (never exams — there's no "work session" concept for an exam itself). A homework entry already
+    promoted into a live Task (via an earlier plan or `TaskBoard::promoteHomeworkToday()`) is represented
+    by that Task instead, never listed twice.
+  - **Effective deadline** — hard `deadline` minus a 2-day buffer (`DEADLINE_BUFFER_DAYS`), or the soft
+    `due_date`/homework date as-is; the earlier of the two when a task has both. The *raw*, unbuffered
+    date is carried alongside (`deadlineInfoForTask()` returns both) purely for display — showing a user
+    a deadline two days earlier than the one they actually typed in would just be confusing.
+  - **Undated backlog** (`fillerItems()`) — lowest priority, only ever used to top up a block's leftover
+    space once every dated item has had its chance (`urgency = 0` in the scoring below naturally achieves
+    this, no separate pass needed). Mirrors `TaskSuggestor`'s own tiering philosophy so this planner isn't
+    a second brain with different opinions than the rest of the app.
+  - **Scoring** (`score()`): `urgency × 1.0 + fit × 0.5 + (is_important ? 0.15 : 0)`. `urgency =
+    (HORIZON_DAYS − daysUntilDeadline) / HORIZON_DAYS`, measured from **today**, not from whichever block
+    is currently being filled — 0 at the edge of the horizon, 1.0 due today, climbs past 1 the more
+    overdue something already is. `fit = duration / remainingBlockMinutes` (only eligible if
+    `duration ≤ remaining`; never place something into a block on/after its own deadline). Blocks are
+    walked chronologically, greedily taking the best-scoring candidate that still fits, until full or
+    nothing left fits — this naturally front-loads urgent work into the earliest block that can take it.
+  - **Repair pass** (`attemptRescue()`) — bounded, not a general solver: for each still-unplaced dated
+    item, first try bumping a filler occupant out of an earlier eligible block (free, nothing to
+    relocate), then try bumping a genuinely *less* urgent dated occupant, relocating it to a later block
+    it still meets its own deadline in. Cleans up greedy's own local-optimum mistakes (a decent-fit,
+    less-urgent item can otherwise win a block's only slot before a more urgent item that needed it is
+    even considered); anything still unplaced after this is a genuine, honestly-reported conflict.
+  - **Persistence reuses `schedule_event_task_links`** (the Zeitplan-Eintrag-Aufgaben-Verknüpfung pivot
+    above) rather than a parallel data model — a `source` column (`'manual' | 'auto'`, default `'manual'`
+    for backfill) distinguishes a human pick from an algorithm one. `reconcile()` (passive) rebuilds only
+    the `'auto'` layer from scratch every time — auto placements are cheap and *not* sticky by design, so
+    there's no diffing old-vs-new, just replace them wholesale around whatever `'manual'` rows already
+    anchor a block. `regenerate()` ("Neu planen") is the one action that discards `'manual'` too — a full
+    wipe-and-replan, gated behind the app's usual armed double-click since it's the one thing here that
+    can throw away a deliberate choice (also literally the answer to "undo an accidental manual move").
+  - **Homework promotion** — `schedule_event_task_links.task_id` can only point at a `Task` (a real FK to
+    `tasks`), so a homework item is promoted into one (mirroring `promoteHomeworkToday()`'s shape: title
+    `"{subject}: {title}"`, `deadline` = the homework's date, `duration_minutes` carried over) at the
+    moment it's actually placed, not during scoring — so a plan that gets rearranged during the repair
+    pass never creates a task it then immediately discards.
+  - **`conflicts(User)`** — every dated item with no link (`'manual'` or `'auto'`) to a block on or before
+    its own effective deadline. A manual placement resolves a conflict exactly the same as an auto one,
+    even if the algorithm itself would never have chosen that slot — the check is "is it covered", not
+    "did the algorithm do it".
+- **Estimated duration — `tasks.duration_minutes` / `agenda_entries.duration_minutes`** (nullable,
+  minutes). Deliberately never required: Inbox tasks are never asked (out of scope for planning anyway),
+  and a missing estimate just falls back to a default *for WorkPlanner's own math only* (never written
+  back) — 10 min for `list=todos`, 25 min for `list=tasks`/`projects`/homework (`DEFAULT_DURATION`,
+  `DEFAULT_HOMEWORK_DURATION`). The UI affordance is the existing card-face quick-date ghost pattern,
+  reused rather than a new mechanism: a "~ Dauer" ghost placeholder shows on `task-card.blade.php`/
+  `task-card-mobile.blade.php` (deliberately not `project-task-card.blade.php` — that card has no
+  interactive popover mechanism at all yet, so duration entry there goes through the edit sheet only)
+  whenever `list ≠ inbox` and no estimate is set; tapping it opens a small popover with quick-pick chips
+  (10/15/25/45/60/90 min) calling `ManagesTasks::quickSetDuration()` — same bypass-the-edit-sheet shape as
+  `quickSetDates()`. The ghost *is* the "you're missing an estimate" warning; no separate indicator exists
+  because none is needed. Also editable from the full edit sheet (`editDuration`) and, for homework only,
+  the Agenda entry form (`Agenda::$formDuration`, hidden for exam entries — they're never planner-eligible).
+- **`App\Livewire\Planner`** (`/app/planner`, `route('planner')`) — deliberately narrow: only about which
+  task/todo/homework happens in which upcoming block, not a general schedule editor (no creating
+  Termine/categories, that stays on Zeitplan/Wochenplan). `use ManagesSchedule` directly, purely for
+  `moveEvent()`/`resizeEvent()` (repositioning a block, via the *existing* event-edit-sheet — see below,
+  not a grid drag) — reads/writes the exact same `ScheduleEvent` data as the real Zeitplan, so a block
+  moved here really is moved there too, no shadow schedule to drift out of sync.
+  - **`reconcile()` is called exactly once, from `mount()`, not from the `blocks()` computed property.**
+    This was a real bug caught by a failing test during development: a `#[Computed]` property re-evaluates
+    on every render, and Livewire re-renders the whole view after *every* action on this page — reconciling
+    from inside it meant an `unassignTask()` call was immediately undone by the very next render's reconcile
+    (the just-removed task was undated-backlog-eligible, so it snapped straight back into the vacated slot).
+    Once per full page load is enough to satisfy "never stale when you're actually looking at it" without
+    fighting the action the user just took. See `PlannerPageTest::test_unassign_task_removes_its_link`.
+  - The page is a **list of day sections and block cards**, not a percentage-positioned time grid like
+    Zeitplan/Wochenplan — so block repositioning reuses the *event-edit-sheet* (`startEditEvent()` +
+    `@include('livewire.partials.schedule-event-form')`), not the `scheduleEvent` Alpine drag-move
+    component (that component's math is grid-height-relative and doesn't apply to a list layout). This is
+    a deliberate, disclosed deviation from an earlier assumption that the grid gesture would be reused
+    verbatim — precise date/time editing fits a list better than an imprecise drag would have anyway.
+  - **`reorderBlock(blockId, taskIds)`** — drag & drop persistence, same "send the destination zone's full
+    id order" shape as `TaskBoard::reorder()`. Every id landing here (whether reordered in place or
+    dragged in from another block) is stamped `'manual'`, and any *other* block's link for that task is
+    dropped first, so a cross-block move can't leave it doubly-linked. `unassignTask()` is the small "×"
+    on each chip, a affordance beyond what was explicitly asked for but cheap and consistent with the
+    rest of the app's card-face quick-actions.
+  - **`window.plannerBlockSortable`** (`resources/js/app.js`) — one Sortable instance per block container,
+    all sharing one group name so a chip can move between blocks as well as reorder within one. Modelled
+    on `groupDropZone`'s idiom, not a verbatim reuse of it: nothing existing already does "drag between
+    several named containers with cross-container reassignment".
+  - The conflict banner is **always visible when non-empty** — this, not the drag-and-drop, is the
+    feature's actual point, per explicit direction during planning. When empty: a single calm line,
+    `"Alles passt bis {horizon end}."` — deliberately not styled `forest`/celebratory (that's reserved for
+    Fortschritt's streak system) or accompanied by any animation; the reward here is quiet certainty, not
+    a dopamine hit. Each conflict card offers exactly two resolutions — `"Zeitplan öffnen"` (link to
+    `route('schedule')`) and `"Deadline ändern"` (`route('app', ['task' => $id])` for a promoted item,
+    `route('agenda')` for an unpromoted homework one) — doing neither is itself a valid choice ("accept
+    it'll be late"), so there's deliberately no third button and no persisted "dismissed" state.
+- **Pomodoro integration** — `PomodoroSessionService::start()`/`transition()`/`skipBreak()` each call
+  `WorkPlanner::reconcile()` before their own logic, and `handleTick()` calls it once after a real phase
+  advance (outside the row lock, alongside the existing post-transaction notify calls; never for the
+  "freeze awaiting a continue" branch, since nothing about which block shows what changes there). This
+  keeps the linked-task shown on a live focus session accurate — start a session, and by the time you
+  press it the block's plan reflects anything that changed since it was last touched — without hooking
+  into every task/schedule mutation site across the app (task creation, random edits elsewhere): all four
+  of these are already single, centralized choke points this service owns, covering both the dashboard
+  and the API (`ScheduleEventController`) and the per-minute cron cascade (`AdvancePomodoroPhases`) for
+  free. Confirmed end-to-end (not just at the service level) in `PlannerPomodoroIntegrationTest`.
+- **Later, deliberately not built**: splitting a task across multiple blocks/sessions (a task always
+  occupies one contiguous slot in one block), a configurable horizon or scoring weights, auto-planning
+  exam entries, push notifications when a new conflict appears, a persisted "snooze this conflict" state,
+  drag-to-place directly from the conflict banner into a block (the two text links cover resolution).
 
 ### Wochenplan (built)
 
@@ -2000,6 +2125,24 @@ one test caused; it surfaces as "whichever test happens to be running when the t
 serve`/production) untouched. A CLI `-d memory_limit=…` flag on the `php artisan test` invocation does
 **not** reliably propagate to the process that actually runs PHPUnit; the `phpunit.xml` `<ini>` directive
 does, since PHPUnit applies it directly via `ini_set()` before running.
+
+### The local dev SQLite file can silently drift out of sync with the migration history
+**Symptom:** `php artisan migrate` for a brand-new migration fails with `no such table: agenda_entries` (a
+table created by a migration from weeks earlier) — but re-running the *full* migration history from
+scratch then fails the opposite way, `table "tasks" already exists`. `php artisan migrate:status` shows
+almost the entire history as "Pending" despite the tables visibly existing.
+**Cause:** `database/database.sqlite` is gitignored and PHPUnit's `RefreshDatabase` tests run against
+their own isolated database, never this file — so nothing in the normal edit/test/commit loop ever
+touches it, and it can quietly fall behind (or, as found once, turn out to hold an entirely different,
+much older schema — a `tasks` table with a `legacy_id` column, a `users` table with `list_labels`/
+`onboarded_at` instead of any of this app's actual columns, `migrations` rows referencing files that don't
+exist in `database/migrations/` at all — evidently a leftover from an earlier prototype of the app,
+sitting at the same path this project's `.env` points at). The `migrations` tracking table and the actual
+schema can end up telling two different stories, and diagnosing that mismatch is exactly what surfaced it.
+**Fix:** back up the suspect file (rename, don't delete, in case it's someone's real data — this is a
+"stop and ask" situation, not a silent auto-fix) and run a clean `php artisan migrate` to rebuild a
+schema that actually matches the current migration history. This has no bearing on the real test suite
+(which was green throughout) — it only affects manual/browser verification against the dev server.
 
 ### CSS classes applied only from JavaScript are silently purged out of the build
 **Symptom:** a rule written in `resources/css/app.css` simply does not exist at runtime — no typo, no

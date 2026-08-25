@@ -176,6 +176,19 @@
                     @error('formDate') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
+                @if ($formType === 'homework')
+                    <div>
+                        <label class="mb-1 block text-[12px] font-medium text-ink-faint">Geschätzte Dauer (Minuten, optional)</label>
+                        <input
+                            type="number" min="1" max="600" step="5"
+                            wire:model="formDuration"
+                            placeholder="z. B. 25"
+                            class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                        />
+                        @error('formDuration') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                    </div>
+                @endif
+
                 <div>
                     <label class="mb-1 block text-[12px] font-medium text-ink-faint">
                         Notiz (optional)

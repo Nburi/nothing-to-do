@@ -76,11 +76,16 @@ class ScheduleEvent extends Model
      * open one wins when both exist (see TaskSuggestor). Never carried over
      * to other occurrences of a recurring series; each materialised row is
      * independent. Same shape as EventCategory::pinnedTasks().
+     *
+     * The pivot's `source` ('manual' | 'auto') distinguishes a link the user
+     * picked by hand from one WorkPlanner placed on its own — WorkPlanner's
+     * passive reconcile pass only ever touches 'auto' rows, so a manual pick
+     * is never silently reshuffled (see App\Services\WorkPlanner).
      */
     public function linkedTasks(): BelongsToMany
     {
         return $this->belongsToMany(Task::class, 'schedule_event_task_links')
-            ->withPivot('sort_order')
+            ->withPivot('sort_order', 'source')
             ->orderBy('schedule_event_task_links.sort_order');
     }
 

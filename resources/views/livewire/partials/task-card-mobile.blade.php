@@ -81,6 +81,7 @@
         <div
             x-data="{
                 dateOpen: false,
+                durationOpen: false,
                 deadline: '{{ $task->deadline?->toDateString() }}',
                 dueDate: '{{ $task->due_date?->toDateString() }}',
             }"
@@ -131,6 +132,29 @@
                             <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                             Termin
                         </button>
+                    @endif
+
+                    @if ($task->list !== 'inbox')
+                        @if ($task->duration_minutes)
+                            <button
+                                type="button"
+                                @click.stop="dateOpen = false; durationOpen = !durationOpen"
+                                class="tnum ml-1 mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition"
+                                aria-label="Dauer ändern: {{ $task->title }}"
+                            >
+                                {{ $task->duration_minutes }} min
+                            </button>
+                        @else
+                            <button
+                                type="button"
+                                @click.stop="dateOpen = false; durationOpen = !durationOpen"
+                                class="ml-1 mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition"
+                                aria-label="Dauer schätzen: {{ $task->title }}"
+                            >
+                                <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v3.8l2.5 1.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                Dauer
+                            </button>
+                        @endif
                     @endif
 
                     @if ($preview = $task->notesPreview())
@@ -210,6 +234,27 @@
                     <label class="mb-1 block text-[11px] font-medium text-ink-faint">Wunschtermin · weich</label>
                     <input type="date" x-model="dueDate" @change="$wire.quickSetDates({{ $task->id }}, deadline, dueDate)" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
                 </div>
+            </div>
+
+            <div
+                x-show="durationOpen"
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                @click.outside="durationOpen = false"
+                @keydown.escape.window="durationOpen = false"
+                class="absolute left-9 top-14 z-20 w-56 space-y-2 rounded-card border border-line bg-surface p-3 shadow-map"
+                style="display: none"
+            >
+                <label class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer</label>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ([10, 15, 25, 45, 60, 90] as $mins)
+                        <button type="button" wire:click="quickSetDuration({{ $task->id }}, {{ $mins }})" @click="durationOpen = false" class="tnum rounded-card border border-line bg-paper px-2 py-1 text-xs text-ink-soft transition hover:border-overprint hover:text-ink">{{ $mins }} min</button>
+                    @endforeach
+                </div>
+                @if ($task->duration_minutes)
+                    <button type="button" wire:click="quickSetDuration({{ $task->id }}, null)" @click="durationOpen = false" class="text-[11px] text-ink-faint underline decoration-dotted">Schätzung entfernen</button>
+                @endif
             </div>
         </div>
     </div>

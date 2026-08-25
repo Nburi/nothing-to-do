@@ -41,6 +41,7 @@ class Task extends Model
         'deadline',
         'due_date',
         'notes',
+        'duration_minutes',
         'is_completed',
         'completed_at',
         'sort_order',
@@ -58,6 +59,7 @@ class Task extends Model
             'is_completed' => 'boolean',
             'deadline' => 'date',
             'due_date' => 'date',
+            'duration_minutes' => 'integer',
             'completed_at' => 'datetime',
             'sort_order' => 'integer',
         ];

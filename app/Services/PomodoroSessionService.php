@@ -26,9 +26,17 @@ class PomodoroSessionService
      * unlike every other phase change, this one is a direct result of the
      * user's own just-now tap, so telling them "your focus session begins"
      * a moment later is pure noise, not new information.
+     *
+     * Reconciles the WorkPlanner plan first (a no-op when the feature is
+     * off) so the block's linked tasks — what the focus card is about to
+     * show — reflect anything that changed since the plan was last touched,
+     * not whatever happened to be linked the last time someone opened the
+     * Planer page.
      */
     public function start(ScheduleEvent $event, User $user): void
     {
+        WorkPlanner::reconcile($user);
+
         $event->update([
             'pomodoro_phase' => PomodoroCycle::WORK,
             'pomodoro_cycle' => 1,
@@ -56,11 +64,17 @@ class PomodoroSessionService
      * froze, see handleTick()), so notifying again here would just repeat
      * something they already know and just acted on.
      *
+     * Reconciles the WorkPlanner plan first, same reasoning as start() — a
+     * manual continue is a real "the user is looking at this block right
+     * now" moment, so it's one of the points the plan is kept current at.
+     *
      * @param  array{work:int,short_break:int,long_break:int,long_every:int}  $rhythm
      * @return array{phase:string,cycle:int}
      */
     public function transition(ScheduleEvent $event, User $user, array $rhythm): array
     {
+        WorkPlanner::reconcile($user);
+
         $next = PomodoroCycle::next($event->pomodoro_phase, $event->pomodoro_cycle, $rhythm);
 
         $event->update([
@@ -85,6 +99,8 @@ class PomodoroSessionService
         if ($event->pomodoro_phase === null) {
             return false;
         }
+
+        WorkPlanner::reconcile($user);
 
         $phase = $event->pomodoro_phase;
         $cycle = $event->pomodoro_cycle;
@@ -185,6 +201,12 @@ class PomodoroSessionService
         });
 
         if ($phaseToNotify !== null) {
+            // A real advance happened (possibly cascading through several
+            // phases) — reconcile once afterwards, outside the row lock, same
+            // as the other transition points. Deliberately not called for the
+            // "freeze awaiting a continue" branch below: nothing about which
+            // block is showing what has changed there, only the countdown state.
+            WorkPlanner::reconcile($user);
             $this->notifyPhaseStart($user, $phaseToNotify);
         } elseif ($awaitingNotify !== null) {
             $this->notifyPhaseEnded($user, $awaitingNotify);

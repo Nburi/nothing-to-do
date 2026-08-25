@@ -509,6 +509,43 @@ window.groupDropZone = function (el, wire, handle = null) {
 };
 
 /**
+ * Drag & drop for the Planer page — one instance per work-block container,
+ * all sharing one group name so a task chip can both reorder within a block
+ * and move to a different one. Modelled on groupDropZone above, not a
+ * verbatim reuse of it: nothing existing already does "drag between several
+ * named containers with cross-container reassignment", so this is its own
+ * small Sortable setup in the same idiom, not a port of a percentage-grid
+ * gesture (the Planer page is a list, not a timeline — see CLAUDE.md).
+ *
+ * Every drop — a same-block reorder or a cross-block move — persists via
+ * reorderBlock() with the destination's full id order, same "send the whole
+ * list" shape as boardSortable/emergencySortable; the server stamps every id
+ * landing there as 'manual', so WorkPlanner's passive reconcile never
+ * touches it again.
+ */
+window.plannerBlockSortable = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: 'planner-block',
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: '[data-drag-handle]',
+        draggable: '[data-id]',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const blockId = evt.to.dataset.plannerBlock;
+            if (!blockId) return;
+            const ids = Array.from(evt.to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderBlock(parseInt(blockId, 10), ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * Drag & drop for the emergency-mode arrange screen — a single, isolated
  * list (its own group name, never 'board') so it can never accept a drop
  * from, or be dragged into, the main board's columns. On drop we persist

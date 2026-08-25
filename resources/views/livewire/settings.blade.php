@@ -143,6 +143,39 @@
             </div>
         </div>
 
+        {{-- Planer --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Planer</p>
+                    <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
+                        Verteilt offene Aufgaben, To-Dos und Hausaufgaben automatisch auf deine nächsten
+                        Pomodoro-Arbeitsblöcke, damit du früh siehst, ob alles rechtzeitig fertig wird — statt es
+                        erst am Tag der Deadline zu merken. Standardmässig aus.
+                    </p>
+                    @if ($plannerEnabled)
+                        <a href="{{ route('planner') }}" wire:navigate class="mt-2 inline-block text-xs font-medium text-overprint hover:underline">Zum Planer →</a>
+                    @endif
+                </div>
+                <button
+                    type="button"
+                    wire:click="togglePlannerEnabled"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $plannerEnabled,
+                        'bg-line' => ! $plannerEnabled,
+                    ])
+                    aria-label="Planer {{ $plannerEnabled ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $plannerEnabled,
+                        'left-0.5' => ! $plannerEnabled,
+                    ])></span>
+                </button>
+            </div>
+        </div>
+
         {{-- Zeitzone --}}
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Zeitzone</h3>
