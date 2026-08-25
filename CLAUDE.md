@@ -1332,6 +1332,76 @@ that should only cover currently-visible modules, and an admin-authored feature-
   per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
   feature-announcement system this catalog exists to eventually support.
 
+### Onboarding-Tutorial (built)
+
+The second of the two features that catalog was built to eventually support (the first being
+itself, above; the third — an admin-authored feature-announcement system shown to *existing*
+users — is still unbuilt, tracked in `TODO.md`). A skippable, replayable walkthrough that covers
+the "3 Things" framework (see §1) and every feature area of the app, ending on a functional
+module-visibility/default-landing-page step.
+
+- **`App\Livewire\Onboarding`** (`/app/onboarding`, `route('onboarding')`, `#[Layout('layouts.app')]`)
+  is a single continuous flow, not a wizard with server-tracked position — the 14 slides are
+  static content, not data, so step position is **pure client-side Alpine state** (the
+  `onboarding` store in `app.js`: `step`/`total`/`next()`/`back()`), the same "ephemeral UI state
+  lives in Alpine" convention as `prepare`/`celebration`/`quickCapture`. Unlike `prepare`, it needs
+  no seeded-order bookkeeping or re-run guard — `init(total)` only ever sets the slide count (read
+  out of the Blade view via `$stepCount` so the two can never drift), which is harmless to
+  re-apply on every Livewire re-render the module-visibility step's toggles cause, since it never
+  touches `step`.
+- **`users.onboarding_completed_at`** (nullable timestamp) — `null` means "never opened it",
+  true for a brand-new registration and for any pre-existing account that predates this feature
+  (neither is ever retroactively forced through it). `User::needsOnboarding()`/
+  `markOnboardingSeen()` are the only two access points. Stamped by **both** `finish()` and
+  `skip()` — skipping counts as "seen it" just as much as finishing does, mirroring
+  `PrepareTomorrow::finish()`'s own either-button-counts shape — and **re-stamped on every
+  replay**, so the same column doubles as "last viewed on" for Settings' own card (below).
+- **Auto-redirect on a brand-new registration only** — `RegisteredUserController::store()` builds
+  its `redirect()->intended($default)` fallback from `$user->needsOnboarding()` instead of always
+  pointing at `route('dashboard')`. Since `intended()` only overrides that fallback when a
+  `url.intended` session value is already pending — which is exactly the shape of "a classmate
+  followed a class-agenda invite link, got bounced to `/login`, and registered from there" (see
+  Agenda — Klassen teilen, "the invite link requires login and returns after it") — that flow is
+  completely unaffected: it still lands exactly on the invite it followed, never detoured through
+  onboarding first. A plain "just register" has no intended URL pending, so it *does* fall through
+  to onboarding. Nothing about a normal *login* (as opposed to registration) ever redirects here.
+- **Replay is unconditional** — Settings' new "Tutorial" card (Allgemein tab) always links to
+  `route('onboarding')` regardless of `onboarding_completed_at`, with the button label and a
+  "Zuletzt angesehen am …" caption both switching on whether it's set. Visiting the route itself
+  never stamps anything — only `finish()`/`skip()` do — so a user can open it, look around, and
+  leave via the header logo without disturbing the stored "last viewed on" date.
+- **`App\Livewire\Concerns\ManagesModuleSettings`** — the module-visibility/default-landing-page
+  step (the one place this tutorial is genuinely interactive, not just descriptive) needed the
+  exact same `toggleModule()`/`setDefaultPage()` self-healing logic Settings already had, so that
+  logic was extracted out of `Settings` into this trait and both components now `use` it — the
+  "hiding the current default page resets it to the board" rule now lives in exactly one place
+  instead of two copies that could drift. The trait's `mountManagesModuleSettings()` seeds
+  `$defaultPage` on mount via Livewire's automatic trait-hook convention (a method named
+  `mount<TraitBasename>` is called automatically for every trait a component uses — see
+  `SupportLifecycleHooks::callTraitHook()`) — **it must be `public`**, not `protected`: Livewire
+  invokes it via `Illuminate\Container\BoundMethod`-style resolution from outside the class, which
+  silently fails with a "method does not exist"-shaped error against a non-public method (caught by
+  every test that mounts either component, not a subtle runtime-only gap).
+- **Signature moment — the "3 Things" step teaches by feel, not by caption.** Three chips
+  (To-Do/Task/Project) sit above one sample card; tapping between them doesn't just swap a label —
+  the card itself visibly grows (width, padding, weight, colour) at each size, and at "Project" it
+  splits apart into three small stacked, slightly rotated cards to make "a container for
+  mehrteilige Arbeit" tangible rather than read. Pure Alpine/CSS (`x-transition.scale`), no
+  Livewire round trip — the whole slide is local `x-data="{ size: 'todo' }"` nested inside the
+  step's `x-show` block.
+- Every other feature area gets one slide each (Heute/Wichtig/Termine, Schnellerfassung, das
+  Board, Projekte & Gruppen, Vorbereitung, Zeitplan & Fokus, Wochenplan & Ferien, Notfallmodus,
+  Agenda, Bastelideen & Fortschritt); Header-Badges and the API/Shortcuts docs get a passing
+  mention rather than a dedicated slide (the module step's footer note and the closing slide,
+  respectively) since neither needs a decision made on day one.
+- Deliberately out of scope for this pass: a live-DOM spotlight tour over the real pages (rejected
+  in favour of this dedicated full-screen flow — a spotlight touching a dozen pages, several
+  needing real data like an active project or a populated Wochenplan, would be fragile for one
+  pass, whereas this app already has a proven "dedicated full-screen ritual" shape in
+  `PrepareTomorrow`/`EmergencyMode`), per-step analytics, a deep link to resume one specific slide,
+  and the admin feature-announcement system this and the module catalog exist to eventually
+  support.
+
 ### Task-Gruppen (built)
 
 The middle size between a single task and a Project: a bundle of steps that belong together — a
@@ -1879,6 +1949,20 @@ trait (or via `self::`/`static::` from inside the trait itself); `TraitName::FOO
 **Fix:** put constants that need to be referenced by name from outside on a real class instead (e.g.
 `ScheduleEvent::EVENT_COLORS`, not `ManagesSchedule::EVENT_COLORS`), and have the trait's own methods read it
 via the class too. Only use a trait constant if every reader is either the trait itself or a class using it.
+
+### A trait's `mount<TraitName>()` lifecycle hook must be `public`, not `protected`
+**Symptom:** every test that mounts a component using the trait fails with
+`Method App\Livewire\X::mountTraitName does not exist.` — even though the method is right there in the
+trait, correctly named.
+**Cause:** Livewire automatically calls a `mount<TraitBasename>()`/`boot<TraitBasename>()`/
+`booted<TraitBasename>()` method for every trait a component uses (`SupportLifecycleHooks::callTraitHook()`),
+without the component needing to call it itself. It invokes that method via
+`Illuminate\Container\BoundMethod`-style resolution from *outside* the class, the same mechanism used to call
+`mount()`/`render()` themselves — and that resolution path cannot see a `protected`/`private` method, so it
+fails, but with a generic "does not exist"-shaped message rather than a visibility error, which reads like a
+typo or a missing method rather than what it actually is.
+**Fix:** declare any trait's `mount<TraitBasename>()` (and its `boot`/`booted` siblings, if used) `public`.
+(See `App\Livewire\Concerns\ManagesModuleSettings::mountManagesModuleSettings()`.)
 
 ### Livewire 4 generates emoji-named single-file components
 **Symptom:** `php artisan make:livewire X` creates `resources/views/components/⚡x.blade.php`.

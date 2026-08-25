@@ -34,7 +34,27 @@ both stale `migrations` rows were removed; nothing in the code reads `task_group
 **Production never had any of it** (those branches were never merged or pushed), so there is nothing to
 deploy. Clean it up whenever the local database is next rebuilt from scratch.
 
+### Three feature branches still need merging in the right order
+
+`feature/module-settings` (module visibility & default landing page) → `feature/onboarding-tutorial`
+(this branch was built on top of it, since the onboarding tutorial's module-visibility step needs
+`AppModules`/`hidden_modules`/`default_page`) → `main`. Merge/rebase in that order, or squash-merge
+`feature/module-settings` into `main` first and rebase `feature/onboarding-tutorial` onto the result —
+either way, don't merge the onboarding branch to `main` before the module-settings work is in, or
+`AppModules` won't exist yet on the target branch.
+
 ## Ideas, not committed
+
+- **Admin-authored feature-announcement system** (the third step of the onboarding/accessibility push
+  this branch is step 2 of). Shown to *existing* users when a new feature ships, distinct from the
+  new-user tutorial (`App\Livewire\Onboarding`) this branch adds. No shared "tour engine" was built for
+  it on purpose — an announcement is more likely a small dismissible modal/toast than a multi-step
+  full-screen flow, so the two features' actual UI shape should decide what (if anything) gets
+  extracted, rather than guessing at a generic system now. The one thing worth reusing as-is: the
+  "seen/dismissed timestamp on `User`" convention (`onboarding_completed_at`, `prepared_on`,
+  `prepare_prompt_dismissed_on`, …) — an announcement's own "has this user seen it" state should follow
+  the same shape (per-announcement, most likely a small pivot table mirroring
+  `agenda_entry_completions` rather than one column per announcement).
 
 - **Task groups in the API (Sanctum).** `tasks.group_id` is invisible to Shortcuts: a task cannot be filed
   into a group or read back with its group over the API, and there is no groups endpoint. Worth doing with
