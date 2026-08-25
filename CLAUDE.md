@@ -1265,6 +1265,73 @@ showed one hardcoded indicator (the streak), always in the same spot.
   same as the pre-existing streak badge always did), and API/Shortcuts support for reading or writing
   `header_badges`.
 
+### Modul-Sichtbarkeit & Startseite (built)
+
+Lets a user hide any of the app's optional feature pages and choose which page opens by default —
+built for the "single user, but the Agenda can be shared with a class" case (§1): a classmate who
+only cares about the shared class Agenda can declutter everything else and land straight on it.
+Deliberately built as a foundation for two features that don't exist yet — an onboarding tutorial
+that should only cover currently-visible modules, and an admin-authored feature-announcement system
+— so the catalog is additive/extensible rather than a one-off pair of settings.
+
+- **`App\Services\AppModules`** — a stateless catalog, `CATALOG` mirroring `HeaderBadges::CATALOG`'s
+  shape: seven hideable keys (`prepare`, `schedule`, `weekplan`, `agenda`, `crafts`, `emergency`,
+  `progress`), each with a label, a one-line description, and the route name its nav entries and
+  its landing-page choice point at. **The Board (`app`) and Settings are never in this catalog** —
+  they're the app's core surface (QuickCapture's default target, the only place Inbox/Projects/
+  Groups live) and the always-safe fallback; hiding either would strand the user with no way back
+  in. A feature with its own dedicated on/off toggle (e.g. a default-off `*_enabled` column
+  explained inline in Settings) belongs there, not duplicated here — this catalog is only for pages
+  that were previously always-on and are only now becoming optional.
+  - `isVisible(User, key)` / `hiddenKeys(User)` — **`users.hidden_modules`** (nullable JSON) is
+    `null` for anyone who never opens the card, meaning "nothing hidden" — same "untouched means
+    default" shape as `header_badges`, just inverted: a hide-list needs no merge-with-catalog logic
+    the way an enable-list would, since "not in the list" already means visible. Any key outside the
+    catalog (an unknown/future key) is always visible — this only ever hides something explicitly
+    listed.
+  - `rowsFor(User)` — the catalog in fixed order, each row carrying its current `hidden` flag; what
+    Settings' "Module" card renders.
+  - `landingPageOptions(User)` — the Board (always first) plus every catalog module that isn't
+    currently hidden; what the "Startseite" picker offers.
+  - `isValidLandingPage(User, key)` — deliberately **not** just `isVisible()`: that treats an
+    unknown key as "always visible" (right for its own job), which would be wrong here — a garbage
+    or removed key must never validate as a landing-page choice. Used by both
+    `User::defaultLandingRouteName()` and `Settings::setDefaultPage()` so the two can never disagree
+    about what's a valid pick.
+- **`users.default_page`** (string, default `'app'`) plus **`User::defaultLandingRouteName()`** —
+  self-healing: if the stored choice no longer resolves to anything visible (the module was hidden
+  after being picked as the landing page), this quietly falls back to the Board instead of routing
+  the user to a page the nav can no longer reach. `routes/web.php`'s `/` and `/dashboard` (Breeze's
+  post-login target) both redirect through it instead of a hardcoded `route('app')`; a guest hitting
+  `/dashboard` directly still falls back to `app`, matching the previous static redirect's behavior.
+- **Settings' "Module" card** — one immediate-save toggle per catalog row (same switch style as the
+  Benachrichtigungen/Kategorien cards), each row fading to `opacity-45` in place so the effect is
+  confirmed without leaving Settings. `Settings::toggleModule()` **resets `default_page` back to
+  `'app'` in the same write** whenever the module being hidden is also the user's current landing
+  page — the write-side mirror of `defaultLandingRouteName()`'s own read-side fallback, so the two
+  can never drift apart even mid-session. A companion **"Startseite"** pill row
+  (`Settings::setDefaultPage()`, `landingPageOptions()`) offers only currently-visible pages.
+- **Every consumer of a hideable page checks `AppModules::isVisible()`:**
+  - `layouts/app.blade.php`'s "Mehr" dropdown and profile-menu Fortschritt entry each wrap their own
+    link in an `@if`; the whole "Mehr" button disappears when every one of its entries is hidden,
+    rather than opening onto an empty panel. **Notfall is the one exception** — its entry stays
+    visible whenever `user->isInEmergencyMode()` is true, regardless of the module toggle, so hiding
+    it can never strand the user mid-emergency with no way to see or end it.
+  - `HeaderBadges::visibleFor()` drops the `agenda`/`schedule`/`emergency` badges the same way (via
+    a small `MODULE_FOR_BADGE` map), with the same Notfall exception — a header shortcut must not
+    keep pointing at a page the nav no longer offers.
+  - `QuickCapture::availableTargets()` filters `TARGETS` to modules the user hasn't hidden (`craft`
+    → `crafts`, `agenda` → `agenda`; every other target is core Board functionality and always
+    offered) — hiding a module has to remove its capture entry point too, or "hide everything except
+    Agenda" would stay half-done. `setTarget()`, `resetPanel()`, and `save()`'s validation rule all
+    check against `availableTargets` instead of the raw `TARGETS` constant.
+  - `TaskBoard::homeworkPreview()` also goes empty when the `agenda` module is hidden — the strip is
+    a satellite view of Agenda and links straight back to it, so it has to disappear along with it,
+    on top of its existing `homework_preview_enabled` gate.
+- Deliberately out of scope for this pass: hiding the Board/Settings themselves (see above), a
+  per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
+  feature-announcement system this catalog exists to eventually support.
+
 ### Task-Gruppen (built)
 
 The middle size between a single task and a Project: a bundle of steps that belong together — a
