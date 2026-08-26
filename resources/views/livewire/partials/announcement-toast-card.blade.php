@@ -45,16 +45,21 @@
     </div>
 
     <div class="mt-3 flex items-center gap-2 pl-10">
-        @if ($announcement->relatedRouteName())
+        @if ($announcement->linkHref())
             @if ($interactive)
                 <a
-                    href="{{ route($announcement->relatedRouteName()) }}"
-                    wire:navigate
+                    href="{{ $announcement->linkHref() }}"
+                    @if ($announcement->isExternalLink())
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    @else
+                        wire:navigate
+                    @endif
                     wire:click="dismiss({{ $announcement->id }})"
                     class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
-                >{{ $announcement->relatedModuleLabel() }} ansehen →</a>
+                >{{ $announcement->linkLabel() }} →</a>
             @else
-                <span class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft">{{ $announcement->relatedModuleLabel() }} ansehen →</span>
+                <span class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft">{{ $announcement->linkLabel() }} →</span>
             @endif
         @endif
 

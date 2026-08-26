@@ -75,18 +75,85 @@
             </div>
 
             <div>
-                <label for="formRelatedModule" class="mb-1.5 block text-sm font-medium text-ink">Betrifft (optional)</label>
-                <select
-                    id="formRelatedModule"
-                    wire:model="formRelatedModule"
-                    class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
-                >
-                    <option value="">Kein bestimmter Bereich</option>
-                    @foreach ($this->moduleOptions as $key => $meta)
-                        <option value="{{ $key }}">{{ $meta['label'] }}</option>
+                <label class="mb-1.5 block text-sm font-medium text-ink">Verlinkung (optional)</label>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach (['none' => 'Kein Link', 'module' => 'Seite in der App', 'external' => 'Externer Link'] as $key => $label)
+                        <button
+                            type="button"
+                            wire:click="$set('formLinkType', '{{ $key }}')"
+                            @class([
+                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'bg-ink text-white shadow-sm' => $formLinkType === $key,
+                                'bg-paper text-ink-soft hover:text-ink' => $formLinkType !== $key,
+                            ])
+                        >{{ $label }}</button>
                     @endforeach
-                </select>
-                <p class="mt-1.5 text-xs text-ink-soft">Wenn gesetzt, bekommt der Hinweis einen Link direkt dorthin.</p>
+                </div>
+
+                @if ($formLinkType === 'module')
+                    <div class="mt-3 space-y-3">
+                        <select
+                            id="formRelatedModule"
+                            wire:model="formRelatedModule"
+                            class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                        >
+                            <option value="">Bitte wählen</option>
+                            @foreach ($this->moduleOptions as $key => $meta)
+                                <option value="{{ $key }}">{{ $meta['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('formRelatedModule')
+                            <p class="text-xs text-signal">{{ $message }}</p>
+                        @enderror
+
+                        <div>
+                            <label for="formHighlightSelector" class="mb-1.5 block text-xs font-medium text-ink-soft">CSS-Selektor zum Hervorheben (optional)</label>
+                            <input
+                                id="formHighlightSelector"
+                                type="text"
+                                wire:model="formHighlightSelector"
+                                maxlength="255"
+                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                                placeholder="z. B. #notifications"
+                            />
+                            <p class="mt-1.5 text-xs text-ink-soft">Wird nach dem Klick auf der Zielseite ins Bild gescrollt und kurz hervorgehoben.</p>
+                            @error('formHighlightSelector')
+                                <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                @elseif ($formLinkType === 'external')
+                    <div class="mt-3 space-y-3">
+                        <div>
+                            <input
+                                id="formExternalUrl"
+                                type="url"
+                                wire:model="formExternalUrl"
+                                maxlength="2048"
+                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                                placeholder="https://…"
+                            />
+                            @error('formExternalUrl')
+                                <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <input
+                                id="formExternalLinkLabel"
+                                type="text"
+                                wire:model="formExternalLinkLabel"
+                                maxlength="100"
+                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                                placeholder="Linktext, z. B. „Mehr erfahren" (optional)"
+                            />
+                            @error('formExternalLinkLabel')
+                                <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                @else
+                    <p class="mt-1.5 text-xs text-ink-soft">Wenn gesetzt, bekommt der Hinweis einen Link direkt dorthin.</p>
+                @endif
             </div>
 
             <div class="flex items-center gap-3 pt-1">
@@ -158,12 +225,15 @@
                             ])>{{ $announcement->is_published ? 'Veröffentlicht' : 'Entwurf' }}</span>
                             @if ($announcement->relatedModuleLabel())
                                 <span class="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink-soft">{{ $announcement->relatedModuleLabel() }}</span>
+                            @elseif ($announcement->isExternalLink())
+                                <span class="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink-soft">↗ externer Link</span>
                             @endif
                         </div>
                         <p class="mt-1 text-sm text-ink-soft leading-relaxed">{{ $announcement->description }}</p>
                         <p class="mt-1.5 text-xs text-ink-faint">
                             {{ $announcement->author?->name ? 'von '.$announcement->author->name.' · ' : '' }}
                             {{ $announcement->is_published && $announcement->published_at ? 'veröffentlicht am '.$announcement->published_at->isoFormat('D.M.YYYY') : 'noch nicht veröffentlicht' }}
+                            · {{ $announcement->dismissedCount() }} {{ $announcement->dismissedCount() === 1 ? 'Person hat' : 'Personen haben' }} sie gesehen
                         </p>
                     </div>
 

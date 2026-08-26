@@ -1548,13 +1548,47 @@ authors announcements, and a per-user toast every regular user sees until they d
   follows the same convention: `abort_unless(auth()->user()->is_admin, 403)` in `mount()`. The
   artisan command exists because `php artisan tinker --execute` mangles quotes from PowerShell (see
   *Known Issues*) — flipping one boolean column locally needs a reliable path that isn't that.
-- **`App\Models\FeatureAnnouncement`** — `title, description, type, related_module?, created_by?,
-  is_published, published_at?`. `related_module` is a key into `AppModules::CATALOG` (or null for
-  "no specific page") — deliberately not a foreign key, since the catalog is a stateless PHP
-  constant, not a table. `published_at` is stamped **the first time** an announcement is published
-  and never moves again on a later unpublish/republish (`AnnouncementEditor::togglePublish()`) — it
-  marks when the feature was actually introduced, not the current toggle state, and it's what
-  orders the unseen queue (oldest-published-first, see below).
+- **`App\Models\FeatureAnnouncement`** — `title, description, type, related_module?, external_url?,
+  external_link_label?, highlight_selector?, created_by?, is_published, published_at?`.
+  `published_at` is stamped **the first time** an announcement is published and never moves again on
+  a later unpublish/republish (`AnnouncementEditor::togglePublish()`) — it marks when the feature was
+  actually introduced, not the current toggle state, and it's what orders the unseen queue
+  (oldest-published-first, see below).
+- **Linking — an internal page or an external URL, mutually exclusive.** `related_module` is a key
+  into `FeatureAnnouncement::linkableModules()` (or null for "no specific page") — deliberately not a
+  foreign key, since the catalog is a stateless PHP array, not a table. `linkableModules()` is a
+  **superset of `AppModules::CATALOG`**: that catalog deliberately excludes the Board and Settings
+  (they must always stay reachable via navigation, see its own docblock), but an announcement isn't
+  bound by that constraint, so `linkableModules()` adds `'settings'` and `'app'` back in — this is
+  what lets an announcement point at a specific Settings card (see highlight_selector below), which
+  the Settings page itself is never allowed to be hidden behind. `external_url` +
+  `external_link_label` (optional custom button text, falls back to "Mehr erfahren") are the
+  alternative: any arbitrary URL, opened in a new tab (`target="_blank" rel="noopener noreferrer"`,
+  no `wire:navigate`). `AnnouncementEditor::save()` is the one place mutual exclusivity is enforced —
+  a `formLinkType` chip (`none`/`module`/`external`) picks which branch's fields are actually
+  persisted, always nulling out the other's, regardless of what a stale, no-longer-selected chip's
+  fields still hold client-side. `FeatureAnnouncement::linkHref()`/`linkLabel()`/`isExternalLink()`
+  are the single source of truth both the real toast and the admin preview render through.
+- **`highlight_selector`** — a plain CSS selector, admin-typed, no registry or validation against
+  real markup (a developer-facing field, same trust level as any other admin-only input in this
+  app). Only offered alongside a **module** link (an external site can't run our highlight script).
+  `linkHref()` appends it as `?highlight=<urlencoded selector>` on the internal route's URL. A
+  global handler in `resources/js/app.js` (`highlightFromQueryParam()`) reads that param on arrival —
+  on `DOMContentLoaded` for a hard load, and on `livewire:navigated` (deferred one tick via
+  `setTimeout(…, 0)`) for a `wire:navigate` SPA jump, since **Livewire resets scroll to top as part of
+  dispatching that same event**, and running in the same tick lost that race outright (found live:
+  `scrollIntoView` fired and returned no error, yet `window.scrollY` stayed `0` — only deferring past
+  Livewire's own scroll-reset fixed it). Also deliberately **not** `behavior: 'smooth'` — a page still
+  settling (webfonts, the Settings nav's own `IntersectionObserver` wiring) can shift layout height
+  mid-animation and strand a smooth scroll well short of the target; `'auto'` (instant) doesn't have
+  that failure mode. The query param is stripped via `history.replaceState` the moment it's read, so
+  a reload/back-nav never re-triggers it, and a fresh CSS keyframe, `.announcement-highlight`
+  (`app.css`, modelled directly on `.badge-jump-highlight` — the header badge's own "proof of
+  destination" wash, see Header-Badges above), briefly flashes the target element. Settings works
+  well as a target precisely because its cards are **never conditionally removed from the DOM** — the
+  page is one long scroll with `id`-anchored `<section>`s (`#general`, `#notifications`, …) and a
+  sticky nav that just scroll-links between them, not a tabbed view that would hide an unselected
+  card's markup entirely.
 - **Four message types** (`FeatureAnnouncement::TYPES`, a `label`/`tone`/`badge_label` catalog,
   same shape as `AppModules::CATALOG`/`HeaderBadges::CATALOG`): `info` (default, deliberately
   toneless — the same neutral `bg-line`/`text-ink-soft` look the editor's own "Entwurf" badge
@@ -1604,11 +1638,32 @@ authors announcements, and a per-user toast every regular user sees until they d
   entries doesn't overwhelm on the next visit — dismissing advances to the next one in the same
   queue, and a `wire:key` tied to the current announcement's id makes each card (and its Alpine
   state) remount fresh rather than mutate in place.
-- **If `related_module` is set**, the card also shows an "X ansehen →" link to that catalog route.
-  Clicking it both navigates (`wire:navigate`) and dismisses (`wire:click="dismiss(...)"`) — the
-  same dual-fire pattern `PrepareTomorrow`'s "Später planen"/"Fertig" buttons already use (a
-  Livewire action and a plain link on the same element both fire independently, see *Known Issues*):
-  visiting the feature the announcement is about already counts as having seen it.
+- **If the announcement has a link** (module or external, see above), the card also shows an
+  "X ansehen →" / custom-label button. A module link both navigates (`wire:navigate`) and dismisses
+  (`wire:click="dismiss(...)"`) — the same dual-fire pattern `PrepareTomorrow`'s "Später planen"/
+  "Fertig" buttons already use (a Livewire action and a plain link on the same element both fire
+  independently, see *Known Issues*): visiting the feature the announcement is about already counts
+  as having seen it. An external link only dismisses (no `wire:navigate` — it opens in a new tab, so
+  the original tab staying on the toast would be confusing otherwise).
+- **The toast's card markup lives in one shared partial**,
+  `partials/announcement-toast-card.blade.php` (`$announcement`, `$remaining`, `$interactive`) — both
+  `FeatureAnnouncementToast` (`$interactive = true`: real `wire:click`/`wire:navigate` behaviour) and
+  `AnnouncementEditor`'s own preview (`$interactive = false`: the same look, but every control is
+  inert) render through it, so the two can never drift apart.
+- **Preview, in the admin panel, before ever publishing.** `AnnouncementEditor::previewAnnouncement()`
+  (a `#[Computed]`) builds an **unsaved** `FeatureAnnouncement` from the current form fields —
+  `wire:model` on the form is deferred, so the preview needs an explicit "Vorschau aktualisieren"
+  `$refresh` button to catch up (same reasoning, and the same pattern, as the Notizen editor's own
+  preview — see *Known Issues* on `wire:model.blur`), tucked behind a collapsible "Vorschau" toggle
+  above the form. Each row in the announcement list gets its own "Vorschau" toggle too, rendered
+  **client-side only** (Alpine `x-show`, no round trip) from that row's already-loaded data — useful
+  for reviewing a still-unpublished draft without a server call, and it says "(Entwurf, noch nicht
+  sichtbar)" when the announcement isn't live yet.
+- **"N gesehen" — how many users have dismissed it.** `AnnouncementEditor::announcements()` eager-loads
+  `withCount('dismissedBy')`; `FeatureAnnouncement::dismissedCount()` prefers that eager count
+  (`dismissed_by_count`) when present, falling back to a live query anywhere else (e.g. a test that
+  doesn't go through the admin list). Shown on every row regardless of publish state (always `0` for
+  a draft, which is simply correct, not a special case).
 - **Signature moment — the dismiss button counts itself down.** Rather than a "and 2 more" line
   elsewhere on the card, the primary "Verstanden" button carries a small trailing badge showing how
   many *other* unseen announcements remain; clicking it decrements the badge instantly (a local
@@ -1616,15 +1671,16 @@ authors announcements, and a per-user toast every regular user sees until they d
   via the fresh `wire:key`'d card) and it disappears once nothing is left. The whole "there's a
   backlog, but you're processing it one bite at a time" feeling lives at the one spot you're already
   looking at, rather than a separate counter or list.
-- Deliberately out of scope for this pass: editing `related_module` to point anywhere outside
-  `AppModules::CATALOG` (e.g. a specific settings card or a non-module page), scheduling a future
-  publish date, per-announcement analytics (open/click-through), and a push notification for a
-  freshly published announcement — the toast only ever appears on the next page load, matching
-  "little quick" rather than reaching for a channel that works with the tab closed. Also out of
-  scope: a `maintenance` announcement carries no start/end time fields of its own — the window has
-  to be written into the free-text description (e.g. "Sonntag 2–4 Uhr") — and there's no
+- Deliberately out of scope for this pass: scheduling a future publish date, richer
+  per-announcement analytics beyond the plain seen-count (open/click-through), and a push
+  notification for a freshly published announcement — the toast only ever appears on the next page
+  load, matching "little quick" rather than reaching for a channel that works with the tab closed.
+  Also out of scope: a `maintenance` announcement carries no start/end time fields of its own — the
+  window has to be written into the free-text description (e.g. "Sonntag 2–4 Uhr") — and there's no
   "resurface a dismissed warning again later" escalation path; both are plain text/one-shot like
-  every other type.
+  every other type. `highlight_selector` has no validation against real markup at all — a typo or a
+  later markup change silently just does nothing (fails quietly in `highlightFromQueryParam()`, never
+  a broken page), which is an acceptable trade for a developer-facing, admin-only field.
 
 ### Task-Gruppen (built)
 

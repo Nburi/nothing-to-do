@@ -1662,3 +1662,46 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     store.show(el instanceof HTMLElement ? el : null);
 });
+
+/**
+ * FeatureAnnouncement::linkHref() appends `?highlight=<css selector>` to an
+ * internal "ansehen" link so an admin can point an announcement at a
+ * specific block or setting, not just a whole page. Reads the param on
+ * every arrival (a hard load fires DOMContentLoaded; a wire:navigate SPA
+ * jump fires livewire:navigated instead — Livewire also fires the latter
+ * once after the very first page load, so the param is stripped from the
+ * URL the moment it's consumed to keep that from double-firing). No
+ * built-in registry of valid selectors — this is a developer-facing field,
+ * same trust level as any other admin-only input in this app.
+ */
+function highlightFromQueryParam() {
+    const params = new URLSearchParams(window.location.search);
+    const selector = params.get('highlight');
+    if (!selector) return;
+
+    params.delete('highlight');
+    const query = params.toString();
+    history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''));
+
+    let target;
+    try {
+        target = document.querySelector(selector);
+    } catch {
+        return; // an admin-typed selector can be invalid CSS — fail quietly, not loudly
+    }
+    if (!target) return;
+
+    // Not 'smooth': a page that's still settling (webfonts, images, the
+    // Settings nav's own IntersectionObserver wiring) can shift layout height
+    // mid-animation and strand a smooth scroll well short of the target.
+    target.scrollIntoView({ behavior: 'auto', block: 'center' });
+    target.classList.remove('announcement-highlight');
+    void target.offsetWidth; // restart the animation if it's already mid-flash
+    target.classList.add('announcement-highlight');
+    setTimeout(() => target.classList.remove('announcement-highlight'), 1400);
+}
+document.addEventListener('DOMContentLoaded', highlightFromQueryParam);
+// Deferred a tick: wire:navigate resets scroll to top as part of handling its
+// own 'livewire:navigated' dispatch, which would otherwise win a same-tick
+// race against our own scrollIntoView and strand it back at 0.
+document.addEventListener('livewire:navigated', () => setTimeout(highlightFromQueryParam, 0));

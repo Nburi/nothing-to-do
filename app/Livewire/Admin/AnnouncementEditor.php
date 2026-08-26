@@ -3,7 +3,6 @@
 namespace App\Livewire\Admin;
 
 use App\Models\FeatureAnnouncement;
-use App\Services\AppModules;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -32,25 +31,38 @@ class AnnouncementEditor extends Component
     /** A key into FeatureAnnouncement::TYPES. */
     public string $formType = FeatureAnnouncement::DEFAULT_TYPE;
 
-    /** A key into AppModules::CATALOG, or '' for "kein bestimmter Bereich". */
+    /** A key into FeatureAnnouncement::linkableModules(), or '' for "kein bestimmter Bereich". */
     public string $formRelatedModule = '';
+
+    /** 'none' | 'module' | 'external' — which of the two link fields below applies, mutually exclusive. */
+    public string $formLinkType = 'none';
+
+    public string $formExternalUrl = '';
+
+    public string $formExternalLinkLabel = '';
+
+    /** A CSS selector to scroll to and flash after following an internal link — see FeatureAnnouncement::linkHref(). */
+    public string $formHighlightSelector = '';
 
     public function mount(): void
     {
         abort_unless(auth()->user()->is_admin, 403);
     }
 
-    /** Every announcement, draft and published alike — an admin needs to see both. */
+    /**
+     * Every announcement, draft and published alike — an admin needs to see
+     * both. withCount avoids an N+1 for each row's "N gesehen" figure.
+     */
     #[Computed]
     public function announcements(): Collection
     {
-        return FeatureAnnouncement::query()->newestFirst()->get();
+        return FeatureAnnouncement::query()->withCount('dismissedBy')->newestFirst()->get();
     }
 
     #[Computed]
     public function moduleOptions(): array
     {
-        return AppModules::CATALOG;
+        return FeatureAnnouncement::linkableModules();
     }
 
     #[Computed]
@@ -73,7 +85,10 @@ class AnnouncementEditor extends Component
             'title' => $this->formTitle,
             'description' => $this->formDescription,
             'type' => $this->formType,
-            'related_module' => $this->formRelatedModule !== '' ? $this->formRelatedModule : null,
+            'related_module' => $this->formLinkType === 'module' && $this->formRelatedModule !== '' ? $this->formRelatedModule : null,
+            'external_url' => $this->formLinkType === 'external' && $this->formExternalUrl !== '' ? $this->formExternalUrl : null,
+            'external_link_label' => $this->formLinkType === 'external' && $this->formExternalLinkLabel !== '' ? $this->formExternalLinkLabel : null,
+            'highlight_selector' => $this->formLinkType === 'module' && $this->formHighlightSelector !== '' ? $this->formHighlightSelector : null,
         ]);
     }
 
@@ -84,6 +99,10 @@ class AnnouncementEditor extends Component
         $this->formDescription = '';
         $this->formType = FeatureAnnouncement::DEFAULT_TYPE;
         $this->formRelatedModule = '';
+        $this->formLinkType = 'none';
+        $this->formExternalUrl = '';
+        $this->formExternalLinkLabel = '';
+        $this->formHighlightSelector = '';
         $this->resetValidation();
     }
 
@@ -96,6 +115,14 @@ class AnnouncementEditor extends Component
         $this->formDescription = $announcement->description;
         $this->formType = $announcement->type;
         $this->formRelatedModule = (string) ($announcement->related_module ?? '');
+        $this->formLinkType = match (true) {
+            $announcement->related_module !== null => 'module',
+            $announcement->external_url !== null => 'external',
+            default => 'none',
+        };
+        $this->formExternalUrl = (string) ($announcement->external_url ?? '');
+        $this->formExternalLinkLabel = (string) ($announcement->external_link_label ?? '');
+        $this->formHighlightSelector = (string) ($announcement->highlight_selector ?? '');
         $this->resetValidation();
     }
 
@@ -108,19 +135,36 @@ class AnnouncementEditor extends Component
     {
         $this->formTitle = trim($this->formTitle);
         $this->formDescription = trim($this->formDescription);
+        $this->formExternalUrl = trim($this->formExternalUrl);
+        $this->formExternalLinkLabel = trim($this->formExternalLinkLabel);
+        $this->formHighlightSelector = trim($this->formHighlightSelector);
 
         $data = $this->validate([
             'formTitle' => ['required', 'string', 'max:255'],
             'formDescription' => ['required', 'string', 'max:500'],
             'formType' => ['required', Rule::in(array_keys(FeatureAnnouncement::TYPES))],
-            'formRelatedModule' => ['nullable', Rule::in(array_keys(AppModules::CATALOG))],
+            'formLinkType' => ['required', Rule::in(['none', 'module', 'external'])],
+            'formRelatedModule' => [Rule::requiredIf($this->formLinkType === 'module'), 'nullable', Rule::in(array_keys(FeatureAnnouncement::linkableModules()))],
+            'formExternalUrl' => [Rule::requiredIf($this->formLinkType === 'external'), 'nullable', 'url', 'max:2048'],
+            'formExternalLinkLabel' => ['nullable', 'string', 'max:100'],
+            'formHighlightSelector' => ['nullable', 'string', 'max:255'],
         ]);
 
+        // The two link kinds are mutually exclusive — whichever isn't the
+        // chosen formLinkType is always cleared, regardless of what a stale
+        // form field might still hold from switching chips back and forth.
         $attributes = [
             'title' => $data['formTitle'],
             'description' => $data['formDescription'],
             'type' => $data['formType'],
-            'related_module' => $data['formRelatedModule'] !== '' ? $data['formRelatedModule'] : null,
+            'related_module' => $this->formLinkType === 'module' ? $data['formRelatedModule'] : null,
+            'external_url' => $this->formLinkType === 'external' ? $data['formExternalUrl'] : null,
+            'external_link_label' => $this->formLinkType === 'external' && $data['formExternalLinkLabel'] !== ''
+                ? $data['formExternalLinkLabel']
+                : null,
+            'highlight_selector' => $this->formLinkType === 'module' && $data['formHighlightSelector'] !== ''
+                ? $data['formHighlightSelector']
+                : null,
         ];
 
         if ($this->editingId !== null) {

@@ -39,6 +39,7 @@ class AdminAnnouncementsTest extends TestCase
         Livewire::actingAs($admin)->test(AnnouncementEditor::class)
             ->set('formTitle', 'Neu: Wochenplan')
             ->set('formDescription', 'Plane deine wiederkehrende Woche an einem Ort.')
+            ->set('formLinkType', 'module')
             ->set('formRelatedModule', 'weekplan')
             ->call('save');
 
@@ -193,6 +194,7 @@ class AdminAnnouncementsTest extends TestCase
             ->set('formTitle', 'Neu: Wochenplan')
             ->set('formDescription', 'Plane deine wiederkehrende Woche an einem Ort.')
             ->set('formType', 'release')
+            ->set('formLinkType', 'module')
             ->set('formRelatedModule', 'weekplan')
             ->instance()
             ->previewAnnouncement();
@@ -214,5 +216,122 @@ class AdminAnnouncementsTest extends TestCase
             ->assertOk();
 
         $this->assertSame(0, FeatureAnnouncement::count());
+    }
+
+    public function test_an_admin_can_link_to_an_external_url(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Neuer Blogpost')
+            ->set('formDescription', 'Wir haben aufgeschrieben, wie die App entstanden ist.')
+            ->set('formLinkType', 'external')
+            ->set('formExternalUrl', 'https://example.test/blog')
+            ->set('formExternalLinkLabel', 'Blogpost lesen')
+            ->call('save');
+
+        $announcement = FeatureAnnouncement::sole();
+        $this->assertSame('https://example.test/blog', $announcement->external_url);
+        $this->assertSame('Blogpost lesen', $announcement->external_link_label);
+        $this->assertNull($announcement->related_module);
+        $this->assertTrue($announcement->isExternalLink());
+    }
+
+    public function test_external_link_requires_a_valid_url(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Titel')
+            ->set('formDescription', 'Beschreibung')
+            ->set('formLinkType', 'external')
+            ->set('formExternalUrl', 'not a url')
+            ->call('save')
+            ->assertHasErrors(['formExternalUrl']);
+
+        $this->assertSame(0, FeatureAnnouncement::count());
+    }
+
+    public function test_external_link_type_requires_a_url(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Titel')
+            ->set('formDescription', 'Beschreibung')
+            ->set('formLinkType', 'external')
+            ->set('formExternalUrl', '')
+            ->call('save')
+            ->assertHasErrors(['formExternalUrl']);
+    }
+
+    public function test_module_link_type_requires_a_module(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Titel')
+            ->set('formDescription', 'Beschreibung')
+            ->set('formLinkType', 'module')
+            ->set('formRelatedModule', '')
+            ->call('save')
+            ->assertHasErrors(['formRelatedModule']);
+    }
+
+    public function test_switching_from_module_to_external_link_clears_the_module(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $announcement = FeatureAnnouncement::create([
+            'title' => 'Titel', 'description' => 'Beschreibung', 'created_by' => $admin->id,
+            'related_module' => 'weekplan', 'highlight_selector' => '#weekplan-pauses',
+        ]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->call('startEdit', $announcement->id)
+            ->assertSet('formLinkType', 'module')
+            ->set('formLinkType', 'external')
+            ->set('formExternalUrl', 'https://example.test')
+            ->call('save');
+
+        $fresh = $announcement->fresh();
+        $this->assertNull($fresh->related_module);
+        $this->assertNull($fresh->highlight_selector);
+        $this->assertSame('https://example.test', $fresh->external_url);
+    }
+
+    public function test_highlight_selector_is_only_saved_alongside_a_module_link(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Neu: Wochenplan')
+            ->set('formDescription', 'Beschreibung')
+            ->set('formLinkType', 'module')
+            ->set('formRelatedModule', 'weekplan')
+            ->set('formHighlightSelector', '#weekplan-pauses')
+            ->call('save');
+
+        $this->assertSame('#weekplan-pauses', FeatureAnnouncement::sole()->highlight_selector);
+    }
+
+    public function test_the_seen_count_reflects_how_many_users_dismissed_it(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $announcement = FeatureAnnouncement::create([
+            'title' => 'Titel', 'description' => 'Beschreibung', 'created_by' => $admin->id,
+            'is_published' => true, 'published_at' => now()->subDay(),
+        ]);
+        $viewers = User::factory()->count(3)->create(['created_at' => now()->subWeek()]);
+        foreach ($viewers as $viewer) {
+            $announcement->dismissFor($viewer);
+        }
+
+        $this->assertSame(3, $announcement->fresh()->dismissedCount());
+
+        $row = Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->instance()
+            ->announcements()
+            ->firstOrFail();
+        $this->assertSame(3, $row->dismissedCount());
     }
 }
