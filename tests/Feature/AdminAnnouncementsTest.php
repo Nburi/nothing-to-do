@@ -184,4 +184,35 @@ class AdminAnnouncementsTest extends TestCase
 
         $this->assertSame(0, FeatureAnnouncement::count());
     }
+
+    public function test_the_preview_reflects_the_current_unsaved_form_state(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $preview = Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Neu: Wochenplan')
+            ->set('formDescription', 'Plane deine wiederkehrende Woche an einem Ort.')
+            ->set('formType', 'release')
+            ->set('formRelatedModule', 'weekplan')
+            ->instance()
+            ->previewAnnouncement();
+
+        $this->assertSame('Neu: Wochenplan', $preview->title);
+        $this->assertSame('release', $preview->type);
+        $this->assertSame('weekplan', $preview->related_module);
+        $this->assertFalse($preview->exists);
+        $this->assertSame(0, FeatureAnnouncement::count());
+    }
+
+    public function test_the_preview_never_persists_anything(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Titel')
+            ->set('formDescription', 'Beschreibung')
+            ->assertOk();
+
+        $this->assertSame(0, FeatureAnnouncement::count());
+    }
 }

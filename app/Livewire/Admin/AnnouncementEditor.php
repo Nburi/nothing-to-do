@@ -59,6 +59,24 @@ class AnnouncementEditor extends Component
         return FeatureAnnouncement::TYPES;
     }
 
+    /**
+     * An unsaved FeatureAnnouncement built from the current form fields, fed
+     * into partials/announcement-toast-card.blade.php so the form's "Vorschau"
+     * renders pixel-identical to what a user would actually see — the same
+     * card the real toast renders, never a second copy of that markup. Empty
+     * fields get placeholder text rather than showing a blank card.
+     */
+    #[Computed]
+    public function previewAnnouncement(): FeatureAnnouncement
+    {
+        return new FeatureAnnouncement([
+            'title' => $this->formTitle,
+            'description' => $this->formDescription,
+            'type' => $this->formType,
+            'related_module' => $this->formRelatedModule !== '' ? $this->formRelatedModule : null,
+        ]);
+    }
+
     public function openCreateForm(): void
     {
         $this->editingId = null;
