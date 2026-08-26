@@ -103,12 +103,41 @@
                 @endif
             </div>
         </form>
+
+        {{-- Live preview — the exact card a user would see, built from the
+             current (unsaved) form fields. wire:model above is deferred, so
+             this needs an explicit refresh rather than updating per keystroke
+             — same "Vorschau aktualisieren" pattern as the Notizen editor's
+             preview (see CLAUDE.md's Known Issues on wire:model.blur). --}}
+        <div class="mt-6 border-t border-line pt-5" x-data="{ open: false }">
+            <button
+                type="button"
+                @click="open = ! open"
+                class="flex items-center gap-1.5 text-sm font-medium text-ink-soft transition hover:text-ink"
+            >
+                <svg class="h-3.5 w-3.5 transition" :class="open ? 'rotate-90' : ''" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>
+                Vorschau
+            </button>
+            <div x-show="open" x-transition x-cloak class="mt-3 space-y-3">
+                <p class="text-xs text-ink-soft">So sieht dieser Hinweis für Nutzer aus.</p>
+                @include('livewire.partials.announcement-toast-card', [
+                    'announcement' => $this->previewAnnouncement,
+                    'remaining' => 0,
+                    'interactive' => false,
+                ])
+                <button
+                    type="button"
+                    wire:click="$refresh"
+                    class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
+                >Vorschau aktualisieren</button>
+            </div>
+        </div>
     </div>
 
     {{-- List — every announcement, draft and published, newest first. --}}
     <div class="space-y-2">
         @forelse ($this->announcements as $announcement)
-            <div wire:key="announcement-{{ $announcement->id }}" class="rounded-card border border-line bg-surface p-4 shadow-map sm:p-5">
+            <div wire:key="announcement-{{ $announcement->id }}" x-data="{ previewOpen: false }" class="rounded-card border border-line bg-surface p-4 shadow-map sm:p-5">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
@@ -141,6 +170,12 @@
                     <div class="flex flex-none items-center gap-1">
                         <button
                             type="button"
+                            @click="previewOpen = ! previewOpen"
+                            :class="previewOpen ? 'border-ink-faint/60 text-ink' : ''"
+                            class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
+                        >Vorschau</button>
+                        <button
+                            type="button"
                             wire:click="togglePublish({{ $announcement->id }})"
                             class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
                         >{{ $announcement->is_published ? 'Zurückziehen' : 'Veröffentlichen' }}</button>
@@ -165,6 +200,19 @@
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m-6.5 0 .6 9.3A1.5 1.5 0 0 0 7.6 17h4.8a1.5 1.5 0 0 0 1.5-1.7L14.5 6"/></svg>
                         </button>
                     </div>
+                </div>
+
+                {{-- Rendered from this row's own already-loaded data, toggled
+                     purely client-side — no round trip needed, unlike the
+                     form's own preview above (which has no persisted model
+                     to read from until saved). --}}
+                <div x-show="previewOpen" x-transition x-cloak class="mt-3 border-t border-line pt-3">
+                    <p class="mb-2 text-xs text-ink-soft">So sieht dieser Hinweis für Nutzer aus{{ $announcement->is_published ? '' : ' (Entwurf, noch nicht sichtbar)' }}.</p>
+                    @include('livewire.partials.announcement-toast-card', [
+                        'announcement' => $announcement,
+                        'remaining' => 0,
+                        'interactive' => false,
+                    ])
                 </div>
             </div>
         @empty
