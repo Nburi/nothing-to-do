@@ -22,7 +22,10 @@ return new class extends Migration
             $table->timestamps();
 
             // Dismissing twice must be a no-op, not a second row.
-            $table->unique(['feature_announcement_id', 'user_id']);
+            // Explicit short name: Laravel's auto-generated name (72 chars) exceeds
+            // MySQL/MariaDB's 64-char identifier limit — SQLite (local dev) doesn't
+            // enforce this, so the default name only failed once it hit production.
+            $table->unique(['feature_announcement_id', 'user_id'], 'fad_announcement_user_unique');
         });
     }
 
