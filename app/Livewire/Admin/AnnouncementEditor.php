@@ -29,6 +29,9 @@ class AnnouncementEditor extends Component
 
     public string $formDescription = '';
 
+    /** A key into FeatureAnnouncement::TYPES. */
+    public string $formType = FeatureAnnouncement::DEFAULT_TYPE;
+
     /** A key into AppModules::CATALOG, or '' for "kein bestimmter Bereich". */
     public string $formRelatedModule = '';
 
@@ -50,11 +53,18 @@ class AnnouncementEditor extends Component
         return AppModules::CATALOG;
     }
 
+    #[Computed]
+    public function typeOptions(): array
+    {
+        return FeatureAnnouncement::TYPES;
+    }
+
     public function openCreateForm(): void
     {
         $this->editingId = null;
         $this->formTitle = '';
         $this->formDescription = '';
+        $this->formType = FeatureAnnouncement::DEFAULT_TYPE;
         $this->formRelatedModule = '';
         $this->resetValidation();
     }
@@ -66,6 +76,7 @@ class AnnouncementEditor extends Component
         $this->editingId = $announcement->id;
         $this->formTitle = $announcement->title;
         $this->formDescription = $announcement->description;
+        $this->formType = $announcement->type;
         $this->formRelatedModule = (string) ($announcement->related_module ?? '');
         $this->resetValidation();
     }
@@ -83,12 +94,14 @@ class AnnouncementEditor extends Component
         $data = $this->validate([
             'formTitle' => ['required', 'string', 'max:255'],
             'formDescription' => ['required', 'string', 'max:500'],
+            'formType' => ['required', Rule::in(array_keys(FeatureAnnouncement::TYPES))],
             'formRelatedModule' => ['nullable', Rule::in(array_keys(AppModules::CATALOG))],
         ]);
 
         $attributes = [
             'title' => $data['formTitle'],
             'description' => $data['formDescription'],
+            'type' => $data['formType'],
             'related_module' => $data['formRelatedModule'] !== '' ? $data['formRelatedModule'] : null,
         ];
 

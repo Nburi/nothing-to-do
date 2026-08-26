@@ -63,6 +63,56 @@ class AdminAnnouncementsTest extends TestCase
         $this->assertSame(0, FeatureAnnouncement::count());
     }
 
+    public function test_a_new_announcement_defaults_to_the_info_type(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->assertSet('formType', 'info')
+            ->set('formTitle', 'Titel')
+            ->set('formDescription', 'Beschreibung')
+            ->call('save');
+
+        $this->assertSame('info', FeatureAnnouncement::sole()->type);
+    }
+
+    public function test_an_admin_can_pick_a_non_default_type(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Wartung am Sonntag')
+            ->set('formDescription', 'Von 2 bis 4 Uhr ist die App nicht erreichbar.')
+            ->set('formType', 'maintenance')
+            ->call('save');
+
+        $this->assertSame('maintenance', FeatureAnnouncement::sole()->type);
+    }
+
+    public function test_type_must_be_a_real_catalog_key(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->set('formTitle', 'Titel')
+            ->set('formDescription', 'Beschreibung')
+            ->set('formType', 'not-a-real-type')
+            ->call('save')
+            ->assertHasErrors(['formType']);
+    }
+
+    public function test_editing_an_announcement_loads_its_type(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $announcement = FeatureAnnouncement::create([
+            'title' => 'Titel', 'description' => 'Beschreibung', 'type' => 'warning', 'created_by' => $admin->id,
+        ]);
+
+        Livewire::actingAs($admin)->test(AnnouncementEditor::class)
+            ->call('startEdit', $announcement->id)
+            ->assertSet('formType', 'warning');
+    }
+
     public function test_related_module_must_be_a_real_catalog_key(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

@@ -34,17 +34,32 @@ both stale `migrations` rows were removed; nothing in the code reads `task_group
 **Production never had any of it** (those branches were never merged or pushed), so there is nothing to
 deploy. Clean it up whenever the local database is next rebuilt from scratch.
 
-### Four feature branches still need merging in the right order
+### Five feature branches still need merging in the right order
 
 `feature/module-settings` (module visibility & default landing page) → `feature/onboarding-tutorial`
 (built on top of it, since the onboarding tutorial's module-visibility step needs
 `AppModules`/`hidden_modules`/`default_page`) → `feature/feature-announcements` (built on top of
 *that* one — reuses nothing code-wise from onboarding, but was branched from it per the same
 "branch from the tip of the chain" approach, and its CLAUDE.md edits sit right after the
-Onboarding-Tutorial section, so a merge the other way round would conflict) → `main`. Merge/rebase
-in that exact order, or squash-merge each into `main` in turn and rebase the next one in the chain
-onto the result each time — don't merge a later branch to `main` before the ones before it are in,
-or its dependencies (`AppModules`, `onboarding_completed_at`, …) won't exist yet on the target branch.
+Onboarding-Tutorial section, so a merge the other way round would conflict) →
+`feature/announcement-types` (message types + new-user filtering for the announcement toast, built
+on top of *that* one for the same reason — adds a `type` column via its own migration rather than
+editing the already-committed one, and its CLAUDE.md edits sit inside the Feature-Ankündigungen
+section) → `main`. Merge/rebase in that exact order, or squash-merge each into `main` in turn and
+rebase the next one in the chain onto the result each time — don't merge a later branch to `main`
+before the ones before it are in, or its dependencies (`AppModules`, `onboarding_completed_at`,
+`FeatureAnnouncement`, …) won't exist yet on the target branch.
+
+**`main` has moved on independently since this chain was branched off it** (2026-08-26):
+`feature/planner` was fast-forward merged in, plus two more commits landed directly on `main`
+(duration estimates in Quick Capture, removing the `password.request` route) — none of that work
+is anywhere in this five-branch chain. `main` is currently 3 commits ahead of `origin/main` (not
+yet pushed). This means the eventual merge of this chain is **no longer a clean fast-forward**:
+expect to rebase the whole chain onto current `main` (or merge `main` into the base of the chain)
+before or during the merge, and watch for conflicts in files both sides touched (`routes/web.php`,
+`app/Models/User.php`, `CLAUDE.md`, `TODO.md` are the most likely, since both lines of work added
+routes/columns/docs independently). Re-verify this note is still accurate before merging — `main`
+can keep moving between sessions.
 
 ## Ideas, not committed
 

@@ -1423,13 +1423,40 @@ authors announcements, and a per-user toast every regular user sees until they d
   follows the same convention: `abort_unless(auth()->user()->is_admin, 403)` in `mount()`. The
   artisan command exists because `php artisan tinker --execute` mangles quotes from PowerShell (see
   *Known Issues*) — flipping one boolean column locally needs a reliable path that isn't that.
-- **`App\Models\FeatureAnnouncement`** — `title, description, related_module?, created_by?,
+- **`App\Models\FeatureAnnouncement`** — `title, description, type, related_module?, created_by?,
   is_published, published_at?`. `related_module` is a key into `AppModules::CATALOG` (or null for
   "no specific page") — deliberately not a foreign key, since the catalog is a stateless PHP
   constant, not a table. `published_at` is stamped **the first time** an announcement is published
   and never moves again on a later unpublish/republish (`AnnouncementEditor::togglePublish()`) — it
   marks when the feature was actually introduced, not the current toggle state, and it's what
   orders the unseen queue (oldest-published-first, see below).
+- **Four message types** (`FeatureAnnouncement::TYPES`, a `label`/`tone`/`badge_label` catalog,
+  same shape as `AppModules::CATALOG`/`HeaderBadges::CATALOG`): `info` (default, deliberately
+  toneless — the same neutral `bg-line`/`text-ink-soft` look the editor's own "Entwurf" badge
+  already uses), `maintenance` (planned downtime, `contour` — this app's existing "something
+  time-bound" tone from the deadline-strip chips), `warning` (`signal` — the same
+  danger/urgency tone as an armed delete or an overdue task, so a warning reads as urgent rather
+  than merely informative), and `release` (an official version bump / big change, `forest` — the
+  toast's only look before this catalog existed, so a release keeps the original "exciting news"
+  identity). `type` is a plain string column (default `'info'`), not a DB enum — same convention
+  as `tasks.list`. Picked via a chip row in `AnnouncementEditor`'s form (mirrors
+  `AgendaEntry::TYPES`'s Hausaufgabe/Prüfung toggle, just four chips instead of two) and shown as
+  a colour-coded pill on each row in the admin list. The toast picks a distinct icon (wrench /
+  triangle / star / info-circle) and top-label ("Wartung"/"Warnung"/"Release"/"Neu") per type via a
+  `@switch` in the Blade view — **never** a dynamically-built `"bg-{$tone}-soft"` string, since
+  Tailwind's content scanner only finds complete literal class tokens in the source (same trap as
+  the *Known Issues* entry on JS-only classes silently purging). `FeatureAnnouncement::typeMeta()`
+  falls back to `info` for a stale/removed type value, so an old row is never left with nothing to
+  render. The "Verstanden" button itself stays the app's one shared forest CTA colour regardless of
+  type, deliberately — reusing `signal` there would visually collide with the armed-delete-button
+  convention, which is about a destructive click, not "acknowledge a warning".
+- **A brand-new account never sees the announcement backlog.** `scopeUnseenBy()` adds
+  `->where('published_at', '>=', $user->created_at)` — without it, registering today would
+  immediately surface every "what's new" toast ever published, one after another, for features the
+  new user has never used any other way. An existing user is unaffected, since their `created_at`
+  predates virtually every announcement anyway; the comparison is `>=`, not `>`, so a user who
+  registers in the same instant something is published still sees it (a real case — an existing
+  user browsing right as an admin publishes — not an edge case worth excluding).
 - **"Seen" is per (announcement, person)** — `feature_announcement_dismissals` (`feature_announcement_id,
   user_id`, unique pair, both FKs `cascadeOnDelete`) mirrors `agenda_entry_completions` exactly
   (CLAUDE.md, Agenda — Klassen teilen): the same shape already proven for "done" on a shared Agenda
@@ -1468,7 +1495,11 @@ authors announcements, and a per-user toast every regular user sees until they d
   `AppModules::CATALOG` (e.g. a specific settings card or a non-module page), scheduling a future
   publish date, per-announcement analytics (open/click-through), and a push notification for a
   freshly published announcement — the toast only ever appears on the next page load, matching
-  "little quick" rather than reaching for a channel that works with the tab closed.
+  "little quick" rather than reaching for a channel that works with the tab closed. Also out of
+  scope: a `maintenance` announcement carries no start/end time fields of its own — the window has
+  to be written into the free-text description (e.g. "Sonntag 2–4 Uhr") — and there's no
+  "resurface a dismissed warning again later" escalation path; both are plain text/one-shot like
+  every other type.
 
 ### Task-Gruppen (built)
 

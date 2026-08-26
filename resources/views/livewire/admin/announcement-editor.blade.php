@@ -31,6 +31,35 @@
             </div>
 
             <div>
+                <label class="mb-1.5 block text-sm font-medium text-ink">Art</label>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ($this->typeOptions as $key => $meta)
+                        @php
+                            $active = $formType === $key;
+                            $activeClasses = match ($key) {
+                                'maintenance' => 'bg-contour text-white shadow-sm',
+                                'warning' => 'bg-signal text-white shadow-sm',
+                                'release' => 'bg-forest text-white shadow-sm',
+                                default => 'bg-ink text-white shadow-sm',
+                            };
+                        @endphp
+                        <button
+                            type="button"
+                            wire:click="$set('formType', '{{ $key }}')"
+                            @class([
+                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                $activeClasses => $active,
+                                'bg-paper text-ink-soft hover:text-ink' => ! $active,
+                            ])
+                        >{{ $meta['label'] }}</button>
+                    @endforeach
+                </div>
+                @error('formType')
+                    <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
                 <label for="formDescription" class="mb-1.5 block text-sm font-medium text-ink">Kurzbeschreibung</label>
                 <textarea
                     id="formDescription"
@@ -84,6 +113,15 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="text-sm font-medium text-ink">{{ $announcement->title }}</p>
+                            @php
+                                $typeClasses = match ($announcement->type) {
+                                    'maintenance' => 'bg-contour-soft text-contour',
+                                    'warning' => 'bg-signal-soft text-signal',
+                                    'release' => 'bg-forest-soft text-forest',
+                                    default => 'bg-line text-ink-soft',
+                                };
+                            @endphp
+                            <span @class(['rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none', $typeClasses])>{{ $announcement->typeLabel() }}</span>
                             <span @class([
                                 'rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none',
                                 'bg-forest-soft text-forest' => $announcement->is_published,
