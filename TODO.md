@@ -34,32 +34,31 @@ both stale `migrations` rows were removed; nothing in the code reads `task_group
 **Production never had any of it** (those branches were never merged or pushed), so there is nothing to
 deploy. Clean it up whenever the local database is next rebuilt from scratch.
 
-### Five feature branches still need merging in the right order
+### `main` is merged locally but not yet pushed — needs a deploy checklist run
 
-`feature/module-settings` (module visibility & default landing page) → `feature/onboarding-tutorial`
-(built on top of it, since the onboarding tutorial's module-visibility step needs
-`AppModules`/`hidden_modules`/`default_page`) → `feature/feature-announcements` (built on top of
-*that* one — reuses nothing code-wise from onboarding, but was branched from it per the same
-"branch from the tip of the chain" approach, and its CLAUDE.md edits sit right after the
-Onboarding-Tutorial section, so a merge the other way round would conflict) →
-`feature/announcement-types` (message types + new-user filtering for the announcement toast, built
-on top of *that* one for the same reason — adds a `type` column via its own migration rather than
-editing the already-committed one, and its CLAUDE.md edits sit inside the Feature-Ankündigungen
-section) → `main`. Merge/rebase in that exact order, or squash-merge each into `main` in turn and
-rebase the next one in the chain onto the result each time — don't merge a later branch to `main`
-before the ones before it are in, or its dependencies (`AppModules`, `onboarding_completed_at`,
-`FeatureAnnouncement`, …) won't exist yet on the target branch.
+The module-settings → onboarding-tutorial → feature-announcements → announcement-types chain (four
+branches) was merged into `main` on 2026-08-26 (`b761db0`, one merge commit — `main` had
+independently moved on in the meantime via `feature/planner` plus two more direct commits, so this
+was a real three-way merge, not a fast-forward; conflicts in `routes/web.php`, `app/Models/User.php`,
+and `layouts/app.blade.php` were resolved by hand and verified with the full test suite). `main` is
+now **10 commits ahead of `origin/main`, not pushed** — pushing is deliberately left to Niels
+(CLAUDE.md §3.1: "Never push — the user does that").
 
-**`main` has moved on independently since this chain was branched off it** (2026-08-26):
-`feature/planner` was fast-forward merged in, plus two more commits landed directly on `main`
-(duration estimates in Quick Capture, removing the `password.request` route) — none of that work
-is anywhere in this five-branch chain. `main` is currently 3 commits ahead of `origin/main` (not
-yet pushed). This means the eventual merge of this chain is **no longer a clean fast-forward**:
-expect to rebase the whole chain onto current `main` (or merge `main` into the base of the chain)
-before or during the merge, and watch for conflicts in files both sides touched (`routes/web.php`,
-`app/Models/User.php`, `CLAUDE.md`, `TODO.md` are the most likely, since both lines of work added
-routes/columns/docs independently). Re-verify this note is still accurate before merging — `main`
-can keep moving between sessions.
+**Before/when pushing and deploying to production, run the full checklist in CLAUDE.md §9** — this
+merge added six new migrations (`hidden_modules`/`default_page`/`onboarding_completed_at`/`is_admin`
+columns, `feature_announcements` + `feature_announcement_dismissals` tables, and the announcement
+`type` column) on top of the four already-pending from the `feature/planner` merge (`duration_minutes`
+on tasks/agenda_entries, `planner_enabled`, `schedule_event_task_links.source`) — none of which have
+ever been deployed. `php artisan migrate --force` on the production box picks up all ten in one run;
+no new `.env` variable or dependency was introduced by either line of work.
+
+**One pre-existing, unrelated test failure surfaced while verifying this merge:**
+`Tests\Feature\Auth\PasswordResetTest::test_reset_password_link_screen_can_be_rendered` now fails
+(expects 200, gets 405) — caused by commit `0215365` ("removed route 'password.request' because mail
+servers aren't set up yet"), which commented out the `GET forgot-password` route but left the test
+asserting the old behavior. Not caused by the merge above; flagged here since it was found in the
+same test run. Needs a decision: update the test to match the intentional route removal, or restore
+the route once mail is actually configured.
 
 ## Ideas, not committed
 
