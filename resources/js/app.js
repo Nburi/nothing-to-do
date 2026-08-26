@@ -772,6 +772,27 @@ document.addEventListener('alpine:init', () => {
         },
     });
     /**
+     * onboarding — step position for the new-user tutorial (App\Livewire\Onboarding).
+     * The slides themselves are static content, not server data, so unlike
+     * `prepare` this needs no seeded-order bookkeeping: init() only ever sets
+     * `total` (the slide count, read out of the Blade view so the two can
+     * never drift), which is harmless to re-apply on every Livewire re-render
+     * the module-visibility step's toggles cause — it never touches `step`.
+     */
+    window.Alpine.store('onboarding', {
+        step: 0,
+        total: 1,
+        init(total) {
+            if (typeof total === 'number') this.total = total;
+        },
+        next() {
+            if (this.step < this.total - 1) this.step++;
+        },
+        back() {
+            if (this.step > 0) this.step--;
+        },
+    });
+    /**
      * swipeCard — native-feeling horizontal swipe for mobile task cards.
      * Tracks the finger 1:1, locks to the horizontal axis (vertical scroll still
      * works), resists past the threshold, springs back if abandoned. Visual action

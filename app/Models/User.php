@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\AppModules;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -31,6 +32,8 @@ use Laravel\Sanctum\HasApiTokens;
     'notify_streak_risk', 'streak_risk_sent_on',
     'header_badges',
     'planner_enabled',
+    'hidden_modules', 'default_page', 'onboarding_completed_at',
+    'is_admin',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -49,6 +52,7 @@ class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'is_admin' => false,
         'show_presence' => true,
         'deadline_preview_enabled' => true,
         'homework_preview_enabled' => true,
@@ -56,6 +60,7 @@ class User extends Authenticatable
         'notify_daily_reminder' => false,
         'daily_reminder_time' => '19:00',
         'notify_streak_risk' => false,
+        'default_page' => 'app',
     ];
 
     /** @return HasMany<Task, $this> */
@@ -116,6 +121,12 @@ class User extends Authenticatable
     public function craftIdeas(): HasMany
     {
         return $this->hasMany(CraftIdea::class);
+    }
+
+    /** Feature announcements this user has authored — only ever populated for an admin. */
+    public function createdAnnouncements(): HasMany
+    {
+        return $this->hasMany(FeatureAnnouncement::class, 'created_by');
     }
 
     /** Shared class/group agendas this user belongs to (a class, a study group, …). */
@@ -356,6 +367,48 @@ class User extends Authenticatable
     public const STREAK_RISK_DUE_TIME = '21:00';
 
     /**
+     * Which route opens on '/' and after login — the app's own equivalent of
+     * a homepage setting. Self-healing: if the stored choice no longer
+     * resolves to anything visible (the module got hidden after it was
+     * picked), this quietly falls back to the board rather than sending the
+     * user to a page they can't reach through the UI anymore. See
+     * App\Services\AppModules.
+     */
+    public function defaultLandingRouteName(): string
+    {
+        $page = $this->default_page ?? 'app';
+
+        if ($page === 'app' || ! AppModules::isValidLandingPage($this, $page)) {
+            return 'app';
+        }
+
+        return AppModules::CATALOG[$page]['route'];
+    }
+
+    /**
+     * Whether this account has never opened the onboarding tutorial — true for
+     * a brand-new registration and for any pre-existing account that predates
+     * this feature. Only consulted right after registration
+     * (RegisteredUserController); an existing account is never retroactively
+     * forced through the tutorial just because this is null.
+     */
+    public function needsOnboarding(): bool
+    {
+        return $this->onboarding_completed_at === null;
+    }
+
+    /**
+     * Re-stamped on every run, not just the first — finishing and skipping
+     * both count as "seen it" (mirrors PrepareTomorrow::finish()'s
+     * either-button-counts shape), and a later replay from Settings just
+     * moves the timestamp forward so it doubles as "last viewed on".
+     */
+    public function markOnboardingSeen(): void
+    {
+        $this->update(['onboarding_completed_at' => now()]);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -385,6 +438,9 @@ class User extends Authenticatable
             'streak_risk_sent_on' => 'date',
             'header_badges' => 'array',
             'planner_enabled' => 'boolean',
+            'hidden_modules' => 'array',
+            'onboarding_completed_at' => 'datetime',
+            'is_admin' => 'boolean',
         ];
     }
 }

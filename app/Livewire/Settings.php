@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesModuleSettings;
 use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\PushSubscription;
@@ -19,6 +20,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class Settings extends Component
 {
+    use ManagesModuleSettings;
+
     public string $resetTime = '01:00';
 
     // Pomodoro rhythm

@@ -2,7 +2,7 @@
      Alpine `quickCapture` store decides whether it's visible, so opening it
      costs no round trip. See app/Livewire/QuickCapture.php. --}}
 @php
-    $targets = App\Livewire\QuickCapture::TARGETS;
+    $targets = $this->availableTargets;
 @endphp
 <div
     x-data="{

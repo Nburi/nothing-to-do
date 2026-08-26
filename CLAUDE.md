@@ -69,6 +69,12 @@ I say so, with reasoning.
    resets on outside-click/Escape — click again within that window to actually delete). See *Known
    Issues* for the exact Alpine snippet.
 10. Call me by my name, every time I ask something or give you a task.
+11. **New user-facing feature → draft an announcement.** Whenever a feature ships that a regular user would
+    actually notice (a new page, a new gesture, a new setting worth knowing about — not an internal
+    refactor or a bugfix), also create a draft `App\Models\FeatureAnnouncement` for it (title + one-sentence
+    description, `related_module` set if it maps to an `AppModules::CATALOG` key), or if that's out of scope
+    for the current task, at least flag in the summary that one should be written. Leave it unpublished —
+    publishing is the user's call. See CLAUDE.md §7, "Feature-Ankündigungen".
 
 ---
 
@@ -1390,6 +1396,236 @@ showed one hardcoded indicator (the streak), always in the same spot.
   same as the pre-existing streak badge always did), and API/Shortcuts support for reading or writing
   `header_badges`.
 
+### Modul-Sichtbarkeit & Startseite (built)
+
+Lets a user hide any of the app's optional feature pages and choose which page opens by default —
+built for the "single user, but the Agenda can be shared with a class" case (§1): a classmate who
+only cares about the shared class Agenda can declutter everything else and land straight on it.
+Deliberately built as a foundation for two features that don't exist yet — an onboarding tutorial
+that should only cover currently-visible modules, and an admin-authored feature-announcement system
+— so the catalog is additive/extensible rather than a one-off pair of settings.
+
+- **`App\Services\AppModules`** — a stateless catalog, `CATALOG` mirroring `HeaderBadges::CATALOG`'s
+  shape: seven hideable keys (`prepare`, `schedule`, `weekplan`, `agenda`, `crafts`, `emergency`,
+  `progress`), each with a label, a one-line description, and the route name its nav entries and
+  its landing-page choice point at. **The Board (`app`) and Settings are never in this catalog** —
+  they're the app's core surface (QuickCapture's default target, the only place Inbox/Projects/
+  Groups live) and the always-safe fallback; hiding either would strand the user with no way back
+  in. A feature with its own dedicated on/off toggle (e.g. a default-off `*_enabled` column
+  explained inline in Settings) belongs there, not duplicated here — this catalog is only for pages
+  that were previously always-on and are only now becoming optional.
+  - `isVisible(User, key)` / `hiddenKeys(User)` — **`users.hidden_modules`** (nullable JSON) is
+    `null` for anyone who never opens the card, meaning "nothing hidden" — same "untouched means
+    default" shape as `header_badges`, just inverted: a hide-list needs no merge-with-catalog logic
+    the way an enable-list would, since "not in the list" already means visible. Any key outside the
+    catalog (an unknown/future key) is always visible — this only ever hides something explicitly
+    listed.
+  - `rowsFor(User)` — the catalog in fixed order, each row carrying its current `hidden` flag; what
+    Settings' "Module" card renders.
+  - `landingPageOptions(User)` — the Board (always first) plus every catalog module that isn't
+    currently hidden; what the "Startseite" picker offers.
+  - `isValidLandingPage(User, key)` — deliberately **not** just `isVisible()`: that treats an
+    unknown key as "always visible" (right for its own job), which would be wrong here — a garbage
+    or removed key must never validate as a landing-page choice. Used by both
+    `User::defaultLandingRouteName()` and `Settings::setDefaultPage()` so the two can never disagree
+    about what's a valid pick.
+- **`users.default_page`** (string, default `'app'`) plus **`User::defaultLandingRouteName()`** —
+  self-healing: if the stored choice no longer resolves to anything visible (the module was hidden
+  after being picked as the landing page), this quietly falls back to the Board instead of routing
+  the user to a page the nav can no longer reach. `routes/web.php`'s `/` and `/dashboard` (Breeze's
+  post-login target) both redirect through it instead of a hardcoded `route('app')`; a guest hitting
+  `/dashboard` directly still falls back to `app`, matching the previous static redirect's behavior.
+- **Settings' "Module" card** — one immediate-save toggle per catalog row (same switch style as the
+  Benachrichtigungen/Kategorien cards), each row fading to `opacity-45` in place so the effect is
+  confirmed without leaving Settings. `Settings::toggleModule()` **resets `default_page` back to
+  `'app'` in the same write** whenever the module being hidden is also the user's current landing
+  page — the write-side mirror of `defaultLandingRouteName()`'s own read-side fallback, so the two
+  can never drift apart even mid-session. A companion **"Startseite"** pill row
+  (`Settings::setDefaultPage()`, `landingPageOptions()`) offers only currently-visible pages.
+- **Every consumer of a hideable page checks `AppModules::isVisible()`:**
+  - `layouts/app.blade.php`'s "Mehr" dropdown and profile-menu Fortschritt entry each wrap their own
+    link in an `@if`; the whole "Mehr" button disappears when every one of its entries is hidden,
+    rather than opening onto an empty panel. **Notfall is the one exception** — its entry stays
+    visible whenever `user->isInEmergencyMode()` is true, regardless of the module toggle, so hiding
+    it can never strand the user mid-emergency with no way to see or end it.
+  - `HeaderBadges::visibleFor()` drops the `agenda`/`schedule`/`emergency` badges the same way (via
+    a small `MODULE_FOR_BADGE` map), with the same Notfall exception — a header shortcut must not
+    keep pointing at a page the nav no longer offers.
+  - `QuickCapture::availableTargets()` filters `TARGETS` to modules the user hasn't hidden (`craft`
+    → `crafts`, `agenda` → `agenda`; every other target is core Board functionality and always
+    offered) — hiding a module has to remove its capture entry point too, or "hide everything except
+    Agenda" would stay half-done. `setTarget()`, `resetPanel()`, and `save()`'s validation rule all
+    check against `availableTargets` instead of the raw `TARGETS` constant.
+  - `TaskBoard::homeworkPreview()` also goes empty when the `agenda` module is hidden — the strip is
+    a satellite view of Agenda and links straight back to it, so it has to disappear along with it,
+    on top of its existing `homework_preview_enabled` gate.
+- Deliberately out of scope for this pass: hiding the Board/Settings themselves (see above), a
+  per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
+  feature-announcement system this catalog exists to eventually support.
+
+### Onboarding-Tutorial (built)
+
+The second of the two features that catalog was built to eventually support (the first being
+itself, above; the third — an admin-authored feature-announcement system shown to *existing*
+users — is still unbuilt, tracked in `TODO.md`). A skippable, replayable walkthrough that covers
+the "3 Things" framework (see §1) and every feature area of the app, ending on a functional
+module-visibility/default-landing-page step.
+
+- **`App\Livewire\Onboarding`** (`/app/onboarding`, `route('onboarding')`, `#[Layout('layouts.app')]`)
+  is a single continuous flow, not a wizard with server-tracked position — the 14 slides are
+  static content, not data, so step position is **pure client-side Alpine state** (the
+  `onboarding` store in `app.js`: `step`/`total`/`next()`/`back()`), the same "ephemeral UI state
+  lives in Alpine" convention as `prepare`/`celebration`/`quickCapture`. Unlike `prepare`, it needs
+  no seeded-order bookkeeping or re-run guard — `init(total)` only ever sets the slide count (read
+  out of the Blade view via `$stepCount` so the two can never drift), which is harmless to
+  re-apply on every Livewire re-render the module-visibility step's toggles cause, since it never
+  touches `step`.
+- **`users.onboarding_completed_at`** (nullable timestamp) — `null` means "never opened it",
+  true for a brand-new registration and for any pre-existing account that predates this feature
+  (neither is ever retroactively forced through it). `User::needsOnboarding()`/
+  `markOnboardingSeen()` are the only two access points. Stamped by **both** `finish()` and
+  `skip()` — skipping counts as "seen it" just as much as finishing does, mirroring
+  `PrepareTomorrow::finish()`'s own either-button-counts shape — and **re-stamped on every
+  replay**, so the same column doubles as "last viewed on" for Settings' own card (below).
+- **Auto-redirect on a brand-new registration only** — `RegisteredUserController::store()` builds
+  its `redirect()->intended($default)` fallback from `$user->needsOnboarding()` instead of always
+  pointing at `route('dashboard')`. Since `intended()` only overrides that fallback when a
+  `url.intended` session value is already pending — which is exactly the shape of "a classmate
+  followed a class-agenda invite link, got bounced to `/login`, and registered from there" (see
+  Agenda — Klassen teilen, "the invite link requires login and returns after it") — that flow is
+  completely unaffected: it still lands exactly on the invite it followed, never detoured through
+  onboarding first. A plain "just register" has no intended URL pending, so it *does* fall through
+  to onboarding. Nothing about a normal *login* (as opposed to registration) ever redirects here.
+- **Replay is unconditional** — Settings' new "Tutorial" card (Allgemein tab) always links to
+  `route('onboarding')` regardless of `onboarding_completed_at`, with the button label and a
+  "Zuletzt angesehen am …" caption both switching on whether it's set. Visiting the route itself
+  never stamps anything — only `finish()`/`skip()` do — so a user can open it, look around, and
+  leave via the header logo without disturbing the stored "last viewed on" date.
+- **`App\Livewire\Concerns\ManagesModuleSettings`** — the module-visibility/default-landing-page
+  step (the one place this tutorial is genuinely interactive, not just descriptive) needed the
+  exact same `toggleModule()`/`setDefaultPage()` self-healing logic Settings already had, so that
+  logic was extracted out of `Settings` into this trait and both components now `use` it — the
+  "hiding the current default page resets it to the board" rule now lives in exactly one place
+  instead of two copies that could drift. The trait's `mountManagesModuleSettings()` seeds
+  `$defaultPage` on mount via Livewire's automatic trait-hook convention (a method named
+  `mount<TraitBasename>` is called automatically for every trait a component uses — see
+  `SupportLifecycleHooks::callTraitHook()`) — **it must be `public`**, not `protected`: Livewire
+  invokes it via `Illuminate\Container\BoundMethod`-style resolution from outside the class, which
+  silently fails with a "method does not exist"-shaped error against a non-public method (caught by
+  every test that mounts either component, not a subtle runtime-only gap).
+- **Signature moment — the "3 Things" step teaches by feel, not by caption.** Three chips
+  (To-Do/Task/Project) sit above one sample card; tapping between them doesn't just swap a label —
+  the card itself visibly grows (width, padding, weight, colour) at each size, and at "Project" it
+  splits apart into three small stacked, slightly rotated cards to make "a container for
+  mehrteilige Arbeit" tangible rather than read. Pure Alpine/CSS (`x-transition.scale`), no
+  Livewire round trip — the whole slide is local `x-data="{ size: 'todo' }"` nested inside the
+  step's `x-show` block.
+- Every other feature area gets one slide each (Heute/Wichtig/Termine, Schnellerfassung, das
+  Board, Projekte & Gruppen, Vorbereitung, Zeitplan & Fokus, Wochenplan & Ferien, Notfallmodus,
+  Agenda, Bastelideen & Fortschritt); Header-Badges and the API/Shortcuts docs get a passing
+  mention rather than a dedicated slide (the module step's footer note and the closing slide,
+  respectively) since neither needs a decision made on day one.
+- Deliberately out of scope for this pass: a live-DOM spotlight tour over the real pages (rejected
+  in favour of this dedicated full-screen flow — a spotlight touching a dozen pages, several
+  needing real data like an active project or a populated Wochenplan, would be fragile for one
+  pass, whereas this app already has a proven "dedicated full-screen ritual" shape in
+  `PrepareTomorrow`/`EmergencyMode`), per-step analytics, a deep link to resume one specific slide,
+  and the admin feature-announcement system (see "Feature-Ankündigungen" below) this and the
+  module catalog were built to eventually support.
+
+### Feature-Ankündigungen (built)
+
+The third and last step of the onboarding/accessibility push `AppModules` and the onboarding
+tutorial were built for (see both sections above): a lightweight "here's what's new" toast for
+**existing** users, distinct from the new-user tutorial. Two halves — an admin-only editor that
+authors announcements, and a per-user toast every regular user sees until they dismiss it.
+
+- **`users.is_admin`** (boolean, default `false`) — set directly in the DB, or via
+  `php artisan admin:grant {email}` (`App\Console\Commands\GrantAdmin`, `--revoke` to remove).
+  Deliberately no in-app self-service "become admin" flow, and no middleware layer either — every
+  other authorization boundary in this app already lives at the component/query level
+  (`userTask()`, `visibleEntry()`, …), not in middleware, so `App\Livewire\Admin\AnnouncementEditor`
+  follows the same convention: `abort_unless(auth()->user()->is_admin, 403)` in `mount()`. The
+  artisan command exists because `php artisan tinker --execute` mangles quotes from PowerShell (see
+  *Known Issues*) — flipping one boolean column locally needs a reliable path that isn't that.
+- **`App\Models\FeatureAnnouncement`** — `title, description, type, related_module?, created_by?,
+  is_published, published_at?`. `related_module` is a key into `AppModules::CATALOG` (or null for
+  "no specific page") — deliberately not a foreign key, since the catalog is a stateless PHP
+  constant, not a table. `published_at` is stamped **the first time** an announcement is published
+  and never moves again on a later unpublish/republish (`AnnouncementEditor::togglePublish()`) — it
+  marks when the feature was actually introduced, not the current toggle state, and it's what
+  orders the unseen queue (oldest-published-first, see below).
+- **Four message types** (`FeatureAnnouncement::TYPES`, a `label`/`tone`/`badge_label` catalog,
+  same shape as `AppModules::CATALOG`/`HeaderBadges::CATALOG`): `info` (default, deliberately
+  toneless — the same neutral `bg-line`/`text-ink-soft` look the editor's own "Entwurf" badge
+  already uses), `maintenance` (planned downtime, `contour` — this app's existing "something
+  time-bound" tone from the deadline-strip chips), `warning` (`signal` — the same
+  danger/urgency tone as an armed delete or an overdue task, so a warning reads as urgent rather
+  than merely informative), and `release` (an official version bump / big change, `forest` — the
+  toast's only look before this catalog existed, so a release keeps the original "exciting news"
+  identity). `type` is a plain string column (default `'info'`), not a DB enum — same convention
+  as `tasks.list`. Picked via a chip row in `AnnouncementEditor`'s form (mirrors
+  `AgendaEntry::TYPES`'s Hausaufgabe/Prüfung toggle, just four chips instead of two) and shown as
+  a colour-coded pill on each row in the admin list. The toast picks a distinct icon (wrench /
+  triangle / star / info-circle) and top-label ("Wartung"/"Warnung"/"Release"/"Neu") per type via a
+  `@switch` in the Blade view — **never** a dynamically-built `"bg-{$tone}-soft"` string, since
+  Tailwind's content scanner only finds complete literal class tokens in the source (same trap as
+  the *Known Issues* entry on JS-only classes silently purging). `FeatureAnnouncement::typeMeta()`
+  falls back to `info` for a stale/removed type value, so an old row is never left with nothing to
+  render. The "Verstanden" button itself stays the app's one shared forest CTA colour regardless of
+  type, deliberately — reusing `signal` there would visually collide with the armed-delete-button
+  convention, which is about a destructive click, not "acknowledge a warning".
+- **A brand-new account never sees the announcement backlog.** `scopeUnseenBy()` adds
+  `->where('published_at', '>=', $user->created_at)` — without it, registering today would
+  immediately surface every "what's new" toast ever published, one after another, for features the
+  new user has never used any other way. An existing user is unaffected, since their `created_at`
+  predates virtually every announcement anyway; the comparison is `>=`, not `>`, so a user who
+  registers in the same instant something is published still sees it (a real case — an existing
+  user browsing right as an admin publishes — not an edge case worth excluding).
+- **"Seen" is per (announcement, person)** — `feature_announcement_dismissals` (`feature_announcement_id,
+  user_id`, unique pair, both FKs `cascadeOnDelete`) mirrors `agenda_entry_completions` exactly
+  (CLAUDE.md, Agenda — Klassen teilen): the same shape already proven for "done" on a shared Agenda
+  entry, reused here for "dismissed" on a shared announcement. `FeatureAnnouncement::dismissFor(User)`
+  does a `syncWithoutDetaching()`, so dismissing twice is a no-op, never a second row or an error.
+- **`App\Livewire\Admin\AnnouncementEditor`** (`/app/admin/announcements`, `route('admin.announcements')`)
+  — one form doubling as create/edit (`editingId` null vs set, same pattern as `Agenda`/`CraftIdeas`),
+  a list of every announcement (draft and published, newest first — an admin needs to see drafts
+  too), a publish/unpublish button, and delete via the standard armed double-click (never `confirm()`).
+  Entry point: a profile-dropdown link (`layouts/app.blade.php`), rendered only for `auth()->user()->is_admin`.
+- **`App\Livewire\FeatureAnnouncementToast`** — mounted once in `layouts/app.blade.php` (same
+  reasoning as the milestone-celebration overlay: it has to appear no matter which page loads
+  first), inside `@auth`. Its `#[Computed] queue()` is every published announcement this user
+  hasn't dismissed, oldest-published-first (`FeatureAnnouncement::scopeUnseenBy()`); `current()` is
+  its head. Renders **nothing at all** when the queue is empty — the same zero-footprint convention
+  as the homework preview strip and the prepare prompt — but the root Blade view still needs a
+  permanent outer `<div>` regardless, since Livewire rejects a root component view that can compile
+  to literally nothing (`RootTagMissingFromViewException`); only the content *inside* that div is
+  conditional. One announcement is shown at a time, never stacked, so a backlog of several unseen
+  entries doesn't overwhelm on the next visit — dismissing advances to the next one in the same
+  queue, and a `wire:key` tied to the current announcement's id makes each card (and its Alpine
+  state) remount fresh rather than mutate in place.
+- **If `related_module` is set**, the card also shows an "X ansehen →" link to that catalog route.
+  Clicking it both navigates (`wire:navigate`) and dismisses (`wire:click="dismiss(...)"`) — the
+  same dual-fire pattern `PrepareTomorrow`'s "Später planen"/"Fertig" buttons already use (a
+  Livewire action and a plain link on the same element both fire independently, see *Known Issues*):
+  visiting the feature the announcement is about already counts as having seen it.
+- **Signature moment — the dismiss button counts itself down.** Rather than a "and 2 more" line
+  elsewhere on the card, the primary "Verstanden" button carries a small trailing badge showing how
+  many *other* unseen announcements remain; clicking it decrements the badge instantly (a local
+  Alpine `remaining`, optimistic — the server's own re-render confirms the true count a beat later
+  via the fresh `wire:key`'d card) and it disappears once nothing is left. The whole "there's a
+  backlog, but you're processing it one bite at a time" feeling lives at the one spot you're already
+  looking at, rather than a separate counter or list.
+- Deliberately out of scope for this pass: editing `related_module` to point anywhere outside
+  `AppModules::CATALOG` (e.g. a specific settings card or a non-module page), scheduling a future
+  publish date, per-announcement analytics (open/click-through), and a push notification for a
+  freshly published announcement — the toast only ever appears on the next page load, matching
+  "little quick" rather than reaching for a channel that works with the tab closed. Also out of
+  scope: a `maintenance` announcement carries no start/end time fields of its own — the window has
+  to be written into the free-text description (e.g. "Sonntag 2–4 Uhr") — and there's no
+  "resurface a dismissed warning again later" escalation path; both are plain text/one-shot like
+  every other type.
+
 ### Task-Gruppen (built)
 
 The middle size between a single task and a Project: a bundle of steps that belong together — a
@@ -1937,6 +2173,20 @@ trait (or via `self::`/`static::` from inside the trait itself); `TraitName::FOO
 **Fix:** put constants that need to be referenced by name from outside on a real class instead (e.g.
 `ScheduleEvent::EVENT_COLORS`, not `ManagesSchedule::EVENT_COLORS`), and have the trait's own methods read it
 via the class too. Only use a trait constant if every reader is either the trait itself or a class using it.
+
+### A trait's `mount<TraitName>()` lifecycle hook must be `public`, not `protected`
+**Symptom:** every test that mounts a component using the trait fails with
+`Method App\Livewire\X::mountTraitName does not exist.` — even though the method is right there in the
+trait, correctly named.
+**Cause:** Livewire automatically calls a `mount<TraitBasename>()`/`boot<TraitBasename>()`/
+`booted<TraitBasename>()` method for every trait a component uses (`SupportLifecycleHooks::callTraitHook()`),
+without the component needing to call it itself. It invokes that method via
+`Illuminate\Container\BoundMethod`-style resolution from *outside* the class, the same mechanism used to call
+`mount()`/`render()` themselves — and that resolution path cannot see a `protected`/`private` method, so it
+fails, but with a generic "does not exist"-shaped message rather than a visibility error, which reads like a
+typo or a missing method rather than what it actually is.
+**Fix:** declare any trait's `mount<TraitBasename>()` (and its `boot`/`booted` siblings, if used) `public`.
+(See `App\Livewire\Concerns\ManagesModuleSettings::mountManagesModuleSettings()`.)
 
 ### Livewire 4 generates emoji-named single-file components
 **Symptom:** `php artisan make:livewire X` creates `resources/views/components/⚡x.blade.php`.

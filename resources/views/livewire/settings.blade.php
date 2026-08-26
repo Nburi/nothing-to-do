@@ -114,6 +114,104 @@
         </form>
         </div>
 
+        {{-- Module — hide the pages you don't use. Each row visually mirrors
+             its "Mehr"-menu counterpart; toggling it off fades it right here
+             (not just in the header) so the effect is confirmed without ever
+             leaving Settings, and the counter above the list updates with
+             it. See App\Services\AppModules. --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <div class="mb-1 flex items-baseline justify-between gap-3">
+                <h3 class="text-base font-medium text-ink">Module</h3>
+                <p
+                    wire:key="module-count"
+                    class="text-xs text-ink-faint"
+                >Menü zeigt noch {{ collect($this->moduleRows)->where('hidden', false)->count() }} von {{ count($this->moduleRows) }} Bereichen</p>
+            </div>
+            <p class="mb-5 text-sm text-ink-soft leading-relaxed">
+                Blende Bereiche aus, die du nicht brauchst — sie verschwinden aus dem „Mehr"-Menü und dem
+                Profilmenü. Das Board und die Einstellungen bleiben immer erreichbar.
+            </p>
+
+            <div class="space-y-2">
+                @foreach ($this->moduleRows as $row)
+                    <div
+                        wire:key="module-row-{{ $row['key'] }}"
+                        class="flex items-center gap-3 rounded-card border border-line bg-paper p-3.5 transition-opacity duration-300 {{ $row['hidden'] ? 'opacity-45' : 'opacity-100' }}"
+                    >
+                        <div class="min-w-0 flex-1">
+                            <p @class(['text-sm font-medium', 'text-ink' => ! $row['hidden'], 'text-ink-faint' => $row['hidden']])>{{ $row['label'] }}</p>
+                            <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">{{ $row['description'] }}</p>
+                        </div>
+                        <button
+                            type="button"
+                            wire:click="toggleModule('{{ $row['key'] }}')"
+                            @class([
+                                'relative h-6 w-10 flex-none rounded-full transition',
+                                'bg-forest' => ! $row['hidden'],
+                                'bg-line' => $row['hidden'],
+                            ])
+                            aria-label="{{ $row['label'] }} {{ $row['hidden'] ? 'einblenden' : 'ausblenden' }}"
+                        >
+                            <span @class([
+                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                                'left-[1.125rem]' => ! $row['hidden'],
+                                'left-0.5' => $row['hidden'],
+                            ])></span>
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Startseite --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Startseite</h3>
+            <p class="mb-5 text-sm text-ink-soft leading-relaxed">
+                Diese Seite öffnet sich, wenn du die App startest oder dich anmeldest — z. B. direkt die
+                Agenda statt des Boards. Nur ausgeblendete Bereiche stehen hier nicht zur Wahl.
+            </p>
+
+            <div class="flex flex-wrap gap-2 rounded-[0.6rem] bg-paper p-1">
+                @foreach ($this->landingPageOptions as $option)
+                    <button
+                        type="button"
+                        wire:click="setDefaultPage('{{ $option['key'] }}')"
+                        @class([
+                            'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                            'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
+                            'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
+                        ])
+                    >{{ $option['label'] }}</button>
+                @endforeach
+            </div>
+            <p class="mt-3 text-xs text-ink-soft">
+                Aktuell: <span class="font-medium text-ink">{{ collect($this->landingPageOptions)->firstWhere('key', $defaultPage)['label'] ?? 'Board (Startseite)' }}</span>
+            </p>
+        </div>
+
+        {{-- Tutorial — always offered, whether this account finished it, skipped
+             it, or never even had it (see App\Livewire\Onboarding). Re-running it
+             never resets anything here; it just re-stamps "last viewed on". --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Tutorial</p>
+                    <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
+                        @if (auth()->user()->onboarding_completed_at)
+                            Zuletzt angesehen am {{ auth()->user()->onboarding_completed_at->isoFormat('D.M.YYYY') }}.
+                        @else
+                            Du hast die Einführung noch nicht angesehen.
+                        @endif
+                    </p>
+                </div>
+                <a
+                    href="{{ route('onboarding') }}"
+                    wire:navigate
+                    class="flex-none rounded-card border border-line bg-paper px-3.5 py-1.5 text-sm text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
+                >{{ auth()->user()->onboarding_completed_at ? 'Nochmal ansehen' : 'Tutorial starten' }}</a>
+            </div>
+        </div>
+
         {{-- Hausaufgaben-Vorschau --}}
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <div class="flex items-center justify-between gap-3">

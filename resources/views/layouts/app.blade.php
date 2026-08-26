@@ -71,6 +71,21 @@
                             $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'planner', 'agenda', 'emergency', 'crafts']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
+
+                            // Which "Mehr" entries this user actually gets — Settings' "Module"
+                            // card (App\Services\AppModules). Notfall stays reachable while an
+                            // emergency is actually running even if the user hid it earlier —
+                            // hiding a module must never strand them mid-emergency with no way
+                            // to see or end it. When every entry ends up hidden, the whole
+                            // "Mehr" button disappears rather than opening onto an empty panel.
+                            $showPrepareNav = \App\Services\AppModules::isVisible(auth()->user(), 'prepare');
+                            $showScheduleNav = \App\Services\AppModules::isVisible(auth()->user(), 'schedule');
+                            $showWeekplanNav = \App\Services\AppModules::isVisible(auth()->user(), 'weekplan');
+                            $showAgendaNav = \App\Services\AppModules::isVisible(auth()->user(), 'agenda');
+                            $showCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
+                            $showEmergencyNav = \App\Services\AppModules::isVisible(auth()->user(), 'emergency') || auth()->user()->isInEmergencyMode();
+                            $showProgressNav = \App\Services\AppModules::isVisible(auth()->user(), 'progress');
+                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showAgendaNav || $showCraftsNav || $showEmergencyNav;
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
@@ -96,6 +111,7 @@
                              app rather than a second, differently-built dropdown. Bastelideen
                              moves in too: it never had a header pill of its own before, but
                              it's exactly the same kind of "additional feature". --}}
+                        @if ($anyMehrNavVisible)
                         <div x-data="{ open: false }" class="relative">
                             <button
                                 type="button"
@@ -129,6 +145,7 @@
                                 class="absolute right-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
                                 style="display: none;"
                             >
+                                @if ($showPrepareNav)
                                 <a href="{{ route('prepare') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-paper font-medium text-ink' => request()->routeIs('prepare'),
@@ -137,6 +154,8 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
                                     Vorbereiten
                                 </a>
+                                @endif
+                                @if ($showScheduleNav)
                                 <a href="{{ route('schedule') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-paper font-medium text-ink' => request()->routeIs('schedule'),
@@ -145,6 +164,8 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
                                     Zeitplan
                                 </a>
+                                @endif
+                                @if ($showWeekplanNav)
                                 <a href="{{ route('weekplan') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-paper font-medium text-ink' => request()->routeIs('weekplan'),
@@ -153,11 +174,14 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                                     Wochenplan &amp; Ferien
                                 </a>
+                                @endif
                                 {{-- Off by default (users.planner_enabled) — the pill itself only
                                      ever renders once someone has opted in via Settings, so a
                                      visit to /app/planner while it's off (Planner::mount()) and the
                                      total absence of this entry from a fresh account's "Mehr" menu
-                                     are the same zero-footprint story. --}}
+                                     are the same zero-footprint story. Deliberately not part of
+                                     AppModules::CATALOG — the Planner toggle predates and is
+                                     unrelated to the module-visibility system. --}}
                                 @if (auth()->user()->planner_enabled)
                                     <a href="{{ route('planner') }}" wire:navigate @class([
                                         'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
@@ -168,6 +192,7 @@
                                         Planer
                                     </a>
                                 @endif
+                                @if ($showAgendaNav)
                                 <a href="{{ route('agenda') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-paper font-medium text-ink' => request()->routeIs('agenda'),
@@ -176,6 +201,8 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
                                     Agenda
                                 </a>
+                                @endif
+                                @if ($showCraftsNav)
                                 <a href="{{ route('crafts') }}" wire:navigate @class([
                                     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-paper font-medium text-ink' => request()->routeIs('crafts'),
@@ -184,9 +211,14 @@
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
                                     Bastelideen
                                 </a>
+                                @endif
                                 {{-- Notfall is always listed here now (no longer conditionally
                                      hidden from the header) — an "Aktiv" badge communicates the
-                                     running state instead of the item's presence/absence. --}}
+                                     running state instead of the item's presence/absence. Still
+                                     wrapped in $showEmergencyNav, which itself stays true whenever
+                                     an emergency is actually running, regardless of the module
+                                     toggle — see the $showEmergencyNav definition above. --}}
+                                @if ($showEmergencyNav)
                                 <a href="{{ route('emergency') }}" wire:navigate @class([
                                     'flex items-center justify-between gap-2 px-4 py-2 text-sm transition hover:bg-paper',
                                     'bg-signal-soft font-medium text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
@@ -205,8 +237,10 @@
                                         <span class="rounded-full bg-signal px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">Aktiv</span>
                                     @endif
                                 </a>
+                                @endif
                             </div>
                         </div>
+                        @endif
 
                         {{-- Quick capture: the visible counterpart to the "N" shortcut, so
                              the panel is never a hidden-only feature. On touch it hides
@@ -260,6 +294,7 @@
                                 <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Einstellungen
                                 </a>
+                                @if ($showProgressNav)
                                 <a href="{{ route('progress') }}" wire:navigate class="flex items-center justify-between gap-2 px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Fortschritt
                                     @if ($currentStreak > 0)
@@ -272,6 +307,12 @@
                                         ])>{{ $currentStreak }}</span>
                                     @endif
                                 </a>
+                                @endif
+                                @if (auth()->user()->is_admin)
+                                <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Ankündigungen verwalten
+                                </a>
+                                @endif
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
@@ -314,6 +355,12 @@
             @endif
 
             <livewire:quick-capture />
+
+            {{-- "Here's what's new" toast — see App\Livewire\FeatureAnnouncementToast.
+                 Mounted once here, same reasoning as the celebration overlay below:
+                 an unseen announcement has to appear no matter which page is the
+                 first one loaded. Renders nothing when there's nothing unseen. --}}
+            <livewire:feature-announcement-toast />
 
             {{-- Milestone celebration overlay — mounted once here (not inside any one
                  Livewire component) so it fires no matter which page a task gets

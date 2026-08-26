@@ -48,7 +48,15 @@ class RegisteredUserController extends Controller
 
         // intended(), not a bare redirect: someone who followed a class-agenda
         // invite link has no account yet, so registration — not login — is the
-        // step that has to hand them back to where they were going.
-        return redirect()->intended(route('dashboard', absolute: false));
+        // step that has to hand them back to where they were going. Only when
+        // there's no such destination pending does a brand-new account fall
+        // through to the onboarding tutorial instead of straight to the board —
+        // a classmate arriving via an invite link gets what they clicked, not a
+        // detour through a walkthrough first.
+        $default = $user->needsOnboarding()
+            ? route('onboarding', absolute: false)
+            : route('dashboard', absolute: false);
+
+        return redirect()->intended($default);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\TaskGroup;
+use App\Services\AppModules;
 use App\Services\PomodoroSessionService;
 use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
@@ -475,13 +476,16 @@ class TaskBoard extends Component
     /**
      * Open homework due within the next few weekdays — empty (not just hidden) when the setting
      * is off, so the partial's `isNotEmpty()` check covers both "off" and "nothing due" the same way.
+     * Also empty whenever the Agenda module itself is hidden (Settings' "Module" card) — this strip
+     * is a satellite view of Agenda, and it links straight back to a page the user just decluttered
+     * away, so it has to disappear with it.
      */
     #[Computed]
     public function homeworkPreview(): Collection
     {
         $user = auth()->user();
 
-        if (! $user->homework_preview_enabled) {
+        if (! $user->homework_preview_enabled || ! AppModules::isVisible($user, 'agenda')) {
             return collect();
         }
 
