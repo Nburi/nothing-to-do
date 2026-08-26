@@ -42,6 +42,15 @@ class QuickCapture extends Component
 
     public string $notes = '';
 
+    /**
+     * Estimated duration in minutes, for the Planer's own math — never
+     * required, mirrors the card-face quick-set field. Relevant for the same
+     * targets that write a Task with a real list (todos/tasks/group — never
+     * Inbox, which is out of scope for planning), plus Agenda homework
+     * (never exams, which the Planer never touches either).
+     */
+    public ?int $duration = null;
+
     public string $whereToBegin = '';
 
     /**
@@ -154,6 +163,13 @@ class QuickCapture extends Component
             $this->notes = '';
         }
 
+        // Duration is narrower than deadline/notes above: Inbox writes a Task
+        // too, but it's out of the Planer's scope (untriaged), so it doesn't
+        // get asked for one either — same rule as the card-face ghost.
+        if (! in_array($target, ['todos', 'tasks', 'group'], true)) {
+            $this->duration = null;
+        }
+
         if ($target !== 'group') {
             $this->groupId = null;
             $this->newGroupName = '';
@@ -191,7 +207,7 @@ class QuickCapture extends Component
     #[On('quick-capture-opened')]
     public function resetPanel(?string $target = null, ?int $groupId = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
 
         if ($target !== null && in_array($target, self::TARGETS, true)) {
@@ -230,6 +246,7 @@ class QuickCapture extends Component
             'target' => ['required', Rule::in(self::TARGETS)],
             'deadline' => ['nullable', 'date'],
             'dueDate' => ['nullable', 'date'],
+            'duration' => ['nullable', 'integer', 'min:1', 'max:600'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'whereToBegin' => ['nullable', 'string', 'max:2000'],
         ];
@@ -271,6 +288,7 @@ class QuickCapture extends Component
                 'group_id' => $group->id,
                 'deadline' => $this->deadline ?: null,
                 'due_date' => $this->dueDate ?: null,
+                'duration_minutes' => $this->duration ?: null,
                 'notes' => $notes !== '' ? $notes : null,
                 'sort_order' => 0,
             ]);
@@ -282,7 +300,7 @@ class QuickCapture extends Component
             $this->newGroupName = '';
 
             $this->captured = ['title' => $title, 'label' => 'Gruppe · '.$group->name];
-            $this->reset(['title', 'deadline', 'dueDate', 'notes', 'whereToBegin']);
+            $this->reset(['title', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin']);
             $this->dispatch('captured');
 
             return;
@@ -303,6 +321,9 @@ class QuickCapture extends Component
                 'subject' => $this->subject,
                 'title' => $title,
                 'date' => $this->date,
+                // Only meaningful for homework — the field isn't even shown for an
+                // exam, but guard explicitly the same way Agenda::saveEntry() does.
+                'duration_minutes' => $this->agendaType === 'homework' ? ($this->duration ?: null) : null,
                 'agenda_space_id' => $this->agendaSpaceId,
             ]),
             default => $user->tasks()->create([
@@ -310,6 +331,11 @@ class QuickCapture extends Component
                 'list' => $this->target,
                 'deadline' => $this->deadline ?: null,
                 'due_date' => $this->dueDate ?: null,
+                // Re-checked here, not just relied on from setTarget()'s clearing —
+                // this 'default' arm also covers Inbox, which never gets a duration
+                // (out of the Planer's scope), so a stale/crafted value must never
+                // slip through just because the property happened to hold one.
+                'duration_minutes' => in_array($this->target, ['todos', 'tasks', 'group'], true) ? ($this->duration ?: null) : null,
                 'notes' => $notes !== '' ? $notes : null,
                 'sort_order' => 0,
             ]),
@@ -330,7 +356,7 @@ class QuickCapture extends Component
         // shouldn't mean re-picking the chip every time. Agenda's Fach, date,
         // type and class survive for the same reason — writing down three things
         // the teacher just set, all for the same class, is the normal case.
-        $this->reset(['title', 'deadline', 'dueDate', 'notes', 'whereToBegin']);
+        $this->reset(['title', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin']);
 
         $this->dispatch('captured');
     }

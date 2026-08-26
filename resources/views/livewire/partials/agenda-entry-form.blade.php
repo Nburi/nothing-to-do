@@ -180,7 +180,7 @@
                     <div>
                         <label class="mb-1 block text-[12px] font-medium text-ink-faint">Geschätzte Dauer (Minuten, optional)</label>
                         <input
-                            type="number" min="1" max="600" step="5"
+                            type="number" min="1" max="600" step="1"
                             wire:model="formDuration"
                             placeholder="z. B. 25"
                             class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"

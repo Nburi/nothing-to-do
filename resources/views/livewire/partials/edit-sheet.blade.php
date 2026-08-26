@@ -249,7 +249,7 @@
 
                 <div x-show="$wire.editList !== 'inbox'" style="display: none;">
                     <label for="editDuration" class="mb-1 block text-xs font-medium text-ink-soft">Geschätzte Dauer (Minuten)</label>
-                    <input id="editDuration" type="number" min="1" max="600" step="5" wire:model="editDuration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                    <input id="editDuration" type="number" min="1" max="600" step="1" wire:model="editDuration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
                     @error('editDuration') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 

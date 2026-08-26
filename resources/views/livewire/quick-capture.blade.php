@@ -133,6 +133,13 @@
                         </div>
                     </div>
 
+                    {{-- Duration is narrower than deadline/due above: Inbox writes a Task
+                         too, but it's untriaged and out of the Planer's scope. --}}
+                    <div x-show="$wire.target !== 'inbox'" style="display: none;" class="mt-3 max-w-[9rem]">
+                        <label for="qc-duration" class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer (Min.)</label>
+                        <input id="qc-duration" type="number" min="1" max="600" step="1" wire:model="duration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0" />
+                    </div>
+
                     <div class="mt-3">
                         @include('livewire.partials.notes-editor', ['fieldName' => 'notes', 'htmlProperty' => 'notesHtml', 'idPrefix' => 'qc'])
                     </div>
@@ -211,6 +218,11 @@
                             <label for="qc-group-due" class="mb-1 block text-[11px] font-medium text-ink-faint">Wunschtermin · weich</label>
                             <input id="qc-group-due" type="date" wire:model="dueDate" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
                         </div>
+                    </div>
+
+                    <div class="max-w-[9rem]">
+                        <label for="qc-group-duration" class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer (Min.)</label>
+                        <input id="qc-group-duration" type="number" min="1" max="600" step="1" wire:model="duration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0" />
                     </div>
                 </div>
 
@@ -302,6 +314,12 @@
                             <input id="qc-date" type="date" wire:model="date" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
                         </div>
                     </div>
+
+                    {{-- Homework only — an exam is never planner-eligible, mirrors the Agenda page's own form. --}}
+                    <div x-show="$wire.agendaType === 'homework'" style="display: none;" class="max-w-[9rem]">
+                        <label for="qc-agenda-duration" class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer (Min.)</label>
+                        <input id="qc-agenda-duration" type="number" min="1" max="600" step="1" wire:model="duration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0" />
+                    </div>
                 </div>
             </div>
 
@@ -314,6 +332,9 @@
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('dueDate')
+                    <span class="text-signal">{{ $message }}</span>
+                @enderror
+                @error('duration')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('notes')

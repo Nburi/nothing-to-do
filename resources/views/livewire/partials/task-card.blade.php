@@ -161,9 +161,16 @@
     >
         <label class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer</label>
         <div class="flex flex-wrap gap-1.5">
-            @foreach ([10, 15, 25, 45, 60, 90] as $mins)
+            @foreach ([10, 15, 25, 45, 60] as $mins)
                 <button type="button" wire:click="quickSetDuration({{ $task->id }}, {{ $mins }})" @click="durationOpen = false" class="tnum rounded-card border border-line bg-paper px-2 py-1 text-xs text-ink-soft transition hover:border-overprint hover:text-ink">{{ $mins }} min</button>
             @endforeach
+            <input
+                type="number" min="1" max="600" step="1"
+                placeholder="eigene"
+                @change="$wire.quickSetDuration({{ $task->id }}, $event.target.valueAsNumber || null); durationOpen = false"
+                class="tnum w-16 rounded-card border border-line bg-paper px-2 py-1 text-center text-xs text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                aria-label="Eigene Dauer in Minuten"
+            />
         </div>
         @if ($task->duration_minutes)
             <button type="button" wire:click="quickSetDuration({{ $task->id }}, null)" @click="durationOpen = false" class="text-[11px] text-ink-faint underline decoration-dotted hover:text-signal">Schätzung entfernen</button>
