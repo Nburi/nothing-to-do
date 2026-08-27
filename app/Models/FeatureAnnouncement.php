@@ -45,10 +45,16 @@ class FeatureAnnouncement extends Model
         'description',
         'type',
         'related_module',
+        'external_url',
+        'external_link_label',
+        'highlight_selector',
         'created_by',
         'is_published',
         'published_at',
     ];
+
+    /** Shown on the "ansehen" link/button when no custom label was given. */
+    public const DEFAULT_EXTERNAL_LINK_LABEL = 'Mehr erfahren';
 
     protected function casts(): array
     {
@@ -85,11 +91,28 @@ class FeatureAnnouncement extends Model
         return $this->typeMeta()['badge_label'];
     }
 
+    /**
+     * Every internal page an announcement can link to — a superset of
+     * AppModules::CATALOG, which deliberately excludes the Board and
+     * Settings (they must always stay reachable via navigation, see that
+     * class's own docblock). An announcement isn't bound by that "always
+     * reachable" constraint, so it can point at either of those two as well.
+     *
+     * @return array<string, array{label: string, route: string}>
+     */
+    public static function linkableModules(): array
+    {
+        return AppModules::CATALOG + [
+            'settings' => ['label' => 'Einstellungen', 'route' => 'settings'],
+            'app' => ['label' => 'Board', 'route' => 'app'],
+        ];
+    }
+
     /** The catalog label for related_module, or null if this announcement isn't tied to one. */
     public function relatedModuleLabel(): ?string
     {
         return $this->related_module !== null
-            ? (AppModules::CATALOG[$this->related_module]['label'] ?? null)
+            ? (self::linkableModules()[$this->related_module]['label'] ?? null)
             : null;
     }
 
@@ -97,8 +120,70 @@ class FeatureAnnouncement extends Model
     public function relatedRouteName(): ?string
     {
         return $this->related_module !== null
-            ? (AppModules::CATALOG[$this->related_module]['route'] ?? null)
+            ? (self::linkableModules()[$this->related_module]['route'] ?? null)
             : null;
+    }
+
+    /**
+     * related_module (an internal page) and external_url are mutually
+     * exclusive — enforced by App\Livewire\Admin\AnnouncementEditor::save(),
+     * not here. True only once a raw URL is actually set.
+     */
+    public function isExternalLink(): bool
+    {
+        return $this->related_module === null && $this->external_url !== null;
+    }
+
+    /**
+     * The href for this announcement's "ansehen" link, or null when it has
+     * none. An internal link carries the highlight_selector along as a
+     * `?highlight=` query param, read client-side (see resources/js/app.js)
+     * to scroll to and flash a specific element after navigating there —
+     * meaningless for an external site, so never added to one.
+     */
+    public function linkHref(): ?string
+    {
+        if ($this->related_module !== null) {
+            $routeName = $this->relatedRouteName();
+
+            if ($routeName === null) {
+                return null;
+            }
+
+            $url = route($routeName);
+
+            return $this->highlight_selector
+                ? $url.(str_contains($url, '?') ? '&' : '?').'highlight='.urlencode($this->highlight_selector)
+                : $url;
+        }
+
+        return $this->external_url;
+    }
+
+    /** The label for linkHref(), without the trailing "→" (added by the view). */
+    public function linkLabel(): ?string
+    {
+        if ($this->related_module !== null) {
+            $moduleLabel = $this->relatedModuleLabel();
+
+            return $moduleLabel !== null ? $moduleLabel.' ansehen' : null;
+        }
+
+        if ($this->external_url !== null) {
+            return $this->external_link_label ?: self::DEFAULT_EXTERNAL_LINK_LABEL;
+        }
+
+        return null;
+    }
+
+    /**
+     * How many users have dismissed (i.e. seen) this announcement — prefers
+     * the eager-loaded withCount('dismissedBy') attribute the admin list
+     * query already selects, falling back to a live count anywhere else.
+     */
+    public function dismissedCount(): int
+    {
+        return $this->dismissed_by_count ?? $this->dismissedBy()->count();
     }
 
     public function isDismissedBy(User $user): bool

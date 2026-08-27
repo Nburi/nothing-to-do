@@ -176,6 +176,33 @@ class FeatureAnnouncementToastTest extends TestCase
             ->assertSee($announcement->title);
     }
 
+    public function test_an_announcement_with_an_external_link_opens_in_a_new_tab_and_dismisses_on_click(): void
+    {
+        $user = User::factory()->create();
+        $announcement = $this->published([
+            'external_url' => 'https://example.test/blog',
+            'external_link_label' => 'Blogpost lesen',
+        ]);
+
+        $component = Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertSee('Blogpost lesen');
+
+        $this->assertStringNotContainsString('wire:navigate', $component->html());
+        $this->assertStringContainsString('target="_blank"', $component->html());
+
+        $component->call('dismiss', $announcement->id);
+        $this->assertTrue($announcement->isDismissedBy($user));
+    }
+
+    public function test_a_module_link_with_a_highlight_selector_carries_it_as_a_query_param(): void
+    {
+        $user = User::factory()->create();
+        $this->published(['related_module' => 'agenda', 'highlight_selector' => '#agenda-spaces']);
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertSeeHtml('highlight=%23agenda-spaces');
+    }
+
     public function test_nothing_renders_when_the_queue_is_empty(): void
     {
         $user = User::factory()->create();
