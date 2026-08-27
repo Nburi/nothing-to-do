@@ -30,7 +30,7 @@ to grow that further — including, eventually, paid features. This does **not**
 Schedule/Agenda-privacy/etc. work today: every account still only ever sees its own tasks, projects and
 schedule, exactly as before. What it changes is the *ceiling* — don't assume "there is only ever one real
 user" when making a design call, and don't build things that would need ripping out again once a second
-account genuinely matters (which, as of the Bibliothek feature below, it now already does). No billing/
+account genuinely matters (which, as of the Hilfe-Center feature below, it now already does). No billing/
 payment integration exists yet; "paid features" is a direction being explored, not a built system — don't
 scaffold subscription/payment code speculatively, wait until it's actually asked for.
 
@@ -42,10 +42,11 @@ upper-secondary student and competitive orienteering athlete.
   accounts see one list of class homework, while everything else in the app (tasks, projects, Zeitplan,
   Bastelideen) stays strictly per-account. The class agenda is a shared *input*, not a shared workspace.
   See §7 "Agenda — Klassen teilen" for what that does and does not mean.
-- The **Bibliothek** (Blog, Docs & Leitfäden) is admin-authored content that every account reads — the
-  first genuinely multi-user, one-to-many surface in the app (as opposed to the Agenda's many-to-many class
-  sharing). Writing is gated behind `users.is_admin`; reading just requires an account. See §7 "Bibliothek —
-  Blog, Docs & Leitfäden".
+- The **Hilfe-Center** (help docs, organized in categories/subcategories) is admin-authored content that
+  every account reads — the first genuinely multi-user, one-to-many surface in the app (as opposed to the
+  Agenda's many-to-many class sharing). Writing is gated behind `users.is_admin`; reading just requires an
+  account. Alongside it, every account can submit **feedback/support requests**, which only admins triage,
+  but whose status the submitter can always see. See §7 "Hilfe-Center & Support".
 
 ---
 
@@ -114,8 +115,8 @@ I say so, with reasoning.
   stack or infrastructure ships with a full deployment checklist (see §9).
 - **Framework:** Laravel (PHP) — fixed, non-negotiable base.
 - **Authentication:** user accounts are required; each user sees only their own data, except the shared
-  Agenda class content and the admin-authored Bibliothek content (Blog/Docs/Leitfäden), both visible across
-  accounts by design — see §1.
+  Agenda class content and the admin-authored Hilfe-Center content, both visible across accounts by
+  design — see §1.
 
 ---
 
@@ -136,7 +137,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (997 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (1011 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -1701,81 +1702,107 @@ authors announcements, and a per-user toast every regular user sees until they d
   later markup change silently just does nothing (fails quietly in `highlightFromQueryParam()`, never
   a broken page), which is an acceptable trade for a developer-facing, admin-only field.
 
-### Bibliothek — Blog, Docs & Leitfäden (built)
+### Hilfe-Center & Support (built)
 
-The app's first genuinely one-to-many surface (§1): admin-written long-form content — Blog/Doc/Leitfaden —
-that every account can read. Distinct from the Agenda's class sharing (many accounts read/write one shared
-list) and from FeatureAnnouncement's toast (a short, dismiss-once nudge): this is a real reading destination
-with its own page, aimed at the app's growing, no-longer-strictly-personal userbase.
+The app's first genuinely one-to-many surface (§1): admin-written help docs, organized in a real
+category/subcategory tree, that every account can read — plus a feedback/support channel every account can
+write into, triaged by admins. Two halves, two audiences: the docs are admin-authored/everyone-reads (like
+`FeatureAnnouncement`); requests are everyone-writes/admin-reads, but each submitter only ever sees their
+own. Neither is in `AppModules::CATALOG` — like the Board and Settings, "how do I get help" must always stay
+reachable regardless of what a user has decluttered.
 
-- **`App\Models\Article`** — `title, type (blog|doc|guideline, default 'doc'), content (longtext, full
-  Markdown), created_by?, is_published, published_at?`. Not user-owned — no `user_id` at all, visibility is
-  governed by `is_published` alone, the same draft/publish shape as `FeatureAnnouncement`
-  (`togglePublished()` stamps `published_at` only the first time, never moves it on a later
-  unpublish/republish, since it marks when the piece was actually introduced). `TYPES` is a plain catalog
-  constant (label + Topografie tone: blog=forest, doc=contour, guideline=ink/neutral) the UI iterates over
-  rather than hardcoding per type — a fourth type later is one array entry, not a view change.
-- **Full GitHub-flavoured Markdown, deliberately with no new config.** `Str::markdown()` already wraps
-  League CommonMark's `GithubFlavoredMarkdownConverter`, which bundles tables, autolinks, strikethrough and
-  task lists with zero extra setup — `Article::renderMarkdown()` reuses exactly the same safety options
-  every other Markdown field in this app uses (`html_input=strip`, `allow_unsafe_links=false`, the
-  `++underline++` `UnderlineExtension`), so "full Markdown for the Bibliothek" needed no new dependency, just
-  a rendering path (`.prose-topo table/th/td` styles added to `app.css`, since this is the first place in the
-  app that actually renders a Markdown table).
-- **Checklists inside an article are per-reader and deliberately never persisted.** GFM's task-list
-  checkboxes render with a hardcoded `disabled` attribute — CommonMark has no notion of an interactive
-  reader. `renderMarkdown()` strips that attribute via a small regex and does *nothing else*: an enabled
-  `<input type="checkbox">` with no `wire:model`, no localStorage, no backing column already toggles on
-  click and already forgets that state on reload, purely because nothing anywhere writes it down. This is
-  the entire implementation of "checkboxes reset after reload" — resist ever adding persistence here (a
-  `wire:model`, a session value, a database column) even if it looks like an obvious improvement; per-reader,
-  session-only ticking is the specified behavior, not a limitation to fix. `ArticleShow`'s view adds one
-  quiet caption above the content whenever a checkbox is present, naming this explicitly — without it, a
-  reader ticking a box in an app where *every other* checklist (Task notes, GroupNote) does persist would
-  reasonably assume this one does too, discover otherwise on reload, and read it as a bug rather than a
-  design choice.
-- **`App\Livewire\Admin\ArticleEditor`** (`/app/admin/library`, `route('admin.library')`) — gated by
-  `abort_unless(auth()->user()->is_admin, 403)` in `mount()`, same component-level convention as
-  `AnnouncementEditor` (no route middleware). One component, two views switched on `$editingId`: a list of
-  every article (draft and published) and, once one is opened, a full-bleed writing view. `createArticle()`
-  creates a real (empty, unpublished) row immediately and opens it — mirrors `ProjectPage`'s "empty projects
-  open straight into the editor" shape — so there is no unsaved-draft limbo; every keystroke from that point
-  has a row to autosave onto. **No explicit "Speichern" button** — `updatedFormTitle()`/`updatedFormContent()`
-  persist straight to the database on every debounced change (`wire:model.live.debounce.600ms`, mirroring
-  `ProjectPage`'s brainstorming field), since this is a continuous writing surface, not a form with its own
-  Speichern/Abbrechen semantics. The toolbar (Fett/Kursiv/Unterstrichen/Überschrift/Liste/Aufgabe/Tabelle)
-  reuses the same `wrap()`/`prefixLines()` approach as `partials/notes-editor.blade.php`, plus a new
-  `insertTable()` that drops a ready-to-edit 2×2 Markdown table skeleton at the cursor.
-- **Signature moment — Schreibfluss-Modus.** Shortly after you start typing in the editor, the chrome around
-  the text — back arrow, publish/delete buttons, type chips, the formatting toolbar — fades out (a one-shot
-  900ms timer armed on the *first* keystroke of a typing burst, not re-armed by every subsequent one, so it
-  fades predictably rather than only once you pause); only the title and the body text stay, and the column
-  narrows slightly for a more centered, focused feel. Any click or mouse movement anywhere brings the chrome
-  back instantly. Pure client-side Alpine state (`chromeHidden`/`pendingHide`/`hideTimer`) scoped to a
-  `wire:key`'d wrapper per article, so switching articles always starts with visible chrome. This is the
-  one moment in this feature that's exempt from consistency/cleanup passes — see the feature-schmiede
-  process notes if this file ever gets a "review history" section.
-- **`App\Livewire\Library`** (`/app/library`, `route('library')`) — the reader-facing overview, open to every
-  account. Published articles only; type filter chips (Alle/Blog/Doc/Leitfaden, click-again-to-clear, same
-  toggle shape as Agenda's class chips) plus a debounced title+content search (`Article::scopeSearch()`).
-  Two distinct empty states: nothing published yet at all (calm message, plus a "Jetzt schreiben →" link
-  only for an admin — a non-admin has nothing actionable there) versus a filter/search that matched nothing
-  (a "Filter zurücksetzen" link, since that state is the user's own doing and reversible in one click).
-- **`App\Livewire\ArticleShow`** (`/app/library/{article}`, `route('library.show')`) — resolves the id
-  directly (not via Laravel's implicit route-model binding, which doesn't scope by publish state) and 404s
-  unless the article is published or the viewer is an admin (an admin can open an unpublished draft's real
-  reader URL to preview it exactly as a future reader would see it).
-- **`AppModules::CATALOG['library']`** — hideable/landing-page-eligible like every other optional page; the
-  "Mehr" nav entry and the admin's "Bibliothek verwalten" profile-menu link (next to "Ankündigungen
-  verwalten") are unconditional for an admin regardless of that toggle, mirroring how the announcement editor
-  is always reachable too.
-- Deliberately out of scope for this pass: regular (non-admin) users authoring their own entries — every
-  Blog/Doc/Leitfaden is admin-written by design, this is a one-to-many broadcast surface, not a personal
-  notebook; a QuickCapture target for drafting an article stub from anywhere; folders/collections beyond the
-  flat type filter; version history; image/file uploads in the editor (Markdown links only); view/read
-  tracking or "N gesehen" (unlike FeatureAnnouncement, nothing here is dismiss-once, so there is no natural
-  per-user completion event to count); any actual payment/subscription gating on content (see §1 — paid
-  features are a direction, not yet a built system, and Bibliothek doesn't assume one is coming).
+- **`App\Models\HelpCategory`** — `name, parent_id (nullable self-FK, nullOnDelete), sort_order`. One level
+  of subfolders via a self-referencing FK (`children()`/`parent()`) — nothing stops deeper nesting in the
+  data, but `tree()` and the sidebar view only ever render two levels, matching what was actually asked for
+  ("folders and subfolders"). `HelpCategory::tree(bool $publishedOnly)` eager-loads root categories with
+  their subcategories and articles in one shot (no N+1) — the admin editor passes `false` to see drafts too,
+  the reader page passes `true`.
+- **Deleting a category is non-destructive** — the migration's `nullOnDelete` drops that category's articles
+  back to "Ohne Kategorie" and any subcategory back to top-level; nothing is ever lost, mirroring
+  `EventCategory`'s own deletion philosophy. The admin tree always renders an "Ohne Kategorie" bucket (even
+  when empty) specifically so an orphaned article from a deleted category is never silently hidden.
+- **`App\Models\HelpArticle`** — `title, content (longtext, full Markdown), help_category_id?, created_by?,
+  is_published, published_at?, sort_order`. Same draft/publish shape as `FeatureAnnouncement`
+  (`togglePublished()` stamps `published_at` only the first time). `renderMarkdown()` is the same approach as
+  every other Markdown field in this app (`Str::markdown` with `html_input=strip`/`allow_unsafe_links=false`
+  plus the `++underline++` `UnderlineExtension`) — GFM tables/task-lists need no extra config, since
+  `Str::markdown()` already wraps League CommonMark's `GithubFlavoredMarkdownConverter`.
+- **Checklists inside an article are per-reader and never persisted** — identical mechanism to why this
+  matters elsewhere in this app: GFM's task-list checkboxes render with a hardcoded `disabled` attribute,
+  and `renderMarkdown()` strips it via a small regex and does *nothing else*. An enabled `<input
+  type="checkbox">` with no `wire:model`/localStorage/backing column already toggles on click and already
+  forgets that state on reload, purely because nothing anywhere writes it down. `Help`'s view adds one quiet
+  caption above the content whenever a checkbox is present, naming this explicitly, so a reader ticking a box
+  doesn't reasonably assume it persists (every other checklist in this app — Task notes, GroupNote — does).
+- **`App\Livewire\Admin\HelpEditor`** (`/app/admin/help`, `route('admin.help')`) — gated by
+  `abort_unless(auth()->user()->is_admin, 403)` in `mount()`, no route middleware, same convention as
+  `AnnouncementEditor`. Two views switched on `$editingId`: a tree view (create/rename/delete categories and
+  subcategories inline, each with its own "+ Artikel"/"+ Unterkategorie") and, once an article is opened, the
+  same full-bleed **Schreibfluss-Modus** writing surface the rest of this app's Markdown editors use — chrome
+  (back arrow, publish/delete, category picker, toolbar) fades shortly after typing starts and returns
+  instantly on any click or mouse movement; only the title and body text stay. `createArticle()` creates a
+  real (empty, unpublished) row immediately and opens it, mirroring `ProjectPage`'s "empty projects open
+  straight into the editor" shape. **No explicit "Speichern" button** — `updatedFormTitle()`/
+  `updatedFormContent()` persist on every debounced change (`wire:model.live.debounce.600ms`), since this is
+  a continuous writing surface, not a form with its own Speichern/Abbrechen semantics. Category rename is
+  pure client-side Alpine edit-state (a pencil toggles a local textbox seeded from the server-rendered name)
+  with one `renameCategory(id, name)` call on blur/Enter — deliberately not a server round-trip just to open
+  the field, which would flash it empty before the value arrives.
+- **`App\Livewire\Help`** (`/app/help/{article?}`, `route('help')`) — the reader-facing overview, open to
+  every account. A sidebar (categories → subcategories → articles) next to the selected article; the
+  category/subcategory containing the currently-open article auto-expands, everything else starts collapsed
+  — "closeable to get a better overview" is the point, so a docs site with many categories doesn't read as a
+  wall of open folders. Re-computed fresh on every navigation (not persisted client-side across page loads)
+  deliberately: it avoids the exact "frozen `x-data` across a Livewire morph" trap this file already
+  documents elsewhere, at the small cost of manually-opened *extra* categories collapsing again once you
+  follow a link — an accepted, common docs-site trade. Search is pure client-side Alpine (`x-model="query"`
+  read by nested `x-show`s further down the same scope — Alpine's nested `x-data` blocks inherit ancestor
+  properties, so a category/subcategory's own `x-data` never needs to redeclare `query`) filtering against a
+  precomputed lowercase haystack per (sub)category, since the whole tree is already loaded for rendering
+  anyway. `mount(?int $article = null)` silently ignores a stale/foreign/unpublished id (never a broken page
+  load), matching `Schedule::mount()`'s own `?event=` handling.
+- **Signature moment — "War das hilfreich?"** A quiet two-button prompt at the foot of every article. "Ja"
+  is a pure client-side (Alpine-only) thank-you with nothing persisted — there is genuinely nothing useful to
+  record about an article that already did its job. "Nein" opens a note field right there, in place, and
+  sending it creates a real `SupportRequest` (`type=feedback`, subject `"Feedback zu: {Artikel-Titel}"`) —
+  the moment you signal a doc failed you *is* the feedback report, with zero navigation away from where you
+  got stuck. An empty note still submits (message defaults to a plain "hat nicht geholfen" line) — the
+  friction being removed is "explain why", not "if you don't type anything nothing happens".
+  **Bug caught by an end-to-end browser test, not by PHPUnit:** the first implementation set
+  `$showFollowup = false` in the same call that set `$justSentFeedback = true` — since the "gespeichert"
+  confirmation lives *inside* the `@if ($showFollowup)` block (switched internally by `$justSentFeedback`),
+  turning `$showFollowup` off the moment the request saved hid the confirmation before it could ever render.
+  Every Livewire assertion (`SupportRequest::sole()` etc.) still passed, since the record really was created
+  — only a real page render exposed that the UI told the user nothing happened. Fixed by leaving
+  `$showFollowup` true; `$justSentFeedback` alone switches the note field to the confirmation.
+- **`App\Models\SupportRequest`** — one model for both feedback and support requests (`type` catalog, mirrors
+  `AgendaEntry`'s homework/exam split), with a `status` catalog (`open → in_progress → resolved/closed`) and
+  an optional admin `response` text. None of the four statuses route through `signal` — this app reserves
+  that tone for danger/urgency, and an open ticket sitting untriaged is not an emergency; `open` is
+  deliberately toneless (the same neutral look a draft badge gets elsewhere), `in_progress` reuses `contour`
+  (this app's "something active/time-bound" tone), `resolved` reuses `forest`, `closed` is the quietest of
+  all (archived, not a result either way).
+- **`App\Livewire\SupportCenter`** (`/app/help/support`, `route('support')`) — one page, form + list, mirroring
+  Agenda's own "form and list together" shape rather than splitting into a submit page and a separate status
+  page. `myRequests()` is strictly scoped to the submitter (`forUser` scope) — there is no path in this
+  component that can read another user's request. A saved admin `response` renders inline under the
+  submitter's own row the moment it exists, no polling/notification needed since it's just read fresh on
+  every visit.
+- **`App\Livewire\Admin\SupportQueue`** (`/app/admin/support`, `route('admin.support')`) — every request from
+  every user, status filter chips with live counts, an inline status `<select>` (`wire:change="setStatus($id,
+  $event.target.value)"`, saves immediately, no confirm step — a status is trivially reversible, unlike a
+  delete), and a per-row response editor (`startResponding`/`saveResponse`, clears `responded_by` whenever
+  the response text is cleared rather than leaving a stale attribution).
+- **Nav** — one unconditional "Hilfe" link in the profile dropdown (next to Profil/Einstellungen, not the
+  "Mehr" menu — this is account-level infrastructure, not a workflow tool), and, for an admin, two further
+  links ("Hilfe-Center verwalten", "Support-Anfragen") mirroring "Ankündigungen verwalten"'s placement.
+- **Route ordering gotcha worth remembering**: `/app/help/support` (a literal path) is registered *before*
+  `/app/help/{article?}` (the catch-all) in `routes/web.php` — Laravel matches route registration order, so
+  the reverse order would swallow `support` as an `{article}` id and never reach `SupportCenter`.
+- Deliberately out of scope for this pass: threaded replies on a request (one optional admin response, not a
+  conversation), deeper category nesting than two levels, drag-to-reorder categories/articles (creation order
+  only, via `sort_order`, for now), email/push notification on a status change, and any read/view tracking on
+  help articles.
 
 ### Task-Gruppen (built)
 

@@ -7,30 +7,29 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Admin-authored long-form content — Blog/Doc/Leitfaden — read by every
-     * account (see CLAUDE.md, "Bibliothek — Blog, Docs & Leitfäden"). Same
-     * draft/publish shape as feature_announcements: is_published toggles
-     * visibility, published_at is stamped the first time and never moves
-     * again on a later unpublish/republish.
+     * One Hilfe-Center page — admin-authored Markdown, read by every account
+     * once published. Same draft/publish shape as FeatureAnnouncement:
+     * published_at is stamped the first time and never moves again.
      */
     public function up(): void
     {
-        Schema::create('articles', function (Blueprint $table) {
+        Schema::create('help_articles', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->string('type')->default('doc');
             $table->longText('content')->nullable();
+            $table->foreignId('help_category_id')->nullable()->constrained('help_categories')->nullOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->boolean('is_published')->default(false);
             $table->timestamp('published_at')->nullable();
+            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
 
-            $table->index(['type', 'is_published']);
+            $table->index(['help_category_id', 'is_published']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('articles');
+        Schema::dropIfExists('help_articles');
     }
 };

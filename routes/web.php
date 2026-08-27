@@ -3,14 +3,14 @@
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\Admin\AnnouncementEditor;
-use App\Livewire\Admin\ArticleEditor;
+use App\Livewire\Admin\HelpEditor;
+use App\Livewire\Admin\SupportQueue;
 use App\Livewire\Agenda;
-use App\Livewire\ArticleShow;
 use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
 use App\Livewire\GroupPage;
+use App\Livewire\Help;
 use App\Livewire\JoinAgendaSpace;
-use App\Livewire\Library;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
 use App\Livewire\PrepareTomorrow;
@@ -18,6 +18,7 @@ use App\Livewire\Progress;
 use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
+use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
 use Illuminate\Support\Facades\Route;
@@ -99,18 +100,25 @@ Route::get('/app/admin/announcements', AnnouncementEditor::class)
     ->middleware('auth')
     ->name('admin.announcements');
 
-// Admin-only — gated in ArticleEditor::mount(), same convention as above.
-Route::get('/app/admin/library', ArticleEditor::class)
+// Admin-only — gated in HelpEditor::mount(), same convention as above.
+Route::get('/app/admin/help', HelpEditor::class)
     ->middleware('auth')
-    ->name('admin.library');
+    ->name('admin.help');
 
-Route::get('/app/library', Library::class)
+// Admin-only — gated in SupportQueue::mount().
+Route::get('/app/admin/support', SupportQueue::class)
     ->middleware('auth')
-    ->name('library');
+    ->name('admin.support');
 
-Route::get('/app/library/{article}', ArticleShow::class)
+Route::get('/app/help/support', SupportCenter::class)
     ->middleware('auth')
-    ->name('library.show');
+    ->name('support');
+
+// {article?} is optional — /app/help alone shows just the sidebar with
+// nothing selected, /app/help/{id} additionally opens that article.
+Route::get('/app/help/{article?}', Help::class)
+    ->middleware('auth')
+    ->name('help');
 
 Route::get('/app/agenda', Agenda::class)
     ->middleware('auth')

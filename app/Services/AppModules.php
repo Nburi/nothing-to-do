@@ -71,11 +71,6 @@ class AppModules
             'description' => 'Serie, Tagesziel und die Heatmap erledigter Aufgaben.',
             'route' => 'progress',
         ],
-        'library' => [
-            'label' => 'Bibliothek',
-            'description' => 'Blog, Docs und Leitfäden — von Admins geschrieben, für alle sichtbar.',
-            'route' => 'library',
-        ],
     ];
 
     /**
