@@ -129,6 +129,12 @@ class User extends Authenticatable
         return $this->hasMany(FeatureAnnouncement::class, 'created_by');
     }
 
+    /** Bibliothek articles (Blog/Doc/Leitfaden) this user has authored — only ever populated for an admin. */
+    public function createdArticles(): HasMany
+    {
+        return $this->hasMany(Article::class, 'created_by');
+    }
+
     /** Shared class/group agendas this user belongs to (a class, a study group, …). */
     public function agendaSpaces(): BelongsToMany
     {

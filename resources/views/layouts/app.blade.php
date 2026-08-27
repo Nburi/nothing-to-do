@@ -85,7 +85,8 @@
                             $showCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
                             $showEmergencyNav = \App\Services\AppModules::isVisible(auth()->user(), 'emergency') || auth()->user()->isInEmergencyMode();
                             $showProgressNav = \App\Services\AppModules::isVisible(auth()->user(), 'progress');
-                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showAgendaNav || $showCraftsNav || $showEmergencyNav;
+                            $showLibraryNav = \App\Services\AppModules::isVisible(auth()->user(), 'library');
+                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showAgendaNav || $showCraftsNav || $showEmergencyNav || $showLibraryNav;
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
@@ -212,6 +213,16 @@
                                     Bastelideen
                                 </a>
                                 @endif
+                                @if ($showLibraryNav)
+                                <a href="{{ route('library') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('library') || request()->routeIs('library.show'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('library') && !request()->routeIs('library.show'),
+                                ]) @if(request()->routeIs('library') || request()->routeIs('library.show')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H10v14H5.5A1.5 1.5 0 0 1 4 15.5v-11Z"/><path d="M16 4.5A1.5 1.5 0 0 0 14.5 3H10v14h4.5a1.5 1.5 0 0 0 1.5-1.5v-11Z"/></svg>
+                                    Bibliothek
+                                </a>
+                                @endif
                                 {{-- Notfall is always listed here now (no longer conditionally
                                      hidden from the header) — an "Aktiv" badge communicates the
                                      running state instead of the item's presence/absence. Still
@@ -311,6 +322,9 @@
                                 @if (auth()->user()->is_admin)
                                 <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Ankündigungen verwalten
+                                </a>
+                                <a href="{{ route('admin.library') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Bibliothek verwalten
                                 </a>
                                 @endif
                                 <form method="POST" action="{{ route('logout') }}">

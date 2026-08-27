@@ -3,11 +3,14 @@
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\Admin\AnnouncementEditor;
+use App\Livewire\Admin\ArticleEditor;
 use App\Livewire\Agenda;
+use App\Livewire\ArticleShow;
 use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
 use App\Livewire\GroupPage;
 use App\Livewire\JoinAgendaSpace;
+use App\Livewire\Library;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
 use App\Livewire\PrepareTomorrow;
@@ -95,6 +98,19 @@ Route::get('/app/onboarding', Onboarding::class)
 Route::get('/app/admin/announcements', AnnouncementEditor::class)
     ->middleware('auth')
     ->name('admin.announcements');
+
+// Admin-only — gated in ArticleEditor::mount(), same convention as above.
+Route::get('/app/admin/library', ArticleEditor::class)
+    ->middleware('auth')
+    ->name('admin.library');
+
+Route::get('/app/library', Library::class)
+    ->middleware('auth')
+    ->name('library');
+
+Route::get('/app/library/{article}', ArticleShow::class)
+    ->middleware('auth')
+    ->name('library.show');
 
 Route::get('/app/agenda', Agenda::class)
     ->middleware('auth')

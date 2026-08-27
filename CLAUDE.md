@@ -7,8 +7,8 @@
 
 ## 1. What is `nothing-to-do`?
 
-A **personal productivity system** for a single user (not a team tool). It is built around
-the **"3 Things" framework**, which sorts work into three types by size and shape:
+At its core, a **personal productivity system**, built around the **"3 Things" framework**, which sorts
+work into three types by size and shape:
 
 - **To-Do** — a small task; several can be cleared in one work session.
 - **Task** — a larger thing, but still a single work step.
@@ -20,15 +20,32 @@ be flagged **today** (focus for the day), **important**, and given a **deadline*
 and/or a **due date** (soft, self-imposed).
 
 The product goal is **speed and calm**: fast capture, minimal clicks, a clear overview, no feature bloat.
-The app should feel reliable and quiet enough to be used every single day.
+The app should feel reliable and quiet enough to be used every single day. This holds regardless of how
+many accounts the app serves — speed and calm are a promise to each individual user, not a side effect of
+having only one.
 
-**Target user:** a Swiss upper-secondary student and competitive orienteering athlete. One account, his own tasks.
+**The app is no longer strictly single-user.** It started that way (see the original target user below),
+but its real userbase has already grown into a small circle of friends and classmates, and the direction is
+to grow that further — including, eventually, paid features. This does **not** change how Task/Project/
+Schedule/Agenda-privacy/etc. work today: every account still only ever sees its own tasks, projects and
+schedule, exactly as before. What it changes is the *ceiling* — don't assume "there is only ever one real
+user" when making a design call, and don't build things that would need ripping out again once a second
+account genuinely matters (which, as of the Bibliothek feature below, it now already does). No billing/
+payment integration exists yet; "paid features" is a direction being explored, not a built system — don't
+scaffold subscription/payment code speculatively, wait until it's actually asked for.
 
-**One deliberate exception to "single user":** the **Agenda** (homework & exams) can be shared with a school
-class via an **Agenda Space** — several accounts see one list of class homework, while everything else in the
-app (tasks, projects, Zeitplan, Bastelideen) stays strictly single-user. The app is still a personal
-productivity system, not a team tool; the class agenda is a shared *input*, not shared workspace. See §7
-"Agenda — Klassen teilen" for what that does and does not mean.
+**Original target user** (still the primary persona informing most day-to-day product decisions): a Swiss
+upper-secondary student and competitive orienteering athlete.
+
+**Two deliberate exceptions to "each account only sees its own data":**
+- The **Agenda** (homework & exams) can be shared with a school class via an **Agenda Space** — several
+  accounts see one list of class homework, while everything else in the app (tasks, projects, Zeitplan,
+  Bastelideen) stays strictly per-account. The class agenda is a shared *input*, not a shared workspace.
+  See §7 "Agenda — Klassen teilen" for what that does and does not mean.
+- The **Bibliothek** (Blog, Docs & Leitfäden) is admin-authored content that every account reads — the
+  first genuinely multi-user, one-to-many surface in the app (as opposed to the Agenda's many-to-many class
+  sharing). Writing is gated behind `users.is_admin`; reading just requires an account. See §7 "Bibliothek —
+  Blog, Docs & Leitfäden".
 
 ---
 
@@ -96,7 +113,9 @@ I say so, with reasoning.
 - **Deployment:** the user pushes source to GitHub and pulls it onto the Linux server. Any change to the
   stack or infrastructure ships with a full deployment checklist (see §9).
 - **Framework:** Laravel (PHP) — fixed, non-negotiable base.
-- **Authentication:** user accounts are required; each user sees only their own data.
+- **Authentication:** user accounts are required; each user sees only their own data, except the shared
+  Agenda class content and the admin-authored Bibliothek content (Blog/Docs/Leitfäden), both visible across
+  accounts by design — see §1.
 
 ---
 
@@ -117,7 +136,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (868 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (997 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -1681,6 +1700,82 @@ authors announcements, and a per-user toast every regular user sees until they d
   every other type. `highlight_selector` has no validation against real markup at all — a typo or a
   later markup change silently just does nothing (fails quietly in `highlightFromQueryParam()`, never
   a broken page), which is an acceptable trade for a developer-facing, admin-only field.
+
+### Bibliothek — Blog, Docs & Leitfäden (built)
+
+The app's first genuinely one-to-many surface (§1): admin-written long-form content — Blog/Doc/Leitfaden —
+that every account can read. Distinct from the Agenda's class sharing (many accounts read/write one shared
+list) and from FeatureAnnouncement's toast (a short, dismiss-once nudge): this is a real reading destination
+with its own page, aimed at the app's growing, no-longer-strictly-personal userbase.
+
+- **`App\Models\Article`** — `title, type (blog|doc|guideline, default 'doc'), content (longtext, full
+  Markdown), created_by?, is_published, published_at?`. Not user-owned — no `user_id` at all, visibility is
+  governed by `is_published` alone, the same draft/publish shape as `FeatureAnnouncement`
+  (`togglePublished()` stamps `published_at` only the first time, never moves it on a later
+  unpublish/republish, since it marks when the piece was actually introduced). `TYPES` is a plain catalog
+  constant (label + Topografie tone: blog=forest, doc=contour, guideline=ink/neutral) the UI iterates over
+  rather than hardcoding per type — a fourth type later is one array entry, not a view change.
+- **Full GitHub-flavoured Markdown, deliberately with no new config.** `Str::markdown()` already wraps
+  League CommonMark's `GithubFlavoredMarkdownConverter`, which bundles tables, autolinks, strikethrough and
+  task lists with zero extra setup — `Article::renderMarkdown()` reuses exactly the same safety options
+  every other Markdown field in this app uses (`html_input=strip`, `allow_unsafe_links=false`, the
+  `++underline++` `UnderlineExtension`), so "full Markdown for the Bibliothek" needed no new dependency, just
+  a rendering path (`.prose-topo table/th/td` styles added to `app.css`, since this is the first place in the
+  app that actually renders a Markdown table).
+- **Checklists inside an article are per-reader and deliberately never persisted.** GFM's task-list
+  checkboxes render with a hardcoded `disabled` attribute — CommonMark has no notion of an interactive
+  reader. `renderMarkdown()` strips that attribute via a small regex and does *nothing else*: an enabled
+  `<input type="checkbox">` with no `wire:model`, no localStorage, no backing column already toggles on
+  click and already forgets that state on reload, purely because nothing anywhere writes it down. This is
+  the entire implementation of "checkboxes reset after reload" — resist ever adding persistence here (a
+  `wire:model`, a session value, a database column) even if it looks like an obvious improvement; per-reader,
+  session-only ticking is the specified behavior, not a limitation to fix. `ArticleShow`'s view adds one
+  quiet caption above the content whenever a checkbox is present, naming this explicitly — without it, a
+  reader ticking a box in an app where *every other* checklist (Task notes, GroupNote) does persist would
+  reasonably assume this one does too, discover otherwise on reload, and read it as a bug rather than a
+  design choice.
+- **`App\Livewire\Admin\ArticleEditor`** (`/app/admin/library`, `route('admin.library')`) — gated by
+  `abort_unless(auth()->user()->is_admin, 403)` in `mount()`, same component-level convention as
+  `AnnouncementEditor` (no route middleware). One component, two views switched on `$editingId`: a list of
+  every article (draft and published) and, once one is opened, a full-bleed writing view. `createArticle()`
+  creates a real (empty, unpublished) row immediately and opens it — mirrors `ProjectPage`'s "empty projects
+  open straight into the editor" shape — so there is no unsaved-draft limbo; every keystroke from that point
+  has a row to autosave onto. **No explicit "Speichern" button** — `updatedFormTitle()`/`updatedFormContent()`
+  persist straight to the database on every debounced change (`wire:model.live.debounce.600ms`, mirroring
+  `ProjectPage`'s brainstorming field), since this is a continuous writing surface, not a form with its own
+  Speichern/Abbrechen semantics. The toolbar (Fett/Kursiv/Unterstrichen/Überschrift/Liste/Aufgabe/Tabelle)
+  reuses the same `wrap()`/`prefixLines()` approach as `partials/notes-editor.blade.php`, plus a new
+  `insertTable()` that drops a ready-to-edit 2×2 Markdown table skeleton at the cursor.
+- **Signature moment — Schreibfluss-Modus.** Shortly after you start typing in the editor, the chrome around
+  the text — back arrow, publish/delete buttons, type chips, the formatting toolbar — fades out (a one-shot
+  900ms timer armed on the *first* keystroke of a typing burst, not re-armed by every subsequent one, so it
+  fades predictably rather than only once you pause); only the title and the body text stay, and the column
+  narrows slightly for a more centered, focused feel. Any click or mouse movement anywhere brings the chrome
+  back instantly. Pure client-side Alpine state (`chromeHidden`/`pendingHide`/`hideTimer`) scoped to a
+  `wire:key`'d wrapper per article, so switching articles always starts with visible chrome. This is the
+  one moment in this feature that's exempt from consistency/cleanup passes — see the feature-schmiede
+  process notes if this file ever gets a "review history" section.
+- **`App\Livewire\Library`** (`/app/library`, `route('library')`) — the reader-facing overview, open to every
+  account. Published articles only; type filter chips (Alle/Blog/Doc/Leitfaden, click-again-to-clear, same
+  toggle shape as Agenda's class chips) plus a debounced title+content search (`Article::scopeSearch()`).
+  Two distinct empty states: nothing published yet at all (calm message, plus a "Jetzt schreiben →" link
+  only for an admin — a non-admin has nothing actionable there) versus a filter/search that matched nothing
+  (a "Filter zurücksetzen" link, since that state is the user's own doing and reversible in one click).
+- **`App\Livewire\ArticleShow`** (`/app/library/{article}`, `route('library.show')`) — resolves the id
+  directly (not via Laravel's implicit route-model binding, which doesn't scope by publish state) and 404s
+  unless the article is published or the viewer is an admin (an admin can open an unpublished draft's real
+  reader URL to preview it exactly as a future reader would see it).
+- **`AppModules::CATALOG['library']`** — hideable/landing-page-eligible like every other optional page; the
+  "Mehr" nav entry and the admin's "Bibliothek verwalten" profile-menu link (next to "Ankündigungen
+  verwalten") are unconditional for an admin regardless of that toggle, mirroring how the announcement editor
+  is always reachable too.
+- Deliberately out of scope for this pass: regular (non-admin) users authoring their own entries — every
+  Blog/Doc/Leitfaden is admin-written by design, this is a one-to-many broadcast surface, not a personal
+  notebook; a QuickCapture target for drafting an article stub from anywhere; folders/collections beyond the
+  flat type filter; version history; image/file uploads in the editor (Markdown links only); view/read
+  tracking or "N gesehen" (unlike FeatureAnnouncement, nothing here is dismiss-once, so there is no natural
+  per-user completion event to count); any actual payment/subscription gating on content (see §1 — paid
+  features are a direction, not yet a built system, and Bibliothek doesn't assume one is coming).
 
 ### Task-Gruppen (built)
 
