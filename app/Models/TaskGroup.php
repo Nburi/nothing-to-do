@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\Markdown\Markdown;
 use Database\Factories\TaskGroupFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 /**
  * A bundle of tasks that belong together — the small, multi-step thing that is
@@ -86,23 +86,14 @@ class TaskGroup extends Model
     }
 
     /**
-     * Renders one note's Markdown to safe HTML. Same options as the project
-     * brainstorm field and the task notes (raw HTML stripped, unsafe link
-     * schemes dropped), so nothing a note contains can inject. Static so the
-     * live editor can render its preview before anything is saved.
+     * Renders one note's Markdown to safe HTML via the app's shared renderer
+     * (see App\Support\Markdown\Markdown) — same capability as every other
+     * Markdown field in the app. Static so the live editor can render its
+     * preview before anything is saved.
      */
     public static function renderNotes(string $text): string
     {
-        $text = trim($text);
-
-        if ($text === '') {
-            return '';
-        }
-
-        return Str::markdown($text, [
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ]);
+        return Markdown::toHtml($text);
     }
 
     // ── Scopes ────────────────────────────────────────────────────────
