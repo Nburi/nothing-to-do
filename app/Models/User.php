@@ -130,6 +130,18 @@ class User extends Authenticatable
         return $this->hasMany(FeatureAnnouncement::class, 'created_by');
     }
 
+    /** Help-Center articles this user has authored — only ever populated for an admin. */
+    public function createdHelpArticles(): HasMany
+    {
+        return $this->hasMany(HelpArticle::class, 'created_by');
+    }
+
+    /** Feedback/support requests this user has submitted. */
+    public function supportRequests(): HasMany
+    {
+        return $this->hasMany(SupportRequest::class);
+    }
+
     /** Shared class/group agendas this user belongs to (a class, a study group, …). */
     public function agendaSpaces(): BelongsToMany
     {

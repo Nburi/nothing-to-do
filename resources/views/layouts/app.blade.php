@@ -308,9 +308,18 @@
                                     @endif
                                 </a>
                                 @endif
+                                <a href="{{ route('help') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Hilfe
+                                </a>
                                 @if (auth()->user()->is_admin)
                                 <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Ankündigungen verwalten
+                                </a>
+                                <a href="{{ route('admin.help') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Hilfe-Center verwalten
+                                </a>
+                                <a href="{{ route('admin.support') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Support-Anfragen
                                 </a>
                                 @endif
                                 <form method="POST" action="{{ route('logout') }}">
