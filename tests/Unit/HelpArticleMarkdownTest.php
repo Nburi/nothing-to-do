@@ -31,6 +31,14 @@ class HelpArticleMarkdownTest extends TestCase
         $this->assertStringContainsString('<u>wichtig</u>', $html);
     }
 
+    public function test_renders_headings_and_links(): void
+    {
+        $html = HelpArticle::renderMarkdown("# Titel\n\nSee [Google](https://google.com).");
+
+        $this->assertStringContainsString('<h1>Titel</h1>', $html);
+        $this->assertStringContainsString('<a href="https://google.com">Google</a>', $html);
+    }
+
     public function test_raw_html_input_is_stripped(): void
     {
         $html = HelpArticle::renderMarkdown('<script>alert(1)</script>Text');
