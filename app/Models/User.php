@@ -34,6 +34,7 @@ use Laravel\Sanctum\HasApiTokens;
     'planner_enabled',
     'hidden_modules', 'default_page', 'onboarding_completed_at',
     'is_admin',
+    'last_login_at',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -139,6 +140,48 @@ class User extends Authenticatable
     public function ownedAgendaSpaces(): HasMany
     {
         return $this->hasMany(AgendaSpace::class, 'owner_id');
+    }
+
+    // ── Welcome back ──────────────────────────────────────────────────
+
+    /**
+     * How many days offline before a return login shows the "welcome back"
+     * greeting. Distinct from presence (`last_seen_at`) on purpose — that
+     * field is opt-out and gets overwritten by the current session's own
+     * heartbeat within seconds of loading, so it can't answer "how long was
+     * the *previous* absence" by the time any page-load logic could read it.
+     * `last_login_at` is read once at login, before that same call
+     * overwrites it — see AuthenticatedSessionController::store().
+     */
+    public const WELCOME_BACK_AWAY_DAYS = 14;
+
+    /**
+     * A calm, understated set of "welcome back" greetings for a long-gap
+     * return — deliberately no exclamation-heavy hype, matching this app's
+     * low-key tone elsewhere (e.g. the Planer's plain "Alles passt bis …"
+     * line, or the milestone celebration's own "no confetti for the
+     * mundane" rule). Picked at random, once, at the login that ends the
+     * gap; not admin-editable in this pass (see CLAUDE.md, "später").
+     *
+     * @var list<string>
+     */
+    public const WELCOME_BACK_MESSAGES = [
+        'Schön, dass du wieder da bist.',
+        'Lange nicht gesehen — der Rest wartet, wo du aufgehört hast.',
+        'Willkommen zurück. Nichts ist verloren gegangen.',
+        'Da bist du ja wieder.',
+        'Gut, dich wiederzusehen.',
+        'Die Liste hat auf dich gewartet.',
+        'Willkommen zurück — lass uns aufräumen.',
+        'Zeit, wieder reinzukommen.',
+        'Zurück im Sattel.',
+        'Ein neuer Anfang, mitten im alten.',
+    ];
+
+    /** A random line from WELCOME_BACK_MESSAGES. */
+    public static function randomWelcomeBackMessage(): string
+    {
+        return self::WELCOME_BACK_MESSAGES[array_rand(self::WELCOME_BACK_MESSAGES)];
     }
 
     // ── Presence ──────────────────────────────────────────────────────
@@ -441,6 +484,7 @@ class User extends Authenticatable
             'hidden_modules' => 'array',
             'onboarding_completed_at' => 'datetime',
             'is_admin' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 }

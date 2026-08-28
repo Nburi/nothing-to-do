@@ -1682,6 +1682,63 @@ authors announcements, and a per-user toast every regular user sees until they d
   later markup change silently just does nothing (fails quietly in `highlightFromQueryParam()`, never
   a broken page), which is an acceptable trade for a developer-facing, admin-only field.
 
+### Rückkehr-Begrüssung & Ankündigungs-Rückstand (built)
+
+Two small, independent additions for the "hasn't opened the app in a while" moment — a random
+welcome-back line, and a proper backlog treatment for `FeatureAnnouncementToast` when several
+announcements piled up while the user was away. Neither is admin-authored content; both are code.
+
+- **`users.last_login_at`** — a dedicated, always-on timestamp, deliberately separate from
+  `last_seen_at` (presence, §7 above): that field is opt-out and gets overwritten by the *current*
+  session's own heartbeat within seconds of the app loading, so by the time any page-load logic
+  could read it, it may already reflect this visit, not the gap before it. `AuthenticatedSessionController
+  ::store()` reads the *previous* `last_login_at` before overwriting it with `now()` — that old value
+  is the only thing that can answer "how long was the user away". `User::WELCOME_BACK_AWAY_DAYS` (14)
+  is the threshold; crossing it flashes an already-chosen random line from `User::WELCOME_BACK_MESSAGES`
+  (a small, calm, non-admin-editable list — same "later" scope as the milestone celebration's fixed
+  copy) into the session via `session()->put('welcome_back_message', ...)`. Registration never stamps
+  `last_login_at` (Breeze's `RegisteredUserController` calls `Auth::login()` directly, bypassing this
+  controller), so the *next* real login is the first one with a previous value to compare against — a
+  brand-new account is correctly never shown a welcome-back line on day one, the same "not applicable
+  is not zero" shape as `ProgressStats::perfectDayRate()`.
+- **`FeatureAnnouncementToast::mount()`** reads that flashed message via `session()->pull()` — read
+  once, gone from the session immediately, so a later page load (a fresh Livewire mount, since
+  `wire:navigate` re-mounts every component on the target page) never shows it twice. It's stored on
+  the component (`$welcomeMessage`), not re-read, so it survives any number of further Livewire round
+  trips within the same page.
+- **Backlog progress** — `$initialQueueTotal` is captured once in `mount()` (never recomputed), so
+  a "3 von 7" counter counts down consistently as the queue shrinks instead of both numbers shrinking
+  together. Shown only once there's an actual backlog (`initialQueueTotal > 1`) — a single announcement
+  stays exactly as plain as it always was, no ring, no counter, no skip-all button; a bar/ring on "1 von 1"
+  would be noise, not information.
+- **Signature moment — the ring, not a bar.** Dismissing fills a thin SVG ring around the card's own
+  icon by one segment (`ring` in the wrapper's Alpine `x-data`, 0–1, bound to the ring's
+  `stroke-dashoffset`) — the same circular-progress language the Pomodoro focus ring already uses
+  elsewhere in this app, reused here for finishing a backlog instead of counting one down. The last
+  segment holds at a full circle for ~550ms before the card actually closes: the "Verstanden"/link
+  click handlers set `ring = 1` and `dismissing = true`, then call `$wire.dismiss(...)` from a
+  `setTimeout` rather than firing it immediately — a deliberate departure from the rest of the app's
+  usual "wire:click and x-on:click both fire independently" dual-fire pattern (see §10), needed here
+  because this is the one case that actually requires *sequencing* a visible beat before the server
+  call, not just pairing two independent effects.
+- **"Alle überspringen"** — `FeatureAnnouncementToast::skipAll()`, a bulk `insertOrIgnore` into
+  `feature_announcement_dismissals` (same shape as `SchedulePause::pauseRange()`) rather than one
+  `dismissFor()` call per row. Only shown alongside the progress ring (backlog > 1). Deliberately a
+  plain single click, no armed-double-click: it carries the exact same consequence as dismissing one
+  at a time (nothing is deleted, only marked seen), so it gets the same weight the existing
+  "Verstanden" button already has, not the destructive-action treatment reserved for actual data loss.
+- **No welcome message ever shows twice, and it never stacks as a second popup next to the
+  announcement backlog.** When both apply (long gap *and* a backlog), the greeting renders as a small
+  line at the top of the *first* announcement card only (`positionInQueue === 1`) — one physical toast,
+  not two competing ones. When only the greeting applies (long gap, nothing queued), a small standalone
+  card shows just the line and fades itself out after 5s (no ring, nothing to click — there's no
+  progress to show).
+- Deliberately out of scope for this pass: admin-editable welcome-back copy, avoiding an immediate
+  repeat of the same random line on consecutive long-gap logins, graduated messaging by how long the
+  gap actually was (2 weeks vs. 2 months get the same flat treatment), and a staggered "fly the
+  skipped titles past" flourish on `skipAll()` — considered as an alternative signature moment,
+  not built once the ring was chosen instead.
+
 ### Task-Gruppen (built)
 
 The middle size between a single task and a Project: a bundle of steps that belong together — a
