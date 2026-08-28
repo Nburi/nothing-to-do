@@ -211,4 +211,141 @@ class FeatureAnnouncementToastTest extends TestCase
 
         $this->assertStringNotContainsString('role="status"', $html);
     }
+
+    public function test_a_single_announcement_shows_no_progress_counter_or_skip_all(): void
+    {
+        $user = User::factory()->create();
+        $this->published();
+
+        $html = Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)->html();
+
+        $this->assertStringNotContainsString('1 von 1', $html);
+        $this->assertStringNotContainsString('Alle überspringen', $html);
+    }
+
+    public function test_a_backlog_shows_a_position_counter_that_holds_steady_as_the_total(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['created_at' => now()->subDays(5)])->save();
+        $first = $this->published(['title' => 'Erste', 'published_at' => now()->subDays(2)]);
+        $this->published(['title' => 'Zweite', 'published_at' => now()->subDay()]);
+        $this->published(['title' => 'Dritte', 'published_at' => now()]);
+
+        $component = Livewire::actingAs($user)->test(FeatureAnnouncementToast::class);
+        $component->assertSee('1 von 3')->assertSee('Alle überspringen');
+
+        $component->call('dismiss', $first->id);
+        // Total stays 3 even though only 2 remain — the numerator moves, the
+        // denominator (initialQueueTotal, captured once at mount) does not.
+        $component->assertSee('2 von 3');
+    }
+
+    public function test_skip_all_dismisses_every_queued_announcement_at_once(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['created_at' => now()->subDays(5)])->save();
+        $first = $this->published(['title' => 'Alpha-Ankündigung', 'published_at' => now()->subDays(2)]);
+        $second = $this->published(['title' => 'Beta-Ankündigung', 'published_at' => now()->subDay()]);
+        $third = $this->published(['title' => 'Gamma-Ankündigung', 'published_at' => now()]);
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->call('skipAll')
+            ->assertDontSee('Alpha-Ankündigung')
+            ->assertDontSee('Beta-Ankündigung')
+            ->assertDontSee('Gamma-Ankündigung');
+
+        $this->assertTrue($first->isDismissedBy($user));
+        $this->assertTrue($second->isDismissedBy($user));
+        $this->assertTrue($third->isDismissedBy($user));
+    }
+
+    public function test_skip_all_on_an_empty_queue_is_a_no_op(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)->call('skipAll');
+
+        $this->assertDatabaseCount('feature_announcement_dismissals', 0);
+    }
+
+    public function test_a_long_gap_return_shows_a_welcome_message_from_the_catalog(): void
+    {
+        $user = User::factory()->create();
+        session(['welcome_back_message' => 'Schön, dass du wieder da bist.']);
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertSee('Schön, dass du wieder da bist.');
+    }
+
+    public function test_the_welcome_message_only_appears_once_even_across_several_announcements(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['created_at' => now()->subDays(5)])->save();
+        $first = $this->published(['title' => 'Erste', 'published_at' => now()->subDays(2)]);
+        $this->published(['title' => 'Zweite', 'published_at' => now()->subDay()]);
+        session(['welcome_back_message' => 'Gut, dich wiederzusehen.']);
+
+        $component = Livewire::actingAs($user)->test(FeatureAnnouncementToast::class);
+        $component->assertSee('Gut, dich wiederzusehen.');
+
+        $component->call('dismiss', $first->id);
+        $component->assertDontSee('Gut, dich wiederzusehen.');
+    }
+
+    public function test_the_welcome_message_does_not_resurface_after_the_backlog_drains_via_dismiss(): void
+    {
+        // Regression: welcomeMessage lives on the component for its whole
+        // lifetime, not just the render it was shown on. Draining the queue
+        // to empty must not let it come back as a standalone card once
+        // current() goes null — it was already shown, fused into card 1.
+        $user = User::factory()->create();
+        $only = $this->published(['title' => 'Einzige Ankündigung']);
+        session(['welcome_back_message' => 'Willkommen zurück. Nichts ist verloren gegangen.']);
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertSee('Willkommen zurück. Nichts ist verloren gegangen.')
+            ->call('dismiss', $only->id)
+            ->assertDontSee('Willkommen zurück. Nichts ist verloren gegangen.')
+            ->assertDontSee('role="status"');
+    }
+
+    public function test_the_welcome_message_does_not_resurface_after_skip_all(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['created_at' => now()->subDays(5)])->save();
+        $this->published(['title' => 'Erste', 'published_at' => now()->subDays(2)]);
+        $this->published(['title' => 'Zweite', 'published_at' => now()->subDay()]);
+        session(['welcome_back_message' => 'Zeit, wieder reinzukommen.']);
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertSee('Zeit, wieder reinzukommen.')
+            ->call('skipAll')
+            ->assertDontSee('Zeit, wieder reinzukommen.')
+            ->assertDontSee('role="status"');
+    }
+
+    public function test_a_welcome_message_with_no_queued_announcements_renders_as_a_standalone_card(): void
+    {
+        $user = User::factory()->create();
+        session(['welcome_back_message' => 'Da bist du ja wieder.']);
+
+        $html = Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)->html();
+
+        $this->assertStringContainsString('Da bist du ja wieder.', $html);
+        $this->assertStringContainsString('role="status"', $html);
+    }
+
+    public function test_the_session_flash_is_consumed_and_does_not_reappear_on_a_fresh_mount(): void
+    {
+        $user = User::factory()->create();
+        session(['welcome_back_message' => 'Zurück im Sattel.']);
+
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertSee('Zurück im Sattel.');
+
+        // A fresh component instance (e.g. the next wire:navigate page load)
+        // must not show it again — session()->pull() already consumed it.
+        Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
+            ->assertDontSee('Zurück im Sattel.');
+    }
 }

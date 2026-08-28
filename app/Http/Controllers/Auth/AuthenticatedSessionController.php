@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,25 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Read the *previous* login before this one overwrites it — that's
+        // the only value that can answer "how long was the gap". Flashing
+        // the already-chosen message (not just a flag) into the session
+        // means App\Livewire\FeatureAnnouncementToast never has to re-derive
+        // "how long was the user away" itself; it just displays what's here.
+        $previousLoginAt = $user->last_login_at;
+
+        $user->update(['last_login_at' => now()]);
+
+        if (
+            $previousLoginAt !== null
+            && (int) $previousLoginAt->diffInDays(now()) >= User::WELCOME_BACK_AWAY_DAYS
+        ) {
+            $request->session()->put('welcome_back_message', User::randomWelcomeBackMessage());
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
