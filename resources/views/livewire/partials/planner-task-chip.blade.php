@@ -21,7 +21,7 @@
     wire:key="planner-chip-{{ $type }}-{{ $id }}"
     x-data
     x-init="window.plannerLongPress($el, $wire)"
-    class="flex items-center gap-1.5 rounded-card border border-line/70 bg-paper px-2 py-1.5"
+    class="flex select-none items-center gap-1.5 rounded-card border border-line/70 bg-paper px-2 py-1.5"
 >
     <span data-drag-handle class="grid h-6 w-6 flex-none touch-none cursor-grab place-items-center text-ink-faint active:cursor-grabbing" aria-hidden="true">
         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
