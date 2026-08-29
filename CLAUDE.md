@@ -176,7 +176,17 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   otherwise silently misplace "today" near midnight local time). The Pomodoro countdown itself
   (`pomodoroPhaseNow`) deliberately keeps using the raw, unshifted `now()` — it's a pure elapsed-time diff
   against `pomodoro_started_at`, so a timezone shift would cancel out at best and corrupt the countdown at
-  worst if applied inconsistently. Configured in **Settings**' Zeitzone card (`saveTimezone()`).
+  worst if applied inconsistently. Configured in **Settings**' Zeitzone card — the offset autosaves via
+  `saveTimezone()` on `wire:change`, the DST toggle via `toggleTimezoneAutoDst()` immediately on click (no
+  submit button, like every other Settings control). A brand-new account gets both fields defaulted from
+  the browser's own clock instead of the hardcoded `0`/`false`: `window.detectTimezoneDefaults()`
+  (`resources/js/app.js`) compares Jan 1 vs Jul 1 `getTimezoneOffset()` readings to recover the *standard*
+  (non-DST) offset plus whether the zone observes DST at all; two hidden fields on the register form carry
+  it into `RegisteredUserController::store()` (silently ignored if missing/invalid — registration never
+  depends on JS having run). The same helper backs an "Automatisch erkennen" button in Settings for
+  existing accounts (`Settings::applyDetectedTimezone()`) — always an explicit click, never run on page
+  load, so it can never silently overwrite a deliberately-chosen offset (e.g. someone keeping "home" time
+  while travelling).
   `daily_task_goal`/`notify_daily_reminder`/`daily_reminder_time`/`daily_reminder_sent_on`/
   `notify_streak_risk`/`streak_risk_sent_on` back the Fortschritt feature (see its own section below)
   — `dailyTaskGoal()` and the `STREAK_RISK_DUE_TIME` constant live on `User` alongside the other
@@ -670,7 +680,8 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   initialises/resumes the shared `AudioContext` on the Start button's `onclick` (a real user gesture), so the
   later automatic chime isn't blocked by autoplay policy.
 - **Settings** (`App\Livewire\Settings`) has a Pomodoro section (work / short break / long break /
-  sessions-per-long-break / autostart toggle, all via `saveSchedule()`), a Benachrichtigungen section
+  sessions-per-long-break autosave via `saveSchedule()` on `wire:change`; the autostart toggle saves
+  separately and immediately via `togglePomodoroAutostart()`), a Benachrichtigungen section
   (three independent toggles — `toggleNotifyEventStart()`/`toggleNotifyPomoStart()`/`toggleNotifyBreakStart()`,
   each saving immediately like the category Pomodoro toggle below, no separate submit; the card also has a
   client-only permission-request button gated on `Notification.permission`, not a server field), and a
@@ -703,7 +714,8 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   date is a normal thing to do. A hover-revealed arrow icon opens the source page (Board or Agenda)
   without deep-linking to the specific item. **Settings** has a matching **"Vorschau auf Termine"**
   card (`users.deadline_preview_enabled` default `true`, `deadline_preview_days` default `2`,
-  max `14`) saved together via `saveDeadlinePreview()`, same form pattern as the Pomodoro card.
+  max `14`) — the toggle saves immediately via `toggleDeadlinePreviewEnabled()`, the days field autosaves
+  via `saveDeadlinePreviewDays()` on `wire:change`.
 
 ### Kategorie-Aufgaben-Verknüpfung (built)
 
@@ -2173,8 +2185,8 @@ thing became a Project, which is exactly what made that column unreadable (see �
   4. **Tagesziel erreicht** — today's count just reached `daily_task_goal`.
   Deliberately **not** wired into the API controllers — there is no browser there to show anything to.
   No sound in this pass (autoplay-policy risk, hard to verify headless — see `TODO.md`).
-- **Settings** has a **Fortschritt** tab: `daily_task_goal` (1–30, default 5, `saveDailyGoal()` —
-  form-submit-with-flash like the reset-time card) and two independent immediate-save reminder
+- **Settings** has a **Fortschritt** tab: `daily_task_goal` (1–30, default 5, autosaves via
+  `saveDailyGoal()` on `wire:change`) and two independent immediate-save reminder
   toggles, mirroring the `notify_*` rows and the Vorbereitung reminder-time field.
 - **Reminders** — the scheduled command **`app:send-progress-reminders`** (every minute, registered
   in `bootstrap/app.php` alongside the other four — same cron requirement, no new deployment step):
