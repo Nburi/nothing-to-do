@@ -937,8 +937,14 @@ plannable target.
   `moveToDay()`/`unassignTask()`/`autoFillBacklog()` actions, each a thin pass-through to `DayPlanner`
   with ownership verified before delegating.
 - **Desktop drag** — one shared layout for both breakpoints (not a Zeitplan/Wochenplan-style
-  desktop/mobile fork): a pinned **"Nicht eingeplant"** backlog rail plus a horizontally-scrolling row of
-  `HORIZON_DAYS` day columns. **`window.plannerDaySortable`** (`resources/js/app.js`) is one Sortable
+  desktop/mobile fork): a full-width **"Nicht eingeplant"** backlog — a *wrapping row* of chips, not a
+  column, since it now sits above the days rather than beside them (an earlier version used a narrow
+  side rail; stacking read better once tried) — above a horizontally-scrolling row of `HORIZON_DAYS` day
+  columns. A wrapped backlog chip gets a `max-w-56` cap (`planner-task-chip.blade.php`'s `$fixedWidth`
+  param, applied on the chip root itself, never a wrapper div — Sortable's `draggable` selector matches
+  direct children only) so it reads as a tidy pill instead of stretching to its title's full width; a
+  day-column chip leaves `$fixedWidth` unset and keeps stretching to the column via the day-list's own
+  `flex-col`, exactly as before. **`window.plannerDaySortable`** (`resources/js/app.js`) is one Sortable
   instance per day column/backlog, sharing one group name **only on a mouse pointer**
   (`window.matchMedia('(pointer: coarse)')`) — see mobile below for why touch gets its own, deliberately
   narrower group per container instead. Every drop — a same-day reorder or a cross-day move — persists via

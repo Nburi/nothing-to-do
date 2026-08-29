@@ -4,6 +4,16 @@
     only structural difference — only a chip already sitting on a day gets
     the small "×"; a backlog chip's only action is being picked up.
 
+    `$fixedWidth` (a Tailwind width/max-width class, e.g. "max-w-56") is
+    opt-in — the day-column list is `flex-col`, where a chip naturally
+    stretches to the column's own width for free; the backlog list is a
+    wrapping row instead, where a chip needs its own cap so it reads as a
+    tidy pill rather than growing to its title's full natural width. Left
+    unset for the day-column call site so its existing sizing is untouched.
+    Applied directly on this root (not a wrapper div) so `[data-chip]`
+    stays a *direct* child of the Sortable container either way — Sortable
+    reads its `draggable` selector against direct children only.
+
     data-duration/data-deadline-offset feed the client-side tier wave
     (see plannerClassifyDay in app.js) the instant a chip is picked up, so
     no round trip is needed just to show which days are available.
@@ -11,6 +21,7 @@
 @php
     $deadlineOffset = $deadlineOffset ?? null;
     $deadlineLabel = $deadlineLabel ?? null;
+    $fixedWidth = $fixedWidth ?? null;
 @endphp
 <div
     data-chip
@@ -21,7 +32,7 @@
     wire:key="planner-chip-{{ $type }}-{{ $id }}"
     x-data
     x-init="window.plannerTap($el, $wire)"
-    class="flex select-none items-center gap-1.5 rounded-card border border-line/70 bg-paper px-2 py-1.5"
+    class="flex select-none items-center gap-1.5 rounded-card border border-line/70 bg-paper px-2 py-1.5 {{ $fixedWidth ? 'flex-none '.$fixedWidth : '' }}"
 >
     <span data-drag-handle class="grid h-6 w-6 flex-none touch-none cursor-grab place-items-center text-ink-faint active:cursor-grabbing" aria-hidden="true">
         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">

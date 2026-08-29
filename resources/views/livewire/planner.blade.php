@@ -44,28 +44,30 @@
         <p class="mb-5 text-sm text-ink-soft">Alles Geplante passt bis {{ $horizonEnd->isoFormat('D. MMM') }}.</p>
     @endif
 
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <aside class="flex w-full flex-none flex-col gap-2.5 rounded-card border border-dashed border-line bg-surface p-3 sm:w-56">
+    <div class="flex flex-col gap-4">
+        <aside class="flex w-full flex-col gap-2.5 rounded-card border border-dashed border-line bg-surface p-3">
             <div class="flex items-baseline justify-between gap-2">
                 <h2 class="text-sm font-medium text-ink">Nicht eingeplant</h2>
                 <span class="tnum text-xs text-ink-faint">{{ $this->backlog->count() }}</span>
             </div>
 
+            {{-- A wrapping row, not a column — this sits above the days now (full width),
+                 and a tall single-file list would just push them further down for no reason. --}}
             <div
                 data-backlog
                 x-data
                 x-init="window.plannerDaySortable($el, $wire)"
-                class="flex min-h-[3rem] flex-col gap-1.5"
+                class="flex min-h-[3rem] flex-row flex-wrap items-start gap-1.5"
             >
                 @forelse ($this->backlog as $item)
-                    @include('livewire.partials.planner-task-chip', [...$item, 'showRemove' => false])
+                    @include('livewire.partials.planner-task-chip', [...$item, 'showRemove' => false, 'fixedWidth' => 'max-w-56'])
                 @empty
                     <p class="text-xs text-ink-faint">Alles eingeplant oder erledigt.</p>
                 @endforelse
             </div>
         </aside>
 
-        <div class="flex flex-1 gap-3 overflow-x-auto pb-2" style="min-width: 0;">
+        <div class="flex gap-3 overflow-x-auto pb-2">
             @foreach ($this->board as $dateKey => $day)
                 @php
                     $date = $day['date'];
