@@ -5,8 +5,8 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ManagesTasks;
 use App\Models\Project;
 use App\Models\Task;
+use App\Support\Markdown\Markdown;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -121,23 +121,14 @@ class ProjectPage extends Component
     }
 
     /**
-     * The brainstorming notes rendered to safe HTML for the read view.
-     * GitHub-flavoured Markdown (headings, lists, task lists, links); raw HTML
-     * is stripped and unsafe link schemes dropped, so user input can't inject.
+     * The brainstorming notes rendered to safe HTML for the read view, via
+     * the app's shared Markdown renderer (see App\Support\Markdown\Markdown)
+     * — same full GitHub-flavoured capability as every other Markdown field.
      */
     #[Computed]
     public function brainstormHtml(): string
     {
-        $text = trim($this->brainstorm);
-
-        if ($text === '') {
-            return '';
-        }
-
-        return Str::markdown($text, [
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ]);
+        return Markdown::toHtml($this->brainstorm);
     }
 
     // ── Writes ────────────────────────────────────────────────────────

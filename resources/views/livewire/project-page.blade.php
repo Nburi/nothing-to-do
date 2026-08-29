@@ -367,6 +367,9 @@
                             <button type="button" @mousedown.prevent="wrap('*', '*')" title="Kursiv" aria-label="Kursiv" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
                                 <span class="font-serif text-[13px] italic">i</span>
                             </button>
+                            <button type="button" @mousedown.prevent="wrap('++', '++')" title="Unterstrichen" aria-label="Unterstrichen" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
+                                <span class="text-[13px] underline">U</span>
+                            </button>
                             <span class="mx-1 h-4 w-px bg-line" aria-hidden="true"></span>
                             <button type="button" @mousedown.prevent="prefixLines('- ')" title="Liste" aria-label="Liste" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
                                 <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="4.5" r="1" fill="currentColor"/><circle cx="3" cy="11.5" r="1" fill="currentColor"/><path d="M6.5 4.5h7M6.5 11.5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>

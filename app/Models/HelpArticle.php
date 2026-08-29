@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use App\Support\Markdown\UnderlineExtension;
+use App\Support\Markdown\Markdown;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 /**
  * One Hilfe-Center page — admin-authored, read by every account once
@@ -60,12 +59,12 @@ class HelpArticle extends Model
     }
 
     /**
-     * Renders the body to safe HTML — full GitHub-flavoured Markdown
-     * (Str::markdown wraps League\CommonMark's GithubFlavoredMarkdownConverter,
-     * which already includes tables, autolinks, strikethrough and task lists),
-     * plus the same ++underline++ extension and html_input=strip/
-     * allow_unsafe_links=false safety options every other Markdown field in
-     * this app uses (Task::renderNotesMarkdown, TaskGroup::renderNotes).
+     * Renders the body to safe HTML via the app's one shared Markdown
+     * renderer (see App\Support\Markdown\Markdown) — full GitHub-flavoured
+     * Markdown (headings, links, tables, autolinks, strikethrough, task
+     * lists) plus the ++underline++ extension, same as every other Markdown
+     * field in the app (Task::renderNotesMarkdown, TaskGroup::renderNotes,
+     * ProjectPage::brainstormHtml).
      *
      * A GFM task list renders its checkboxes with a hardcoded `disabled`
      * attribute — CommonMark has no notion of an interactive reader. Since a
@@ -79,16 +78,11 @@ class HelpArticle extends Model
      */
     public static function renderMarkdown(?string $text): string
     {
-        $text = trim((string) $text);
+        $html = Markdown::toHtml($text);
 
-        if ($text === '') {
+        if ($html === '') {
             return '';
         }
-
-        $html = Str::markdown($text, [
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ], [new UnderlineExtension()]);
 
         return preg_replace('/(<input\b[^>]*?)\s+disabled(=("|\')?[^"\'\s>]*("|\')?)?/i', '$1', $html);
     }
