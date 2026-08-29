@@ -23,6 +23,24 @@ few days:**
 If anything about per-person completion turns out wrong before then, rolling back is still lossless — the
 old column still holds the pre-migration state.
 
+### Drop `schedule_event_task_links.source` (blocked on living with the day-planner rework for a while)
+
+The Planer moved from block-granularity to day-granularity placement (branch `feature/day-planner`,
+2026-08-29): tasks are now planned onto a day (`task_day_plans`, `App\Services\DayPlanner`), not linked to
+one specific calendar block instance any more. `schedule_event_task_links` — the *separate*
+"Zeitplan-Eintrag-Aufgaben-Verknüpfung" feature that binds specific tasks to one occurrence for the
+Pomodoro focus-timer suggestion — is untouched and still fully live, but its `source` column
+(`'manual'`/`'auto'`) is now vestigial: nothing writes `'auto'` to it any more (that was always the old
+block-filling planner's own doing), so every row here will only ever read `'manual'` from now on.
+
+Left in place rather than dropped outright — same two-step precedent as `agenda_entries.is_done` above
+(CLAUDE.md §8: data-losing changes ship in two steps). Once this has been lived with for a while and it's
+clear nothing still depends on distinguishing `source` here:
+
+1. New migration dropping `schedule_event_task_links.source`.
+2. Remove the docblock note on `ScheduleEvent::linkedTasks()` that points here.
+3. Remove this entry.
+
 ### Local dev DB still carries a dead `tasks.task_group_id` column
 
 Left over from the deleted first task-groups attempt (2026-07-31). Its migration file is gone with the

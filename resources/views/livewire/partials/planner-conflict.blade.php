@@ -1,15 +1,15 @@
-@php
-    $today = auth()->user()->localToday();
-    $isOverdue = $item['raw_date']->lessThan($today);
-    $daysLate = $isOverdue ? (int) $item['raw_date']->diffInDays($today) : null;
-@endphp
+{{--
+    A dated backlog item past its own effective (buffered) deadline — see
+    DayPlanner::conflicts(). $item['deadlineLabel'] comes straight off the
+    real Task/AgendaEntry date, not the buffer, so a task whose hard
+    deadline is still technically a day away but has already eaten into its
+    2-day safety margin reads as "fällig morgen", not a false "überfällig".
+--}}
 <div class="py-2.5 first:pt-0 last:pb-0">
     <p class="text-sm text-ink">{{ $item['title'] }}</p>
     <p class="mt-0.5 text-xs text-ink-soft">
-        {{ $item['type'] === 'agenda' ? 'Hausaufgabe' : 'Aufgabe' }} · fällig {{ $item['raw_date']->isoFormat('D. MMM') }}
-        @if ($daysLate !== null)
-            · {{ $daysLate }} {{ $daysLate === 1 ? 'Tag' : 'Tage' }} überfällig
-        @endif
+        {{ $item['type'] === 'agenda' ? 'Hausaufgabe' : 'Aufgabe' }}
+        · {{ $item['deadlineLabel'] === 'überfällig' ? 'überfällig' : 'fällig '.$item['deadlineLabel'] }}
     </p>
     <div class="mt-1.5 flex items-center gap-4">
         <a href="{{ route('schedule') }}" wire:navigate class="inline-flex items-center gap-1 text-xs font-medium text-overprint hover:underline">

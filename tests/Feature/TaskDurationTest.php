@@ -75,8 +75,8 @@ class TaskDurationTest extends TestCase
 
     public function test_default_duration_used_for_scoring_is_never_written_back(): void
     {
-        // WorkPlanner's own defaults (10 for todos, 25 for tasks) are computed
-        // on the fly for scoring only — confirms the record itself stays null
+        // DayPlanner's own defaults (10 for todos, 25 for tasks) are computed
+        // on the fly for capacity math only — confirms the record itself stays null
         // when no estimate was ever entered, matching "never required".
         $user = $this->actingUser();
         $task = Task::factory()->for($user)->todos()->create();

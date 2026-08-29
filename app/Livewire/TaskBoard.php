@@ -917,7 +917,7 @@ class TaskBoard extends Component
             return;
         }
 
-        app(PomodoroSessionService::class)->start($event, auth()->user());
+        app(PomodoroSessionService::class)->start($event);
     }
 
     /** Fully ends the session — a fresh tap on "Start" is needed to begin again. */
@@ -949,7 +949,7 @@ class TaskBoard extends Component
         }
 
         $user = auth()->user();
-        app(PomodoroSessionService::class)->transition($event, $user, $user->pomodoro());
+        app(PomodoroSessionService::class)->transition($event, $user->pomodoro());
     }
 
     /**
@@ -962,7 +962,7 @@ class TaskBoard extends Component
         $event = $this->userScheduleEvent($id);
         $user = auth()->user();
 
-        app(PomodoroSessionService::class)->skipBreak($event, $user, $user->pomodoro());
+        app(PomodoroSessionService::class)->skipBreak($event, $user->pomodoro());
     }
 
     public function render()

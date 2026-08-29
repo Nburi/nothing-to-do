@@ -848,128 +848,151 @@ same shape as `category_task_links` for a category's own "Bestimmte Aufgaben" so
 
 ### Planer (built)
 
-An automatic scheduler, on top of the manual linking above: distributes open Tasks/Todos/Agenda
-homework into upcoming Pomodoro-enabled work-blocks, so it's visible well before a deadline sneaks
-up whether everything will actually get done in time — the motivating scenario was a stuffed
-competitive-sport schedule where a day silently assumed free turns out to already be gone. **Default
-off** (`users.planner_enabled`, Settings' Planer card, immediate-save toggle same shape as Hausaufgaben-
-Vorschau) — an automatic planner is exactly the kind of thing that can feel intrusive to someone who
-didn't ask for it. Off = zero footprint everywhere: `WorkPlanner`'s every public method no-ops on the
-flag, the `/app/planner` route bounces back to the board (`Planner::mount()`), and the nav pill in the
-"Mehr" dropdown simply isn't rendered.
+A day-by-day board: drag a task/homework item onto a day to plan it *for that day*, not into one specific
+calendar block. **Default off** (`users.planner_enabled`, Settings' Planer card, immediate-save toggle
+same shape as Hausaufgaben-Vorschau); off = zero footprint everywhere, same as before.
 
-- **`App\Services\WorkPlanner`** — stateless (all static methods, like `TaskSuggestor`/`PomodoroCycle`).
-  `HORIZON_DAYS = 14` (fixed, not user-configurable). Only Pomodoro-enabled category block occurrences
-  are ever eligible placement targets — never raw free/unscheduled time. A prior, unshipped prototype of
-  this whole app auto-filled *all* free time and felt oppressive; restricting to explicitly-designated
-  work-blocks is the deliberate fix, carried into this build from the start.
-  - **Eligible dated items**: board/project/group Tasks (`list` in `todos|tasks|projects` — never
-    `inbox`, untriaged is out of scope) with a `deadline`/`due_date`, plus open `AgendaEntry` homework
-    (never exams — there's no "work session" concept for an exam itself). A homework entry already
-    promoted into a live Task (via an earlier plan or `TaskBoard::promoteHomeworkToday()`) is represented
-    by that Task instead, never listed twice.
-  - **Effective deadline** — hard `deadline` minus a 2-day buffer (`DEADLINE_BUFFER_DAYS`), or the soft
-    `due_date`/homework date as-is; the earlier of the two when a task has both. The *raw*, unbuffered
-    date is carried alongside (`deadlineInfoForTask()` returns both) purely for display — showing a user
-    a deadline two days earlier than the one they actually typed in would just be confusing.
-  - **Undated backlog** (`fillerItems()`) — lowest priority, only ever used to top up a block's leftover
-    space once every dated item has had its chance (`urgency = 0` in the scoring below naturally achieves
-    this, no separate pass needed). Mirrors `TaskSuggestor`'s own tiering philosophy so this planner isn't
-    a second brain with different opinions than the rest of the app.
-  - **Scoring** (`score()`): `urgency × 1.0 + fit × 0.5 + (is_important ? 0.15 : 0)`. `urgency =
-    (HORIZON_DAYS − daysUntilDeadline) / HORIZON_DAYS`, measured from **today**, not from whichever block
-    is currently being filled — 0 at the edge of the horizon, 1.0 due today, climbs past 1 the more
-    overdue something already is. `fit = duration / remainingBlockMinutes` (only eligible if
-    `duration ≤ remaining`; never place something into a block on/after its own deadline). Blocks are
-    walked chronologically, greedily taking the best-scoring candidate that still fits, until full or
-    nothing left fits — this naturally front-loads urgent work into the earliest block that can take it.
-  - **Repair pass** (`attemptRescue()`) — bounded, not a general solver: for each still-unplaced dated
-    item, first try bumping a filler occupant out of an earlier eligible block (free, nothing to
-    relocate), then try bumping a genuinely *less* urgent dated occupant, relocating it to a later block
-    it still meets its own deadline in. Cleans up greedy's own local-optimum mistakes (a decent-fit,
-    less-urgent item can otherwise win a block's only slot before a more urgent item that needed it is
-    even considered); anything still unplaced after this is a genuine, honestly-reported conflict.
-  - **Persistence reuses `schedule_event_task_links`** (the Zeitplan-Eintrag-Aufgaben-Verknüpfung pivot
-    above) rather than a parallel data model — a `source` column (`'manual' | 'auto'`, default `'manual'`
-    for backfill) distinguishes a human pick from an algorithm one. `reconcile()` (passive) rebuilds only
-    the `'auto'` layer from scratch every time — auto placements are cheap and *not* sticky by design, so
-    there's no diffing old-vs-new, just replace them wholesale around whatever `'manual'` rows already
-    anchor a block. `regenerate()` ("Neu planen") is the one action that discards `'manual'` too — a full
-    wipe-and-replan, gated behind the app's usual armed double-click since it's the one thing here that
-    can throw away a deliberate choice (also literally the answer to "undo an accidental manual move").
-  - **Homework promotion** — `schedule_event_task_links.task_id` can only point at a `Task` (a real FK to
-    `tasks`), so a homework item is promoted into one (mirroring `promoteHomeworkToday()`'s shape: title
-    `"{subject}: {title}"`, `deadline` = the homework's date, `duration_minutes` carried over) at the
-    moment it's actually placed, not during scoring — so a plan that gets rearranged during the repair
-    pass never creates a task it then immediately discards.
-  - **`conflicts(User)`** — every dated item with no link (`'manual'` or `'auto'`) to a block on or before
-    its own effective deadline. A manual placement resolves a conflict exactly the same as an auto one,
-    even if the algorithm itself would never have chosen that slot — the check is "is it covered", not
-    "did the algorithm do it".
+This replaced an earlier, block-granularity version (`App\Services\WorkPlanner`, merged 2026-08-25) that
+auto-filled Pomodoro-enabled work-blocks with a greedy scoring algorithm. That version was reworked
+(branch `feature/day-planner`, 2026-08-29) after real use revealed the actual complaint: a work-session
+*block* moves, resizes, or gets renamed far more often than a *day* as a whole does, so binding a plan to
+one specific block instance was fragile — and a day with zero blocks made the whole page a dead end (its
+empty state, not a board). Moving the unit of assignment from "block" to "day" fixes both: a plan now
+survives the Zeitplan changing underneath it, and a block-less day is still a fully valid, fully
+plannable target.
+
+- **`task_day_plans`** (`task_id` unique/cascade-delete, `planned_date`, `sort_order`, `source`
+  `'manual'|'auto'`) — a task lives on at most one day at a time, the same "one contiguous slot" rule the
+  block-based version had for blocks. `Task::dayPlan(): HasOne` is the read side; **`App\Models\
+  TaskDayPlan`** casts `planned_date` as `'date:Y-m-d'` (an *explicit* format, not a bare `'date'` cast) —
+  a bare cast round-trips through a full datetime string on Eloquent writes while `DayPlanner`'s own
+  `upsert()` calls write a plain `Y-m-d` string directly (query-builder writes bypass casts entirely),
+  and that mismatch silently broke an exact-match read during development — the same `today_date` trap
+  documented under *Known Issues* below, hit fresh while building this. `scopeForDate()` additionally uses
+  `whereDate()`, not `where()`, as defence in depth against the same trap from any future write path.
+  This table is a **separate, new concept** from `schedule_event_task_links` (the
+  Zeitplan-Eintrag-Aufgaben-Verknüpfung pivot, above) — that pivot binds specific tasks to *one calendar
+  occurrence* for the Pomodoro focus-timer suggestion and is completely untouched by this rework; only its
+  `source` column is now vestigial, since nothing writes `'auto'` there any more (see *TODO.md*).
+- **`App\Services\DayPlanner`** — stateless (all static methods, like `TaskSuggestor`/`PomodoroCycle`).
+  `HORIZON_DAYS = 14` (fixed, not user-configurable, unchanged from the block-based version).
+  - **`board(User)`** — exactly `HORIZON_DAYS` entries starting today (even on a day with nothing
+    planned), each `{date, capacityTotal, capacityUsed, blockLabels, tasks}`. `capacityTotal` is still
+    that day's **Pomodoro-enabled category blocks only, never raw free time** — the block-based version's
+    own restriction, carried forward unchanged: a prior, unshipped prototype of this app auto-filled all
+    free time and felt oppressive. A day with none (`capacityTotal === 0`) shows no bar and is still a
+    normal drop target — the fix for the old page's dead end. `itemFromTask()`/`itemFromAgendaEntry()` are
+    the one place a Task/AgendaEntry gets normalized into the shape every view reads (id/title/duration/
+    `deadlineOffset`/`deadlineLabel`/`isImportant`) — `deadlineLabel` reuses `Task::effectiveDateLabel()`/
+    `AgendaEntry::dateLabel()` directly rather than a second date-formatting implementation, while
+    `deadlineOffset` is `DayPlanner`'s own **buffered** number (hard deadline − `DEADLINE_BUFFER_DAYS`, or
+    the soft due date/homework date as-is — identical buffer logic to the block-based version) used only
+    for the tier classification below. A task whose raw deadline is still a day off but has already eaten
+    its buffer shows `deadlineLabel: "morgen"` (honest) while still counting as a conflict (see below) —
+    a deliberate near-miss, not a bug: the *label* always reflects what the user actually typed in.
+  - **`backlog(User)`** — every active, dated-or-not board/project task with no day yet, plus open
+    `AgendaEntry` homework not yet promoted (never exams — no "work session" concept for an exam itself),
+    sorted by urgency. A homework entry already promoted (via an earlier assignment or
+    `TaskBoard::promoteHomeworkToday()`) is represented by that task instead, never listed twice — same
+    rule the block-based version had.
+  - **`conflicts(User)`** — backlog items whose **buffered** deadline has already passed. Deliberately
+    *not* "has no placement yet" (which is what the block-based version's own `conflicts()` effectively
+    reduced to once you account for its always-on auto-fill) — in a manual-first board, most dated items
+    sit unplanned for a while by design, and flagging every one of them as a "conflict" would drown out
+    the genuinely late ones. Placing an item anywhere — even today — removes it from `backlog()` and
+    therefore from here too, by construction, no separate resolution check needed.
+  - **`assignDay(User, date, items)`** — the destination of a drag: persists one day's *full* order, same
+    "send the whole list" shape `TaskBoard::reorder()` and the old `reorderBlock()` used. Each entry is a
+    `"task:<id>"`/`"agenda:<id>"` token; an agenda token is promoted to a real task **at this point, not
+    earlier** (mirrors `TaskBoard::promoteHomeworkToday()`'s shape) — so a drag that gets cancelled or
+    rearranged never creates a task it then discards. Since `task_id` is unique on `task_day_plans`, a
+    plain `upsert(uniqueBy: ['task_id'])` both **places and relocates**: a task already planned for another
+    day just moves here, with nothing left behind on its old day to separately clean up — simpler than the
+    block-based version's own "delete elsewhere, then sync" dance.
+  - **`moveToDay(User, token, date)`** / **`unassignTask(Task)`** — single-item conveniences.
+    `moveToDay()` appends to the end of a day's existing order without the caller needing to already know
+    that order (the mobile day-picker sheet's own action, see below); `unassignTask()` is the chip's small
+    "×" and the desktop backlog drop zone.
+  - **`autoFillBacklog(User)`** — "Rest automatisch einplanen", the one algorithmic action, and **purely
+    additive**: it only ever reads/writes tasks with no day yet, so a placement made by hand can never be
+    touched by it. This is *why* it needs no armed-double-click confirmation the way the old `regenerate()`
+    ("Neu planen") did — that action discarded every `'manual'` placement outright; this one has nothing
+    to discard, by construction. Same `urgency × 1.0 + fit × 0.5 + (is_important ? 0.15 : 0)` scoring the
+    block-based version used, retargeted from block-minutes to day-minutes, walked chronologically day by
+    day. Deliberately **without** the old version's bounded repair pass (bumping a less-urgent occupant to
+    free a slot for a starved urgent one) — that complexity existed because the block-filling algorithm
+    was the *only* way anything got placed; now that it's an optional convenience layered on top of a
+    fully manual board, a plain greedy fill is proportionate, and a still-unplaced item after it just stays
+    in the backlog, an honest and harmless outcome, not a silent loss.
 - **Estimated duration — `tasks.duration_minutes` / `agenda_entries.duration_minutes`** (nullable,
-  minutes). Deliberately never required: Inbox tasks are never asked (out of scope for planning anyway),
-  and a missing estimate just falls back to a default *for WorkPlanner's own math only* (never written
-  back) — 10 min for `list=todos`, 25 min for `list=tasks`/`projects`/homework (`DEFAULT_DURATION`,
-  `DEFAULT_HOMEWORK_DURATION`). The UI affordance is the existing card-face quick-date ghost pattern,
-  reused rather than a new mechanism: a "~ Dauer" ghost placeholder shows on `task-card.blade.php`/
-  `task-card-mobile.blade.php` (deliberately not `project-task-card.blade.php` — that card has no
-  interactive popover mechanism at all yet, so duration entry there goes through the edit sheet only)
-  whenever `list ≠ inbox` and no estimate is set; tapping it opens a small popover with quick-pick chips
-  (10/15/25/45/60/90 min) calling `ManagesTasks::quickSetDuration()` — same bypass-the-edit-sheet shape as
-  `quickSetDates()`. The ghost *is* the "you're missing an estimate" warning; no separate indicator exists
-  because none is needed. Also editable from the full edit sheet (`editDuration`) and, for homework only,
-  the Agenda entry form (`Agenda::$formDuration`, hidden for exam entries — they're never planner-eligible).
-- **`App\Livewire\Planner`** (`/app/planner`, `route('planner')`) — deliberately narrow: only about which
-  task/todo/homework happens in which upcoming block, not a general schedule editor (no creating
-  Termine/categories, that stays on Zeitplan/Wochenplan). `use ManagesSchedule` directly, purely for
-  `moveEvent()`/`resizeEvent()` (repositioning a block, via the *existing* event-edit-sheet — see below,
-  not a grid drag) — reads/writes the exact same `ScheduleEvent` data as the real Zeitplan, so a block
-  moved here really is moved there too, no shadow schedule to drift out of sync.
-  - **`reconcile()` is called exactly once, from `mount()`, not from the `blocks()` computed property.**
-    This was a real bug caught by a failing test during development: a `#[Computed]` property re-evaluates
-    on every render, and Livewire re-renders the whole view after *every* action on this page — reconciling
-    from inside it meant an `unassignTask()` call was immediately undone by the very next render's reconcile
-    (the just-removed task was undated-backlog-eligible, so it snapped straight back into the vacated slot).
-    Once per full page load is enough to satisfy "never stale when you're actually looking at it" without
-    fighting the action the user just took. See `PlannerPageTest::test_unassign_task_removes_its_link`.
-  - The page is a **list of day sections and block cards**, not a percentage-positioned time grid like
-    Zeitplan/Wochenplan — so block repositioning reuses the *event-edit-sheet* (`startEditEvent()` +
-    `@include('livewire.partials.schedule-event-form')`), not the `scheduleEvent` Alpine drag-move
-    component (that component's math is grid-height-relative and doesn't apply to a list layout). This is
-    a deliberate, disclosed deviation from an earlier assumption that the grid gesture would be reused
-    verbatim — precise date/time editing fits a list better than an imprecise drag would have anyway.
-  - **`reorderBlock(blockId, taskIds)`** — drag & drop persistence, same "send the destination zone's full
-    id order" shape as `TaskBoard::reorder()`. Every id landing here (whether reordered in place or
-    dragged in from another block) is stamped `'manual'`, and any *other* block's link for that task is
-    dropped first, so a cross-block move can't leave it doubly-linked. `unassignTask()` is the small "×"
-    on each chip, a affordance beyond what was explicitly asked for but cheap and consistent with the
-    rest of the app's card-face quick-actions.
-  - **`window.plannerBlockSortable`** (`resources/js/app.js`) — one Sortable instance per block container,
-    all sharing one group name so a chip can move between blocks as well as reorder within one. Modelled
-    on `groupDropZone`'s idiom, not a verbatim reuse of it: nothing existing already does "drag between
-    several named containers with cross-container reassignment".
-  - The conflict banner is **always visible when non-empty** — this, not the drag-and-drop, is the
-    feature's actual point, per explicit direction during planning. When empty: a single calm line,
-    `"Alles passt bis {horizon end}."` — deliberately not styled `forest`/celebratory (that's reserved for
-    Fortschritt's streak system) or accompanied by any animation; the reward here is quiet certainty, not
-    a dopamine hit. Each conflict card offers exactly two resolutions — `"Zeitplan öffnen"` (link to
-    `route('schedule')`) and `"Deadline ändern"` (`route('app', ['task' => $id])` for a promoted item,
-    `route('agenda')` for an unpromoted homework one) — doing neither is itself a valid choice ("accept
-    it'll be late"), so there's deliberately no third button and no persisted "dismissed" state.
-- **Pomodoro integration** — `PomodoroSessionService::start()`/`transition()`/`skipBreak()` each call
-  `WorkPlanner::reconcile()` before their own logic, and `handleTick()` calls it once after a real phase
-  advance (outside the row lock, alongside the existing post-transaction notify calls; never for the
-  "freeze awaiting a continue" branch, since nothing about which block shows what changes there). This
-  keeps the linked-task shown on a live focus session accurate — start a session, and by the time you
-  press it the block's plan reflects anything that changed since it was last touched — without hooking
-  into every task/schedule mutation site across the app (task creation, random edits elsewhere): all four
-  of these are already single, centralized choke points this service owns, covering both the dashboard
-  and the API (`ScheduleEventController`) and the per-minute cron cascade (`AdvancePomodoroPhases`) for
-  free. Confirmed end-to-end (not just at the service level) in `PlannerPomodoroIntegrationTest`.
-- **Later, deliberately not built**: splitting a task across multiple blocks/sessions (a task always
-  occupies one contiguous slot in one block), a configurable horizon or scoring weights, auto-planning
-  exam entries, push notifications when a new conflict appears, a persisted "snooze this conflict" state,
-  drag-to-place directly from the conflict banner into a block (the two text links cover resolution).
+  minutes, unchanged from the block-based version). Deliberately never required — a missing estimate just
+  falls back to a default *for `DayPlanner`'s own math only* (never written back): 10 min for
+  `list=todos`, 25 min for `list=tasks`/`projects`/homework. Same card-face quick-date ghost affordance as
+  before (`ManagesTasks::quickSetDuration()`), untouched by this rework.
+- **`App\Livewire\Planner`** (`/app/planner`, `route('planner')`) — thinner than the block-based version:
+  no longer needs `ManagesSchedule` at all (that was pulled in purely to reposition a block via the
+  event-edit-sheet; the day-board doesn't show individual blocks as editable items any more, only each
+  day's aggregate capacity, so there's nothing left to reposition from this page — a disclosed
+  simplification, not an oversight). `board()`/`backlog()`/`conflicts()` computeds; `assignDay()`/
+  `moveToDay()`/`unassignTask()`/`autoFillBacklog()` actions, each a thin pass-through to `DayPlanner`
+  with ownership verified before delegating.
+- **Desktop drag** — one shared layout for both breakpoints (not a Zeitplan/Wochenplan-style
+  desktop/mobile fork): a pinned **"Nicht eingeplant"** backlog rail plus a horizontally-scrolling row of
+  `HORIZON_DAYS` day columns. **`window.plannerDaySortable`** (`resources/js/app.js`) is one Sortable
+  instance per day column/backlog, sharing one group name **only on a mouse pointer**
+  (`window.matchMedia('(pointer: coarse)')`) — see mobile below for why touch gets its own, deliberately
+  narrower group per container instead. Every drop — a same-day reorder or a cross-day move — persists via
+  `assignDay()` with the destination's full id order; a drop onto the backlog instead calls
+  `unassignTask()` (skipped for a backlog-internal reorder, since backlog order carries no meaning and
+  isn't persisted at all).
+- **Signature moment — "die Rollbahn".** The instant a chip is picked up, every visible day column lights
+  up in a short left-to-right stagger (45ms apart, `plannerWave` in `app.js`), settling into three tiers
+  computed client-side from the dragged chip's own `data-duration`/`data-deadline-offset` — no round trip
+  needed just to show which days are available:
+  - **`tier-free`** (forest) — before the chip's deadline, and the day either has room or has no tracked
+    capacity at all (nothing to warn about).
+  - **`tier-tight`** (contour) — before the deadline, but the day's *remaining* capacity is already too
+    small for this specific chip.
+  - **`tier-past`** (dimmed, `opacity: 0.5`) — after the chip's own deadline. Still fully droppable, never
+    hard-blocked — nothing in this app traps the user out of a choice, this is a nudge, not a lock.
+  A day past `today` never needs its own branch here since the board's horizon starts at today by
+  construction. **Gotcha hit building this:** the tier class names were first built via template-literal
+  interpolation (`` `tier-${tier}` ``) — Tailwind's content scanner regex-matches complete literal class
+  tokens in source text and cannot resolve an interpolated one, so all three classes would have been
+  silently purged from the production build (the exact trap documented below for the drag-and-drop ghost/
+  group classes, hit fresh here). Fixed with an explicit `{free: 'tier-free', ...}` lookup object so the
+  full literal strings actually appear in `app.js`.
+- **Mobile — long-press → a day-picker sheet, not touch-drag.** A `HORIZON_DAYS`-wide horizontal board is
+  a poor drag target on a phone (the same "move into a container you can't see" problem this app already
+  solves with a sheet for groups/projects, see `project-picker-sheet.blade.php`) — so touch gets that same
+  answer here instead of fighting Sortable's own auto-scroll-during-drag. `window.plannerLongPress`
+  arms a 500ms timer on `pointerdown` (skipped for a mouse pointer), cancelled by any real movement or by
+  `plannerDaySortable`'s own `onStart` (which fires first, at Sortable's 60ms `delay`, whenever the press
+  actually started on the drag handle — the timing race resolves correctly on its own, no explicit
+  handle-vs-body branch needed). On fire, it computes the same three tiers as the desktop wave and opens
+  **`partials/planner-day-picker-sheet.blade.php`** (`Alpine.store('plannerDayPicker')`, shell modelled
+  directly on `project-picker-sheet.blade.php`) — a vertical list of the other days, tinted by tier,
+  each tapping straight to `$wire.moveToDay()`. Within one day, touch drag-reorder still works normally
+  (each container gets its own Sortable `group` name on touch specifically so cross-day drag is
+  structurally impossible there, never a matter of the user "doing it wrong" — same-day reordering never
+  needs to scroll, so Sortable handles it exactly as well as it does on desktop).
+- The conflict banner is **always visible when non-empty** — the feature's actual point, unchanged from
+  the block-based version. Empty: a single calm line, `"Alles Geplante passt bis {horizon end}."` —
+  deliberately not styled `forest`/celebratory (reserved for Fortschritt's streak system).
+- **Removed, not just renamed:** `PomodoroSessionService::start()`/`transition()`/`skipBreak()`/
+  `handleTick()` each used to call `WorkPlanner::reconcile()` first, to keep a live focus session's linked-
+  task suggestion current. That hook only ever mattered because the old planner wrote into
+  `schedule_event_task_links` — the same table the focus-timer suggestion reads from. `DayPlanner` never
+  touches that table at all, so the hook (and the `User $user` parameter on `start()`/`transition()`/
+  `skipBreak()` that existed only to carry it) came out cleanly; `PlannerPomodoroIntegrationTest`, which
+  existed purely to confirm that hook fired, was deleted rather than adapted, since the behavior it tested
+  no longer exists.
+- **Later, deliberately not built**: a user-set flat daily capacity as a fallback for block-less days
+  (capacity stays tied to real Pomodoro blocks only, an explicit choice — see above), splitting a task
+  across multiple days, time-of-day precision within a day (that's what Zeitplan/the per-block link are
+  for), actually dropping `schedule_event_task_links.source` (see *TODO.md*), feeding today's day-plan
+  into the Pomodoro focus-timer's own task suggestion (a genuinely nice follow-up, but a separate
+  `TaskSuggestor` integration, not part of this rework), and any API/Shortcuts surface for day-planning.
 
 ### Wochenplan (built)
 

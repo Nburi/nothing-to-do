@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class Task extends Model
@@ -82,6 +83,12 @@ class Task extends Model
     public function agendaEntry(): BelongsTo
     {
         return $this->belongsTo(AgendaEntry::class);
+    }
+
+    /** Which day this task is planned for, if any (see App\Services\DayPlanner). */
+    public function dayPlan(): HasOne
+    {
+        return $this->hasOne(TaskDayPlan::class);
     }
 
     /**

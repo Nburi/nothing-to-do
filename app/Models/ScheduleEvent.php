@@ -77,10 +77,11 @@ class ScheduleEvent extends Model
      * to other occurrences of a recurring series; each materialised row is
      * independent. Same shape as EventCategory::pinnedTasks().
      *
-     * The pivot's `source` ('manual' | 'auto') distinguishes a link the user
-     * picked by hand from one WorkPlanner placed on its own — WorkPlanner's
-     * passive reconcile pass only ever touches 'auto' rows, so a manual pick
-     * is never silently reshuffled (see App\Services\WorkPlanner).
+     * The pivot's `source` column always reads 'manual' here — it used to
+     * also carry 'auto' rows written by the old block-filling Planer, which
+     * has since moved to day-granularity placement (App\Services\DayPlanner,
+     * table task_day_plans) and no longer touches this pivot at all. Left in
+     * place rather than dropped (see TODO.md).
      */
     public function linkedTasks(): BelongsToMany
     {
