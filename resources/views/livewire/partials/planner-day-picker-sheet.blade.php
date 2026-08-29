@@ -1,7 +1,9 @@
 {{--
-    Mobile day-assign sheet — opened by a long-press on a chip (touch only;
-    desktop already has drag-and-drop, see plannerLongPress in app.js). A
-    14-day horizontal board is a poor drag target on a phone, the same
+    Mobile day-assign sheet — opened by a tap on a chip (touch only; desktop
+    already has drag-and-drop, see plannerTap in app.js). A tap, not a
+    hold — the chip's own drag handle and "×" are separate tap targets, so
+    this needs no delay to tell itself apart from those. A 14-day
+    horizontal board is a poor drag target on a phone, the same
     "move into a container you can't see" problem this app already solves
     with a sheet for groups/projects (see project-picker-sheet.blade.php) —
     this is that same answer for days. Its row list is computed entirely

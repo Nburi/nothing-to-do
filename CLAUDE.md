@@ -962,17 +962,21 @@ plannable target.
   silently purged from the production build (the exact trap documented below for the drag-and-drop ghost/
   group classes, hit fresh here). Fixed with an explicit `{free: 'tier-free', ...}` lookup object so the
   full literal strings actually appear in `app.js`.
-- **Mobile — long-press → a day-picker sheet, not touch-drag.** A `HORIZON_DAYS`-wide horizontal board is
-  a poor drag target on a phone (the same "move into a container you can't see" problem this app already
-  solves with a sheet for groups/projects, see `project-picker-sheet.blade.php`) — so touch gets that same
-  answer here instead of fighting Sortable's own auto-scroll-during-drag. `window.plannerLongPress`
-  arms a 500ms timer on `pointerdown` (skipped for a mouse pointer), cancelled by any real movement or by
-  `plannerDaySortable`'s own `onStart` (which fires first, at Sortable's 60ms `delay`, whenever the press
-  actually started on the drag handle — the timing race resolves correctly on its own, no explicit
-  handle-vs-body branch needed). On fire, it computes the same three tiers as the desktop wave and opens
-  **`partials/planner-day-picker-sheet.blade.php`** (`Alpine.store('plannerDayPicker')`, shell modelled
-  directly on `project-picker-sheet.blade.php`) — a vertical list of the other days, tinted by tier,
-  each tapping straight to `$wire.moveToDay()`. Within one day, touch drag-reorder still works normally
+- **Mobile — tap → a day-picker sheet, not touch-drag.** A `HORIZON_DAYS`-wide horizontal board is a poor
+  drag target on a phone (the same "move into a container you can't see" problem this app already solves
+  with a sheet for groups/projects, see `project-picker-sheet.blade.php`) — so touch gets that same answer
+  here instead of fighting Sortable's own auto-scroll-during-drag. **A tap, not a hold** — an earlier
+  version used a 500ms-hold timer (mirroring the project-picker sheet's own long-press), but with a chip
+  that already carries its own dedicated drag handle, requiring a hold on the rest of the chip just added
+  friction for no reason; a plain `window.plannerTap` opens the sheet on `pointerup` as long as the touch
+  never moved past a small tolerance (skipped entirely for a mouse pointer, and for anything starting on
+  the drag handle or the "×" button, since those are their own gestures). Because handle-originated
+  touches are excluded up front, this never has to race or explicitly cancel against
+  `plannerDaySortable`'s own touch-drag the way the old timer-based version did. It computes the same
+  three tiers as the desktop wave and opens **`partials/planner-day-picker-sheet.blade.php`**
+  (`Alpine.store('plannerDayPicker')`, shell modelled directly on `project-picker-sheet.blade.php`) — a
+  vertical list of the other days, tinted by tier, each tapping straight to `$wire.moveToDay()`. Within
+  one day, touch drag-reorder still works normally
   (each container gets its own Sortable `group` name on touch specifically so cross-day drag is
   structurally impossible there, never a matter of the user "doing it wrong" — same-day reordering never
   needs to scroll, so Sortable handles it exactly as well as it does on desktop).

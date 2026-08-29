@@ -513,10 +513,10 @@ window.groupDropZone = function (el, wire, handle = null) {
  * App\Services\DayPlanner, App\Livewire\Planner). One Sortable instance per
  * day-column plus the backlog rail. On a mouse they all share one group
  * name so a chip can move between any of them; on touch each container gets
- * its *own* group instead (plannerLongPress below is the touch answer to
- * moving a chip between days — see its own docblock for why), so Sortable's
- * own touch-drag is structurally confined to reordering within one
- * container, never fighting the board's horizontal scroll.
+ * its *own* group instead (plannerTap below is the touch answer to moving a
+ * chip between days — see its own docblock for why), so Sortable's own
+ * touch-drag is structurally confined to reordering within one container,
+ * never fighting the board's horizontal scroll.
  *
  * classify()'s three tiers mirror App\Services\DayPlanner's own deadline
  * math client-side (duration/deadlineOffset come off the dragged chip's own
@@ -528,14 +528,6 @@ window.groupDropZone = function (el, wire, handle = null) {
  * known constraint to warn about, so it reads as 'free'.
  */
 const plannerDayGroup = 'planner-day';
-let plannerLongPressTimer = null;
-
-function plannerCancelLongPress() {
-    if (plannerLongPressTimer) {
-        clearTimeout(plannerLongPressTimer);
-        plannerLongPressTimer = null;
-    }
-}
 
 function plannerChipInfo(el) {
     const rawOffset = el.dataset.deadlineOffset;
@@ -606,10 +598,7 @@ window.plannerDaySortable = function (el, wire) {
         draggable: '[data-chip]',
         delay: 60,
         delayOnTouchOnly: true,
-        onStart: (evt) => {
-            plannerCancelLongPress();
-            plannerWave.start(evt.item);
-        },
+        onStart: (evt) => plannerWave.start(evt.item),
         onEnd: (evt) => {
             plannerWave.clear();
             const to = evt.to;
@@ -629,57 +618,61 @@ window.plannerDaySortable = function (el, wire) {
 };
 
 /**
- * Mobile long-press → day-picker sheet. Touch drag across a 14-day
- * horizontal board fights the very scroll it needs — the same "move into a
- * container you can't see" problem this app already solves with a sheet for
+ * Mobile tap → day-picker sheet. Touch drag across a 14-day horizontal
+ * board fights the very scroll it needs — the same "move into a container
+ * you can't see" problem this app already solves with a sheet for
  * groups/projects (see project-picker-sheet.blade.php's own docblock) — so
- * touch gets this as the way to move a chip *between* days. Within one day
- * plannerDaySortable's own touch-drag still handles reordering, since that
- * never needs to scroll.
+ * touch gets this as the way to move a chip *between* days. Within one day,
+ * plannerDaySortable's own touch-drag (via the dedicated handle) still
+ * handles reordering, since that never needs to scroll.
  *
- * Bound to the whole chip, not just the drag handle: on the handle,
- * Sortable's own 60ms delay wins the race and calls plannerCancelLongPress()
- * well before this 500ms timer could fire; everywhere else on the chip only
- * this timer is listening at all. Any real movement cancels it, matching
- * the existing homework-drag-to-today long-press's own "cancelled by a
- * directional lock" shape.
+ * A tap, not a hold: pointerup opens the sheet immediately as long as the
+ * touch never moved past a small tolerance — that tolerance is what tells
+ * a tap apart from a horizontal scroll of the day row that happens to
+ * start on a chip. Ignores anything starting on the drag handle or the "×"
+ * button — those are their own gestures — so this never has to race or
+ * cancel against Sortable's own touch-drag the way a timer-based long-press
+ * would have.
  */
-window.plannerLongPress = function (el, wire) {
-    if (el._longPress) return;
-    el._longPress = true;
-    let armed = false;
-
-    const cancel = () => {
-        armed = false;
-        plannerCancelLongPress();
-    };
+window.plannerTap = function (el, wire) {
+    if (el._tap) return;
+    el._tap = true;
+    let start = null;
 
     el.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'mouse') return;
-        armed = true;
-        plannerLongPressTimer = setTimeout(() => {
-            if (!armed) return;
-            const chip = plannerChipInfo(el);
-            const currentDate = el.closest('[data-day-column]')?.dataset.date ?? null;
-
-            const days = Array.from(document.querySelectorAll('[data-day-column]'))
-                .filter((col) => col.dataset.date !== currentDate)
-                .map((col) => {
-                    const tier = plannerClassifyDay(col, chip.duration, chip.deadlineOffset);
-                    const total = parseInt(col.dataset.capacityTotal, 10) || 0;
-                    const used = parseInt(col.dataset.capacityUsed, 10) || 0;
-                    const hint = tier === 'past' ? 'nach Deadline' : total === 0 ? 'kein Block' : `${Math.max(0, total - used)} min frei`;
-
-                    return { date: col.dataset.date, label: col.dataset.dayLabel, tier, hint };
-                });
-
-            window.Alpine.store('plannerDayPicker').show(chip, days);
-        }, 500);
+        if (e.pointerType === 'mouse' || e.target.closest('[data-drag-handle], button')) return;
+        start = { x: e.clientX, y: e.clientY };
     });
-    el.addEventListener('pointerup', cancel);
-    el.addEventListener('pointercancel', cancel);
-    el.addEventListener('pointerleave', cancel);
-    el.addEventListener('pointermove', cancel);
+
+    el.addEventListener('pointermove', (e) => {
+        if (start && (Math.abs(e.clientX - start.x) > 10 || Math.abs(e.clientY - start.y) > 10)) {
+            start = null; // moved past tap tolerance — a scroll, not a tap
+        }
+    });
+
+    el.addEventListener('pointerup', () => {
+        if (!start) return;
+        start = null;
+
+        const chip = plannerChipInfo(el);
+        const currentDate = el.closest('[data-day-column]')?.dataset.date ?? null;
+
+        const days = Array.from(document.querySelectorAll('[data-day-column]'))
+            .filter((col) => col.dataset.date !== currentDate)
+            .map((col) => {
+                const tier = plannerClassifyDay(col, chip.duration, chip.deadlineOffset);
+                const total = parseInt(col.dataset.capacityTotal, 10) || 0;
+                const used = parseInt(col.dataset.capacityUsed, 10) || 0;
+                const hint = tier === 'past' ? 'nach Deadline' : total === 0 ? 'kein Block' : `${Math.max(0, total - used)} min frei`;
+
+                return { date: col.dataset.date, label: col.dataset.dayLabel, tier, hint };
+            });
+
+        window.Alpine.store('plannerDayPicker').show(chip, days);
+    });
+
+    el.addEventListener('pointercancel', () => { start = null; });
+    el.addEventListener('pointerleave', () => { start = null; });
 };
 
 /**
@@ -815,7 +808,7 @@ document.addEventListener('alpine:init', () => {
     });
     /** Which task id (if any) the mobile long-press project-picker sheet is open for. */
     window.Alpine.store('projectPicker', { taskId: null });
-    /** The Planer's mobile long-press day-picker sheet — see plannerLongPress in this file. */
+    /** The Planer's mobile tap-to-assign day-picker sheet — see plannerTap in this file. */
     window.Alpine.store('plannerDayPicker', {
         open: false,
         chip: null,

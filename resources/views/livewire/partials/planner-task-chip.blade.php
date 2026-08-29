@@ -1,6 +1,6 @@
 {{--
     Shared by the backlog rail, every day column, and (read-only, for its
-    long-press) the mobile day-picker sheet target. `$showRemove` is the
+    tap-to-assign) the mobile day-picker sheet target. `$showRemove` is the
     only structural difference — only a chip already sitting on a day gets
     the small "×"; a backlog chip's only action is being picked up.
 
@@ -20,7 +20,7 @@
     @if ($deadlineOffset !== null) data-deadline-offset="{{ $deadlineOffset }}" @endif
     wire:key="planner-chip-{{ $type }}-{{ $id }}"
     x-data
-    x-init="window.plannerLongPress($el, $wire)"
+    x-init="window.plannerTap($el, $wire)"
     class="flex select-none items-center gap-1.5 rounded-card border border-line/70 bg-paper px-2 py-1.5"
 >
     <span data-drag-handle class="grid h-6 w-6 flex-none touch-none cursor-grab place-items-center text-ink-faint active:cursor-grabbing" aria-hidden="true">
