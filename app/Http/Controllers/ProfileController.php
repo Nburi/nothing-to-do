@@ -50,6 +50,11 @@ class ProfileController extends Controller
 
         Auth::logout();
 
+        // Must run before delete(): agenda_spaces.owner_id's cascadeOnDelete
+        // would otherwise silently destroy any shared class agenda this user
+        // owns instead of handing it to the next member — see the method doc.
+        $user->reassignOwnedAgendaSpaces();
+
         $user->delete();
 
         $request->session()->invalidate();
