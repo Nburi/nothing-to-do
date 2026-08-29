@@ -136,6 +136,48 @@ class AgendaSpacesTest extends TestCase
         $this->assertDatabaseHas('agenda_entries', ['id' => $entry->id, 'agenda_space_id' => null]);
     }
 
+    /**
+     * Account deletion (ProfileController::destroy()) must reach the exact
+     * same "hand ownership to the next member" outcome as the deliberate
+     * "Verlassen" action — see User::reassignOwnedAgendaSpaces(). Without it,
+     * agenda_spaces.owner_id's cascadeOnDelete would silently delete the whole
+     * shared space out from under the remaining classmate instead.
+     */
+    public function test_reassigning_owned_spaces_hands_ownership_to_the_next_member(): void
+    {
+        $owner = User::factory()->create();
+        $classmate = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($classmate)->create();
+
+        $owner->reassignOwnedAgendaSpaces();
+
+        $this->assertSame($classmate->id, $space->fresh()->owner_id);
+        $this->assertTrue($space->fresh()->hasMember($owner), 'reassigning ownership must not itself detach the old owner — that is the deletion cascade\'s job');
+    }
+
+    /** A space where the owner is the only member is left for the normal cascade to delete — same end state as leaveSpace()'s "last member out" branch. */
+    public function test_reassigning_owned_spaces_leaves_a_solo_owned_space_untouched(): void
+    {
+        $owner = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create();
+
+        $owner->reassignOwnedAgendaSpaces();
+
+        $this->assertSame($owner->id, $space->fresh()->owner_id);
+    }
+
+    /** Deleting your account while merely a member (not the owner) of a class must never touch the space at all. */
+    public function test_reassigning_owned_spaces_ignores_spaces_the_user_does_not_own(): void
+    {
+        $owner = User::factory()->create();
+        $classmate = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($classmate)->create();
+
+        $classmate->reassignOwnedAgendaSpaces();
+
+        $this->assertSame($owner->id, $space->fresh()->owner_id);
+    }
+
     public function test_only_the_owner_can_delete_a_space_for_everyone(): void
     {
         $owner = User::factory()->create();

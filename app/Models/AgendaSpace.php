@@ -77,6 +77,21 @@ class AgendaSpace extends Model
         return $this->owner_id === $user->id;
     }
 
+    /**
+     * The member who'd inherit ownership if the current owner left right now —
+     * the longest-standing other member, or null if none remain. Shared by
+     * ManagesAgendaSpaces::leaveSpace() and User::reassignOwnedAgendaSpaces()
+     * so the two "the owner is going away" paths can never disagree about who's next.
+     */
+    public function nextOwnerCandidate(?int $excludingUserId = null): ?User
+    {
+        return $this->members()
+            ->when($excludingUserId !== null, fn (Builder $q) => $q->whereKeyNot($excludingUserId))
+            ->orderBy('agenda_space_user.created_at')
+            ->orderBy('users.id')
+            ->first();
+    }
+
     public function inviteUrl(): string
     {
         return route('agenda.join', ['code' => $this->invite_code]);

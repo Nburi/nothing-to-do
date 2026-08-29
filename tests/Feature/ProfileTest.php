@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AgendaSpace;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -77,6 +78,22 @@ class ProfileTest extends TestCase
 
         $this->assertGuest();
         $this->assertNull($user->fresh());
+    }
+
+    /** Deleting your account must hand off any class agenda you own instead of silently destroying it — see User::reassignOwnedAgendaSpaces(). */
+    public function test_deleting_account_hands_off_an_owned_agenda_space_instead_of_deleting_it(): void
+    {
+        $owner = User::factory()->create();
+        $classmate = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($classmate)->create();
+
+        $this
+            ->actingAs($owner)
+            ->delete('/profile', ['password' => 'password'])
+            ->assertRedirect('/');
+
+        $this->assertDatabaseHas('agenda_spaces', ['id' => $space->id, 'owner_id' => $classmate->id]);
+        $this->assertTrue($space->fresh()->hasMember($classmate));
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

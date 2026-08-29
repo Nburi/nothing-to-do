@@ -154,6 +154,29 @@ class User extends Authenticatable
         return $this->hasMany(AgendaSpace::class, 'owner_id');
     }
 
+    /**
+     * Hands ownership of every class/group agenda this user owns to the next
+     * longest-standing member — the same rule ManagesAgendaSpaces::leaveSpace()
+     * already applies when someone leaves a space deliberately. Must run
+     * before the row itself is deleted (see ProfileController::destroy()):
+     * agenda_spaces.owner_id has cascadeOnDelete, so without this, deleting an
+     * owner's account would silently delete the whole shared space — and with
+     * it every other member's access — instead of just handing it off. A space
+     * with no other member left is deliberately untouched here: the same
+     * cascade then deletes it, matching leaveSpace()'s own "last member out"
+     * branch exactly.
+     */
+    public function reassignOwnedAgendaSpaces(): void
+    {
+        $this->ownedAgendaSpaces->each(function (AgendaSpace $space) {
+            $successor = $space->nextOwnerCandidate(excludingUserId: $this->id);
+
+            if ($successor !== null) {
+                $space->update(['owner_id' => $successor->id]);
+            }
+        });
+    }
+
     // ── Welcome back ──────────────────────────────────────────────────
 
     /**

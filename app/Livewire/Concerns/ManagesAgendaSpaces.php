@@ -250,10 +250,7 @@ trait ManagesAgendaSpaces
 
         $space->members()->detach($userId);
 
-        $successor = $space->members()
-            ->orderBy('agenda_space_user.created_at')
-            ->orderBy('users.id')
-            ->first();
+        $successor = $space->nextOwnerCandidate();
 
         if ($successor === null) {
             $space->delete();
