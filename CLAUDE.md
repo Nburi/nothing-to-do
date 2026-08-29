@@ -65,7 +65,7 @@ I say so, with reasoning.
 ## 3. Global rules (apply for the entire project lifetime)
 
 1. **Git commits** — commit independently and sensibly after each meaningful step (setup, a finished
-   feature, a bugfix). Commit messages in English, precise. **Never push** — the user does that.
+   feature, a bugfix). Commit messages in English, precise.
 2. **Git branches** — if you implement a new big feature or a bugfix work on a feature / bugfix branch, never directly on `main`/`master`. Also check if a branch already exists.
    **Merge only** when the user tells you with "finish", "fertig", "deploy" or "merge". Merge with a descriptive message, that it doesn't just say "Merge branch 'feature/task-inline-actions'".
 3. **Automatic error checking** — after every change, check the code for errors (linting, compilation,
