@@ -33,9 +33,9 @@ class ScheduleSettingsTest extends TestCase
             ->set('pShortBreak', 10)
             ->set('pLongBreak', 20)
             ->set('pLongEvery', 3)
-            ->set('pAutostart', true)
             ->call('saveSchedule')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->call('togglePomodoroAutostart');
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -45,6 +45,18 @@ class ScheduleSettingsTest extends TestCase
             'pomodoro_long_every' => 3,
             'pomodoro_autostart' => true,
         ]);
+    }
+
+    public function test_it_toggles_pomodoro_autostart_immediately(): void
+    {
+        $user = User::factory()->create(['pomodoro_autostart' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('togglePomodoroAutostart');
+        $this->assertTrue((bool) $user->refresh()->pomodoro_autostart);
+
+        Livewire::test(Settings::class)->call('togglePomodoroAutostart');
+        $this->assertFalse((bool) $user->refresh()->pomodoro_autostart);
     }
 
     public function test_it_loads_the_saved_autostart_setting_on_mount(): void
@@ -100,6 +112,42 @@ class ScheduleSettingsTest extends TestCase
 
         $this->assertEquals(5.5, $user->refresh()->timezone_offset);
         $this->assertSame(330, $user->utcOffsetMinutes());
+    }
+
+    public function test_it_toggles_timezone_auto_dst_immediately(): void
+    {
+        $user = User::factory()->create(['timezone_auto_dst' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('toggleTimezoneAutoDst');
+        $this->assertTrue((bool) $user->refresh()->timezone_auto_dst);
+
+        Livewire::test(Settings::class)->call('toggleTimezoneAutoDst');
+        $this->assertFalse((bool) $user->refresh()->timezone_auto_dst);
+    }
+
+    public function test_it_applies_a_browser_detected_timezone(): void
+    {
+        $user = User::factory()->create(['timezone_offset' => 0, 'timezone_auto_dst' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->call('applyDetectedTimezone', 1.0, true)
+            ->assertSet('timezoneOffset', 1.0)
+            ->assertSet('timezoneAutoDst', true);
+
+        $this->assertEquals(1.0, $user->refresh()->timezone_offset);
+        $this->assertTrue((bool) $user->timezone_auto_dst);
+    }
+
+    public function test_it_clamps_a_browser_detected_offset_to_the_valid_range(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('applyDetectedTimezone', 20.0, false);
+
+        $this->assertEquals(14.0, $user->refresh()->timezone_offset);
     }
 
     public function test_it_adds_a_category(): void
@@ -236,13 +284,13 @@ class ScheduleSettingsTest extends TestCase
 
     public function test_it_saves_the_deadline_preview_setting(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['deadline_preview_enabled' => true]);
         $this->actingAs($user);
 
         Livewire::test(Settings::class)
-            ->set('deadlinePreviewEnabled', false)
+            ->call('toggleDeadlinePreviewEnabled')
             ->set('deadlinePreviewDays', 5)
-            ->call('saveDeadlinePreview')
+            ->call('saveDeadlinePreviewDays')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('users', [
@@ -252,18 +300,30 @@ class ScheduleSettingsTest extends TestCase
         ]);
     }
 
+    public function test_it_toggles_deadline_preview_enabled_immediately(): void
+    {
+        $user = User::factory()->create(['deadline_preview_enabled' => true]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)->call('toggleDeadlinePreviewEnabled');
+        $this->assertFalse((bool) $user->refresh()->deadline_preview_enabled);
+
+        Livewire::test(Settings::class)->call('toggleDeadlinePreviewEnabled');
+        $this->assertTrue((bool) $user->refresh()->deadline_preview_enabled);
+    }
+
     public function test_it_rejects_an_out_of_range_deadline_preview_days_value(): void
     {
         $this->actingAs(User::factory()->create());
 
         Livewire::test(Settings::class)
             ->set('deadlinePreviewDays', 15)
-            ->call('saveDeadlinePreview')
+            ->call('saveDeadlinePreviewDays')
             ->assertHasErrors(['deadlinePreviewDays']);
 
         Livewire::test(Settings::class)
             ->set('deadlinePreviewDays', -1)
-            ->call('saveDeadlinePreview')
+            ->call('saveDeadlinePreviewDays')
             ->assertHasErrors(['deadlinePreviewDays']);
     }
 

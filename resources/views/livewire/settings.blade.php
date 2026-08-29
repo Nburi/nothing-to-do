@@ -69,49 +69,19 @@
             Standard: <span class="font-medium text-ink">01:00</span>
         </p>
 
-        <form wire:submit="save" class="max-w-xs space-y-4">
-            <div>
-                <label for="resetTime" class="mb-1.5 block text-sm font-medium text-ink">Verschwinden um</label>
-                <input
-                    id="resetTime"
-                    type="time"
-                    wire:model="resetTime"
-                    class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
-                />
-                @error('resetTime')
-                    <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div
-                x-data="{ saved: false }"
-                @saved.window="saved = true; setTimeout(() => saved = false, 2200)"
-                class="flex items-center gap-3"
-            >
-                <button
-                    type="submit"
-                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                >
-                    Speichern
-                </button>
-                <span
-                    x-show="saved"
-                    x-transition:enter="transition duration-150"
-                    x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition duration-300"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
-                    style="display: none;"
-                >
-                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Gespeichert
-                </span>
-            </div>
-        </form>
+        <div class="max-w-xs">
+            <label for="resetTime" class="mb-1.5 block text-sm font-medium text-ink">Verschwinden um</label>
+            <input
+                id="resetTime"
+                type="time"
+                wire:model="resetTime"
+                wire:change="save"
+                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+            />
+            @error('resetTime')
+                <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
+            @enderror
+        </div>
         </div>
 
         {{-- Module — hide the pages you don't use. Each row visually mirrors
@@ -282,14 +252,17 @@
             oder <span class="font-medium text-ink">+5.5</span> für halbe/viertel Zeitzonen (z. B. Indien, Nepal).
         </p>
 
-        <form
-            wire:submit="saveTimezone"
-            x-data="{ saved: false }"
-            @timezone-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
-            class="max-w-xs space-y-4"
-        >
+        <div class="max-w-xs space-y-4">
             <div>
-                <label for="timezoneOffset" class="mb-1.5 block text-sm font-medium text-ink">UTC-Versatz (Stunden)</label>
+                <div class="mb-1.5 flex items-baseline justify-between gap-3">
+                    <label for="timezoneOffset" class="block text-sm font-medium text-ink">UTC-Versatz (Stunden)</label>
+                    <button
+                        type="button"
+                        x-data
+                        @click="const d = window.detectTimezoneDefaults(); $wire.applyDetectedTimezone(d.offset, d.autoDst)"
+                        class="flex-none text-xs font-medium text-overprint hover:underline"
+                    >Automatisch erkennen</button>
+                </div>
                 <input
                     id="timezoneOffset"
                     type="number"
@@ -297,6 +270,7 @@
                     min="-12"
                     max="14"
                     wire:model="timezoneOffset"
+                    wire:change="saveTimezone"
                     class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
                 />
                 @error('timezoneOffset')
@@ -311,7 +285,7 @@
                 </div>
                 <button
                     type="button"
-                    wire:click="$set('timezoneAutoDst', {{ $timezoneAutoDst ? 'false' : 'true' }})"
+                    wire:click="toggleTimezoneAutoDst"
                     @class([
                         'relative h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $timezoneAutoDst,
@@ -326,32 +300,7 @@
                     ])></span>
                 </button>
             </div>
-
-            <div class="flex items-center gap-3">
-                <button
-                    type="submit"
-                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                >
-                    Speichern
-                </button>
-                <span
-                    x-show="saved"
-                    x-transition:enter="transition duration-150"
-                    x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition duration-300"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
-                    style="display: none;"
-                >
-                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Gespeichert
-                </span>
-            </div>
-        </form>
+        </div>
         </div>
 
         {{-- Header-Badges — which ambient shortcuts show in the header, and in
@@ -555,11 +504,6 @@
         @include('livewire.partials.category-link-sheet')
 
         {{-- Pomodoro --}}
-        <form
-        wire:submit="saveSchedule"
-        x-data="{ saved: false }"
-        @schedule-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
-    >
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Pomodoro</h3>
             <p class="mb-5 text-sm leading-relaxed text-ink-soft">
@@ -578,7 +522,7 @@
                 @foreach ($fields as $model => $label)
                     <div>
                         <label for="{{ $model }}" class="mb-1.5 block text-xs font-medium text-ink-soft">{{ $label }}</label>
-                        <input id="{{ $model }}" type="number" min="1" wire:model="{{ $model }}" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                        <input id="{{ $model }}" type="number" min="1" wire:model="{{ $model }}" wire:change="saveSchedule" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
                         @error($model) <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                     </div>
                 @endforeach
@@ -594,7 +538,7 @@
                 </div>
                 <button
                     type="button"
-                    wire:click="$set('pAutostart', {{ $pAutostart ? 'false' : 'true' }})"
+                    wire:click="togglePomodoroAutostart"
                     @class([
                         'relative h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $pAutostart,
@@ -609,35 +553,9 @@
                     ])></span>
                 </button>
             </div>
-
-            <div class="mt-5 flex items-center gap-3">
-                <button type="submit" class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
-                    Speichern
-                </button>
-                <span
-                    x-show="saved"
-                    x-transition:enter="transition duration-150"
-                    x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition duration-300"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
-                    style="display: none;"
-                >
-                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Gespeichert
-                </span>
-            </div>
         </div>
-        </form>
 
         {{-- Vorschau auf fällige Termine --}}
-        <form
-            wire:submit="saveDeadlinePreview"
-            x-data="{ saved: false }"
-            @deadline-preview-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
-        >
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Vorschau auf Termine</h3>
             <p class="mb-5 text-sm leading-relaxed text-ink-soft">
@@ -650,7 +568,7 @@
                 <p class="text-sm font-medium text-ink">Vorschau aktivieren</p>
                 <button
                     type="button"
-                    wire:click="$set('deadlinePreviewEnabled', {{ $deadlinePreviewEnabled ? 'false' : 'true' }})"
+                    wire:click="toggleDeadlinePreviewEnabled"
                     @class([
                         'relative h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $deadlinePreviewEnabled,
@@ -669,32 +587,11 @@
             @if ($deadlinePreviewEnabled)
                 <div class="mt-4 max-w-[10rem]">
                     <label for="deadlinePreviewDays" class="mb-1.5 block text-xs font-medium text-ink-soft">Tage vorher</label>
-                    <input id="deadlinePreviewDays" type="number" min="0" max="14" wire:model="deadlinePreviewDays" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                    <input id="deadlinePreviewDays" type="number" min="0" max="14" wire:model="deadlinePreviewDays" wire:change="saveDeadlinePreviewDays" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
                     @error('deadlinePreviewDays') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
             @endif
-
-            <div class="mt-5 flex items-center gap-3">
-                <button type="submit" class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
-                    Speichern
-                </button>
-                <span
-                    x-show="saved"
-                    x-transition:enter="transition duration-150"
-                    x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition duration-300"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
-                    style="display: none;"
-                >
-                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Gespeichert
-                </span>
-            </div>
         </div>
-        </form>
     </section>
 
     {{-- Vorbereitung --}}
@@ -779,49 +676,19 @@
             und eine der beiden Feier-Animationen.
         </p>
 
-        <form wire:submit="saveDailyGoal" class="max-w-[8rem] space-y-4">
-            <div>
-                <label for="dailyTaskGoal" class="mb-1.5 block text-sm font-medium text-ink">Aufgaben pro Tag</label>
-                <input
-                    id="dailyTaskGoal"
-                    type="number"
-                    min="1"
-                    max="30"
-                    wire:model="dailyTaskGoal"
-                    class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
-                />
-                @error('dailyTaskGoal') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
-            </div>
-
-            <div
-                x-data="{ saved: false }"
-                @daily-goal-saved.window="saved = true; setTimeout(() => saved = false, 2200)"
-                class="flex items-center gap-3"
-            >
-                <button
-                    type="submit"
-                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                >
-                    Speichern
-                </button>
-                <span
-                    x-show="saved"
-                    x-transition:enter="transition duration-150"
-                    x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition duration-300"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="inline-flex items-center gap-1.5 text-sm text-ink-soft"
-                    style="display: none;"
-                >
-                    <svg class="h-4 w-4 text-forest" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Gespeichert
-                </span>
-            </div>
-        </form>
+        <div class="max-w-[8rem]">
+            <label for="dailyTaskGoal" class="mb-1.5 block text-sm font-medium text-ink">Aufgaben pro Tag</label>
+            <input
+                id="dailyTaskGoal"
+                type="number"
+                min="1"
+                max="30"
+                wire:model="dailyTaskGoal"
+                wire:change="saveDailyGoal"
+                class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+            />
+            @error('dailyTaskGoal') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+        </div>
         </div>
 
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">

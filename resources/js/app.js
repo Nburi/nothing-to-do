@@ -28,6 +28,28 @@ window.primeFocusAudio = function () {
     if (window._focusAudioCtx.state === 'suspended') window._focusAudioCtx.resume();
 };
 
+/**
+ * Reads the browser's own timezone to suggest values for the app's two manual
+ * timezone fields (see User::timezoneOffsetHours()/utcOffsetMinutes()): the base
+ * UTC offset in hours during STANDARD (non-DST) time, and whether this zone
+ * shifts forward for part of the year at all. Comparing Jan 1 and Jul 1 works
+ * regardless of hemisphere — a DST shift is always further ahead of UTC than
+ * standard time, so whichever reading is smaller is the DST one. Used both to
+ * default a brand-new registration (resources/views/auth/register.blade.php)
+ * and for the Settings page's "Automatisch erkennen" button.
+ */
+window.detectTimezoneDefaults = function () {
+    const year = new Date().getFullYear();
+    const jan = new Date(year, 0, 1).getTimezoneOffset();
+    const jul = new Date(year, 6, 1).getTimezoneOffset();
+    const standardOffsetMinutes = Math.max(jan, jul);
+
+    return {
+        offset: Math.round((-standardOffsetMinutes / 60) * 4) / 4,
+        autoDst: jan !== jul,
+    };
+};
+
 /** Decodes a VAPID public key (URL-safe base64) into the Uint8Array pushManager.subscribe() expects. */
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);

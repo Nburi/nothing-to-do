@@ -104,6 +104,7 @@ class Settings extends Component
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
     }
 
+    /** Autosaves on change — see the "Erledigte Aufgaben" card. */
     public function save(): void
     {
         $data = $this->validate([
@@ -111,10 +112,9 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['task_reset_time' => $data['resetTime']]);
-
-        $this->dispatch('saved');
     }
 
+    /** Autosaves on change — see the "Pomodoro" card. Autostart is a separate immediate toggle, togglePomodoroAutostart(). */
     public function saveSchedule(): void
     {
         $data = $this->validate([
@@ -129,30 +129,38 @@ class Settings extends Component
             'pomodoro_short_break' => $data['pShortBreak'],
             'pomodoro_long_break' => $data['pLongBreak'],
             'pomodoro_long_every' => $data['pLongEvery'],
-            'pomodoro_autostart' => $this->pAutostart,
         ]);
+    }
 
-        $this->dispatch('schedule-saved');
+    public function togglePomodoroAutostart(): void
+    {
+        $user = auth()->user();
+        $user->update(['pomodoro_autostart' => ! $user->pomodoro_autostart]);
+        $this->pAutostart = (bool) $user->pomodoro_autostart;
+    }
+
+    /** Immediate-save toggle, like plannerEnabled/homeworkPreviewEnabled — see the "Vorschau auf Termine" card. */
+    public function toggleDeadlinePreviewEnabled(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->deadline_preview_enabled;
+        $user->update(['deadline_preview_enabled' => $enabled]);
+        $this->deadlinePreviewEnabled = $enabled;
     }
 
     /**
-     * Whether — and how many days ahead — a hard deadline/exam/homework shows an advance-preview
-     * entry in the Zeitplan, on top of appearing on its actual date. A soft Wunschtermin never
-     * previews (see Task::effectiveIsHard() / Schedule::deadlineItems()) — this only governs
-     * whether/how far the preview reaches, not which items are eligible for one.
+     * Autosaves on change. How many days ahead a hard deadline/exam/homework shows an
+     * advance-preview entry in the Zeitplan, on top of appearing on its actual date. A soft
+     * Wunschtermin never previews (see Task::effectiveIsHard() / Schedule::deadlineItems()) —
+     * this only governs how far the preview reaches, not which items are eligible for one.
      */
-    public function saveDeadlinePreview(): void
+    public function saveDeadlinePreviewDays(): void
     {
         $data = $this->validate([
             'deadlinePreviewDays' => ['required', 'integer', 'min:0', 'max:14'],
         ]);
 
-        auth()->user()->update([
-            'deadline_preview_enabled' => $this->deadlinePreviewEnabled,
-            'deadline_preview_days' => $data['deadlinePreviewDays'],
-        ]);
-
-        $this->dispatch('deadline-preview-saved');
+        auth()->user()->update(['deadline_preview_days' => $data['deadlinePreviewDays']]);
     }
 
     /** Which day the Vorbereitung ritual targets — an immediate-save choice, like a category's colour swatch. */
@@ -187,7 +195,7 @@ class Settings extends Component
         auth()->user()->update(['prepare_reminder_time' => $data['prepareReminderTime']]);
     }
 
-    /** How many tasks completed in one day counts as "hit the daily goal" — drives the progress ring and one of the two celebrations. */
+    /** Autosaves on change. How many tasks completed in one day counts as "hit the daily goal" — drives the progress ring and one of the two celebrations. */
     public function saveDailyGoal(): void
     {
         $data = $this->validate([
@@ -195,8 +203,6 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['daily_task_goal' => $data['dailyTaskGoal']]);
-
-        $this->dispatch('daily-goal-saved');
     }
 
     /** Evening push if today still has open "Heute"-flagged tasks — an immediate-save toggle like the notify_* rows below. */
@@ -417,19 +423,42 @@ class Settings extends Component
         return true;
     }
 
+    /** Autosaves on change — see the "Zeitzone" card. The DST toggle saves separately, toggleTimezoneAutoDst(). */
     public function saveTimezone(): void
     {
         $data = $this->validate([
             'timezoneOffset' => ['required', 'numeric', 'between:-12,14'],
-            'timezoneAutoDst' => ['boolean'],
         ]);
+
+        auth()->user()->update(['timezone_offset' => $data['timezoneOffset']]);
+    }
+
+    public function toggleTimezoneAutoDst(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->timezone_auto_dst;
+        $user->update(['timezone_auto_dst' => $enabled]);
+        $this->timezoneAutoDst = $enabled;
+    }
+
+    /**
+     * Fills both timezone fields from the browser's own detection
+     * (window.detectTimezoneDefaults() in app.js) and saves immediately.
+     * Always an explicit click, never run automatically on page load — silently
+     * overwriting a deliberately-chosen offset (e.g. someone keeping "home" time
+     * while travelling) would be a surprising, hard-to-notice side effect.
+     */
+    public function applyDetectedTimezone(float $offset, bool $autoDst): void
+    {
+        $offset = max(-12, min(14, round($offset * 4) / 4));
 
         auth()->user()->update([
-            'timezone_offset' => $data['timezoneOffset'],
-            'timezone_auto_dst' => $data['timezoneAutoDst'],
+            'timezone_offset' => $offset,
+            'timezone_auto_dst' => $autoDst,
         ]);
 
-        $this->dispatch('timezone-saved');
+        $this->timezoneOffset = $offset;
+        $this->timezoneAutoDst = $autoDst;
     }
 
     /** The user's categories, for the settings list. */
