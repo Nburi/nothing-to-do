@@ -36,11 +36,23 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
+        $attributes = [
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-        ]);
+        ];
+
+        // Best-effort default from the browser's own clock (see resources/js/app.js's
+        // detectTimezoneDefaults(), called via a hidden field in auth/register.blade.php)
+        // — ignored rather than validated-and-rejected when missing or out of range (JS
+        // disabled, a non-browser signup), so registration itself never depends on it.
+        $timezoneOffset = $request->input('timezone_offset');
+        if (is_numeric($timezoneOffset) && $timezoneOffset >= -12 && $timezoneOffset <= 14) {
+            $attributes['timezone_offset'] = (float) $timezoneOffset;
+            $attributes['timezone_auto_dst'] = $request->boolean('timezone_auto_dst');
+        }
+
+        $user = User::create($attributes);
 
         event(new Registered($user));
 

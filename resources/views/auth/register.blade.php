@@ -29,6 +29,9 @@
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
+        <input type="hidden" id="timezone_offset" name="timezone_offset" value="">
+        <input type="hidden" id="timezone_auto_dst" name="timezone_auto_dst" value="0">
+
         <div class="pt-1">
             <x-primary-button class="w-full">Registrieren</x-primary-button>
         </div>
@@ -38,4 +41,15 @@
         Schon registriert?
         <a href="{{ route('login') }}" class="font-medium text-forest transition hover:text-overprint">Anmelden</a>
     </p>
+
+    <script>
+        // Waits for DOMContentLoaded so app.js's deferred module script has already
+        // run and defined window.detectTimezoneDefaults() — see resources/js/app.js.
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof window.detectTimezoneDefaults !== 'function') return;
+            const { offset, autoDst } = window.detectTimezoneDefaults();
+            document.getElementById('timezone_offset').value = offset;
+            document.getElementById('timezone_auto_dst').value = autoDst ? '1' : '0';
+        });
+    </script>
 </x-guest-layout>
