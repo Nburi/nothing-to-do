@@ -35,7 +35,7 @@ class PomodoroSessionServiceTest extends TestCase
 
         Carbon::setTestNow('2026-06-26 14:00:00');
 
-        app(PomodoroSessionService::class)->start($event, $user);
+        app(PomodoroSessionService::class)->start($event);
 
         $event->refresh();
         $this->assertSame('work', $event->pomodoro_phase);
@@ -54,7 +54,7 @@ class PomodoroSessionServiceTest extends TestCase
         $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')->create();
 
-        app(PomodoroSessionService::class)->start($event, $user);
+        app(PomodoroSessionService::class)->start($event);
 
         $this->assertSame('work', $event->refresh()->pomodoro_phase);
     }
@@ -93,7 +93,7 @@ class PomodoroSessionServiceTest extends TestCase
 
         Carbon::setTestNow('2026-06-26 14:25:00');
 
-        $result = app(PomodoroSessionService::class)->transition($event, $user, self::RHYTHM);
+        $result = app(PomodoroSessionService::class)->transition($event, self::RHYTHM);
 
         $event->refresh();
         $this->assertSame(['phase' => 'short_break', 'cycle' => 1], $result);
@@ -114,7 +114,7 @@ class PomodoroSessionServiceTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 4, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
 
-        $result = app(PomodoroSessionService::class)->transition($event, $user, self::RHYTHM);
+        $result = app(PomodoroSessionService::class)->transition($event, self::RHYTHM);
 
         $this->assertSame(['phase' => 'long_break', 'cycle' => 4], $result);
         $this->assertSame('long_break', $event->refresh()->pomodoro_phase);
@@ -132,7 +132,7 @@ class PomodoroSessionServiceTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->create(['pomodoro_phase' => 'short_break', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:25:00']);
 
-        $result = app(PomodoroSessionService::class)->skipBreak($event, $user, self::RHYTHM);
+        $result = app(PomodoroSessionService::class)->skipBreak($event, self::RHYTHM);
 
         $event->refresh();
         $this->assertTrue($result);
@@ -153,7 +153,7 @@ class PomodoroSessionServiceTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => null]);
 
-        $result = app(PomodoroSessionService::class)->skipBreak($event, $user, self::RHYTHM);
+        $result = app(PomodoroSessionService::class)->skipBreak($event, self::RHYTHM);
 
         $event->refresh();
         $this->assertTrue($result);
@@ -173,7 +173,7 @@ class PomodoroSessionServiceTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
 
-        $result = app(PomodoroSessionService::class)->skipBreak($event, $user, self::RHYTHM);
+        $result = app(PomodoroSessionService::class)->skipBreak($event, self::RHYTHM);
 
         $event->refresh();
         $this->assertFalse($result);
@@ -192,7 +192,7 @@ class PomodoroSessionServiceTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->create(['pomodoro_phase' => null, 'pomodoro_cycle' => 1, 'pomodoro_started_at' => null]);
 
-        $result = app(PomodoroSessionService::class)->skipBreak($event, $user, self::RHYTHM);
+        $result = app(PomodoroSessionService::class)->skipBreak($event, self::RHYTHM);
 
         $this->assertFalse($result);
     }

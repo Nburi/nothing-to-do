@@ -250,7 +250,7 @@ class ScheduleEventController extends Controller
             return response()->json(['message' => 'This block has no Pomodoro timer enabled.'], 422);
         }
 
-        $pomodoro->start($event, $request->user());
+        $pomodoro->start($event);
 
         return (new ScheduleEventResource($event->fresh('category')))->response();
     }
@@ -278,7 +278,7 @@ class ScheduleEventController extends Controller
             return response()->json(['message' => 'No Pomodoro session is running on this block.'], 422);
         }
 
-        $pomodoro->transition($event, $request->user(), $request->user()->pomodoro());
+        $pomodoro->transition($event, $request->user()->pomodoro());
 
         return (new ScheduleEventResource($event->fresh('category')))->response();
     }
@@ -296,7 +296,7 @@ class ScheduleEventController extends Controller
             return response()->json(['message' => 'No Pomodoro session is running on this block.'], 422);
         }
 
-        if (! $pomodoro->skipBreak($event, $request->user(), $request->user()->pomodoro())) {
+        if (! $pomodoro->skipBreak($event, $request->user()->pomodoro())) {
             return response()->json(['message' => 'Nothing to skip — the upcoming phase is not a break.'], 422);
         }
 

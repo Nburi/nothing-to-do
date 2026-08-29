@@ -6,6 +6,7 @@ use App\Livewire\Planner;
 use App\Models\EventCategory;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Models\TaskDayPlan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,92 +46,86 @@ class PlannerPageTest extends TestCase
         Livewire::test(Planner::class)->assertOk();
     }
 
-    public function test_blocks_are_grouped_by_day_with_linked_tasks(): void
+    public function test_board_computed_reflects_a_placed_task(): void
     {
         $user = $this->actingUser();
-        $block = $this->workBlock($user, now()->toDateString(), '09:00', '09:30');
-        $task = Task::factory()->for($user)->tasks()->dueDate(now()->toDateString())->duration(30)->create();
-
-        $component = Livewire::test(Planner::class);
-
-        $day = $component->instance()->blocks->get(now()->toDateString());
-        $this->assertNotNull($day);
-        $this->assertTrue($day->first()->is($block));
-        $this->assertSame($task->id, $day->first()->linkedTasks->first()->id);
-    }
-
-    public function test_reorder_block_stamps_every_id_as_manual_and_moves_a_task_between_blocks(): void
-    {
-        $user = $this->actingUser();
-        $blockA = $this->workBlock($user, now()->toDateString(), '09:00', '10:00');
-        $blockB = $this->workBlock($user, now()->toDateString(), '11:00', '12:00');
+        $this->workBlock($user, now()->toDateString(), '09:00', '09:30');
         $task = Task::factory()->for($user)->tasks()->create();
-        $blockA->linkedTasks()->attach($task->id, ['sort_order' => 0, 'source' => 'auto']);
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->toDateString(), 'sort_order' => 0]);
 
-        Livewire::test(Planner::class)->call('reorderBlock', $blockB->id, [$task->id]);
+        $day = Livewire::test(Planner::class)->instance()->board->get(now()->toDateString());
 
-        $this->assertSame(0, $blockA->linkedTasks()->count());
-        $link = $blockB->linkedTasks()->first();
-        $this->assertSame($task->id, $link->id);
-        $this->assertSame('manual', $link->pivot->source);
+        $this->assertSame(30, $day['capacityTotal']);
+        $this->assertSame([$task->id], $day['tasks']->pluck('id')->all());
     }
 
-    public function test_reorder_block_silently_drops_a_foreign_task_id(): void
+    public function test_assign_day_persists_the_order_sent_by_the_client(): void
     {
         $user = $this->actingUser();
-        $block = $this->workBlock($user, now()->toDateString(), '09:00', '10:00');
-        $stranger = Task::factory()->create(); // belongs to a different user
+        $a = Task::factory()->for($user)->tasks()->create();
+        $b = Task::factory()->for($user)->tasks()->create();
+        $date = now()->toDateString();
 
-        Livewire::test(Planner::class)->call('reorderBlock', $block->id, [$stranger->id])->assertHasNoErrors();
+        Livewire::test(Planner::class)->call('assignDay', $date, ["task:{$b->id}", "task:{$a->id}"]);
 
-        $this->assertSame(0, $block->linkedTasks()->count());
+        $ids = TaskDayPlan::where('planned_date', $date)->orderBy('sort_order')->pluck('task_id')->all();
+        $this->assertSame([$b->id, $a->id], $ids);
     }
 
-    public function test_reorder_block_on_a_foreign_block_is_rejected(): void
+    public function test_assign_day_silently_drops_a_foreign_task_token(): void
     {
         $this->actingUser();
-        $foreignBlock = ScheduleEvent::factory()->create();
+        $stranger = Task::factory()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-        Livewire::test(Planner::class)->call('reorderBlock', $foreignBlock->id, []);
+        Livewire::test(Planner::class)
+            ->call('assignDay', now()->toDateString(), ["task:{$stranger->id}"])
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, TaskDayPlan::count());
     }
 
-    public function test_unassign_task_removes_its_link(): void
+    public function test_unassign_task_removes_its_plan(): void
     {
         $user = $this->actingUser();
-        $block = $this->workBlock($user, now()->toDateString(), '09:00', '10:00');
         $task = Task::factory()->for($user)->tasks()->create();
-        $block->linkedTasks()->attach($task->id, ['sort_order' => 0, 'source' => 'manual']);
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->toDateString(), 'sort_order' => 0]);
 
         Livewire::test(Planner::class)->call('unassignTask', $task->id);
 
-        $this->assertSame(0, $block->linkedTasks()->count());
+        $this->assertSame(0, TaskDayPlan::count());
     }
 
-    public function test_regenerate_discards_a_manual_placement_and_replans(): void
+    public function test_unassign_task_on_a_foreign_task_is_rejected(): void
     {
-        $user = $this->actingUser();
-        $block = $this->workBlock($user, now()->toDateString(), '09:00', '09:30');
-        $stale = Task::factory()->for($user)->tasks()->create();
-        $block->linkedTasks()->attach($stale->id, ['sort_order' => 0, 'source' => 'manual']);
-        $urgent = Task::factory()->for($user)->tasks()->dueDate(now()->toDateString())->duration(30)->create();
+        $this->actingUser();
+        $foreign = Task::factory()->create();
 
-        Livewire::test(Planner::class)->call('regenerate');
-
-        $linked = $block->linkedTasks()->pluck('tasks.id')->all();
-        $this->assertSame([$urgent->id], $linked);
+        $this->expectException(ModelNotFoundException::class);
+        Livewire::test(Planner::class)->call('unassignTask', $foreign->id);
     }
 
-    /** Confirms the ManagesSchedule trait's moveEvent() — pulled in purely for this — actually works on a Planner-owned block. */
-    public function test_a_work_block_can_be_moved_via_the_inherited_move_event_method(): void
+    public function test_move_to_day_appends_to_an_existing_days_order(): void
     {
         $user = $this->actingUser();
-        $block = $this->workBlock($user, now()->toDateString(), '09:00', '10:00');
+        $first = Task::factory()->for($user)->tasks()->create();
+        $second = Task::factory()->for($user)->tasks()->create();
+        $date = now()->toDateString();
+        TaskDayPlan::create(['task_id' => $first->id, 'planned_date' => $date, 'sort_order' => 0]);
 
-        Livewire::test(Planner::class)->call('moveEvent', $block->id, '14:00');
+        Livewire::test(Planner::class)->call('moveToDay', "task:{$second->id}", $date);
 
-        $block->refresh();
-        $this->assertSame('14:00', $block->start_time);
-        $this->assertSame('15:00', $block->end_time);
+        $ids = TaskDayPlan::where('planned_date', $date)->orderBy('sort_order')->pluck('task_id')->all();
+        $this->assertSame([$first->id, $second->id], $ids);
+    }
+
+    public function test_auto_fill_backlog_places_an_eligible_task(): void
+    {
+        $user = $this->actingUser();
+        $this->workBlock($user, now()->toDateString(), '09:00', '09:30');
+        $task = Task::factory()->for($user)->tasks()->dueDate(now()->toDateString())->duration(30)->create();
+
+        Livewire::test(Planner::class)->call('autoFillBacklog');
+
+        $this->assertTrue(TaskDayPlan::where('task_id', $task->id)->exists());
     }
 }

@@ -235,6 +235,30 @@
         cursor: grabbing;
     }
 
+    /* Planer day-board: which days are available for the chip currently
+       being dragged (see plannerWave in app.js) — applied in a short
+       left-to-right stagger from today outwards, not all at once. Border/
+       background need !important for the same reason .group-arm below
+       does: overriding the Tailwind utilities (border-line, bg-surface)
+       already on the same element, which would otherwise win the cascade
+       regardless of source order once Tailwind's own layer is injected. */
+    .tier-free {
+        border-color: rgb(var(--forest) / 0.55) !important;
+        background-color: rgb(var(--forest-soft) / 0.55) !important;
+        box-shadow: 0 0 0 3px rgb(var(--forest) / 0.14), var(--shadow-map);
+        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+    .tier-tight {
+        border-color: rgb(var(--contour) / 0.6) !important;
+        background-color: rgb(var(--contour-soft) / 0.55) !important;
+        box-shadow: 0 0 0 3px rgb(var(--contour) / 0.16), var(--shadow-map);
+        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+    .tier-past {
+        opacity: 0.5;
+        transition: opacity 180ms ease;
+    }
+
     /* A card currently hovered in its own middle "group band" (see groupZone
        in app.js) — the drag is in the state where releasing now would group
        the two cards. It lifts, indents slightly and grows a forest bracket
