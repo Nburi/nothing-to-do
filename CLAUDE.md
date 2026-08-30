@@ -919,15 +919,20 @@ split as the Zeitplan-Eintrag-Aufgaben-Verknüpfung above.
   attribute order, a `select` row carrying its option's colour token (`CategoryAttribute::colorForValue()`,
   matched by label against the live `options` array — never a stored snapshot, so recolouring an option in
   Settings repaints every block showing it, past and future, the same live-update guarantee category colours
-  themselves already have). `partials/schedule-event.blade.php` renders these as a small third line — a tiny
-  coloured dot plus the value, `number` rows suffixed with their unit, `checkbox` rows showing just the
-  attribute's own name when true — **only** when the block has room: the same `durationMinutes() >= 30`
-  threshold that already gates the resize handles, and **never in the compact desktop week view**, which
-  already hides the time line itself for the identical reason (a narrow week column has no room for it; the
-  full mobile/day view and `PrepareTomorrow`'s step 3 both show it). The point is scanning a whole week for
-  which kind of training happened when, at a glance, without tapping a single block — verified live: a
-  "Training" block with Trainingstyp=Lauf (forest) and Dauer=60 (Min) renders "● Lauf 60 Min" under its time
-  range in the day view.
+  themselves already have). `partials/schedule-event.blade.php` renders these two ways, purely by how much
+  vertical room the block has — **not** by which view it's in:
+  - **`durationMinutes() >= 30`** (the same threshold the resize handles already use) — a small third line: a
+    tiny coloured dot plus the value, `number` rows suffixed with their unit, `checkbox` rows showing just the
+    attribute's own name when true. Renders in **every** view, including the narrow compact desktop week
+    view — a short column still truncates gracefully via the row's own `truncate` class, it doesn't need to
+    be hidden outright the way the time-line text does (that one's hidden in the week view for its own,
+    unrelated reason: no vertical room to spare for it, not a horizontal one).
+  - **Shorter than that** — no room even for one line, so only the `select` values' own colour dots ride
+    along inline in the *title* row instead (no label, no separate line). Never colour-only: the dot group
+    carries an `aria-label` and each dot a hover `title` naming its value.
+  The point is scanning a whole week for which kind of training happened when, at a glance, without tapping a
+  single block — verified live in both the day view and the desktop week view: a "Training" block with
+  Trainingstyp=Lauf (forest) and Dauer=60 (Min) renders "● Lauf / 60 Min" under its time range in both.
 - Deliberately out of scope for this pass: default attribute values on the recurring `EventTemplate` (every
   occurrence still needs its own value, exactly like linked tasks), drag-reorder of attributes in Settings
   (append-only via `sort_order` for now), attribute values in quick-create/QuickCapture, required/mandatory
