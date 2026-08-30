@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AgendaEntry;
 use App\Models\EventCategory;
+use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
@@ -297,5 +298,104 @@ class DayPlannerTest extends TestCase
         DayPlanner::autoFillBacklog($user);
 
         $this->assertSame([$urgent->id], DayPlanner::board($user)->get(now()->toDateString())['tasks']->pluck('id')->all());
+    }
+
+    // ── Auto-promotion to "Heute" (planned in the Planer, arrives today) ──
+
+    public function test_assign_day_onto_today_immediately_flags_the_task_as_today(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+
+        DayPlanner::assignDay($user, now()->toDateString(), ["task:{$task->id}"]);
+
+        $task->refresh();
+        $this->assertTrue($task->is_today);
+        $this->assertSame(now()->toDateString(), $task->today_date->toDateString());
+        $this->assertTrue($task->isTodayFromPlanner());
+    }
+
+    public function test_assign_day_onto_a_future_day_does_not_flag_today(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+
+        DayPlanner::assignDay($user, now()->addDays(3)->toDateString(), ["task:{$task->id}"]);
+
+        $this->assertFalse($task->fresh()->is_today);
+    }
+
+    public function test_move_to_day_onto_today_immediately_flags_the_task_as_today(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+
+        DayPlanner::moveToDay($user, "task:{$task->id}", now()->toDateString());
+
+        $this->assertTrue($task->fresh()->is_today);
+    }
+
+    public function test_auto_fill_backlog_flags_todays_placements_as_today(): void
+    {
+        $user = $this->plannerUser();
+        $this->workBlock($user, now()->toDateString(), '09:00', '09:30');
+        $task = Task::factory()->for($user)->tasks()->dueDate(now()->toDateString())->duration(30)->create();
+
+        DayPlanner::autoFillBacklog($user);
+
+        $this->assertTrue($task->fresh()->is_today);
+    }
+
+    public function test_reassigning_an_already_today_task_to_another_day_does_not_restamp_today_date(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+        DayPlanner::assignDay($user, now()->toDateString(), ["task:{$task->id}"]);
+        $originalTodayDate = $task->fresh()->today_date->toDateString();
+
+        // Re-assigning to a later day leaves the earlier is_today flag/date exactly as
+        // Task::todayDateFor() promises for any already-true flag — Planer moves never
+        // silently re-date a task the way a fresh promotion would.
+        DayPlanner::assignDay($user, now()->addDays(2)->toDateString(), ["task:{$task->id}"]);
+
+        $task->refresh();
+        $this->assertTrue($task->is_today);
+        $this->assertSame($originalTodayDate, $task->today_date->toDateString());
+        $this->assertFalse($task->isTodayFromPlanner()); // day-plan now points elsewhere
+    }
+
+    public function test_promote_if_today_never_flags_a_project_owned_task(): void
+    {
+        $user = $this->plannerUser();
+        $project = Project::factory()->for($user)->create();
+        $task = Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id]);
+
+        DayPlanner::assignDay($user, now()->toDateString(), ["task:{$task->id}"]);
+
+        $this->assertFalse($task->fresh()->is_today);
+    }
+
+    public function test_promote_if_today_never_flags_an_inbox_task(): void
+    {
+        // backlog()/the UI never offer an Inbox task to plan, but the guard is checked
+        // defensively anyway (mirrors TaskBoard::setToday()'s own isInbox() exclusion).
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->inbox()->create();
+
+        DayPlanner::promoteIfToday($user, [$task->id], now()->toDateString());
+
+        $this->assertFalse($task->fresh()->is_today);
+    }
+
+    public function test_promote_if_today_does_not_touch_an_already_today_task(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->todayOn(now()->subDay()->toDateString())->create();
+
+        DayPlanner::promoteIfToday($user, [$task->id], now()->toDateString());
+
+        // is_today=false is the idempotency guard — an already-today task is left alone,
+        // its today_date untouched, so a second cron tick can never "re-today" it.
+        $this->assertSame(now()->subDay()->toDateString(), $task->fresh()->today_date->toDateString());
     }
 }
