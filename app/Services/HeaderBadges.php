@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AgendaEntry;
+use App\Models\CraftIdea;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
@@ -46,6 +47,7 @@ class HeaderBadges
         'schedule' => ['label' => 'Zeitplan', 'route' => 'schedule', 'tone' => 'ink'],
         'goal' => ['label' => 'Tagesziel', 'route' => 'progress', 'tone' => 'ink'],
         'emergency' => ['label' => 'Notfall', 'route' => 'emergency', 'tone' => 'signal'],
+        'crafts' => ['label' => 'Bastelideen', 'route' => 'crafts', 'tone' => 'ink'],
     ];
 
     /**
@@ -108,6 +110,7 @@ class HeaderBadges
         'agenda' => 'agenda',
         'schedule' => 'schedule',
         'emergency' => 'emergency',
+        'crafts' => 'crafts',
     ];
 
     /**
@@ -159,6 +162,7 @@ class HeaderBadges
             'schedule' => self::scheduleBadge($user),
             'goal' => self::goalBadge($user),
             'emergency' => self::emergencyBadge($user),
+            'crafts' => self::craftsBadge($user),
             default => null,
         };
     }
@@ -263,6 +267,31 @@ class HeaderBadges
 
         return self::badge('emergency', "$done/$total",
             "Notfallmodus „{$project->name}“ — $done von $total Aufgaben erledigt");
+    }
+
+    /**
+     * Count in the pill, one named idea in the tooltip — the oldest still-open
+     * idea (deterministic), not CraftIdeas' own randomized hero pick, which is
+     * ephemeral component state rerolled per visit; duplicating that here would
+     * just be a second, disagreeing "which idea is featured" mechanism. This is
+     * only ever a teaser — the real hero mechanism takes over on the page itself.
+     */
+    private static function craftsBadge(User $user): ?array
+    {
+        $open = CraftIdea::forUser($user)->open()->orderBy('id')->get(['id', 'title']);
+
+        if ($open->isEmpty()) {
+            return null;
+        }
+
+        $first = $open->first();
+        $rest = $open->count() - 1;
+
+        $title = $rest > 0
+            ? '„'.$first->title.'“ und '.$rest.' weitere Idee'.($rest === 1 ? '' : 'n').' — Bastelideen ansehen'
+            : '„'.$first->title.'“ — Bastelideen ansehen';
+
+        return self::badge('crafts', (string) $open->count(), $title);
     }
 
     /**

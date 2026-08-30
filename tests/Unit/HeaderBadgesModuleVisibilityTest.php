@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\AgendaEntry;
+use App\Models\CraftIdea;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\HeaderBadges;
@@ -39,5 +40,21 @@ class HeaderBadgesModuleVisibilityTest extends TestCase
         $badges = collect(HeaderBadges::visibleFor($user));
 
         $this->assertTrue($badges->contains('key', 'emergency'));
+    }
+
+    public function test_a_hidden_crafts_module_drops_the_crafts_badge_even_when_it_has_content(): void
+    {
+        // Opt-in badge (not in HeaderBadges::DEFAULT_ENABLED), so it must be
+        // explicitly enabled here — otherwise "not shown" would be
+        // indistinguishable from the module-hiding this test is about.
+        $user = User::factory()->create([
+            'hidden_modules' => ['crafts'],
+            'header_badges' => [['key' => 'crafts', 'enabled' => true]],
+        ]);
+        CraftIdea::factory()->for($user)->create();
+
+        $badges = collect(HeaderBadges::visibleFor($user));
+
+        $this->assertFalse($badges->contains('key', 'crafts'));
     }
 }
