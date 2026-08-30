@@ -47,6 +47,10 @@
         @case('emergency')
             <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14" r="1" fill="currentColor"/></svg>
             @break
+
+        @case('crafts')
+            <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-2.5 8.25c.4.28.6.7.6 1.15V13h3.8v-.6c0-.45.2-.87.6-1.15A4.5 4.5 0 0 0 10 3Z"/><path d="M8.25 15.5h3.5M8.75 17.5h2.5"/></svg>
+            @break
     @endswitch
     <span class="tnum">{{ $badge['text'] }}</span>
 </a>

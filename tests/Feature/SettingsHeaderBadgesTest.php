@@ -53,7 +53,7 @@ class SettingsHeaderBadgesTest extends TestCase
     public function test_reorder_header_badges_persists_the_new_order_and_keeps_enabled_flags(): void
     {
         $user = User::factory()->create();
-        $newOrder = ['emergency', 'goal', 'schedule', 'today', 'agenda', 'streak'];
+        $newOrder = ['emergency', 'goal', 'schedule', 'today', 'agenda', 'streak', 'crafts'];
 
         Livewire::actingAs($user)->test(Settings::class)->call('reorderHeaderBadges', $newOrder);
 

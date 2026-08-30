@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Models\AgendaEntry;
+use App\Models\CraftIdea;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
@@ -37,6 +38,7 @@ class HeaderBadgesTest extends TestCase
         $this->assertFalse($rows['schedule']['enabled']);
         $this->assertFalse($rows['goal']['enabled']);
         $this->assertFalse($rows['emergency']['enabled']);
+        $this->assertFalse($rows['crafts']['enabled']);
     }
 
     public function test_every_catalog_key_appears_exactly_once_for_a_default_user(): void
@@ -263,6 +265,49 @@ class HeaderBadgesTest extends TestCase
         $badge = HeaderBadges::visibleFor($user->fresh())[0];
 
         $this->assertSame('1/2', $badge['text']);
+    }
+
+    // ── crafts ──────────────────────────────────────────────────────
+
+    public function test_crafts_badge_is_hidden_when_there_are_no_open_ideas(): void
+    {
+        $user = $this->userWith(['crafts']);
+
+        $this->assertSame([], HeaderBadges::visibleFor($user));
+    }
+
+    public function test_crafts_badge_counts_open_ideas_and_excludes_done_ones(): void
+    {
+        $user = $this->userWith(['crafts']);
+        CraftIdea::factory()->for($user)->create();
+        CraftIdea::factory()->for($user)->create();
+        CraftIdea::factory()->for($user)->done()->create();
+
+        $badge = HeaderBadges::visibleFor($user)[0];
+
+        $this->assertSame('2', $badge['text']);
+    }
+
+    public function test_crafts_badge_names_the_oldest_open_idea_in_its_title(): void
+    {
+        $user = $this->userWith(['crafts']);
+        $first = CraftIdea::factory()->for($user)->create(['title' => 'Vogelhaus bauen']);
+        CraftIdea::factory()->for($user)->create(['title' => 'Regal streichen']);
+
+        $badge = HeaderBadges::visibleFor($user)[0];
+
+        $this->assertStringContainsString('„Vogelhaus bauen“', $badge['title']);
+        $this->assertStringContainsString('1 weitere Idee', $badge['title']);
+    }
+
+    public function test_crafts_badge_title_names_the_single_open_idea_without_a_weitere_suffix(): void
+    {
+        $user = $this->userWith(['crafts']);
+        CraftIdea::factory()->for($user)->create(['title' => 'Vogelhaus bauen']);
+
+        $badge = HeaderBadges::visibleFor($user)[0];
+
+        $this->assertStringContainsString('„Vogelhaus bauen“ — Bastelideen ansehen', $badge['title']);
     }
 
     // ── helpers ─────────────────────────────────────────────────────
