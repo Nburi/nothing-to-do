@@ -36,7 +36,7 @@
     >
         <div class="mx-auto max-h-[70dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map">
             <div class="mb-1 flex items-center justify-between gap-3">
-                <h2 class="min-w-0 truncate text-base font-medium text-ink" x-text="$store.plannerDayPicker.chip?.title"></h2>
+                <h2 class="min-w-0 truncate text-base font-medium text-ink" x-text="$store.plannerDayPicker.chip?.subject ? $store.plannerDayPicker.chip.subject + ': ' + $store.plannerDayPicker.chip.title : $store.plannerDayPicker.chip?.title"></h2>
                 <button
                     type="button"
                     @click="$store.plannerDayPicker.hide()"
