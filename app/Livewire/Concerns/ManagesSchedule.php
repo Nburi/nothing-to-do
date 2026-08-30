@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Concerns;
 
+use App\Models\CategoryAttribute;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
@@ -56,6 +57,15 @@ trait ManagesSchedule
 
     public string $eventTaskSearch = '';
 
+    /**
+     * This occurrence's values for its category's custom attributes, keyed by
+     * CategoryAttribute id — synced to schedule_event_attribute_values on
+     * save. Never carried over between categories/occurrences on its own;
+     * switching the category just shows a different attribute set (see
+     * eventCategoryAttributes()).
+     */
+    public array $eventAttributeValues = [];
+
     protected function userEvent(int $id): ScheduleEvent
     {
         return auth()->user()->scheduleEvents()->findOrFail($id);
@@ -73,6 +83,17 @@ trait ManagesSchedule
     public function categories(): Collection
     {
         return auth()->user()->eventCategories()->ordered()->get();
+    }
+
+    /** The chosen category's own custom attributes, for the event form's dynamic fields. Empty for a Termin. */
+    #[Computed]
+    public function eventCategoryAttributes(): Collection
+    {
+        if ($this->eventKind !== 'category' || $this->eventCategoryId === null) {
+            return collect();
+        }
+
+        return auth()->user()->eventCategories()->find($this->eventCategoryId)?->customAttributes ?? collect();
     }
 
     /**
@@ -93,7 +114,7 @@ trait ManagesSchedule
         $this->reset([
             'editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
-            'eventLinkedTasks', 'eventTaskSearch',
+            'eventLinkedTasks', 'eventTaskSearch', 'eventAttributeValues',
         ]);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
@@ -124,6 +145,9 @@ trait ManagesSchedule
         // link sheet's own "AUSGEWÄHLT" list, which shows the same regardless of completion).
         $this->eventLinkedTasks = $event->linkedTasks->map(fn (Task $t) => ['id' => $t->id, 'title' => $t->title])->all();
         $this->eventTaskSearch = '';
+        $this->eventAttributeValues = $event->attributeValues->mapWithKeys(
+            fn (CategoryAttribute $attr) => [$attr->id => $attr->pivot->value]
+        )->all();
         $this->showEventForm = true;
     }
 
@@ -174,6 +198,24 @@ trait ManagesSchedule
         $this->eventTaskSearch = '';
     }
 
+    /**
+     * Picks (or, tapped again, clears) a 'select' attribute's value by option
+     * index rather than by its label directly — the label is free user text
+     * and could contain a quote, unsafe to interpolate into an inline
+     * wire:click call (see schedule-event-form.blade.php).
+     */
+    public function pickEventAttributeOption(int $attributeId, int $optionIndex): void
+    {
+        $attr = $this->eventCategoryAttributes->firstWhere('id', $attributeId);
+        $label = $attr?->optionsList()[$optionIndex]['label'] ?? null;
+
+        if ($label === null) {
+            return;
+        }
+
+        $this->eventAttributeValues[$attributeId] = ($this->eventAttributeValues[$attributeId] ?? null) === $label ? null : $label;
+    }
+
     public function saveEventForm(): void
     {
         $rules = [
@@ -197,8 +239,10 @@ trait ManagesSchedule
         $data = $this->validate($rules);
 
         // Resolve the literal title/colour snapshot this save writes to the row.
+        $category = null;
+
         if ($this->eventKind === 'category') {
-            $category = auth()->user()->eventCategories()->findOrFail($data['eventCategoryId']);
+            $category = auth()->user()->eventCategories()->with('customAttributes')->findOrFail($data['eventCategoryId']);
             $categoryId = $category->id;
             $title = $category->name;
             $color = $category->color;
@@ -207,6 +251,13 @@ trait ManagesSchedule
             $title = $data['eventTitle'];
             $color = $data['eventColor'];
         }
+
+        // Only non-empty values leave a row — an attribute left blank simply isn't set.
+        $attributeSync = $category === null ? [] : $category->customAttributes
+            ->mapWithKeys(fn (CategoryAttribute $attr) => [$attr->id => $attr->normalizeValue($this->eventAttributeValues[$attr->id] ?? null)])
+            ->filter(fn (?string $value) => $value !== null)
+            ->map(fn (string $value) => ['value' => $value])
+            ->all();
 
         // Re-checked here, not just at pick time (toggleEventLinkedTask already scopes by owner,
         // but eventLinkedTasks is a plain property and this is the point it actually persists).
@@ -238,6 +289,7 @@ trait ManagesSchedule
                 'template_id' => $movedFromSeries ? null : $event->template_id,
             ]));
             $event->linkedTasks()->sync($linkedTasksSync);
+            $event->attributeValues()->sync($attributeSync);
 
             if ($movedFromSeries) {
                 auth()->user()->scheduleEvents()->create([
@@ -303,6 +355,7 @@ trait ManagesSchedule
                 'end_time' => $data['eventEnd'],
             ]);
             $event->linkedTasks()->sync($linkedTasksSync);
+            $event->attributeValues()->sync($attributeSync);
         }
 
         $this->cancelEventForm();
@@ -313,7 +366,7 @@ trait ManagesSchedule
         $this->reset([
             'showEventForm', 'editingEventId', 'eventTitle',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
-            'eventLinkedTasks', 'eventTaskSearch',
+            'eventLinkedTasks', 'eventTaskSearch', 'eventAttributeValues',
         ]);
     }
 

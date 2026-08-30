@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesModuleSettings;
 use App\Models\AgendaEntry;
+use App\Models\CategoryAttribute;
 use App\Models\EventCategory;
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
@@ -78,6 +79,20 @@ class Settings extends Component
     public string $linkTextDraft = '';
 
     public string $linkTaskSearch = '';
+
+    // Category attributes sheet (which category, if any, is being edited)
+    public ?int $managingAttributesCategoryId = null;
+
+    public ?int $editingAttributeId = null;
+
+    public string $attrName = '';
+
+    public string $attrType = 'text';
+
+    public string $attrUnit = '';
+
+    /** @var array<int, array{label: string, color: string}> */
+    public array $attrOptions = [];
 
     public function mount(): void
     {
@@ -465,7 +480,7 @@ class Settings extends Component
     #[Computed]
     public function categories(): Collection
     {
-        return auth()->user()->eventCategories()->ordered()->get();
+        return auth()->user()->eventCategories()->withCount('customAttributes')->ordered()->get();
     }
 
     public function addCategory(): void
@@ -515,6 +530,132 @@ class Settings extends Component
     public function deleteCategory(int $id): void
     {
         auth()->user()->eventCategories()->whereKey($id)->delete();
+    }
+
+    // ── Category attributes (custom fields, e.g. Trainingstyp/Dauer) ─────
+
+    /** Opens the attributes sheet for one category, in "add new" state. */
+    public function manageAttributes(int $id): void
+    {
+        auth()->user()->eventCategories()->findOrFail($id);
+
+        $this->managingAttributesCategoryId = $id;
+        $this->startAddAttribute();
+    }
+
+    public function closeAttributes(): void
+    {
+        $this->reset(['managingAttributesCategoryId', 'editingAttributeId', 'attrName', 'attrType', 'attrUnit', 'attrOptions']);
+    }
+
+    /** The category currently open in the attributes sheet, with its attributes eager-loaded. */
+    #[Computed]
+    public function managingAttributesCategory(): ?EventCategory
+    {
+        if ($this->managingAttributesCategoryId === null) {
+            return null;
+        }
+
+        return auth()->user()->eventCategories()->with('customAttributes')->find($this->managingAttributesCategoryId);
+    }
+
+    /** Resets the inline form to "add a new attribute", empty. */
+    public function startAddAttribute(): void
+    {
+        $this->editingAttributeId = null;
+        $this->attrName = '';
+        $this->attrType = 'text';
+        $this->attrUnit = '';
+        $this->attrOptions = [];
+    }
+
+    public function startEditAttribute(int $id): void
+    {
+        $category = $this->managingAttributesCategory;
+        $attribute = $category?->customAttributes->firstWhere('id', $id);
+
+        if ($attribute === null) {
+            return;
+        }
+
+        $this->editingAttributeId = $attribute->id;
+        $this->attrName = $attribute->name;
+        $this->attrType = $attribute->type;
+        $this->attrUnit = (string) $attribute->unit;
+        $this->attrOptions = $attribute->optionsList();
+    }
+
+    public function addAttrOptionRow(): void
+    {
+        $this->attrOptions[] = ['label' => '', 'color' => CategoryAttribute::OPTION_COLORS[0]];
+    }
+
+    public function removeAttrOptionRow(int $index): void
+    {
+        unset($this->attrOptions[$index]);
+        $this->attrOptions = array_values($this->attrOptions);
+    }
+
+    public function setAttrOptionColor(int $index, string $color): void
+    {
+        if (! isset($this->attrOptions[$index]) || ! in_array($color, CategoryAttribute::OPTION_COLORS, true)) {
+            return;
+        }
+
+        $this->attrOptions[$index]['color'] = $color;
+    }
+
+    public function saveAttribute(): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($this->managingAttributesCategoryId);
+
+        $data = $this->validate([
+            'attrName' => ['required', 'string', 'max:255'],
+            'attrType' => ['required', Rule::in(array_keys(CategoryAttribute::TYPES))],
+            'attrUnit' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        $options = null;
+
+        if ($data['attrType'] === 'select') {
+            $options = collect($this->attrOptions)
+                ->map(fn (array $o) => ['label' => trim((string) ($o['label'] ?? '')), 'color' => $o['color'] ?? CategoryAttribute::OPTION_COLORS[0]])
+                ->filter(fn (array $o) => $o['label'] !== '')
+                ->unique('label')
+                ->values()
+                ->all();
+
+            if ($options === []) {
+                $this->addError('attrOptions', 'Mindestens eine Option angeben.');
+
+                return;
+            }
+        }
+
+        $payload = [
+            'name' => trim($data['attrName']),
+            'type' => $data['attrType'],
+            'options' => $options,
+            'unit' => $data['attrType'] === 'number' && trim((string) $data['attrUnit']) !== '' ? trim($data['attrUnit']) : null,
+        ];
+
+        if ($this->editingAttributeId !== null) {
+            $category->customAttributes()->whereKey($this->editingAttributeId)->update($payload);
+        } else {
+            $category->customAttributes()->create($payload + ['sort_order' => $category->customAttributes()->count()]);
+        }
+
+        $this->startAddAttribute();
+    }
+
+    public function deleteAttribute(int $id): void
+    {
+        $category = auth()->user()->eventCategories()->findOrFail($this->managingAttributesCategoryId);
+        $category->customAttributes()->whereKey($id)->delete();
+
+        if ($this->editingAttributeId === $id) {
+            $this->startAddAttribute();
+        }
     }
 
     // ── Category task links (Pomodoro focus-session suggestions) ────────

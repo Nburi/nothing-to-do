@@ -59,6 +59,19 @@ class EventCategory extends Model
         return $this->hasMany(EventTemplate::class, 'category_id');
     }
 
+    /**
+     * User-defined custom fields for this category (e.g. "Trainingstyp",
+     * "Dauer") — see CategoryAttribute. Named "customAttributes", not
+     * "attributes", to stay clear of Eloquent's own internal $attributes
+     * property.
+     *
+     * @return HasMany<CategoryAttribute, $this>
+     */
+    public function customAttributes(): HasMany
+    {
+        return $this->hasMany(CategoryAttribute::class, 'event_category_id')->ordered();
+    }
+
     public function linkedProject(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'linked_project_id');

@@ -22,6 +22,19 @@
     $pendingLinkedTasks = $event->linkedTasks->reject(fn ($t) => $t->is_completed)->values();
     $nextLinkedTask = $pendingLinkedTasks->first();
     $extraLinkedCount = max(0, $pendingLinkedTasks->count() - 1);
+
+    // Custom-attribute values (Kategorie-Attribute) — only rendered when there's room: the
+    // same >=30min threshold as the resize handles, and never in the compact desktop week
+    // view (which already hides the time line for the same reason). A 'select' value's dot
+    // colour is a literal class match, kept out of a dynamic string for the Tailwind JIT scanner.
+    $attrRows = ($resizable && ! $compact) ? $event->attributeDisplayRows() : collect();
+    $dotClass = fn (?string $token) => match ($token) {
+        'forest' => 'bg-forest',
+        'overprint' => 'bg-overprint',
+        'signal' => 'bg-signal',
+        'ink' => 'bg-ink-faint',
+        default => 'bg-contour',
+    };
 @endphp
 <div
     wire:key="ev-{{ $event->id }}"
@@ -89,6 +102,22 @@
         @unless ($compact)
             <p class="tnum truncate text-[11px] {{ $styles['tx'] }}">{{ $event->start_time }}–{{ $event->end_time }}</p>
         @endunless
+
+        {{-- Kategorie-Attribute: a compact summary, only when the block has room. A 'select'
+             value's own colour shows as a small dot — glance at a week and see which kind of
+             training (etc.) happened when, without tapping a single block. --}}
+        @if ($attrRows->isNotEmpty())
+            <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-[10px] {{ $styles['tx'] }} opacity-80">
+                @foreach ($attrRows as $row)
+                    <span class="inline-flex items-center gap-1">
+                        @if ($row['dot'])
+                            <span class="h-1.5 w-1.5 flex-none rounded-full {{ $dotClass($row['dot']) }}"></span>
+                        @endif
+                        {{ $row['display'] }}
+                    </span>
+                @endforeach
+            </p>
+        @endif
     </div>
 
     {{-- Desktop: edit pencil on hover. --}}
