@@ -37,27 +37,47 @@
     </button>
 
     <div class="min-w-0 flex-1">
-        <div x-data="{ lastTap: 0 }" class="contents">
-            <button
-                type="button"
-                wire:click="toggleImportant({{ $task->id }})"
-                @click="if (Date.now() - lastTap < 320) { $wire.startEdit({{ $task->id }}); lastTap = 0; } else { lastTap = Date.now(); }"
-                class="block w-full cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-                title="Tippen markiert als wichtig, doppelt tippen bearbeitet"
-            >
-                <span @class([
-                    'block break-words text-sm leading-snug',
-                    'line-through text-ink-faint' => $task->is_completed,
-                    'font-medium text-ink' => !$task->is_completed && $task->is_important,
-                    'text-ink' => !$task->is_completed && !$task->is_important,
-                ])>
-                    @if ($task->agenda_entry_id)
-                        {{-- From the Agenda's Hausaufgaben preview — same icon as the strip's own header badge. --}}
-                        <svg class="-mt-0.5 mr-1 inline h-3 w-3 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H13l3 3v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 16V7"/><path d="M13 4v3h3"/></svg>
-                    @endif
-                    {{ $task->title }}
+        <div class="flex items-start gap-1">
+            @if ($task->isTodayFromPlanner())
+                {{-- Signature moment: this task's "Heute" flag came from the Planer, not a
+                     manual flag. First tap reveals a quiet "Geplant für heute" label; a second
+                     tap (within the same window) opens the Planer — same "tap to peek, tap
+                     again to navigate" shape as the Zeitplan's linked-task icon. Undo happens
+                     on the Planer itself (reassign the day), not here. --}}
+                <span x-data="{ revealed: false, _t: null }" @click.outside="revealed = false; clearTimeout(_t)" class="mt-0.5 flex flex-none items-center gap-1">
+                    <button
+                        type="button"
+                        @click.stop="if (! revealed) { revealed = true; clearTimeout(_t); _t = setTimeout(() => revealed = false, 2000); } else { clearTimeout(_t); $wire.goToPlanner(); }"
+                        class="grid h-4 w-4 place-items-center rounded text-ink-faint transition hover:bg-forest-soft hover:text-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                        aria-label="Aus dem Planer für heute: {{ $task->title }} — antippen zum Ansehen, nochmal für den Planer"
+                    >
+                        <svg class="h-3 w-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14"/><path d="M7 2.5v4M13 2.5v4"/></svg>
+                    </button>
+                    <span x-show="revealed" x-transition.opacity.duration.150ms class="whitespace-nowrap text-[10px] font-medium text-forest" style="display: none">Geplant für heute</span>
                 </span>
-            </button>
+            @endif
+            <div x-data="{ lastTap: 0 }" class="min-w-0 flex-1">
+                <button
+                    type="button"
+                    wire:click="toggleImportant({{ $task->id }})"
+                    @click="if (Date.now() - lastTap < 320) { $wire.startEdit({{ $task->id }}); lastTap = 0; } else { lastTap = Date.now(); }"
+                    class="block w-full cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    title="Tippen markiert als wichtig, doppelt tippen bearbeitet"
+                >
+                    <span @class([
+                        'block break-words text-sm leading-snug',
+                        'line-through text-ink-faint' => $task->is_completed,
+                        'font-medium text-ink' => !$task->is_completed && $task->is_important,
+                        'text-ink' => !$task->is_completed && !$task->is_important,
+                    ])>
+                        @if ($task->agenda_entry_id)
+                            {{-- From the Agenda's Hausaufgaben preview — same icon as the strip's own header badge. --}}
+                            <svg class="-mt-0.5 mr-1 inline h-3 w-3 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H13l3 3v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 16V7"/><path d="M13 4v3h3"/></svg>
+                        @endif
+                        {{ $task->title }}
+                    </span>
+                </button>
+            </div>
         </div>
 
         @if (!$task->is_completed)

@@ -88,6 +88,7 @@ class TaskBoard extends Component
             ->forUser(auth()->user())
             ->onBoard()
             ->inList($list)
+            ->with('dayPlan')
             // A grouped task lives inside its group's box, not loose in the
             // column — unless it's flagged important or for today. Those two are
             // explicit "this one matters now" signals and outrank the bundling,
@@ -163,6 +164,7 @@ class TaskBoard extends Component
             ->active()
             ->onBoard()
             ->where('is_today', true)
+            ->with('dayPlan')
             ->boardOrdered()
             ->get();
     }

@@ -90,6 +90,20 @@ trait ManagesTasks
         $task->update(['is_important' => ! $task->is_important]);
     }
 
+    /**
+     * The Planer-provenance icon's second tap (see Task::isTodayFromPlanner(),
+     * partials/task-card*.blade.php) — a server-driven redirect rather than a
+     * plain `<a href wire:navigate>`: Livewire's own wire:navigate click
+     * listener fires independently of a Blade-side `@click` handler calling
+     * `preventDefault()`, so a native link can't be made to wait for the
+     * first "peek" tap and would navigate immediately on tap one. Mirrors
+     * ManagesSchedule::navigateToLinkedTask()'s shape exactly.
+     */
+    public function goToPlanner(): void
+    {
+        $this->redirectRoute('planner', navigate: true);
+    }
+
     public function toggleComplete(int $id): void
     {
         $task = $this->userTask($id);

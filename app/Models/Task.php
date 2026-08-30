@@ -268,6 +268,24 @@ class Task extends Model
         return $this->is_today ? $this->today_date?->toDateString() : $targetDate?->toDateString();
     }
 
+    /**
+     * Whether this task's "Heute" flag lines up with today's Planer day-plan
+     * — the signal the provenance icon on the card face reads (see
+     * partials/task-card.blade.php). Derived, not stored: dayPlan +
+     * today_date already carry everything needed, so no new column. True
+     * whenever both point at the same day, regardless of which write path
+     * actually set is_today — a task that's independently flagged today AND
+     * planned for today via the Planer is honestly described either way.
+     */
+    public function isTodayFromPlanner(): bool
+    {
+        if (! $this->is_today || $this->today_date === null) {
+            return false;
+        }
+
+        return $this->dayPlan !== null && $this->dayPlan->planned_date->isSameDay($this->today_date);
+    }
+
     /** True when the effective date comes from a hard deadline (not a soft due date). */
     public function effectiveIsHard(): bool
     {

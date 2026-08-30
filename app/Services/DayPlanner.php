@@ -199,6 +199,8 @@ class DayPlanner
         ]);
 
         TaskDayPlan::upsert($rows->all(), uniqueBy: ['task_id'], update: ['planned_date', 'sort_order', 'source', 'updated_at']);
+
+        self::promoteIfToday($user, $taskIds, $date);
     }
 
     /** Releases a task back to the backlog. Ownership must already be verified by the caller. */
@@ -244,6 +246,8 @@ class DayPlanner
             'created_at' => now(),
             'updated_at' => now(),
         ]], uniqueBy: ['task_id'], update: ['planned_date', 'sort_order', 'source', 'updated_at']);
+
+        self::promoteIfToday($user, [$taskId], $date);
     }
 
     /**
@@ -335,8 +339,63 @@ class DayPlanner
 
             if ($placed->isNotEmpty()) {
                 self::commitAutoPlacements($key, $placed, startingAt: $day['tasks']->count());
+                self::promoteIfToday($user, $placed->pluck('id'), $key);
             }
         }
+    }
+
+    /**
+     * The shared half of "planned in the Planer, becomes Heute when the day
+     * begins": flags every not-yet-Heute task among the given ids as Heute,
+     * but only when $date is the user's own local today — a no-op for a
+     * future-day placement. The three call sites above cover the immediate
+     * case (drag/autofill straight onto today's column); the passive case —
+     * a day-plan just sitting there until its date arrives with nobody
+     * touching the Planer — is App\Console\Commands\PromoteDayPlansToToday,
+     * which calls this same helper once a minute with $date = today itself.
+     *
+     * Mirrors TaskBoard::setToday()'s own is_today/today_date pairing
+     * (Task::todayDateFor()) and its isInbox()/isInProject() guard exactly
+     * (onBoard() = project_id IS NULL covers the Project half; list=inbox
+     * is excluded explicitly since nothing stops a stray id ending up here
+     * even though backlog() itself never offers an Inbox task to plan) — a
+     * Project-owned task never surfaces on the board's Today zone, so
+     * silently flagging one here would inflate ProgressStats' streak with a
+     * task nobody can see or complete (see CLAUDE.md §7 Task-Gruppen).
+     *
+     * No dedup column needed the way the push-notification commands need
+     * one: is_today=false IS the idempotency guard, since nothing in this
+     * app auto-clears is_today overnight — once promoted, a task never
+     * matches this query again.
+     *
+     * @param  iterable<int>  $taskIds
+     */
+    public static function promoteIfToday(User $user, iterable $taskIds, string $date): void
+    {
+        $today = $user->localToday();
+
+        if ($date !== $today->toDateString()) {
+            return;
+        }
+
+        $ids = $taskIds instanceof Collection ? $taskIds->all() : (is_array($taskIds) ? $taskIds : iterator_to_array($taskIds));
+
+        if (empty($ids)) {
+            return;
+        }
+
+        Task::query()
+            ->forUser($user)
+            ->active()
+            ->onBoard()
+            ->where('list', '!=', 'inbox')
+            ->whereIn('id', $ids)
+            ->where('is_today', false)
+            ->get()
+            ->each(fn (Task $task) => $task->update([
+                'is_today' => true,
+                'today_date' => $task->todayDateFor(true, $today),
+            ]));
     }
 
     // ── Internals ─────────────────────────────────────────────────────
