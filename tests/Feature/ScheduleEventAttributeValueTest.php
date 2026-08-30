@@ -237,7 +237,7 @@ class ScheduleEventAttributeValueTest extends TestCase
         $this->assertSame(0, $event->attributeValues()->count());
     }
 
-    public function test_a_long_enough_block_renders_the_full_line_and_the_compact_dots_together(): void
+    public function test_a_long_enough_block_renders_the_full_line_in_both_the_day_and_week_view(): void
     {
         $user = $this->actingUser();
         $category = $this->trainingCategory($user);
@@ -248,11 +248,11 @@ class ScheduleEventAttributeValueTest extends TestCase
         $response = $this->get('/app/schedule');
 
         $response->assertOk();
-        // The full "label + value" line — only rendered where there's room (the day view).
-        $response->assertSee('mt-0.5 flex flex-wrap', false);
-        // The compact dots-only preview — always rendered too, for the narrow desktop week view.
-        $response->assertSee('title="Lauf"', false);
-        $response->assertSee('aria-label="Lauf"', false);
+        // The full "label + value" line renders for both the day view and the compact desktop
+        // week view instance of this same event — >=30min is room enough in either.
+        $response->assertSeeInOrder(['mt-0.5 flex flex-wrap', 'mt-0.5 flex flex-wrap'], false);
+        // The compact dots-only preview never renders once the full line already fits.
+        $response->assertDontSee('title="Lauf"', false);
     }
 
     public function test_a_short_block_only_renders_the_compact_dots(): void

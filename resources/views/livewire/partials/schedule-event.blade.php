@@ -24,14 +24,15 @@
     $extraLinkedCount = max(0, $pendingLinkedTasks->count() - 1);
 
     // Custom-attribute values (Kategorie-Attribute). Two tiers, depending on how much room the
-    // block actually has: the full "label + value" summary only when there's a whole extra line
-    // to spare (day view, >=30min — the same threshold the resize handles already use); every
-    // other case (the narrow compact desktop week view, or a shorter block in the day view) still
-    // gets a compact preview — just the 'select' values' own colour dots, with no label, squeezed
-    // into the title row itself rather than a line of their own. A 'select' value's dot colour is
-    // a literal class match, kept out of a dynamic string for the Tailwind JIT scanner.
+    // block actually has: the full "label + value" summary whenever there's a whole extra line
+    // to spare vertically (>=30min — the same threshold the resize handles already use, in both
+    // the day view and the narrow desktop week view; a short column still truncates gracefully
+    // via the row's own `truncate` class), and — for anything shorter than that, in either view —
+    // a compact preview instead: just the 'select' values' own colour dots, with no label,
+    // squeezed into the title row itself rather than a line of their own. A 'select' value's dot
+    // colour is a literal class match, kept out of a dynamic string for the Tailwind JIT scanner.
     $allAttrRows = $event->attributeValues->isNotEmpty() ? $event->attributeDisplayRows() : collect();
-    $fullAttrDisplay = $resizable && ! $compact;
+    $fullAttrDisplay = $resizable;
     $attrRows = $fullAttrDisplay ? $allAttrRows : collect();
     // Only the 'select' rows carry a dot colour — kept as full rows, not just colours, so the
     // dots stay accessible (an aria-label + per-dot title) instead of colour-only information.
@@ -106,11 +107,11 @@
             @else
                 <span class="truncate">{{ $event->displayTitle() }}</span>
             @endif
-            {{-- Compact attribute preview: no room for the full "Lauf 60 Min" line here, so
-                 just the 'select' values' own colour dots ride along in the title row — still
-                 enough to scan a whole (narrow) week for "which kind of training was when".
-                 Never colour-only: the group carries an aria-label and each dot a hover title,
-                 so the value is never conveyed by colour alone. --}}
+            {{-- Compact attribute preview: shown only for a block too short (<30min) for the full
+                 "Lauf 60 Min" line below — just the 'select' values' own colour dots ride along in
+                 the title row instead, still enough to scan a whole week for "which kind of
+                 training was when". Never colour-only: the group carries an aria-label and each
+                 dot a hover title, so the value is never conveyed by colour alone. --}}
             @if ($dotRows->isNotEmpty())
                 <span class="flex flex-none items-center gap-0.5" aria-label="{{ $dotRows->pluck('display')->implode(', ') }}">
                     @foreach ($dotRows as $row)
