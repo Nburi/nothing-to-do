@@ -236,4 +236,53 @@ class ScheduleEventAttributeValueTest extends TestCase
         $event = ScheduleEvent::forUser($user)->where('category_id', $category->id)->firstOrFail();
         $this->assertSame(0, $event->attributeValues()->count());
     }
+
+    public function test_a_long_enough_block_renders_the_full_line_and_the_compact_dots_together(): void
+    {
+        $user = $this->actingUser();
+        $category = $this->trainingCategory($user);
+        [$type] = $category->customAttributes->all();
+        $event = ScheduleEvent::factory()->for($user)->on(now()->toDateString())->at('08:00', '09:00')->create(['category_id' => $category->id]);
+        $event->attributeValues()->attach($type->id, ['value' => 'Lauf']);
+
+        $response = $this->get('/app/schedule');
+
+        $response->assertOk();
+        // The full "label + value" line — only rendered where there's room (the day view).
+        $response->assertSee('mt-0.5 flex flex-wrap', false);
+        // The compact dots-only preview — always rendered too, for the narrow desktop week view.
+        $response->assertSee('title="Lauf"', false);
+        $response->assertSee('aria-label="Lauf"', false);
+    }
+
+    public function test_a_short_block_only_renders_the_compact_dots(): void
+    {
+        $user = $this->actingUser();
+        $category = $this->trainingCategory($user);
+        [$type] = $category->customAttributes->all();
+        $event = ScheduleEvent::factory()->for($user)->on(now()->toDateString())->at('08:00', '08:15')->create(['category_id' => $category->id]);
+        $event->attributeValues()->attach($type->id, ['value' => 'Lauf']);
+
+        $response = $this->get('/app/schedule');
+
+        $response->assertOk();
+        $response->assertDontSee('mt-0.5 flex flex-wrap', false);
+        $response->assertSee('title="Lauf"', false);
+        $response->assertSee('aria-label="Lauf"', false);
+    }
+
+    public function test_an_event_with_no_select_value_shows_no_dot_preview(): void
+    {
+        $user = $this->actingUser();
+        $category = $this->trainingCategory($user);
+        [, $duration] = $category->customAttributes->all();
+        $event = ScheduleEvent::factory()->for($user)->on(now()->toDateString())->at('08:00', '08:15')->create(['category_id' => $category->id]);
+        $event->attributeValues()->attach($duration->id, ['value' => '45']);
+
+        $response = $this->get('/app/schedule');
+
+        $response->assertOk();
+        $response->assertDontSee('mt-0.5 flex flex-wrap', false);
+        $response->assertDontSee('aria-label="45 Min"', false);
+    }
 }

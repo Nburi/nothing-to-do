@@ -23,11 +23,19 @@
     $nextLinkedTask = $pendingLinkedTasks->first();
     $extraLinkedCount = max(0, $pendingLinkedTasks->count() - 1);
 
-    // Custom-attribute values (Kategorie-Attribute) — only rendered when there's room: the
-    // same >=30min threshold as the resize handles, and never in the compact desktop week
-    // view (which already hides the time line for the same reason). A 'select' value's dot
-    // colour is a literal class match, kept out of a dynamic string for the Tailwind JIT scanner.
-    $attrRows = ($resizable && ! $compact) ? $event->attributeDisplayRows() : collect();
+    // Custom-attribute values (Kategorie-Attribute). Two tiers, depending on how much room the
+    // block actually has: the full "label + value" summary only when there's a whole extra line
+    // to spare (day view, >=30min — the same threshold the resize handles already use); every
+    // other case (the narrow compact desktop week view, or a shorter block in the day view) still
+    // gets a compact preview — just the 'select' values' own colour dots, with no label, squeezed
+    // into the title row itself rather than a line of their own. A 'select' value's dot colour is
+    // a literal class match, kept out of a dynamic string for the Tailwind JIT scanner.
+    $allAttrRows = $event->attributeValues->isNotEmpty() ? $event->attributeDisplayRows() : collect();
+    $fullAttrDisplay = $resizable && ! $compact;
+    $attrRows = $fullAttrDisplay ? $allAttrRows : collect();
+    // Only the 'select' rows carry a dot colour — kept as full rows, not just colours, so the
+    // dots stay accessible (an aria-label + per-dot title) instead of colour-only information.
+    $dotRows = $fullAttrDisplay ? collect() : $allAttrRows->filter(fn (array $row) => $row['dot'] !== null)->values();
     $dotClass = fn (?string $token) => match ($token) {
         'forest' => 'bg-forest',
         'overprint' => 'bg-overprint',
@@ -97,6 +105,18 @@
                 @endif
             @else
                 <span class="truncate">{{ $event->displayTitle() }}</span>
+            @endif
+            {{-- Compact attribute preview: no room for the full "Lauf 60 Min" line here, so
+                 just the 'select' values' own colour dots ride along in the title row — still
+                 enough to scan a whole (narrow) week for "which kind of training was when".
+                 Never colour-only: the group carries an aria-label and each dot a hover title,
+                 so the value is never conveyed by colour alone. --}}
+            @if ($dotRows->isNotEmpty())
+                <span class="flex flex-none items-center gap-0.5" aria-label="{{ $dotRows->pluck('display')->implode(', ') }}">
+                    @foreach ($dotRows as $row)
+                        <span class="h-1.5 w-1.5 flex-none rounded-full {{ $dotClass($row['dot']) }}" title="{{ $row['display'] }}"></span>
+                    @endforeach
+                </span>
             @endif
         </p>
         @unless ($compact)
