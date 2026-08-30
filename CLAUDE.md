@@ -957,9 +957,16 @@ plannable target.
   direct children only) so it reads as a tidy pill instead of stretching to its title's full width; a
   day-column chip leaves `$fixedWidth` unset and keeps stretching to the column via the day-list's own
   `flex-col`, exactly as before. **`window.plannerDaySortable`** (`resources/js/app.js`) is one Sortable
-  instance per day column/backlog, sharing one group name **only on a mouse pointer**
-  (`window.matchMedia('(pointer: coarse)')`) — see mobile below for why touch gets its own, deliberately
-  narrower group per container instead. Every drop — a same-day reorder or a cross-day move — persists via
+  instance per day column/backlog, **all sharing one group name** — cross-container `put`/`pull` is gated
+  by a *function*, re-evaluated on every drag from `plannerPointerIsTouch` (set by one document-level
+  `pointerdown` listener, `e.pointerType !== 'mouse'`) rather than a static `matchMedia('(pointer:
+  coarse)')` check baked into a per-container group name at Sortable-creation time — that static form was
+  this feature's actual first bug (see *Known Issues*): the media query is `true` on any hybrid/
+  touchscreen Windows laptop regardless of which input is actually driving a given drag, so a real mouse
+  drag on such a machine got silently rejected by Sortable itself (mismatched group names) and the chip
+  just sprang back to "Nicht eingeplant" — no error, no request. A touch-driven drag still can't cross
+  containers — see mobile below for why — it's just decided per-gesture now, not per-device. Every drop —
+  a same-day reorder or a cross-day move — persists via
   `assignDay()` with the destination's full id order; a drop onto the backlog instead calls
   `unassignTask()` (skipped for a backlog-internal reorder, since backlog order carries no meaning and
   isn't persisted at all).
@@ -2744,6 +2751,45 @@ intended reorder semantics. Keep an `onMove` guard returning `false` for the sam
 braces / to drive the visual cue, and derive its band size from the same threshold constant so the two can
 never disagree. See `sortableGroupBands()` and `groupZone` in `resources/js/app.js` (Task-Gruppen §7); an
 earlier 350ms-dwell design and a first `onMove`-only attempt both failed to this exact cause.
+
+### `matchMedia('(pointer: coarse)')` is a device check, not a "this gesture is touch" check — using it to split a Sortable `group` per container silently breaks real mouse drags
+**Symptom:** the Planer's drag-and-drop (any backlog chip onto any day, or day-to-day) picks up fine but
+"springs back to not planned" the instant you release it — no error in the console, and no
+`livewire/update` request ever fires. Reproducible every time, on every day column, regardless of that
+day's capacity.
+**Cause:** `plannerDaySortable` (`resources/js/app.js`) originally computed
+`const isTouch = window.matchMedia('(pointer: coarse)').matches` **once**, at Sortable-creation time, and
+used it to give every container either the shared group name (mouse) or its own unique
+`planner-solo-<date>` group name (touch) — deliberately, so a touch drag can't cross containers on a
+14-day scrolling board (see the Planer's own `plannedDaySortable` docblock). The bug: `pointer: coarse` is
+the *device's* coarsest available pointer, not "is the pointer driving this specific drag a touch
+pointer" — it reads `true` on **any hybrid/touchscreen Windows laptop**, even while dragging with a
+plugged-in mouse, and it read `true` in a plain headless Chromium (Playwright) with no pointer hardware at
+all. On any such machine every container silently got its own group, so SortableJS itself rejected every
+cross-container drop (mismatched group names) — the chip never left its origin list, so `onEnd`'s
+"backlog-internal reorder isn't persisted" branch fired instead of `assignDay()`/`unassignTask()`, with no
+error anywhere: SortableJS treats a rejected drop as a normal non-event, not a failure.
+**Diagnosis note:** the click-based browser preview tool (`mcp__Claude_Browser__*`) could not reproduce
+this at all — its synthetic clicks never trigger the native HTML5 `dragstart`/`dragover`/`drop` sequence
+SortableJS relies on by default (no Sortable instance in this app sets `forceFallback`), so a drag attempt
+through it produces no visible change and no network request either way, a false negative indistinguishable
+from the real bug. **Playwright's `locator.dragTo()`** (a separate MCP in this environment) *does* trigger
+real native drag-and-drop via CDP and was what actually reproduced (and then confirmed the fix for) this —
+prefer it over the click-based preview tool for any Sortable-based drag-and-drop verification in this app.
+**Fix:** don't gate on a static device query. Track the pointerType of whatever pointerdown is actually
+driving the *current* gesture (`plannerPointerIsTouch`, one `document`-level `pointerdown` listener,
+`e.pointerType !== 'mouse'` — same check `plannerTap` already used correctly) and give every planner
+container the **same** group name, with `put`/`pull` as *functions* reading that live flag:
+```js
+group: { name: plannerDayGroup, put: () => !plannerPointerIsTouch, pull: () => !plannerPointerIsTouch }
+```
+SortableJS calls a function-form `put`/`pull` fresh on every cross-container hover (confirmed in
+`node_modules/sortablejs/modular/sortable.esm.js`'s `toFn`/`checkPull`/`checkPut`) — and, usefully, *never*
+for a same-container reorder (short-circuited by Sortable's own `isOwner` branch beforehand), so a genuine
+touch drag still can't cross containers while a same-day touch reorder is completely unaffected. The
+general lesson: a `matchMedia`/`navigator`-level capability check answers "what can this device do", never
+"what is this specific interaction doing" — for the latter, capture the real triggering event instead, the
+same way `plannerTap` already did next to the bug this whole time.
 
 ---
 

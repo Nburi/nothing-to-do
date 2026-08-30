@@ -533,12 +533,33 @@ window.groupDropZone = function (el, wire, handle = null) {
 /**
  * Planer day-board — drag a task/homework chip onto a day (see
  * App\Services\DayPlanner, App\Livewire\Planner). One Sortable instance per
- * day-column plus the backlog rail. On a mouse they all share one group
- * name so a chip can move between any of them; on touch each container gets
- * its *own* group instead (plannerTap below is the touch answer to moving a
- * chip between days — see its own docblock for why), so Sortable's own
- * touch-drag is structurally confined to reordering within one container,
- * never fighting the board's horizontal scroll.
+ * day-column plus the backlog rail, all sharing **one** group name — a chip
+ * can move between any of them — except a touch-driven drag is confined to
+ * reordering within its own container (plannerTap below is the touch answer
+ * to moving a chip *between* days — see its own docblock for why), so
+ * Sortable's own touch-drag never fights the board's horizontal scroll.
+ *
+ * "Touch-driven" is decided per-gesture, from the pointerType of whichever
+ * pointerdown most recently started a drag (plannerPointerIsTouch, tracked
+ * by one document-level listener below) — deliberately NOT
+ * `matchMedia('(pointer: coarse)')` (this file's earlier approach, and
+ * still how plannerWave/plannerTap classify tiers for *display*). That
+ * media query reports the device's coarsest available pointer, which is
+ * `true` on any hybrid/touchscreen Windows laptop even while dragging with
+ * a real mouse — and even in a plain headless Chromium with no pointer
+ * hardware at all — not "is *this* drag a touch drag". Evaluated once at
+ * Sortable-creation time as a static per-container group name (the
+ * previous shape), a coarse-pointer-capable *device* silently and
+ * permanently lost cross-container mouse drag on the Planer: every drop
+ * outside a chip's own list was rejected by Sortable itself (mismatched
+ * group names), so the chip just snapped back to "Nicht eingeplant" with
+ * no error and no request ever reaching the server — reproduced via a real
+ * Playwright drag (not the click-based preview tool, which can't trigger
+ * native HTML5 drag at all) after `matchMedia('(pointer: coarse)')` turned
+ * out to be `true` even in that plain headless browser. `put`/`pull` as
+ * *functions* re-run on every drag instead, so the same physical machine
+ * now correctly allows a mouse-driven cross-day move while still routing a
+ * genuine touch drag into same-container-only reordering.
  *
  * classify()'s three tiers mirror App\Services\DayPlanner's own deadline
  * math client-side (duration/deadlineOffset come off the dragged chip's own
@@ -550,6 +571,19 @@ window.groupDropZone = function (el, wire, handle = null) {
  * known constraint to warn about, so it reads as 'free'.
  */
 const plannerDayGroup = 'planner-day';
+
+/**
+ * Updated by one document-level pointerdown listener (registered once,
+ * below) rather than per-container — every planner chip drag starts with a
+ * real pointerdown on its handle, so this is always current by the time
+ * Sortable asks group.put/group.pull whether a cross-container drop is
+ * allowed. `!== 'mouse'` (not `=== 'touch'`) so a pen digitizer gets the
+ * same tap-to-sheet treatment as touch, mirroring plannerTap's own check.
+ */
+let plannerPointerIsTouch = false;
+document.addEventListener('pointerdown', (e) => {
+    plannerPointerIsTouch = e.pointerType !== 'mouse';
+}, true);
 
 function plannerChipInfo(el) {
     const rawOffset = el.dataset.deadlineOffset;
@@ -608,10 +642,14 @@ const plannerWave = {
 
 window.plannerDaySortable = function (el, wire) {
     if (el._sortable) return el._sortable;
-    const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
     el._sortable = Sortable.create(el, {
-        group: isTouch ? `planner-solo-${el.dataset.date || 'backlog'}` : plannerDayGroup,
+        // A function, not a plain string: Sortable calls this fresh for
+        // every cross-container drag (never for a same-container reorder,
+        // which its own `isOwner` branch short-circuits before this is
+        // reached — see sortable.esm.js), so it reads plannerPointerIsTouch
+        // as of *this* gesture rather than baking in a static device check.
+        group: { name: plannerDayGroup, put: () => !plannerPointerIsTouch, pull: () => !plannerPointerIsTouch },
         animation: 160,
         easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
         ghostClass: 'board-ghost',
