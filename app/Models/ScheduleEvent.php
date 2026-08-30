@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -99,6 +100,49 @@ class ScheduleEvent extends Model
     public function linkedTasksRemainingCount(): int
     {
         return $this->linkedTasks()->active()->count();
+    }
+
+    /**
+     * This occurrence's own values for its category's custom attributes
+     * (CategoryAttribute) — never the recurring template's, same "belongs to
+     * one concrete occurrence" rule linkedTasks() already follows. Empty for
+     * a Termin (no category) or a category with no attributes defined.
+     */
+    public function attributeValues(): BelongsToMany
+    {
+        return $this->belongsToMany(CategoryAttribute::class, 'schedule_event_attribute_values')
+            ->withPivot('value');
+    }
+
+    /**
+     * Non-empty values only, in the category's own attribute order, ready to
+     * render on the block face (see partials/schedule-event.blade.php). Each
+     * row carries a display string and — for a 'select' value only — the
+     * Topografie colour token its option was given (the "farbige
+     * Auswahl-Punkte" signature moment).
+     *
+     * @return array<int, array{display: string, dot: ?string}>
+     */
+    public function attributeDisplayRows(): Collection
+    {
+        return $this->attributeValues
+            ->sortBy(fn (CategoryAttribute $attr) => $attr->sort_order)
+            ->map(function (CategoryAttribute $attr) {
+                $value = $attr->pivot->value;
+
+                if ($value === null || $value === '') {
+                    return null;
+                }
+
+                return match ($attr->type) {
+                    'select' => ['display' => $value, 'dot' => $attr->colorForValue($value)],
+                    'number' => ['display' => trim($value.' '.($attr->unit ?? '')), 'dot' => null],
+                    'checkbox' => ['display' => $attr->name, 'dot' => null],
+                    default => ['display' => $value, 'dot' => null],
+                };
+            })
+            ->filter()
+            ->values();
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

@@ -130,6 +130,66 @@
                     </div>
                 @endif
 
+                {{-- Custom fields defined on this category (Settings → Kategorien → Attribute) —
+                     same "belongs to one occurrence, not the recurring template" rule as the task
+                     links below, so hidden while "Wiederholen" is checked too. Never required:
+                     quick-create (drawing, templates) never touches these at all — only the full
+                     form does. --}}
+                @if ($eventKind === 'category' && $eventCategoryId && ! $eventRecurring && $this->eventCategoryAttributes->isNotEmpty())
+                    <div class="space-y-3 rounded-card border border-line bg-paper/60 p-3">
+                        @foreach ($this->eventCategoryAttributes as $attr)
+                            <div wire:key="eattr-{{ $attr->id }}">
+                                @if ($attr->type === 'checkbox')
+                                    <label class="flex cursor-pointer items-center gap-2.5">
+                                        <input type="checkbox" wire:model="eventAttributeValues.{{ $attr->id }}" class="rounded border-line text-forest focus:ring-forest" />
+                                        <span class="text-sm text-ink-soft">{{ $attr->name }}</span>
+                                    </label>
+                                @else
+                                    <label class="mb-1 block text-[11px] font-medium text-ink-faint">{{ $attr->name }}</label>
+                                    @if ($attr->type === 'text')
+                                        <input
+                                            type="text"
+                                            wire:model="eventAttributeValues.{{ $attr->id }}"
+                                            autocomplete="off"
+                                            class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                                        />
+                                    @elseif ($attr->type === 'number')
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                wire:model="eventAttributeValues.{{ $attr->id }}"
+                                                class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                                            />
+                                            @if ($attr->unit)
+                                                <span class="flex-none text-xs text-ink-faint">{{ $attr->unit }}</span>
+                                            @endif
+                                        </div>
+                                    @elseif ($attr->type === 'select')
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach ($attr->optionsList() as $i => $opt)
+                                                @php $active = ($eventAttributeValues[$attr->id] ?? null) === $opt['label']; @endphp
+                                                <button
+                                                    type="button"
+                                                    wire:click="pickEventAttributeOption({{ $attr->id }}, {{ $i }})"
+                                                    @class([
+                                                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition',
+                                                        'border-ink/60 bg-paper text-ink' => $active,
+                                                        'border-line text-ink-soft hover:border-ink-faint/60' => ! $active,
+                                                    ])
+                                                >
+                                                    <span class="h-2.5 w-2.5 rounded-full {{ $swatches[$opt['color']] ?? 'bg-contour' }}"></span>
+                                                    {{ $opt['label'] }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
                 {{-- Bind existing tasks to this specific occurrence — never to a recurring
                      template, since what's due this week isn't due next week too (see
                      ManagesSchedule::saveEventForm). --}}

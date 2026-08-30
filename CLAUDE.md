@@ -858,6 +858,88 @@ same shape as `category_task_links` for a category's own "Bestimmte Aufgaben" so
   the icon to the next one and drops the "+N" count on the very next render — verified directly (not just
   by test) by completing a bound task mid-session and watching the block's own accessible name change.
 
+### Kategorie-Attribute (built)
+
+Fully user-defined custom fields on a category — the concrete thing that prompted it: "Training" wants a
+Trainingstyp and a Dauer, and neither is a fixed concept the app itself should know about. A category's
+attribute *schema* is defined once in Settings; the actual *value* is filled in per event occurrence, same
+split as the Zeitplan-Eintrag-Aufgaben-Verknüpfung above.
+
+- **`App\Models\CategoryAttribute`** — `event_category_id, name, type, options, unit, sort_order`. Four
+  types (`CategoryAttribute::TYPES`): `text`, `number` (with an optional short `unit` label, e.g. "Min"),
+  `select` (its own `options` — a JSON array of `{label, color}`, the color one of the same five Topografie
+  tokens every other colour picker in this app already uses, `CategoryAttribute::OPTION_COLORS`), and
+  `checkbox`. `EventCategory::customAttributes()` — deliberately not named `attributes()`, to stay clear of
+  Eloquent's own internal `$attributes` property (a real, if obscure, footgun: `$model->attributes` is
+  `protected`, so PHP's magic `__get` *would* actually resolve a same-named relation correctly, but naming a
+  relation this makes every future reader do that reasoning again for no reason). `normalizeValue()` is the
+  one place a raw form value becomes what's actually stored: `number` accepts only `is_numeric`, `select`
+  only an exact match against one of its own option labels, `checkbox` collapses to `'1'` or nothing —
+  **never an empty-string row**, matching this app's blanket "unfilled means no row, not a blank one"
+  convention.
+- **`schedule_event_attribute_values`** (pivot: `schedule_event_id, category_attribute_id, value`,
+  `ScheduleEvent::attributeValues()` — same `belongsToMany` + pivot shape as `linkedTasks()`) is where a
+  value actually lives, and **only** here — never on the category, never on the recurring `EventTemplate`.
+  This mirrors `schedule_event_task_links`'s own rule exactly ("never carried over to other occurrences of a
+  recurring series") for the same reason: a Wednesday training's duration this week says nothing about next
+  week's. The Wochenplan therefore needed **zero changes** for this feature — it edits `EventTemplate`, which
+  was never in scope for attribute values in the first place.
+- **Never required.** No attribute is ever mandatory, and nothing about drawing a block
+  (`quickCreateCategoryBlock`), tapping a template (`applyTemplate`), or drawing a Termin
+  (`quickCreateTermin`) changed at all — those stay the same 2-gesture quick-create they always were. Values
+  are only ever entered through the full event form, and only for a **one-off, non-recurring** save (the
+  attribute fields are hidden while "Wiederholen" is checked, same guard the task-link section already used,
+  for the same reason: there's no single occurrence yet to attach a value to).
+- **Settings' Kategorien card** — every category row (not just Pomodoro-enabled ones — an attribute schema
+  has nothing to do with the focus timer) gets a second pill next to the existing task-link one, "N
+  Attribute" / "+ Attribute", opening **`partials/category-attributes-sheet.blade.php`** (same
+  `animate-rise` bottom-sheet shell as `category-link-sheet.blade.php`). One inline form doubles as add/edit
+  (`Settings::$editingAttributeId` null vs set, the same pattern `Agenda`/`CraftIdeas` already use for their
+  own single create/edit forms) — a `select` type reveals a repeatable option-row editor (label input + the
+  same 5-swatch colour picker used everywhere else), `addAttrOptionRow()`/`removeAttrOptionRow()`/
+  `setAttrOptionColor()` editing a plain `array $attrOptions` property before Save commits it. Deleting an
+  attribute uses the standard armed-double-click pattern (never `confirm()`) — it discards real historical
+  values, the same weight as any other destructive action in this app.
+- **The event form** (`schedule-event-form.blade.php`) renders one dynamic field per attribute of the
+  chosen category, once `ManagesSchedule::$eventCategoryAttributes` (empty for a Termin or an unchosen
+  category) is non-empty: a plain text input, a number input with the unit shown as a trailing label, a
+  toggle for checkbox, and — for `select` — a chip row mirroring the Farbe picker's own look, each chip
+  carrying its option's colour as a small leading dot. **A select chip is picked via
+  `ManagesSchedule::pickEventAttributeOption(int $attributeId, int $optionIndex)`, by index, never by
+  interpolating the option's own label string into an inline `wire:click="$set(...)"` call** — that label is
+  free user text and could contain a quote, which would otherwise break out of the attribute string
+  (the same class of risk this app avoids everywhere else a user-typed value would otherwise need inline JS
+  interpolation, e.g. why `linkTextDraft` goes through a real form instead). Tapping an already-picked chip
+  clears it. `ManagesSchedule::$eventAttributeValues` (a plain array keyed by attribute id) is seeded from
+  the pivot on `startEditEvent()`, and `saveEventForm()` re-resolves the *current* category's own attributes
+  fresh at save time and `sync()`s only the non-empty, type-validated ones — so a stray value left over from
+  briefly picking a different category during the same form session is never persisted.
+- **Signature moment — farbige Auswahl-Punkte.** A `select` value's own colour rides along onto the block
+  itself: `ScheduleEvent::attributeDisplayRows()` returns each non-empty value in the category's own
+  attribute order, a `select` row carrying its option's colour token (`CategoryAttribute::colorForValue()`,
+  matched by label against the live `options` array — never a stored snapshot, so recolouring an option in
+  Settings repaints every block showing it, past and future, the same live-update guarantee category colours
+  themselves already have). `partials/schedule-event.blade.php` renders these two ways, purely by how much
+  vertical room the block has — **not** by which view it's in:
+  - **`durationMinutes() >= 30`** (the same threshold the resize handles already use) — a small third line: a
+    tiny coloured dot plus the value, `number` rows suffixed with their unit, `checkbox` rows showing just the
+    attribute's own name when true. Renders in **every** view, including the narrow compact desktop week
+    view — a short column still truncates gracefully via the row's own `truncate` class, it doesn't need to
+    be hidden outright the way the time-line text does (that one's hidden in the week view for its own,
+    unrelated reason: no vertical room to spare for it, not a horizontal one).
+  - **Shorter than that** — no room even for one line, so only the `select` values' own colour dots ride
+    along inline in the *title* row instead (no label, no separate line). Never colour-only: the dot group
+    carries an `aria-label` and each dot a hover `title` naming its value.
+  The point is scanning a whole week for which kind of training happened when, at a glance, without tapping a
+  single block — verified live in both the day view and the desktop week view: a "Training" block with
+  Trainingstyp=Lauf (forest) and Dauer=60 (Min) renders "● Lauf / 60 Min" under its time range in both.
+- Deliberately out of scope for this pass: default attribute values on the recurring `EventTemplate` (every
+  occurrence still needs its own value, exactly like linked tasks), drag-reorder of attributes in Settings
+  (append-only via `sort_order` for now), attribute values in quick-create/QuickCapture, required/mandatory
+  attributes, a multi-select type, conditional attributes (one attribute's visibility depending on another's
+  value), any weekly/aggregate summary of a `number` attribute, and API/Shortcuts support for reading or
+  writing attribute values.
+
 ### Planer (built)
 
 A day-by-day board: drag a task/homework item onto a day to plan it *for that day*, not into one specific

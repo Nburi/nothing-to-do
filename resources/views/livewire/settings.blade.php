@@ -455,17 +455,36 @@
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
                     </button>
                 </div>
-                @if ($category->pomodoro_enabled)
+                <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    @if ($category->pomodoro_enabled)
+                        <button
+                            type="button"
+                            wire:click="manageCategoryLink({{ $category->id }})"
+                            aria-label="Aufgaben-Verknüpfung für {{ $category->name }} verwalten — aktuell: {{ $category->taskSourceLabel() ?? 'keine' }}"
+                            class="inline-flex w-fit items-center gap-1.5 rounded-full border border-line bg-paper/70 px-2.5 py-1 text-xs text-ink-soft transition hover:border-overprint/50 hover:bg-paper hover:text-ink"
+                        >
+                            <svg class="h-3 w-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
+                            <span class="truncate">{{ $category->taskSourceLabel() ?? '+ Aufgaben verknüpfen' }}</span>
+                        </button>
+                    @endif
                     <button
                         type="button"
-                        wire:click="manageCategoryLink({{ $category->id }})"
-                        aria-label="Aufgaben-Verknüpfung für {{ $category->name }} verwalten — aktuell: {{ $category->taskSourceLabel() ?? 'keine' }}"
-                        class="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full border border-line bg-paper/70 px-2.5 py-1 text-xs text-ink-soft transition hover:border-overprint/50 hover:bg-paper hover:text-ink"
+                        wire:click="manageAttributes({{ $category->id }})"
+                        aria-label="Eigene Attribute für {{ $category->name }} verwalten — aktuell: {{ $category->custom_attributes_count }}"
+                        class="inline-flex w-fit items-center gap-1.5 rounded-full border border-line bg-paper/70 px-2.5 py-1 text-xs text-ink-soft transition hover:border-overprint/50 hover:bg-paper hover:text-ink"
                     >
-                        <svg class="h-3 w-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6.5l4 4L7 21H3v-4L13.5 6.5z"/><path d="M12 8l4 4"/></svg>
-                        <span class="truncate">{{ $category->taskSourceLabel() ?? '+ Aufgaben verknüpfen' }}</span>
+                        <svg class="h-3 w-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+                        <span class="truncate">
+                            @if ($category->custom_attributes_count === 0)
+                                + Attribute
+                            @elseif ($category->custom_attributes_count === 1)
+                                1 Attribut
+                            @else
+                                {{ $category->custom_attributes_count }} Attribute
+                            @endif
+                        </span>
                     </button>
-                @endif
+                </div>
                 </div>
             @empty
                 <p class="text-sm text-ink-faint">Noch keine Kategorien.</p>
@@ -502,6 +521,7 @@
         </div>
 
         @include('livewire.partials.category-link-sheet')
+        @include('livewire.partials.category-attributes-sheet')
 
         {{-- Pomodoro --}}
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
