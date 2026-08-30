@@ -941,6 +941,20 @@ plannable target.
   falls back to a default *for `DayPlanner`'s own math only* (never written back): 10 min for
   `list=todos`, 25 min for `list=tasks`/`projects`/homework. Same card-face quick-date ghost affordance as
   before (`ManagesTasks::quickSetDuration()`), untouched by this rework.
+- **A small tag above the title tells chips apart** — the board otherwise mixes To-Dos, Tasks,
+  Projekt-tasks and homework in one flat list with no column to say which is which the way the main board
+  does. A homework chip (`type=agenda`) gets its subject in a `forest`-toned pill (matching the same
+  "Hausaufgabe" tone the Agenda page already uses); once placed on a day it's promoted into a real Task
+  (`resolveOrPromote()`) and loses that tag in favour of the plain task one, which is the point — it's
+  "planned" now. A task chip gets a neutral pill instead, naming its `list` (To-Do/Task/Projekt) — no
+  colour, deliberately: this app's four accent tones (forest/contour/overprint/signal) are already each
+  doing a job *within this exact chip* (overprint = the important star, signal = überfällig, contour = a
+  soon-due date, and now forest = homework), so a fifth meaning layered onto one of them would blur what
+  it already signals rather than add a new one. `DayPlanner::itemFromTask()`/`itemFromAgendaEntry()` carry
+  `list`/`subject` for this; the agenda item's `title` is now just the entry's own title (no more baked-in
+  "Subject: " prefix — the subject has its own tag), so the mobile day-picker sheet's header (reading
+  `.chip-title` straight off the DOM, not through Livewire) reconstructs "Subject: Title" from a
+  `data-subject` attribute carried alongside for exactly that purpose.
 - **`App\Livewire\Planner`** (`/app/planner`, `route('planner')`) — thinner than the block-based version:
   no longer needs `ManagesSchedule` at all (that was pulled in purely to reposition a block via the
   event-edit-sheet; the day-board doesn't show individual blocks as editable items any more, only each

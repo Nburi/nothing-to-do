@@ -108,7 +108,7 @@ class DayPlanner
      * TaskBoard::promoteHomeworkToday()) is represented by that task
      * instead, never listed twice.
      *
-     * @return Collection<int, array{type: string, id: int, title: string, duration: int, deadlineOffset: ?int, deadlineDate: ?Carbon, isImportant: bool}>
+     * @return Collection<int, array{type: string, id: int, title: string, list?: string, subject?: string, duration: int, deadlineOffset: ?int, deadlineDate: ?Carbon, isImportant: bool}>
      */
     public static function backlog(User $user): Collection
     {
@@ -401,7 +401,10 @@ class DayPlanner
      * buffered deadlineOffset the tier wave classifies days against, and
      * the human label Task::effectiveDateLabel() already knows how to
      * build (heute/morgen/weekday/d.m./überfällig) — no second
-     * date-formatting implementation here.
+     * date-formatting implementation here. `list` rides along so the chip
+     * can show a To-Do/Task/Projekt tag — the Planer board mixes all three
+     * (and homework) in one flat list, unlike the main board where the
+     * column itself already says which list a card belongs to.
      */
     private static function itemFromTask(Task $task, Carbon $today): array
     {
@@ -411,6 +414,7 @@ class DayPlanner
             'type' => 'task',
             'id' => $task->id,
             'title' => $task->title,
+            'list' => $task->list,
             'duration' => self::durationForTask($task),
             'hasEstimate' => $task->duration_minutes !== null,
             'deadlineOffset' => $info === null ? null : (int) $today->diffInDays($info['effective'], false),
@@ -419,6 +423,12 @@ class DayPlanner
         ];
     }
 
+    /**
+     * `subject` rides along separately from `title` (rather than baked in
+     * as "Subject: Title", the way a *promoted* Task's own title is built
+     * in resolveOrPromote() below) so the chip can show it as its own
+     * coloured tag instead of repeating it inline with the title text.
+     */
     private static function itemFromAgendaEntry(AgendaEntry $entry, Carbon $today): array
     {
         $effective = $entry->date->copy()->subDays(self::DEADLINE_BUFFER_DAYS);
@@ -426,7 +436,8 @@ class DayPlanner
         return [
             'type' => 'agenda',
             'id' => $entry->id,
-            'title' => "{$entry->subject}: {$entry->title}",
+            'title' => $entry->title,
+            'subject' => $entry->subject,
             'duration' => $entry->duration_minutes ?? self::DEFAULT_HOMEWORK_DURATION,
             'hasEstimate' => $entry->duration_minutes !== null,
             'deadlineOffset' => (int) $today->diffInDays($effective, false),

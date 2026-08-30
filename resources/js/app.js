@@ -594,6 +594,7 @@ function plannerChipInfo(el) {
         duration: parseInt(el.dataset.duration, 10) || 0,
         deadlineOffset: rawOffset !== undefined && rawOffset !== '' ? parseInt(rawOffset, 10) : null,
         title: el.querySelector('.chip-title')?.textContent.trim() || '',
+        subject: el.dataset.subject || null,
     };
 }
 
