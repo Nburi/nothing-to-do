@@ -1,6 +1,7 @@
 # Plan: To-Do-Listen-Konzepte (List Concepts)
 
-Status: **infra implemented, the four concepts themselves not yet.** Plan written on branch
+Status: **infra + "Eisenhower-Matrix" implemented; Simple/Kanban not yet on this branch lineage**
+(Simple was built independently as a sibling session — see below). Plan written on branch
 `feature/list-concepts-plan` (branched off `main` at commit `7fe5c7c`, 2026-08-31) — see
 "Housekeeping note" at the bottom for why that branches off `main` instead of
 `feature/feature-announcements` as originally instructed. The infra session described in §4
@@ -8,10 +9,22 @@ Status: **infra implemented, the four concepts themselves not yet.** Plan writte
 2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
 `partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card (including the
 real-data preview-thumbnail signature moment, §5 option C), and the `QuickCapture` hook — with
-the full automated suite green (1146 tests). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte"
-section and in `TODO.md`'s matching follow-up entry, which is also where the three remaining
-concept sessions (Simple/Eisenhower/Kanban) are tracked as next steps, each branching off
-`feature/list-concepts-infra`. **Not merged, not pushed.**
+the full automated suite green (1146 tests). The "Eisenhower-Matrix" concept session then landed
+on **`feature/list-concept-eisenhower`** (branched off `feature/list-concepts-infra`, 2026-08-31)
+— `eisenhower` flipped to `available: true`, `partials/board-eisenhower.blade.php` (desktop 2×2
+grid + mobile 4-tab layout), `TaskBoard::eisenhowerQuadrants()`/`reorderEisenhower()`/
+`setTodayEisenhower()`/`swipeIntentEisenhower()`, `Task::isUrgencyLocked()`, the `QuickCapture`
+quadrant tap-to-create pre-fill hook, and its own signature moment ("der Krisenring" — see §5's
+option list below, none of which this concept-level moment is either, same reasoning as
+`simple`'s own "Heute-Puls": it's scoped to this one concept's own grid UI, not the
+Settings-level switcher) — full automated suite green (1191 tests). **`feature/list-concept-simple`
+was built independently, as a sibling of this branch, also off `feature/list-concepts-infra`** —
+neither branch depends on the other or contains the other's commits; see CLAUDE.md/TODO.md for
+`simple`'s own status as of its own session. Full detail in CLAUDE.md's "To-Do-Listen-Konzepte"
+and "To-Do-Listen-Konzepte — 'Eisenhower-Matrix'" sections and in `TODO.md`'s matching follow-up
+entry, which is also where `kanban` — the one concept now left — is tracked as the next step,
+branching off `feature/list-concepts-infra` same as its two now-done siblings. **None of infra,
+`simple`, or `eisenhower` is merged or pushed.**
 
 Two small, deliberate deviations from this document, both explained in CLAUDE.md/TODO.md:
 - `ListConcepts::CATALOG` ships **all four** concepts now (with an `available` flag), rather than

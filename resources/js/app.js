@@ -177,6 +177,62 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
+ * "Eisenhower" concept's four quadrants (see TaskBoard::reorderEisenhower(),
+ * partials/board-eisenhower.blade.php). All four quadrant containers share
+ * one Sortable group ('eisenhower') so a card can be dragged straight from
+ * one to another, not just reordered within one — the vertical axis (row)
+ * is read off `data-important`, the horizontal axis (column) off
+ * `data-urgent`, both on the DESTINATION container, same shape as
+ * boardSortable's own data-list/data-today read.
+ *
+ * Deliberately its own small instance rather than boardSortable: this
+ * concept has no task-grouping gesture on its grid (grouping stays reachable
+ * via the group's own page / the edit sheet / QuickCapture, exactly as for
+ * every concept), so it skips sortableGroupBands()/groupZone entirely, and
+ * its onEnd writes two flags instead of a list/today pair.
+ *
+ * The urgency axis (column) is one-way-lockable: a task with a hard
+ * `deadline` has its urgency permanently decided by that deadline
+ * (Task::effectiveDate() always prefers deadline over due_date — see
+ * CLAUDE.md), so nothing a quadrant drop could write to due_date would ever
+ * actually move it. Silently accepting the drop and letting it snap back on
+ * the next render would be exactly the "UI lies" trap this app avoids
+ * everywhere else — so `put` rejects a column-crossing drop for a card
+ * carrying `data-urgency-locked="true"` up front, and the card visibly
+ * refuses to leave instead. Moving between rows (importance) is always
+ * allowed, locked or not — that axis never touches due_date at all.
+ */
+window.eisenhowerQuadrantSortable = function (el, wire, handle = null) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: {
+            name: 'eisenhower',
+            put: (to, from, dragEl) => {
+                if (dragEl.dataset.urgencyLocked === 'true' && to.el.dataset.urgent !== from.el.dataset.urgent) {
+                    return false;
+                }
+
+                return true;
+            },
+        },
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const to = evt.to;
+            if (to.dataset.important === undefined) return; // not a quadrant zone
+            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderEisenhower(to.dataset.important === 'true', to.dataset.urgent === 'true', ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * Desktop drag source AND drop target for the dashboard's "Bald fällige
  * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
  * instance:
@@ -852,6 +908,25 @@ document.addEventListener('livewire:init', () => {
             }, i * 70);
         });
     });
+
+    /**
+     * Eisenhower's "Krisenring" (see TaskBoard::trackEisenhowerCrisisEntries()
+     * and .eisenhower-crisis-ring in app.css) — a slow, calm wash across the
+     * "Wichtig & Dringend" quadrant the instant a task genuinely lands there,
+     * by drag, star-tap, date change, or a fresh quadrant-tap capture. Same
+     * dispatch-driven shape as weekplan-ripple above, not an x-init/wire:key
+     * trick — a nested x-data's x-init does not reliably re-fire on every
+     * Livewire morph, only a genuine node replacement does (see CLAUDE.md
+     * §10), so a dispatched event is what fires reliably on every relevant
+     * update, not just the first render.
+     */
+    Livewire.on('eisenhower-crisis', () => {
+        document.querySelectorAll('[data-eisenhower-quadrant="important_urgent"]').forEach((el) => {
+            el.classList.remove('eisenhower-crisis-ring');
+            void el.offsetWidth;
+            el.classList.add('eisenhower-crisis-ring');
+        });
+    });
 });
 
 document.addEventListener('alpine:init', () => {
@@ -942,7 +1017,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.store('quickCapture', {
         open: false,
         returnFocusTo: null,
-        show(trigger = null, target = null, groupId = null) {
+        show(trigger = null, target = null, groupId = null, extra = {}) {
             if (this.open) return;
             this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
             this.open = true;
@@ -956,8 +1031,12 @@ document.addEventListener('alpine:init', () => {
             // confirmation line, validation errors) — the round trip lands
             // while the panel is still animating in. `target` lets a page whose
             // subject matches one of the chips open straight on that chip;
-            // null means the usual Inbox default.
-            window.Livewire?.dispatch('quick-capture-opened', { target, groupId });
+            // null means the usual Inbox default. `extra` carries anything a
+            // specific trigger wants pre-filled beyond target/groupId — e.g. the
+            // "Eisenhower" concept's quadrant "+" passing { important, dueDate }
+            // (see partials/board-eisenhower.blade.php) — spread straight into
+            // the same event so QuickCapture::resetPanel() picks it up by name.
+            window.Livewire?.dispatch('quick-capture-opened', { target, groupId, ...extra });
             // Alpine.nextTick, not requestAnimationFrame: the panel's x-show has an
             // x-transition, so Alpine doesn't flip it off display:none synchronously —
             // nextTick is Alpine's own "wait until my DOM updates are flushed" API,

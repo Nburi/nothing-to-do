@@ -14,7 +14,11 @@
             @include('livewire.partials.board-three-things')
             @break
 
-        {{-- 'simple' / 'eisenhower' / 'kanban' — added by their own sessions,
+        @case('eisenhower')
+            @include('livewire.partials.board-eisenhower')
+            @break
+
+        {{-- 'simple' / 'kanban' — added by their own sessions,
              each its own @case + partials/board-<key>.blade.php. --}}
 
         @default

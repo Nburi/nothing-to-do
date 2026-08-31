@@ -16,29 +16,48 @@ Full automated suite green (1146 tests) at the time this landed. **Not merged, n
 
 Each remaining concept is its own session, branched off `feature/list-concepts-infra`:
 
-1. `feature/list-concept-simple` — add `simple` to `ListConcepts::CATALOG` (`available: true`),
-   `partials/board-simple.blade.php` (desktop + mobile), fill in `defaultCaptureList()`'s
-   already-correct `simple` branch, and build the `QuickCapture::availableTargets()`
-   chip-collapse (Inbox/ToDos/Tasks → one "Aufgabe" chip) that the infra session deliberately
-   left unbuilt — it was structurally unreachable/unverifiable before `simple` existed in the
-   catalog as available. Add its Settings preview thumbnail alongside `three_things`'s.
-2. `feature/list-concept-eisenhower` — same shape, 2×2 quadrant board reusing `is_important`/
-   `isUrgent()`, quadrant tap-to-create pre-filling those flags on the `QuickCapture` call.
-3. `feature/list-concept-kanban` — same shape, 3-column board reusing `toggleComplete()`/
-   `setToday()`/`Task::todayDateFor()` exactly as they exist today.
+1. ~~`feature/list-concept-simple`~~ — **done.** `simple` flipped to `available: true`,
+   `partials/board-simple.blade.php` (desktop + mobile, one flat sortable list),
+   `TaskBoard::simpleTasks()`/`reorderSimple()`/`setTodaySimple()`/`swipeIntentSimple()`, the
+   `QuickCapture::availableTargets()` chip-collapse and its Settings preview thumbnail — see
+   CLAUDE.md's "To-Do-Listen-Konzepte — 'Simple'" section. Branch `feature/list-concept-simple`,
+   off `feature/list-concepts-infra`. **Not merged, not pushed.** Verification was
+   automated-tests-only — a manual pass is still owed before merge.
+2. ~~`feature/list-concept-eisenhower`~~ — **done.** `eisenhower` flipped to `available: true`,
+   `partials/board-eisenhower.blade.php` (desktop 2×2 grid + mobile 4-tab layout),
+   `TaskBoard::eisenhowerQuadrants()`/`reorderEisenhower()`/`setTodayEisenhower()`/
+   `swipeIntentEisenhower()`, `Task::isUrgencyLocked()`, the `QuickCapture` quadrant tap-to-create
+   pre-fill hook (`$important`/`$dueDate` on `resetPanel()`), and its Settings preview thumbnail —
+   see CLAUDE.md's "To-Do-Listen-Konzepte — 'Eisenhower-Matrix'" section for the full detail,
+   including the "der Krisenring" signature moment and the deliberate two-pronged answer to "how
+   does a task move between quadrants" (existing card controls first, drag as a desktop-only
+   shortcut on top, locked against a hard deadline). Branch `feature/list-concept-eisenhower`, off
+   `feature/list-concepts-infra` — a **sibling** of `feature/list-concept-simple`, built
+   independently, neither depends on the other. Full automated suite green (1191 tests) at the
+   time this landed. **Not merged, not pushed.** Verification was automated-tests-only (explicit
+   instruction, avoiding a known dev-server-hang trap) — no browser click-through was done
+   (desktop drag gesture, the lock badge, the Krisenring's actual visual timing, both mobile
+   tabs); worth a manual pass before merging, same as `simple`.
+3. `feature/list-concept-kanban` — the one concept left. Same shape, 3-column board reusing
+   `toggleComplete()`/`setToday()`/`Task::todayDateFor()` exactly as they exist today. Branch off
+   `feature/list-concepts-infra`, same as its two now-done siblings.
 
 Expect small, predictable conflicts merging more than one concept branch back-to-back (each adds
-one `ListConcepts::CATALOG` entry + one `@case` in `task-board.blade.php`) — sequence the merges
-and re-resolve each array/switch by hand, per the plan's own coordination note (§8).
+one `ListConcepts::CATALOG` entry + one `@case` in `task-board.blade.php` + — as of `simple` and
+`eisenhower` both independently building the same "Heute badge has no spatial zone" answer — one
+duplicate `.today-toggle`/`.today-pulse-ring`/`@keyframes today-pulse` CSS rule to de-duplicate)
+— sequence the merges and re-resolve each array/switch/rule by hand, per the plan's own
+coordination note (§8).
 
-**Also deferred from infra, flagged but not done:**
+**Also deferred from infra, flagged but not done — still applies after both `simple` and
+`eisenhower` too:**
 - A draft, unpublished `App\Models\FeatureAnnouncement` for this feature (CLAUDE.md §3.11 would
   normally call for one on any user-facing feature) — skipped because it's admin-authored content
-  normally created through `AnnouncementEditor`'s own UI, and this session's verification was
-  automated-tests-only with no dev-server/browser access. Create one (title "Neu:
+  normally created through `AnnouncementEditor`'s own UI, and none of infra/`simple`/`eisenhower`
+  had dev-server/browser access to use that UI safely. Create one (title "Neu:
   Listen-Konzepte", unpublished) via the admin panel once merged, mentioning at least the
-  Settings card; update its description as each concept lands, publish once the whole batch (or
-  a decided subset) is ready.
+  Settings card and that "Simple" and "Eisenhower-Matrix" are both available; update its
+  description as `kanban` lands, publish once the whole batch (or a decided subset) is ready.
 
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 
