@@ -16,11 +16,13 @@ use App\Livewire\Planner;
 use App\Livewire\PrepareTomorrow;
 use App\Livewire\Progress;
 use App\Livewire\ProjectPage;
+use App\Livewire\PublicHelp;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
+use App\Models\HelpArticle;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -39,20 +41,53 @@ Route::get('/robots.txt', function () {
 })->name('robots');
 
 Route::get('/sitemap.xml', function () {
-    $sitemapUrl = url('/');
+    $entries = [
+        ['loc' => url('/'), 'changefreq' => 'monthly', 'priority' => '1.0'],
+        ['loc' => url('/hilfe'), 'changefreq' => 'weekly', 'priority' => '0.7'],
+    ];
+
+    // Every published Hilfe-Center article gets its own entry — this is the
+    // whole reason the public Hilfe-Center route exists (see App\Livewire\
+    // PublicHelp): real, indexable content beyond the single landing page.
+    // A row somehow missing a slug (shouldn't happen — see HelpArticle::
+    // generateSlug()) is skipped rather than emitting a broken /hilfe/ URL.
+    foreach (HelpArticle::published()->whereNotNull('slug')->get() as $article) {
+        $entries[] = [
+            'loc' => url('/hilfe/'.$article->slug),
+            'changefreq' => 'weekly',
+            'priority' => '0.6',
+            'lastmod' => $article->updated_at->toDateString(),
+        ];
+    }
+
+    $urls = collect($entries)->map(function ($entry) {
+        $lastmod = isset($entry['lastmod']) ? "\n            <lastmod>{$entry['lastmod']}</lastmod>" : '';
+
+        return <<<XML
+            <url>
+                <loc>{$entry['loc']}</loc>{$lastmod}
+                <changefreq>{$entry['changefreq']}</changefreq>
+                <priority>{$entry['priority']}</priority>
+            </url>
+        XML;
+    })->implode("\n");
+
     $xml = <<<XML
     <?xml version="1.0" encoding="UTF-8"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-        <url>
-            <loc>{$sitemapUrl}</loc>
-            <changefreq>monthly</changefreq>
-            <priority>1.0</priority>
-        </url>
+    {$urls}
     </urlset>
     XML;
 
     return response($xml)->header('Content-Type', 'application/xml');
 })->name('sitemap');
+
+// Public, guest-readable mirror of the Hilfe-Center — see App\Livewire\
+// PublicHelp for why this is a separate route/component from /app/help
+// rather than that one made guest-safe. Deliberately outside /app, so
+// robots.txt's blanket "Disallow: /app" doesn't also block this.
+Route::get('/hilfe/{slug?}', PublicHelp::class)
+    ->name('help.public');
 
 Route::get('/app', TaskBoard::class)
     ->middleware('auth')

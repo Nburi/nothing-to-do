@@ -1958,6 +1958,13 @@ write into, triaged by admins. Two halves, two audiences: the docs are admin-aut
 own. Neither is in `AppModules::CATALOG` — like the Board and Settings, "how do I get help" must always stay
 reachable regardless of what a user has decluttered.
 
+**Published articles are also readable by nobody at all** — a public, guest-facing mirror at `/hilfe`
+(`App\Livewire\PublicHelp`, see below) exists purely for SEO: `/app/help` sits behind `auth` middleware
+*and* `robots.txt`'s `Disallow: /app`, so none of this content could ever be indexed by a search engine
+without a separate, genuinely public route. This doesn't change the "every account reads" framing above —
+it *adds* "and so can anyone who isn't an account yet," which is the whole point of publishing help content
+in the first place.
+
 - **`App\Models\HelpCategory`** — `name, parent_id (nullable self-FK, nullOnDelete), sort_order`. One level
   of subfolders via a self-referencing FK (`children()`/`parent()`) — nothing stops deeper nesting in the
   data, but `tree()` and the sidebar view only ever render two levels, matching what was actually asked for
@@ -1968,12 +1975,23 @@ reachable regardless of what a user has decluttered.
   back to "Ohne Kategorie" and any subcategory back to top-level; nothing is ever lost, mirroring
   `EventCategory`'s own deletion philosophy. The admin tree always renders an "Ohne Kategorie" bucket (even
   when empty) specifically so an orphaned article from a deleted category is never silently hidden.
-- **`App\Models\HelpArticle`** — `title, content (longtext, full Markdown), help_category_id?, created_by?,
-  is_published, published_at?, sort_order`. Same draft/publish shape as `FeatureAnnouncement`
+- **`App\Models\HelpArticle`** — `title, slug, content (longtext, full Markdown), help_category_id?,
+  created_by?, is_published, published_at?, sort_order`. Same draft/publish shape as `FeatureAnnouncement`
   (`togglePublished()` stamps `published_at` only the first time). `renderMarkdown()` is the same approach as
   every other Markdown field in this app (`Str::markdown` with `html_input=strip`/`allow_unsafe_links=false`
   plus the `++underline++` `UnderlineExtension`) — GFM tables/task-lists need no extra config, since
   `Str::markdown()` already wraps League CommonMark's `GithubFlavoredMarkdownConverter`.
+- **`slug`** carries real keywords into the public URL (`/hilfe/{slug}`) instead of a bare numeric id —
+  the authenticated `/app/help/{id}` stays id-based, unchanged, since it's never crawled and there's nothing
+  to gain there. `HelpArticle::generateSlug(title, ?ignoreId)` (`Str::slug()` plus a `-2`/`-3`/… suffix on
+  collision, the same re-roll shape `AgendaSpace::generateInviteCode()` already uses) is called from two
+  places in `HelpEditor`: once at `createArticle()`, and again on every `updatedFormTitle()` **while the
+  article is still a draft** — the slug tracks the title exactly like the rest of this "continuous writing
+  surface" autosaves. It **freezes the moment the article is published** (the same "stamped once, never
+  moves again" rule `published_at` itself already follows, just applied to the URL): once a page might be
+  indexed, a stable URL matters more than the slug matching a later title tweak. The admin editor shows the
+  live slug as a small `/hilfe/{slug}` label next to the published/draft badge — read-only, no separate
+  editing UI, since the title field already drives it.
 - **Checklists inside an article are per-reader and never persisted** — identical mechanism to why this
   matters elsewhere in this app: GFM's task-list checkboxes render with a hardcoded `disabled` attribute,
   and `renderMarkdown()` strips it via a small regex and does *nothing else*. An enabled `<input
@@ -2040,6 +2058,34 @@ reachable regardless of what a user has decluttered.
   $event.target.value)"`, saves immediately, no confirm step — a status is trivially reversible, unlike a
   delete), and a per-row response editor (`startResponding`/`saveResponse`, clears `responded_by` whenever
   the response text is cleared rather than leaving a stale attribution).
+- **`App\Livewire\PublicHelp`** (`/hilfe/{slug?}`, `route('help.public')`) — the guest-readable mirror, no
+  `auth` middleware. Deliberately a *separate* route/component/view from `App\Livewire\Help` rather than
+  making that one guest-safe: `Help` renders inside `layouts.app`, which assumes an authenticated account
+  throughout (the header's avatar menu, `HeaderBadges`, `QuickCapture`, the presence heartbeat…) — auditing
+  every one of those for a null user would be a much larger blast radius than one small, self-contained
+  public page. `PublicHelp` owns its own layout, `layouts/public.blade.php` (a stripped header with just
+  Anmelden/Loslegen, `@livewireStyles`/`@livewireScripts`, no board furniture at all) — the same "a public
+  page is its own self-contained thing" precedent `welcome.blade.php` already set, just via a real Livewire
+  `#[Layout]`-less-attribute page component this time (its `render()` calls the `->layout('layouts.public',
+  [...])` fluent API directly, since the per-article title/description/canonical/JSON-LD are dynamic and a
+  static `#[Layout(...)]` attribute can't carry computed data). **`partials/help-sidebar.blade.php`** — the
+  category → subcategory → article nav tree — is shared between `Help` and `PublicHelp` (parameterized by an
+  `$articleHref` closure, since the two link to different routes) so the two readers can never drift apart,
+  the same "one shared partial" pattern `announcement-toast-card.blade.php` already established.
+  - **Per-page SEO**: dynamic `<title>`/`<meta description>`/canonical/OG tags (article pages get
+    `og:type=article`), plus a plain `Article` JSON-LD schema (`headline`/`description`/`datePublished`/
+    `dateModified`/`mainEntityOfPage`) on an article page only — the index has no single headline to anchor
+    one to, and a site-wide `WebSite`/`Organization` schema was left for later (see TODO.md) rather than
+    bundled into this pass.
+  - **No interactive feedback for guests** — a guest has no account to file a `SupportRequest` against, so
+    the "War das hilfreich? → Nein" flow doesn't call `$wire.openFollowup()`/`sendFollowupFeedback()` here
+    at all; "Nein" instead shows a plain "Leg ein kostenloses Konto an" link to `route('register')`. The
+    checklist-checkboxes-aren't-saved note is unchanged — that's pure client-side HTML behaviour, identical
+    for a guest.
+  - **Discoverability** — `welcome.blade.php`'s footer carries a plain `<a href="/hilfe">Hilfe</a>` (a real,
+    crawlable link, not just a sitemap entry), and `/sitemap.xml` now loops every `HelpArticle::published()`
+    row with a slug into its own `<url>` entry (plus `/hilfe` itself) alongside the existing `/` entry —
+    `robots.txt` needed no change, since `/hilfe` was never under its `Disallow: /app` in the first place.
 - **Nav** — one unconditional "Hilfe" link in the profile dropdown (next to Profil/Einstellungen, not the
   "Mehr" menu — this is account-level infrastructure, not a workflow tool), and, for an admin, two further
   links ("Hilfe-Center verwalten", "Support-Anfragen") mirroring "Ankündigungen verwalten"'s placement.
@@ -2050,6 +2096,11 @@ reachable regardless of what a user has decluttered.
   conversation), deeper category nesting than two levels, drag-to-reorder categories/articles (creation order
   only, via `sort_order`, for now), email/push notification on a status change, and any read/view tracking on
   help articles.
+- Deliberately out of scope for the public-mirror pass specifically: a site-wide `WebSite`/`Organization`
+  JSON-LD schema (only a per-article `Article` schema was added), `BreadcrumbList` structured data for the
+  category path, an `og:image` sized for social previews rather than the reused 512×512 app icon, and a
+  manual slug-editing field in the admin editor (the slug just tracks the title automatically — see above).
+  See `TODO.md`, "Ideas, not committed" for these and the rest of the SEO backlog.
 
 ### Task-Gruppen (built)
 

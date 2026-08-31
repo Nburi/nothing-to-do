@@ -158,3 +158,31 @@ the route once mail is actually configured.
   Fixing this for real means deciding *where* a deletion should reach back and clear `task_source` too (a
   model observer on `Project`/`TaskGroup`/`AgendaEntry`, most likely) — an architectural add, not a quick
   patch, and the externally-visible behavior (the row label) is already honest in the meantime.
+
+## SEO backlog
+
+The public Hilfe-Center mirror (`/hilfe`, `App\Livewire\PublicHelp` — see CLAUDE.md, "Hilfe-Center &
+Support") plus its slug URLs, `Article` JSON-LD, and the extended `/sitemap.xml` shipped 2026-08-31. It's a
+foundation, not a finished result: with zero published articles it has nothing to actually rank for — the
+next real step is Niels writing genuine content in the admin editor (`/app/admin/help`), not more code. The
+rest of a broader Google-search-performance pass, roughly in order of expected payoff:
+
+- **Google Search Console / Bing Webmaster Tools verification.** Can't be confirmed or set up from the
+  codebase — worth checking whether either is already connected for the production domain, since search
+  performance can't be measured (or a sitemap manually resubmitted) without it.
+- **Impressum / Datenschutz (privacy policy) page.** Missing entirely. Besides being a Swiss legal
+  expectation for a public-facing site, its absence can quietly hurt trust signals, and some
+  directories/backlink sources require one before they'll list a site at all.
+- **A proper social-preview `og:image`** (1200×630, purpose-made) instead of reusing the 512×512 app icon —
+  affects `welcome.blade.php` and the new `layouts/public.blade.php` alike, both currently point at
+  `icons/icon-512.png`.
+- **Site-wide `WebSite`/`Organization` JSON-LD** plus `BreadcrumbList` structured data for the Hilfe-Center's
+  category path — the public mirror only got a per-article `Article` schema (see CLAUDE.md); a full schema
+  pass across the marketing page and category hierarchy was left for later.
+- **An FAQ section (with FAQ schema) on the landing page** — an easy rich-result win, and it answers real
+  long-tail queries the single hero/feature-grid page currently doesn't address.
+- **Core Web Vitals audit.** The foundation is solid (Vite build, self-hosted fonts, PWA service worker,
+  no render-blocking Google Fonts request) but nobody has actually run Lighthouse/PageSpeed Insights against
+  the deployed production URL — worth doing once there's a live URL to point it at, rather than guessing.
+- **Backlinks / directory listings** (Product Hunt, Swiss startup directories, etc.) — outside of anything
+  code can do, flagged here so it isn't forgotten.

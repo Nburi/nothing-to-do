@@ -215,6 +215,43 @@ class AdminHelpEditorTest extends TestCase
         }
     }
 
+    public function test_creating_an_article_stamps_a_slug_from_its_initial_title(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        Livewire::actingAs($admin)->test(HelpEditor::class)->call('createArticle', null);
+
+        $this->assertSame('neuer-artikel', HelpArticle::sole()->slug);
+    }
+
+    public function test_the_slug_tracks_the_title_while_still_a_draft(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $article = HelpArticle::create(['title' => 'Alt', 'slug' => 'alt', 'is_published' => false]);
+
+        Livewire::actingAs($admin)->test(HelpEditor::class)
+            ->call('startEdit', $article->id)
+            ->set('formTitle', 'Neuer Titel');
+
+        $this->assertSame('neuer-titel', $article->fresh()->slug);
+    }
+
+    public function test_the_slug_freezes_once_the_article_is_published(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $article = HelpArticle::create([
+            'title' => 'Ursprünglicher Titel', 'slug' => 'ursprunglicher-titel', 'is_published' => true,
+        ]);
+
+        Livewire::actingAs($admin)->test(HelpEditor::class)
+            ->call('startEdit', $article->id)
+            ->set('formTitle', 'Ganz anderer Titel');
+
+        $fresh = $article->fresh();
+        $this->assertSame('Ganz anderer Titel', $fresh->title);
+        $this->assertSame('ursprunglicher-titel', $fresh->slug);
+    }
+
     public function test_the_tree_nests_subcategories_under_their_parent(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

@@ -6,6 +6,7 @@ use App\Support\Markdown\Markdown;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * One Hilfe-Center page — admin-authored, read by every account once
@@ -18,6 +19,7 @@ class HelpArticle extends Model
 
     protected $fillable = [
         'title',
+        'slug',
         'content',
         'help_category_id',
         'created_by',
@@ -43,6 +45,39 @@ class HelpArticle extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * A URL-safe, unique slug derived from $title — re-rolls with a "-2",
+     * "-3", … suffix on collision rather than letting the unique index
+     * throw, the same pattern AgendaSpace::generateInviteCode() already uses
+     * for its own collision handling. $ignoreId excludes the article being
+     * edited from its own collision check. An empty/all-punctuation title
+     * (e.g. the placeholder "Neuer Artikel" stripped of nothing, or a title
+     * of just emoji) falls back to "artikel" rather than persisting a blank
+     * slug — the public route has nothing to key on otherwise.
+     */
+    public static function generateSlug(string $title, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($title);
+
+        if ($base === '') {
+            $base = 'artikel';
+        }
+
+        $slug = $base;
+        $suffix = 2;
+
+        while (
+            self::where('slug', $slug)
+                ->when($ignoreId !== null, fn (Builder $q) => $q->whereKeyNot($ignoreId))
+                ->exists()
+        ) {
+            $slug = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $slug;
     }
 
     /**
