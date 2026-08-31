@@ -118,7 +118,24 @@ class KanbanBoardTest extends TestCase
         Livewire::actingAs($user)->test(TaskBoard::class)->assertDontSee('Not mine');
     }
 
-    // ── setKanbanColumn() — the per-card move pill ───────────────────────
+    // ── board-kanban.blade.php — the move pill is gone, drag/swipe only ──
+
+    public function test_the_per_card_move_pill_no_longer_exists(): void
+    {
+        $user = $this->kanbanUser();
+        Task::factory()->for($user)->tasks()->create(['title' => 'Backlog task']);
+        Task::factory()->for($user)->tasks()->today()->create(['title' => 'In progress task']);
+
+        $html = Livewire::actingAs($user)->test(TaskBoard::class)->html();
+
+        $this->assertStringNotContainsString('setKanbanColumn(', $html);
+        $this->assertStringNotContainsString('kanban-move-pill', $html);
+        $this->assertStringNotContainsString('kanban-move-pulse', $html);
+        $this->assertStringNotContainsString('→ In Arbeit', $html);
+        $this->assertStringNotContainsString('← Backlog', $html);
+    }
+
+    // ── setKanbanColumn() — still the shared primitive behind mobile swipe ──
 
     public function test_moving_a_backlog_task_into_in_progress_flags_it_today(): void
     {

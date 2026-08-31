@@ -1020,10 +1020,12 @@ class TaskBoard extends Component
     }
 
     /**
-     * The per-card move pill (Backlog ⇄ In Arbeit — see
-     * board-kanban.blade.php) and Kanban's own mobile "advance" swipe both
-     * land here for a single card. The Erledigt transitions never call
-     * this directly: the checkbox already on every card calls
+     * Single-card column move. The desktop board no longer has a per-card
+     * button for this (see board-kanban.blade.php — the Backlog ⇄ In Arbeit
+     * pill was removed as pure redundancy once drag between the same two
+     * columns already existed); this is now reached only by Kanban's mobile
+     * "advance" swipe (swipeIntentKanban() below). The Erledigt transitions
+     * never call this directly: the checkbox already on every card calls
      * ManagesTasks::toggleComplete() itself, which is exactly what this
      * method would do for that axis too.
      */

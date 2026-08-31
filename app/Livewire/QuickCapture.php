@@ -93,8 +93,8 @@ class QuickCapture extends Component
 
     /**
      * ListConcepts' one QuickCapture hook: which target the panel opens on by
-     * default. Every concept except 'simple' wants today's Inbox default —
-     * see ListConcepts::defaultCaptureList().
+     * default — see ListConcepts::defaultCaptureList() for which concepts
+     * want the Inbox default vs. writing straight to a real task.
      */
     public function mount(): void
     {
@@ -108,6 +108,16 @@ class QuickCapture extends Component
      * Hiding a module has to remove its capture entry point too, or "hide
      * everything except Agenda" would stay half-done.
      *
+     * Under the "Kanban" concept, Inbox/To-Dos/Tasks additionally collapse
+     * into the single 'tasks' target — Kanban ignores `list` for display
+     * entirely (see TaskBoard::kanbanColumns(), ListConcepts), so offering
+     * three separate chips advertises a distinction that has no effect on
+     * this board. 'tasks' is what's kept, not a new target: it's already
+     * what ListConcepts::defaultCaptureList() returns for 'kanban', and
+     * save()'s existing 'default' arm already writes any TASK_TARGETS value
+     * straight to `list`, so no new capture logic exists, only which chips
+     * are offered.
+     *
      * @return list<string>
      */
     #[Computed]
@@ -115,7 +125,7 @@ class QuickCapture extends Component
     {
         $user = auth()->user();
 
-        return array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
+        $targets = array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
             $moduleKey = match ($target) {
                 'craft' => 'crafts',
                 'agenda' => 'agenda',
@@ -124,11 +134,27 @@ class QuickCapture extends Component
 
             return $moduleKey === null || AppModules::isVisible($user, $moduleKey);
         }));
+
+        if (ListConcepts::for($user) === 'kanban') {
+            $targets = array_values(array_filter($targets, fn (string $t) => ! in_array($t, ['inbox', 'todos'], true)));
+        }
+
+        return $targets;
     }
 
-    /** Human label per target — used for the chips and the confirmation line. */
+    /**
+     * Human label per target — used for the chips and the confirmation line.
+     * 'tasks' reads "Aufgabe" under the "Kanban" concept (see
+     * availableTargets() above) rather than "Task" — once Inbox/To-Dos are
+     * gone from the row, "Task" would misleadingly imply the size
+     * distinction 3 Things makes, which this concept doesn't.
+     */
     public static function labelFor(string $target): string
     {
+        if ($target === 'tasks' && auth()->user() && ListConcepts::for(auth()->user()) === 'kanban') {
+            return 'Aufgabe';
+        }
+
         return match ($target) {
             'todos' => 'To-Do',
             'tasks' => 'Task',

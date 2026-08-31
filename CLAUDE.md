@@ -1752,26 +1752,28 @@ other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_c
   Unlike Eisenhower's/Simple's own "done" strip (an overflow area outside their real grid),
   **Erledigt is one of Kanban's three named columns** — the whole point of the concept — so it's a
   full grid column, not an afterthought below it.
-- **Own UX question this concept has that no other one does: how does a task actually move
-  between columns?** Two complementary answers:
-  1. **The Backlog ⇄ In Arbeit axis (`is_today`) gets exactly one new per-card control**, since
-     nothing else in the app already has one: a small pill on every Backlog/In Arbeit card
-     (`TaskBoard::setKanbanColumn()`) whose label always names the *destination* ("→ In Arbeit" /
-     "← Backlog"), not the current state. **The Erledigt axis (`is_completed`) needs no new
-     control at all** — the checkbox already on every card everywhere in this app
-     (`ManagesTasks::toggleComplete()`) already does exactly this, unchanged; a done card
-     therefore carries no move pill, only the checkbox.
-  2. **Drag, as a spatial shortcut on top of #1 — one shared Sortable group ('kanban') across all
-     three columns**, desktop grid and mobile tab panels alike (`window.kanbanColumnSortable` in
-     `app.js`, mirroring Eisenhower's own "one group name reused across every zone" shape). The
-     **Erledigt zone is drop-only** (`pull: false`, `sort: false`): a completed task card never
-     carries `data-id` anywhere in this app (`task-card.blade.php`'s/`task-card-mobile.blade.php`'s
-     own `@unless($task->is_completed)` — a pre-existing, app-wide convention this concept did not
-     invent). A card being *completed* by drag still works fine — it carried its `data-id` right
-     up until it landed there — but a card already sitting in Erledigt has none, so letting it act
-     as a drag *source* would silently fail to persist and the UI would lie. Refusing that
-     up front (rather than discovering it the hard way) keeps the one, already-established way to
-     un-complete a card — the checkbox — the only way out of Erledigt on every breakpoint.
+- **How does a task actually move between columns?** The Backlog ⇄ In Arbeit axis (`is_today`)
+  moves purely by **drag — one shared Sortable group ('kanban') across all three columns**, desktop
+  grid and mobile tab panels alike (`window.kanbanColumnSortable` in `app.js`, mirroring
+  Eisenhower's own "one group name reused across every zone" shape). Mobile additionally keeps the
+  existing right-swipe "advance" gesture (`TaskBoard::swipeIntentKanban()`) as a second way to move
+  a card forward a column, same as every other drag-capable zone in this app stays swipeable too.
+  The **Erledigt zone is drop-only** (`pull: false`, `sort: false`): a completed task card never
+  carries `data-id` anywhere in this app (`task-card.blade.php`'s/`task-card-mobile.blade.php`'s
+  own `@unless($task->is_completed)` — a pre-existing, app-wide convention this concept did not
+  invent). A card being *completed* by drag still works fine — it carried its `data-id` right
+  up until it landed there — but a card already sitting in Erledigt has none, so letting it act
+  as a drag *source* would silently fail to persist and the UI would lie. Refusing that
+  up front (rather than discovering it the hard way) keeps the one, already-established way to
+  un-complete a card — the checkbox — the only way out of Erledigt on every breakpoint.
+  **Earlier iteration, replaced:** the first shipped version additionally had a small per-card pill
+  on every Backlog/In Arbeit card (`TaskBoard::setKanbanColumn()`, still the shared single-task
+  primitive both the drag zone and the swipe gesture write through), labelled with the destination
+  ("→ In Arbeit" / "← Backlog") — the "Zielfarbe voraus" signature moment below described its pulse.
+  Removed in a later bugfix pass as pure redundancy once drag already moved a card between the exact
+  same two columns — a control duplicating a gesture that already exists needs a real reason to
+  stay, and there wasn't one once actually compared side by side. `setKanbanColumn()` itself wasn't
+  removed — it's still what `swipeIntentKanban()`'s 'advance' intent calls internally.
   `TaskBoard::applyKanbanColumn()` is the shared single-task primitive both `setKanbanColumn()` and
   the batch `reorderKanban()` (desktop drag's `onEnd` handler) build on: it reuses
   `ManagesTasks::toggleComplete()` **verbatim** for the `is_completed` axis — celebration/streak/
@@ -1806,12 +1808,11 @@ other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_c
   prior behavior) — and since neither `simple` nor `eisenhower` touches this file or `app.js`'s
   `swipeCard` themselves, the fix carries over cleanly regardless of which order the three branches
   get merged in, silently fixing their own latent bug too. See `TODO.md`.
-- **Signature moment — "Zielfarbe voraus" (target color ahead).** Tapping a move pill washes a
-  ring in the color of the column the card is heading **toward**, not one fixed color — `contour`
-  for advancing into In Arbeit, a neutral `ink` for retreating to Backlog — set per button instance
-  via a `--kanban-pulse-color` CSS custom property (`.kanban-move-pulse` in `app.css`, same ring
-  shape/timing as Simple's own single-color "Heute-Puls", just parameterized instead of fixed) so
-  the pulse itself tells you which way the card is going before the round trip confirms it.
+- **The "Zielfarbe voraus" (target color ahead) pill pulse is gone**, along with the pill itself —
+  see the "Earlier iteration, replaced" note above. `.kanban-move-pill`/`.kanban-move-pulse`/
+  `@keyframes kanban-move-pulse` were removed from `app.css`; there is no signature moment standing
+  in for it, since drag/swipe are now the only ways to move a card and need no extra confirmation
+  beyond the card actually landing in its new column.
 - **Settings' preview thumbnail** — a fourth branch in the "Listen-Konzept" card's real-data
   preview renders **two** mini-columns, Backlog and In Arbeit (up to two real task titles each,
   same "—" empty placeholder as every other concept's thumbnail) — deliberately **no Erledigt
@@ -1823,16 +1824,29 @@ other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_c
   other session in this batch: admin-authored content needs the admin UI, and this session's
   verification was explicitly test-suite-only, with no browser access to use that UI safely.
   Flagged here and in `TODO.md`.
+- **`QuickCapture`'s chip-collapse, added in a later bugfix pass:** `availableTargets()` drops
+  `'inbox'`/`'todos'` from the chip row under `kanban` (kept: `'tasks'`, plus group/project/craft/
+  agenda per the existing module-visibility filter), `labelFor('tasks')` reads "Aufgabe" instead of
+  "Task", and `ListConcepts::defaultCaptureList()` now returns `'tasks'` for `kanban` too (previously
+  `'inbox'`) — mirroring the fix Simple's own QuickCapture chip-collapse already has, applied here
+  because Kanban's board ignores `list` for display just as completely (a plain Inbox/To-Do/Task
+  capture all land in the same place: Backlog). This **revises** the original session's own
+  reasoning below ("Backlog is already capture's natural landing spot for every list value" was true
+  functionally, but didn't account for the three chips still advertising a distinction the board
+  doesn't have) — see `QuickCaptureListConceptTest.php`.
 - Deliberately out of scope for this session (tracked in `PLAN_LIST_CONCEPTS.md` §7/§8 and
   `TODO.md`): Simple/Eisenhower themselves (built independently on their own sibling branches),
   user-defined/renameable columns (ships with the fixed Backlog/In Arbeit/Erledigt set, per the
-  plan), any `QuickCapture` changes (none needed — Backlog is already capture's natural landing
-  spot for every list value), the still-unwritten `FeatureAnnouncement` draft (see above), and a
-  board-morph/FLIP animation (explicitly deferred at the infra level already). Verification for
-  this session was automated-tests-only (per explicit instruction, same known dev-server-hang trap
-  the other two sessions avoided) — a manual browser pass (both breakpoints, the drag gesture
-  across all three columns, the move pill's pulse colors, the checkbox-driven Erledigt transitions)
-  is still owed before merge.
+  plan), the still-unwritten `FeatureAnnouncement` draft (see above), and a board-morph/FLIP
+  animation (explicitly deferred at the infra level already). Verification for this session was
+  automated-tests-only (per explicit instruction, same known dev-server-hang trap the other two
+  sessions avoided) — a manual browser pass (both breakpoints, the drag gesture across all three
+  columns, the checkbox-driven Erledigt transitions) is still owed before merge.
+- **Bugfix pass (later commits on this same branch):** removed the per-card move pill (see "How
+  does a task actually move between columns?" above) and added the `QuickCapture` chip-collapse
+  described just above. Verification was automated-tests-only again, for the same known
+  dev-server-hang reason. Full suite green (1187 tests, one pre-existing unrelated risky test in
+  `CraftIdeasTest`).
 
 ### Onboarding-Tutorial (built)
 

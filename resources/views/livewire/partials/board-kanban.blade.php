@@ -6,33 +6,33 @@
     App\Services\ListConcepts, TaskBoard::kanbanColumns() and
     PLAN_LIST_CONCEPTS.md §1/§3.
 
-    Own UX question this concept has that no other one does: how does a
-    task actually MOVE between columns? Two complementary answers:
-      1. The Backlog ⇄ In Arbeit axis (is_today) has no existing per-card
-         control anywhere else in the app, so this concept adds exactly
-         one: a small pill on each Backlog/In Arbeit card
-         (TaskBoard::setKanbanColumn()) — its label always names the
-         DESTINATION, not the current state. The Erledigt axis
-         (is_completed) already has one: the checkbox every card already
-         carries everywhere in this app (ManagesTasks::toggleComplete()) —
-         reused completely unchanged, not duplicated.
-      2. Drag, as a spatial shortcut on top of #1 — one shared Sortable
-         group across all three columns (desktop grid + mobile tab panels),
-         see window.kanbanColumnSortable in app.js. Erledigt is drop-only
-         there (see that function's own docblock for why: a completed card
-         carries no data-id anywhere in this app, so dragging one back OUT
-         would silently fail to persist — the checkbox is the one, already-
-         established way back out, on every breakpoint).
+    How does a task actually MOVE between columns? The Backlog ⇄ In Arbeit
+    axis (is_today) moves purely by drag — one shared Sortable group across
+    all three columns (desktop grid + mobile tab panels), see
+    window.kanbanColumnSortable in app.js. Erledigt is drop-only there (see
+    that function's own docblock for why: a completed card carries no
+    data-id anywhere in this app, so dragging one back OUT would silently
+    fail to persist — the checkbox already on every card
+    (ManagesTasks::toggleComplete()) is the one, already-established way
+    back out, on every breakpoint). Mobile additionally keeps the existing
+    right-swipe "advance" gesture (TaskBoard::swipeIntentKanban()) as a
+    second way to move a card forward a column, same as every other
+    drag-capable zone in this app stays swipeable too.
+
+    Earlier iteration, replaced: the first shipped version also had a small
+    per-card pill (TaskBoard::setKanbanColumn(), still the shared primitive
+    both the drag zone and the swipe gesture write through) on every
+    Backlog/In Arbeit card, labelled with the destination column — "der
+    Zielfarbe voraus" signature moment, a pulse coloured toward wherever the
+    card was heading. Removed as pure redundancy once drag already moves a
+    card between the exact same two columns — a control duplicating a
+    gesture that already exists needs a real reason to stay, and there
+    wasn't one once actually compared side by side.
 
     Companion features (Vorbereitung, Notfallmodus, Zeitplan/focus timer,
     Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
     requirement 6 — the same top-of-page furniture as board-three-things.php
     renders here unchanged.
-
-    Signature moment — "Zielfarbe voraus": tapping a move pill washes a ring
-    in the color of the column the card is heading TOWARD (contour for
-    advancing into In Arbeit, a neutral ink for retreating to Backlog)
-    rather than one fixed color — see .kanban-move-pulse in app.css.
 --}}
 @php
     $columnMeta = [
@@ -42,7 +42,7 @@
         ],
         'in_progress' => [
             'label' => 'In Arbeit',
-            'empty' => 'Nichts gerade in Arbeit — zieh eine Karte her oder schieb sie mit „→ In Arbeit" weiter.',
+            'empty' => 'Nichts gerade in Arbeit — zieh eine Karte her.',
         ],
         'done' => [
             'label' => 'Erledigt',
@@ -76,47 +76,7 @@
                             x-init="window.kanbanColumnSortable($el, $wire)"
                         >
                             @forelse ($this->kanbanColumns[$key] as $task)
-                                <div wire:key="kb-row-{{ $task->id }}">
-                                    @if ($key === 'backlog')
-                                        <div class="flex items-start gap-1.5">
-                                            <button
-                                                type="button"
-                                                x-data="{ pulsing: false }"
-                                                @click="pulsing = true; setTimeout(() => pulsing = false, 700)"
-                                                wire:click="setKanbanColumn({{ $task->id }}, 'in_progress')"
-                                                style="--kanban-pulse-color: rgb(var(--contour))"
-                                                class="kanban-move-pill mt-2.5 flex-none whitespace-nowrap rounded-full border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-faint transition hover:border-contour hover:text-contour focus:outline-none focus-visible:ring-2 focus-visible:ring-contour"
-                                                aria-label="In Arbeit nehmen: {{ $task->title }}"
-                                            >
-                                                <span x-show="pulsing" x-cloak class="kanban-move-pulse" aria-hidden="true"></span>
-                                                → In Arbeit
-                                            </button>
-                                            <div class="min-w-0 flex-1">
-                                                @include('livewire.partials.task-card', ['task' => $task])
-                                            </div>
-                                        </div>
-                                    @elseif ($key === 'in_progress')
-                                        <div class="flex items-start gap-1.5">
-                                            <button
-                                                type="button"
-                                                x-data="{ pulsing: false }"
-                                                @click="pulsing = true; setTimeout(() => pulsing = false, 700)"
-                                                wire:click="setKanbanColumn({{ $task->id }}, 'backlog')"
-                                                style="--kanban-pulse-color: rgb(var(--ink))"
-                                                class="kanban-move-pill mt-2.5 flex-none whitespace-nowrap rounded-full border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-faint transition hover:border-ink hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
-                                                aria-label="Zurück in den Backlog: {{ $task->title }}"
-                                            >
-                                                <span x-show="pulsing" x-cloak class="kanban-move-pulse" aria-hidden="true"></span>
-                                                ← Backlog
-                                            </button>
-                                            <div class="min-w-0 flex-1">
-                                                @include('livewire.partials.task-card', ['task' => $task])
-                                            </div>
-                                        </div>
-                                    @else
-                                        @include('livewire.partials.task-card', ['task' => $task])
-                                    @endif
-                                </div>
+                                @include('livewire.partials.task-card', ['task' => $task])
                             @empty
                                 <p class="px-1 py-3 text-center text-xs leading-relaxed text-ink-faint">{{ $meta['empty'] }}</p>
                             @endforelse
@@ -164,28 +124,12 @@
                         x-init="window.kanbanColumnSortable($el, $wire, '[data-drag-handle]')"
                     >
                         @forelse ($this->kanbanColumns[$key] as $task)
-                            <div wire:key="kb-mrow-{{ $task->id }}">
-                                @if ($key !== 'done')
-                                    <button
-                                        type="button"
-                                        x-data="{ pulsing: false }"
-                                        @click="pulsing = true; setTimeout(() => pulsing = false, 700)"
-                                        wire:click="setKanbanColumn({{ $task->id }}, '{{ $key === 'backlog' ? 'in_progress' : 'backlog' }}')"
-                                        style="--kanban-pulse-color: {{ $key === 'backlog' ? 'rgb(var(--contour))' : 'rgb(var(--ink))' }}"
-                                        class="kanban-move-pill mb-1 ml-1 inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] font-medium text-ink-faint transition {{ $key === 'backlog' ? 'hover:border-contour hover:text-contour' : 'hover:border-ink hover:text-ink' }}"
-                                        aria-label="{{ $key === 'backlog' ? 'In Arbeit nehmen' : 'Zurück in den Backlog' }}: {{ $task->title }}"
-                                    >
-                                        <span x-show="pulsing" x-cloak class="kanban-move-pulse" aria-hidden="true"></span>
-                                        {{ $key === 'backlog' ? '→ In Arbeit' : '← Backlog' }}
-                                    </button>
-                                @endif
-                                @include('livewire.partials.task-card-mobile', [
-                                    'task' => $task,
-                                    'rightIntent' => $key === 'done' ? '' : 'advance',
-                                    'leftIntent' => 'edit',
-                                    'wireMethod' => 'swipeIntentKanban',
-                                ])
-                            </div>
+                            @include('livewire.partials.task-card-mobile', [
+                                'task' => $task,
+                                'rightIntent' => $key === 'done' ? '' : 'advance',
+                                'leftIntent' => 'edit',
+                                'wireMethod' => 'swipeIntentKanban',
+                            ])
                         @empty
                             <x-board-empty>{{ $meta['empty'] }}</x-board-empty>
                         @endforelse

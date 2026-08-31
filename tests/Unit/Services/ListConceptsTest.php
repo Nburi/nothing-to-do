@@ -117,14 +117,16 @@ class ListConceptsTest extends TestCase
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
     }
 
-    public function test_default_capture_list_is_inbox_for_kanban(): void
+    public function test_default_capture_list_is_tasks_for_kanban(): void
     {
-        // Kanban's columns are is_today/is_completed, not list — capture
-        // needs no concept-specific wiring at all (see PLAN_LIST_CONCEPTS.md
-        // §4), so this just confirms the shared default still applies.
+        // Kanban's columns are is_today/is_completed, not list, and its
+        // "Backlog" is already a real, meaningful state rather than an
+        // unsorted holding pen — same reasoning "Simple" already applies,
+        // so capture writes straight to a real task here too (see
+        // QuickCapture's chip-collapse, PLAN_LIST_CONCEPTS.md §4).
         $user = User::factory()->create(['list_concept' => 'kanban']);
 
-        $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
+        $this->assertSame('tasks', ListConcepts::defaultCaptureList($user));
     }
 
     // ── previewTasksFor() ────────────────────────────────────────────────

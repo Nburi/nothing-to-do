@@ -28,13 +28,20 @@ branch off `feature/list-concepts-infra` (none depends on either of the other tw
 3. `feature/list-concept-kanban` — `kanban` flipped to `available: true`,
    `partials/board-kanban.blade.php` (desktop 3-column grid + mobile 3-tab layout) reusing
    `is_today`/`is_completed` — no new axis data, no new column. `TaskBoard::kanbanColumns()` +
-   `setKanbanColumn()`/`reorderKanban()`/`swipeIntentKanban()`, signature moment
-   "Zielfarbe voraus" (the per-card move pill's pulse ring is colored by the column it's heading
-   toward, not one fixed color). No `QuickCapture` changes needed at all — Backlog is already
-   capture's natural landing spot. **Verification was automated-tests-only this session too** (no
-   dev-server/browser pass, per instruction, same as the other two) — **a manual browser pass
-   (drag on both breakpoints, the move pill, the checkbox-driven Erledigt transitions, the pulse
-   colors) is still owed before merge.**
+   `setKanbanColumn()`/`reorderKanban()`/`swipeIntentKanban()`. **Verification was
+   automated-tests-only this session too** (no dev-server/browser pass, per instruction, same as
+   the other two) — **a manual browser pass (drag on both breakpoints, the checkbox-driven Erledigt
+   transitions) is still owed before merge.**
+   - **Revised in a later bugfix pass on the same branch:** the original per-card move pill (the
+     "Zielfarbe voraus" pulse) was removed as redundant — dragging between Backlog/In Arbeit
+     already worked before this pass, the pill just duplicated it. `setKanbanColumn()` itself
+     stayed (still what the mobile "advance" swipe calls). Also added the `QuickCapture`
+     chip-collapse the original session had explicitly decided wasn't needed — it turned out
+     Kanban's board ignores `list` for display exactly as completely as Simple's does, so the same
+     "don't advertise a distinction that doesn't exist" fix Simple already has now applies here too
+     (`availableTargets()` drops Inbox/To-Dos, `defaultCaptureList()` returns `'tasks'`). See
+     CLAUDE.md's "To-Do-Listen-Konzepte — 'Kanban'" section. Full suite green again (1187 tests,
+     one pre-existing unrelated risky test in `CraftIdeasTest`). Still automated-tests-only.
    - Along the way, this session found and fixed a real, previously-unnoticed bug shared by *all
      three* concept branches: `board-simple.blade.php`/`board-eisenhower.blade.php` both pass
      `rightIntent`/`leftIntent`/`wireMethod` overrides into

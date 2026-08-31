@@ -107,15 +107,16 @@ class ListConcepts
 
     /**
      * QuickCapture's one concept-driven hook: which target its panel opens on
-     * by default. Every concept except 'simple' (no Inbox-triage step, so
-     * capture always writes a real task) wants the existing Inbox default.
-     * 'simple' isn't selectable yet (see CATALOG), so this always returns
-     * 'inbox' today — the branch exists so the 'simple' concept session has
-     * nothing left to wire up here when it lands.
+     * by default. 'three_things' (the only concept with a real Inbox-triage
+     * step) wants the existing Inbox default; 'simple' and 'kanban' both have
+     * no such step — Simple has no Inbox at all, and Kanban's own "Backlog"
+     * is already a real, meaningful state rather than an unsorted holding pen
+     * — so both write a real task straight away. 'eisenhower'/'simple' when
+     * unavailable fall through to 'inbox' unchanged.
      */
     public static function defaultCaptureList(User $user): string
     {
-        return self::for($user) === 'simple' ? 'tasks' : 'inbox';
+        return in_array(self::for($user), ['simple', 'kanban'], true) ? 'tasks' : 'inbox';
     }
 
     /**
