@@ -1755,47 +1755,58 @@ Inbox/To-Do/Task distinction, no triage step. `ListConcepts::CATALOG['simple']['
   arrange-screen/group-dashboard themselves stay fully reachable, they just don't get a second,
   column-shaped rendering here. Reuses `partials/task-card.blade.php`/`task-card-mobile.blade.php`
   verbatim (both already generic across `TaskBoard`/`ProjectPage`/`GroupPage`) — no new card markup.
-- **`is_today` has no drop zone here** (unlike a 3-Things column's own "Heute" area) — it's a plain
-  per-card toggle badge instead. **Signature moment — "der Heute-Puls".** A flat list has nowhere
-  spatial for a card to visibly move into when flagged for today (the "it landed in the Heute zone"
-  feedback 3 Things gets for free from its column layout), so tapping the badge fires a short
-  radiating pulse instead (`.today-pulse-ring`/`@keyframes today-pulse`, `app.css`) — a temporal
-  confirmation standing in for the spatial one this concept structurally can't have. Two other
-  candidates were considered and set aside: a "just captured" highlight flash on the newly-created
-  card (rejected — reusing `captured`'s existing zero-payload dispatch to carry a task id risked a
-  live, unverified assumption about how Livewire's event-listener parameter binding actually
-  resolves extra args, not worth the risk for a comparably-sized payoff) and a smooth slide-to-
-  completed-section animation on check-off (rejected — that gap exists in 3 Things too, so fixing it
-  here would be general polish smuggled into a scope-specific feature branch, not something Simple
-  itself needs).
-- **`TaskBoard::setTodaySimple(int $id, bool $value)`** — unlike `setToday()`/`swipeIntent()`,
-  never blocks on `isInbox()`: Simple has no Inbox concept to exclude Today from. Turning it **on**
-  for a task that still carries `list='inbox'` (left over from before switching concepts) also
-  moves it to `'tasks'` — not a display change under Simple (`list` is invisible here), but it
-  upholds an invariant the rest of the app relies on: no task has `is_today=true` while
-  `list='inbox'` (see `setToday()`'s own `isInbox()` guard, and `ManagesTasks::saveEdit()`, which
-  resets `is_today` for anything outside `Task::TODAY_LISTS` the next time the shared edit sheet
-  saves that task) — the exact "a new invariant added after other code already assumed the old one"
-  trap documented under *Known Issues* for `today_date`/Task-Gruppen, caught here before it ever
-  shipped rather than after. **`TaskBoard::reorderSimple(array $ids)`** persists `sort_order` only,
-  deliberately never touching `list`/`is_today` the way `reorder()` does — a manual drag-reorder in
-  Simple must not silently retriage a task or clobber its Heute flag; switching back to "3 Things"
-  still shows every task in whatever list/today state it already had. **`swipeIntentSimple()`**
-  (mobile) is `today`/`untoday` routed through `setTodaySimple()` for the same list-fix; `'edit'`
-  never reaches it at all (handled client-side by `swipeCard` before any `$wire` call).
-- **`window.simpleListSortable(el, wire, handle)`** (`app.js`) — its own small Sortable instance
-  rather than reusing `window.boardSortable` (whose `onEnd` always calls `wire.reorder(list, today,
-  ids)`, exactly the retriage/clobber `reorderSimple()` exists to avoid). Group name `'board'` with
-  the same `put: ['board', 'homework-preview']` allowlist as `boardSortable`'s own Today zone is
-  what lets a Hausaufgaben-Vorschau card be dragged straight into the flat list to promote it — the
-  whole list doubles as Simple's one and only "today-eligible" zone (`data-today="true"`), since
-  there's no separate Heute area to distinguish it from; `homeworkDragSource`'s own `onEnd` (the
-  *origin* of that drag) handles the promotion and never races `reorderSimple()` since only one
-  Sortable instance's `onEnd` — the one where the drag started — ever fires per drag. Dragging a
-  homework-derived card back out onto the strip (`removeHomeworkFromToday()`) needed no new code at
-  all — it already worked, via the existing `data-homework="true"` attribute on
-  `task-card.blade.php`/`task-card-mobile.blade.php` and `homeworkDragSource`'s own function-form
-  `put` predicate, which accepts a drag from any source group.
+- **`is_today` has a real "Heute" zone, mirroring a 3-Things column's own** (revised after an
+  earlier button-based iteration — see below). The flat list is split into two sortable zones: a
+  Heute box above (styled like `column.blade.php`'s own Heute box, `data-today="true"`) and the rest
+  of the list below (`data-today="false"`). A task enters/leaves Today by being dragged between the
+  two zones — desktop and mobile both use `window.simpleListSortable`, mobile via the card's own
+  drag handle (`[data-drag-handle]`), exactly as a 3-Things column's Heute area already works (see
+  `partials/mobile-task-list.blade.php`'s identical two-zone shape). Mobile additionally keeps the
+  right-swipe today/untoday gesture as a second way to move a card in/out of the zone — a 3-Things
+  card inside its own Heute area stays swipeable too, so this isn't new asymmetry.
+  **Earlier iteration, replaced:** the first shipped version had no spatial zone at all — a flat list
+  has nowhere for a card to visibly move into — so `is_today` was a plain per-card toggle badge, with
+  a short radiating pulse (`.today-pulse-ring`/`@keyframes today-pulse`, `app.css`, now removed) as a
+  temporal stand-in for the spatial "it landed in the Heute zone" feedback 3 Things gets for free.
+  That trade-off turned out to be the wrong call once tested against the actual 3-Things pattern this
+  concept is supposed to mirror — a real zone is both more consistent with the rest of the app and
+  removes an entire bespoke interaction (the toggle button, its aria-label pair, the pulse animation)
+  in favour of reusing `reorder()`'s own established zone-based shape. The badge, its CSS, and the
+  pulse are gone; there is no signature moment standing in for the spatial zone any more, since the
+  zone itself is the feedback now.
+- **`TaskBoard::reorderSimple(bool $today, array $ids)`** — zone-based, mirroring `reorder()`'s own
+  shape: `$today` is which zone the drop landed in, and every id in that zone gets `is_today`/
+  `today_date` set to match. Unlike `reorder()`, `list` itself is still never touched — Simple
+  ignores `list` for display entirely (see `ListConcepts`/`PLAN_LIST_CONCEPTS.md` §3), so switching
+  back to "3 Things" still shows every task under whichever list it already carried — **except** the
+  same `isInbox()` fix `setTodaySimple()` already applied: entering Today from `list='inbox'` still
+  moves it to `'tasks'`, upholding the same invariant the rest of the app relies on (no task has
+  `is_today=true` while `list='inbox'` — see `setToday()`'s own `isInbox()` guard, and
+  `ManagesTasks::saveEdit()`, which resets `is_today` for anything outside `Task::TODAY_LISTS` the
+  next time the shared edit sheet saves that task) — the exact "a new invariant added after other
+  code already assumed the old one" trap documented under *Known Issues* for `today_date`/
+  Task-Gruppen, checked again here rather than re-broken by this revision.
+  **`TaskBoard::setTodaySimple(int $id, bool $value)`** still exists — now reached only via the
+  mobile swipe path (`swipeIntentSimple()`, `today`/`untoday` intents; `'edit'` never reaches it at
+  all, handled client-side by `swipeCard` before any `$wire` call) rather than a desktop button — same
+  never-blocks-on-`isInbox()`/list-fix behaviour as before, just a narrower set of callers.
+- **`window.simpleListSortable(el, wire, handle)`** (`app.js`) — still its own small Sortable
+  instance rather than reusing `window.boardSortable` (whose `onEnd` always calls `wire.reorder(list,
+  today, ids)`, which would retriage `list` too — `reorderSimple()` must never touch it). Now computes
+  its `group` the same way `boardSortable` does: only the Heute zone (`data-today="true"`) gets the
+  `put: ['board', 'homework-preview']` allowlist that lets a Hausaufgaben-Vorschau card be dragged
+  straight in to promote it (mirroring a 3-Things column's own Today-zone-only acceptance, not the
+  whole-list acceptance the single-zone version had); both zones share the plain `'board'` group name
+  so a task can be dragged between them. `onEnd` reads `evt.to.dataset.today` to know which zone the
+  drop landed in and calls `wire.reorderSimple(today, ids)` — mirroring `boardSortable`'s own
+  `to.dataset.list === undefined` bail, but checking `data-today` instead, since neither of Simple's
+  own zones needs a `data-list` distinction the way a 3-Things column's `data-list` per-column value
+  does (both carry `data-list="tasks"` — only present so a homework promotion, which reads
+  `to.dataset.list`, has something to pass). `homeworkDragSource`'s own `onEnd` (the *origin* of a
+  homework-card drag) still handles the promotion and never races `reorderSimple()`, unchanged.
+  Dragging a homework-derived card back out onto the strip (`removeHomeworkFromToday()`) still needs
+  no new code — the existing `data-homework="true"` attribute and `homeworkDragSource`'s function-form
+  `put` predicate cover it regardless of which of Simple's two zones the card started in.
 - **`swipeCard` (app.js) gained one config field, `wireMethod`** (defaults to `'swipeIntent'`,
   backward-compatible with every existing caller) — Simple's mobile card passes
   `'swipeIntentSimple'` instead. **`task-card-mobile.blade.php` gained two optional overrides**,
@@ -1825,6 +1836,11 @@ Inbox/To-Do/Task distinction, no triage step. `ListConcepts::CATALOG['simple']['
   browser-based Runde 1/3/4 review passes were substituted with an equivalent code-reading trace
   through the same scenarios instead of an actual click-through; flagged here as a real limitation,
   not a shortcut taken by choice.
+- **Bugfix pass (later commit on this same branch):** replaced the per-card Heute toggle badge with
+  the two-zone `reorderSimple(bool $today, array $ids)` drag interaction described above — the
+  original toggle-button version worked but didn't match the "adopt 3 Things' zone-based interaction"
+  ask once actually compared side by side. Verification was automated-tests-only again, for the same
+  known dev-server-hang reason as the original session.
 
 ### Onboarding-Tutorial (built)
 

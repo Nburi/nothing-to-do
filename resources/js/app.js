@@ -177,27 +177,29 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
- * "Simple" concept's one flat list (see TaskBoard::reorderSimple() /
- * partials/board-simple.blade.php). Deliberately its own small Sortable
- * instance rather than reusing boardSortable: that one's onEnd always calls
- * wire.reorder(list, today, ids), which would silently retriage every
- * dragged task's `list` and clobber its Heute flag on every plain reorder —
- * Simple's own reorder must touch neither (see reorderSimple()'s docblock).
+ * "Simple" concept's two zones — a Heute box and the rest of the flat list
+ * (see TaskBoard::reorderSimple() / partials/board-simple.blade.php).
+ * Deliberately its own small Sortable instance rather than reusing
+ * boardSortable: that one's onEnd always calls wire.reorder(list, today,
+ * ids), which would silently retriage a dragged task's `list` too —
+ * Simple's own reorder must never touch `list` (see reorderSimple()'s
+ * docblock), only `is_today`.
  *
- * `data-today="true"` on the flat list is what lets a homework-preview card
- * be dropped straight in to promote it (see homeworkDragSource's onEnd,
- * which only accepts a `data-today="true"` destination) — the whole flat
- * list doubles as Simple's one and only "today-eligible" zone, since there
- * is no separate Heute area to distinguish it from. Group name 'board' with
- * the same `put` allowlist as boardSortable's own Today zone is what makes
- * that acceptance work; a homework-card drag always fires its OWN onEnd (the
- * one attached where the drag started), never this list's, so it never
- * races reorderSimple() with a stray AgendaEntry id.
+ * Mirrors boardSortable's own group computation: only the Heute zone
+ * (`data-today="true"`) accepts a drop from the homework-preview strip (see
+ * homeworkDragSource below) — exactly like a 3-Things column's Today area —
+ * so a homework card promoted here always lands in Simple's Heute zone, never
+ * its rest zone. Both zones share the plain 'board' group name so a task can
+ * be dragged between them (in or out of Today), the same as a 3-Things
+ * column's own two zones do.
  */
 window.simpleListSortable = function (el, wire, handle = null) {
     if (el._sortable) return el._sortable;
+    const group = el.dataset.today === 'true'
+        ? { name: 'board', put: ['board', 'homework-preview'] }
+        : 'board';
     el._sortable = Sortable.create(el, {
-        group: { name: 'board', put: ['board', 'homework-preview'] },
+        group,
         animation: 160,
         easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
         ghostClass: 'board-ghost',
@@ -206,8 +208,12 @@ window.simpleListSortable = function (el, wire, handle = null) {
         delay: 60,
         delayOnTouchOnly: true,
         onEnd: (evt) => {
-            const ids = Array.from(el.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
-            wire.reorderSimple(ids);
+            const to = evt.to;
+            // A drop that isn't one of Simple's own two zones (e.g. rejected
+            // by group matching) has nothing to persist here.
+            if (to.dataset.today === undefined) return;
+            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderSimple(to.dataset.today === 'true', ids);
         },
     });
     return el._sortable;

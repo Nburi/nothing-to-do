@@ -443,29 +443,6 @@
         animation: announcement-highlight 1400ms ease-out;
     }
 
-    /* "Simple" concept's Heute badge (see partials/board-simple.blade.php,
-       TaskBoard::setTodaySimple()) — signature moment. A flat list has no
-       distinct "Heute" zone to visually drop a task into (unlike a 3-Things
-       column's own Heute area), so tapping the badge fires a short radiating
-       pulse instead — a temporal confirmation standing in for the spatial
-       one this concept doesn't have. Respects prefers-reduced-motion via the
-       global animation-collapse rule below — nothing extra needed here. */
-    @keyframes today-pulse {
-        0% { transform: scale(0.6); opacity: 0.55; }
-        100% { transform: scale(2.4); opacity: 0; }
-    }
-    .today-toggle {
-        overflow: visible;
-    }
-    .today-pulse-ring {
-        position: absolute;
-        inset: 0;
-        border-radius: 9999px;
-        border: 1.5px solid rgb(var(--forest));
-        animation: today-pulse 650ms ease-out;
-        pointer-events: none;
-    }
-
     /* While a task is being dragged, project cards hint that they accept a drop. */
     body.dragging-task .project-drop {
         outline: 1.5px dashed rgb(var(--line));

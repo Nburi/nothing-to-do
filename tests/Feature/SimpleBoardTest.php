@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -89,7 +90,50 @@ class SimpleBoardTest extends TestCase
         Livewire::actingAs($user)->test(TaskBoard::class)->assertDontSee('Not mine');
     }
 
-    // ── reorderSimple() — persists order, never touches list/is_today ──
+    // ── board-simple.blade.php — Today zone, not a per-card toggle ──
+
+    public function test_the_board_shows_a_heute_zone_label(): void
+    {
+        $user = $this->simpleUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertSee('Heute');
+    }
+
+    public function test_a_today_flagged_task_renders_inside_the_today_zone(): void
+    {
+        $user = $this->simpleUser();
+        Task::factory()->for($user)->tasks()->today()->create(['title' => 'Focus for today']);
+
+        $html = Livewire::actingAs($user)->test(TaskBoard::class)->html();
+
+        // The Heute zone (data-today="true") is emitted before the rest zone
+        // (data-today="false") in both the desktop and mobile markup, so a
+        // task title appearing before the first data-today="false" marker
+        // confirms it rendered inside the Today zone, not the rest of the list.
+        $todayZonePos = strpos($html, 'data-today="true"');
+        $restZonePos = strpos($html, 'data-today="false"');
+        $taskPos = strpos($html, 'Focus for today');
+
+        $this->assertNotFalse($todayZonePos);
+        $this->assertNotFalse($restZonePos);
+        $this->assertNotFalse($taskPos);
+        $this->assertGreaterThan($todayZonePos, $taskPos);
+        $this->assertLessThan($restZonePos, $taskPos);
+    }
+
+    public function test_the_per_card_today_toggle_button_no_longer_exists(): void
+    {
+        $user = $this->simpleUser();
+        Task::factory()->for($user)->tasks()->create(['title' => 'Some task']);
+
+        $html = Livewire::actingAs($user)->test(TaskBoard::class)->html();
+
+        $this->assertStringNotContainsString('setTodaySimple(', $html);
+        $this->assertStringNotContainsString('today-toggle', $html);
+        $this->assertStringNotContainsString('today-pulse-ring', $html);
+    }
+
+    // ── reorderSimple() — zone-based Today, like reorder(); never touches `list` ──
 
     public function test_reorder_simple_persists_sort_order(): void
     {
@@ -98,28 +142,69 @@ class SimpleBoardTest extends TestCase
         $b = Task::factory()->for($user)->tasks()->create(['sort_order' => 1]);
 
         Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('reorderSimple', [$b->id, $a->id]);
+            ->call('reorderSimple', false, [$b->id, $a->id]);
 
         $this->assertSame(0, $b->fresh()->sort_order);
         $this->assertSame(1, $a->fresh()->sort_order);
     }
 
-    public function test_reorder_simple_never_changes_list_or_today(): void
+    public function test_reorder_simple_into_the_today_zone_flags_the_task(): void
+    {
+        $user = $this->simpleUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->call('reorderSimple', true, [$task->id]);
+
+        $task->refresh();
+        $this->assertTrue($task->is_today);
+        $this->assertNotNull($task->today_date);
+    }
+
+    public function test_reorder_simple_out_of_the_today_zone_unflags_the_task(): void
+    {
+        $user = $this->simpleUser();
+        $task = Task::factory()->for($user)->todos()->today()->create();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->call('reorderSimple', false, [$task->id]);
+
+        $task->refresh();
+        $this->assertFalse($task->is_today);
+        $this->assertNull($task->today_date);
+    }
+
+    public function test_reorder_simple_never_changes_list_for_a_non_inbox_task(): void
+    {
+        $user = $this->simpleUser();
+        $task = Task::factory()->for($user)->todos()->create();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->call('reorderSimple', true, [$task->id]);
+
+        $this->assertSame('todos', $task->fresh()->list);
+    }
+
+    public function test_reorder_simple_into_the_today_zone_moves_an_inbox_task_to_tasks(): void
     {
         $user = $this->simpleUser();
         $task = Task::factory()->for($user)->inbox()->create();
-        // is_today=true + list=inbox is never produced by any write path in
-        // this app (setTodaySimple() itself fixes the list up first — see
-        // its own test) — written directly here purely to prove
-        // reorderSimple() doesn't second-guess whatever it finds either way.
-        $task->update(['is_today' => true, 'today_date' => now()->toDateString()]);
 
         Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('reorderSimple', [$task->id]);
+            ->call('reorderSimple', true, [$task->id]);
 
-        $task->refresh();
-        $this->assertSame('inbox', $task->list);
-        $this->assertTrue($task->is_today);
+        $this->assertSame('tasks', $task->fresh()->list);
+    }
+
+    public function test_reorder_simple_out_of_the_today_zone_leaves_an_inbox_list_untouched(): void
+    {
+        $user = $this->simpleUser();
+        $task = Task::factory()->for($user)->inbox()->create();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->call('reorderSimple', false, [$task->id]);
+
+        $this->assertSame('inbox', $task->fresh()->list);
     }
 
     public function test_reorder_simple_ignores_ids_belonging_to_another_user(): void
@@ -129,9 +214,10 @@ class SimpleBoardTest extends TestCase
         $foreign = Task::factory()->for($other)->tasks()->create(['sort_order' => 5]);
 
         Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('reorderSimple', [$foreign->id]);
+            ->call('reorderSimple', false, [$foreign->id]);
 
         $this->assertSame(5, $foreign->fresh()->sort_order);
+        $this->assertFalse($foreign->fresh()->is_today);
     }
 
     // ── setTodaySimple() — no isInbox() guard, fixes up the list on entry ──
@@ -191,7 +277,7 @@ class SimpleBoardTest extends TestCase
         $other = User::factory()->create();
         $foreign = Task::factory()->for($other)->tasks()->create();
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
         Livewire::actingAs($user)->test(TaskBoard::class)
             ->call('setTodaySimple', $foreign->id, true);
     }

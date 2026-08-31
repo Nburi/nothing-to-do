@@ -8,12 +8,15 @@
     pass through first. See App\Services\ListConcepts, TaskBoard::simpleTasks()
     and PLAN_LIST_CONCEPTS.md §1/§3 for the full shape.
 
-    `is_today` has no drop zone to live in here (unlike a 3-Things column's
-    "Heute" area) — it's a plain per-card toggle badge instead (see the
-    "Heute" button below, TaskBoard::setTodaySimple()). That badge is this
-    concept's signature moment: tapping it fires a short radiating pulse
-    (.today-pulse-ring, app.css) as the stand-in for the spatial "it moved
-    into place" feedback a flat list can't give.
+    `is_today` gets its own spatial "Heute" zone, mirroring a 3-Things
+    column's own Heute area exactly — a task enters/leaves Today by being
+    dragged into or out of it (desktop: window.simpleListSortable; mobile:
+    the same, via the card's drag handle), which writes through
+    TaskBoard::reorderSimple($today, $ids) rather than a per-card toggle.
+    Mobile additionally keeps the existing right-swipe today/untoday
+    gesture (TaskBoard::setTodaySimple(), via swipeIntentSimple()) as a
+    second way to move a card in/out of the zone, same as 3-Things' own
+    Heute area doesn't stop a card from also being swiped.
 
     Companion features (Vorbereitung, Notfallmodus, Zeitplan/focus timer,
     Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
@@ -37,38 +40,43 @@
 
             @php
                 $simpleActive = $this->simpleTasks->where('is_completed', false)->values();
+                $simpleToday = $simpleActive->where('is_today', true)->values();
+                $simpleRest = $simpleActive->where('is_today', false)->values();
                 $simpleDone = $this->simpleTasks->where('is_completed', true)->values();
+                $simpleTrulyEmpty = $simpleToday->isEmpty() && $simpleRest->isEmpty();
             @endphp
+
+            <div class="mb-4 rounded-card border border-forest/30 bg-forest-soft/60 p-2">
+                <p class="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest">
+                    <x-logo class="h-3 w-3" />
+                    Heute
+                </p>
+                <div
+                    class="flex min-h-[40px] flex-col gap-2"
+                    data-list="tasks" data-today="true"
+                    x-data
+                    x-init="window.simpleListSortable($el, $wire)"
+                >
+                    @foreach ($simpleToday as $task)
+                        @include('livewire.partials.task-card', ['task' => $task])
+                    @endforeach
+                    @if ($simpleToday->isEmpty())
+                        <p class="px-1 py-1.5 text-xs text-ink-faint">Hierher ziehen für den Tagesfokus.</p>
+                    @endif
+                </div>
+            </div>
 
             <div
                 class="flex flex-col gap-2"
-                data-list="tasks" data-today="true"
+                data-list="tasks" data-today="false"
                 x-data
                 x-init="window.simpleListSortable($el, $wire)"
             >
-                @forelse ($simpleActive as $task)
-                    <div class="flex items-start gap-2">
-                        <button
-                            type="button"
-                            x-data="{ pulsing: false }"
-                            @click="pulsing = true; setTimeout(() => pulsing = false, 700)"
-                            wire:click="setTodaySimple({{ $task->id }}, {{ $task->is_today ? 'false' : 'true' }})"
-                            @class([
-                                'today-toggle relative mt-2.5 flex-none whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
-                                'border-forest bg-forest text-white' => $task->is_today,
-                                'border-line text-ink-faint hover:border-forest hover:text-forest' => ! $task->is_today,
-                            ])
-                            aria-pressed="{{ $task->is_today ? 'true' : 'false' }}"
-                            aria-label="{{ $task->is_today ? 'Aus Heute entfernen' : 'Für heute markieren' }}: {{ $task->title }}"
-                        >
-                            <span x-show="pulsing" x-cloak class="today-pulse-ring" aria-hidden="true"></span>
-                            Heute
-                        </button>
-                        <div class="min-w-0 flex-1">
-                            @include('livewire.partials.task-card', ['task' => $task])
-                        </div>
-                    </div>
-                @empty
+                @foreach ($simpleRest as $task)
+                    @include('livewire.partials.task-card', ['task' => $task])
+                @endforeach
+
+                @if ($simpleTrulyEmpty)
                     <div class="flex flex-col items-center justify-center gap-2.5 rounded-card border border-dashed border-line px-4 py-10 text-center">
                         <svg class="h-9 w-9 text-line" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                             <path d="M24 8c8 0 14 5 14 11s-7 10-14 10S11 25 11 19 16 8 24 8Z" stroke="currentColor" stroke-width="1.5"/>
@@ -77,7 +85,9 @@
                         </svg>
                         <p class="max-w-[26ch] text-xs leading-relaxed text-ink-faint">Nichts offen. Erfasse etwas Neues — es landet direkt hier, ohne Umweg.</p>
                     </div>
-                @endforelse
+                @elseif ($simpleRest->isEmpty())
+                    <p class="px-1 py-2 text-xs text-ink-faint">Hierher ziehen, um Aufgaben hinzuzufügen.</p>
+                @endif
             </div>
 
             @if ($simpleDone->isNotEmpty())
@@ -105,23 +115,46 @@
 
             @php
                 $mobileSimpleActive = $this->simpleTasks->where('is_completed', false)->values();
+                $mobileSimpleToday = $mobileSimpleActive->where('is_today', true)->values();
+                $mobileSimpleRest = $mobileSimpleActive->where('is_today', false)->values();
                 $mobileSimpleDone = $this->simpleTasks->where('is_completed', true)->values();
             @endphp
 
+            @if ($mobileSimpleToday->isNotEmpty())
+                <p class="px-1 pt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-forest">Heute</p>
+                <div
+                    class="flex flex-col gap-2.5"
+                    data-list="tasks" data-today="true"
+                    x-data x-init="window.simpleListSortable($el, $wire, '[data-drag-handle]')"
+                >
+                    @foreach ($mobileSimpleToday as $task)
+                        @include('livewire.partials.task-card-mobile', [
+                            'task' => $task,
+                            'rightIntent' => 'untoday',
+                            'leftIntent' => 'edit',
+                            'wireMethod' => 'swipeIntentSimple',
+                        ])
+                    @endforeach
+                </div>
+                <div class="my-1 border-t border-line"></div>
+            @endif
+
             <div
                 class="flex flex-col gap-2.5"
-                data-list="tasks" data-today="true"
+                data-list="tasks" data-today="false"
                 x-data x-init="window.simpleListSortable($el, $wire, '[data-drag-handle]')"
             >
-                @forelse ($mobileSimpleActive as $task)
+                @forelse ($mobileSimpleRest as $task)
                     @include('livewire.partials.task-card-mobile', [
                         'task' => $task,
-                        'rightIntent' => $task->is_today ? 'untoday' : 'today',
+                        'rightIntent' => 'today',
                         'leftIntent' => 'edit',
                         'wireMethod' => 'swipeIntentSimple',
                     ])
                 @empty
-                    <x-board-empty>Nichts offen. Erfasse etwas Neues — es landet direkt hier, ohne Umweg.</x-board-empty>
+                    @if ($mobileSimpleToday->isEmpty())
+                        <x-board-empty>Nichts offen. Erfasse etwas Neues — es landet direkt hier, ohne Umweg.</x-board-empty>
+                    @endif
                 @endforelse
             </div>
 

@@ -21,11 +21,19 @@ Each remaining concept is its own session, branched off `feature/list-concepts-i
    list), `TaskBoard::simpleTasks()`/`reorderSimple()`/`setTodaySimple()`/`swipeIntentSimple()`,
    the `QuickCapture::availableTargets()` chip-collapse (Inbox/ToDos/Tasks → one "Aufgabe" chip)
    and its Settings preview thumbnail — see CLAUDE.md's "To-Do-Listen-Konzepte — 'Simple'" section
-   for the full detail, including the "Heute-Puls" signature moment and the `isInbox()`-invariant
-   fix `setTodaySimple()` had to account for. Branch `feature/list-concept-simple`, off
-   `feature/list-concepts-infra`. Full automated suite green (1176 tests). **Not merged, not
-   pushed.** Verification was automated-tests-only (explicit instruction, avoiding a known
-   dev-server-hang trap) — no browser click-through was done; worth a manual pass before merging.
+   for the full detail, including the `isInbox()`-invariant fix `setTodaySimple()`/`reorderSimple()`
+   account for. Branch `feature/list-concept-simple`, off `feature/list-concepts-infra`. Full
+   automated suite green (1176 tests). **Not merged, not pushed.** Verification was
+   automated-tests-only (explicit instruction, avoiding a known dev-server-hang trap) — no browser
+   click-through was done; worth a manual pass before merging.
+   **Revised in a later bugfix pass on the same branch:** the original per-card Heute toggle badge
+   (the "Heute-Puls" pulse animation) was replaced with a real two-zone drag interaction —
+   `reorderSimple(bool $today, array $ids)` now mirrors `reorder()`'s zone-based `is_today`
+   assignment instead of only persisting `sort_order` — matching how a 3-Things column's own Heute
+   area works. See CLAUDE.md's "Bugfix pass" bullet at the end of that section. Full suite green
+   again (1183 tests, one pre-existing unrelated risky test in `CraftIdeasTest`). Still
+   automated-tests-only for the same dev-server-hang reason; still worth a manual pass before
+   merging.
 2. `feature/list-concept-eisenhower` — same shape, 2×2 quadrant board reusing `is_important`/
    `isUrgent()`, quadrant tap-to-create pre-filling those flags on the `QuickCapture` call.
 3. `feature/list-concept-kanban` — same shape, 3-column board reusing `toggleComplete()`/

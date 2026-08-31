@@ -952,34 +952,62 @@ class TaskBoard extends Component
         };
     }
 
-    // ── "Simple" concept — flat-list drag & Today toggle ──────────────
+    // ── "Simple" concept — flat-list drag & Today zone ─────────────────
 
     /**
-     * Simple's flat-list drag reorder. Unlike reorder(), this never touches
-     * `list`/`is_today` — Simple ignores `list` for display entirely (see
-     * ListConcepts/PLAN_LIST_CONCEPTS.md §3), so a manual reorder here must
-     * not silently retriage a task into a different list or disturb its
-     * Heute flag. Switching back to "3 Things" still shows every task in
-     * whatever list/today state it already had.
+     * Simple's flat-list drag reorder — now zone-based, mirroring reorder()'s
+     * own shape: `$today` is which zone the drop landed in (see
+     * partials/board-simple.blade.php's Heute box vs. the rest of the list),
+     * and every id in that zone gets `is_today`/`today_date` set to match,
+     * exactly like a 3-Things column's own Heute area. Unlike reorder(),
+     * `list` itself is still never touched — Simple ignores `list` for
+     * display entirely (see ListConcepts/PLAN_LIST_CONCEPTS.md §3), so
+     * switching back to "3 Things" still shows every task under whichever
+     * list it already carried — except the same isInbox() fix
+     * setTodaySimple() already applies: entering Today from `list='inbox'`
+     * still moves it to `'tasks'`, upholding the same invariant the rest of
+     * the app relies on (no task has is_today=true while list='inbox').
      *
      * @param  array<int, int|string>  $ids
      */
-    public function reorderSimple(array $ids): void
+    public function reorderSimple(bool $today, array $ids): void
     {
+        $targetDate = $today ? auth()->user()->localToday() : null;
+
         foreach (array_values($ids) as $position => $id) {
-            auth()->user()->tasks()->find((int) $id)?->update(['sort_order' => $position]);
+            $task = auth()->user()->tasks()->find((int) $id);
+
+            if ($task === null) {
+                continue; // ignore ids that aren't ours
+            }
+
+            $updates = [
+                'is_today' => $today,
+                'today_date' => $task->todayDateFor($today, $targetDate),
+                'sort_order' => $position,
+            ];
+
+            if ($today && $task->list === 'inbox') {
+                $updates['list'] = 'tasks';
+            }
+
+            $task->update($updates);
         }
     }
 
     /**
-     * Simple's Today toggle. Unlike setToday()/swipeIntent(), never blocks on
-     * isInbox() — Simple has no Inbox concept to exclude from Today. Turning
-     * one ON for a task that still carries list='inbox' (left over from
-     * before switching concepts) also moves it to 'tasks': not a display
-     * change under Simple (list is invisible here), but it upholds an
-     * invariant the rest of the app relies on — no task has
-     * is_today=true while list='inbox' (see setToday()'s own isInbox()
-     * guard) — so switching back to "3 Things" never surfaces a
+     * Simple's single-task Today toggle — now only reached via the mobile
+     * swipe path (swipeIntentSimple() below); the desktop board sets
+     * is_today through reorderSimple() instead, by dropping into or out of
+     * the Heute zone (see partials/board-simple.blade.php). Unlike
+     * setToday()/swipeIntent(), never blocks on isInbox() — Simple has no
+     * Inbox concept to exclude from Today. Turning one ON for a task that
+     * still carries list='inbox' (left over from before switching concepts)
+     * also moves it to 'tasks': not a display change under Simple (list is
+     * invisible here), but it upholds an invariant the rest of the app
+     * relies on — no task has is_today=true while list='inbox' (see
+     * setToday()'s own isInbox() guard, and reorderSimple()'s matching
+     * fix) — so switching back to "3 Things" never surfaces a
      * structurally-impossible Inbox+Heute combination, and the shared edit
      * sheet's own list picker (ManagesTasks::saveEdit(), which resets
      * is_today for anything outside Task::TODAY_LISTS) doesn't quietly
