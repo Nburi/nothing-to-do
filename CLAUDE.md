@@ -2835,6 +2835,40 @@ schema can end up telling two different stories, and diagnosing that mismatch is
 schema that actually matches the current migration history. This has no bearing on the real test suite
 (which was green throughout) — it only affects manual/browser verification against the dev server.
 
+### A multi-column `$table->unique([...])` on a long table/column name can exceed MariaDB/MySQL's 64-char identifier limit — SQLite never catches it
+**Symptom:** `php artisan migrate --force` on the production (MariaDB) box fails with `SQLSTATE[42000]:
+Syntax error or access violation: 1059 Identifier name '..._unique' is too long`, on a migration that ran
+clean in every local `php artisan test`/dev-SQLite run. The failing statement is a separate `alter table
+... add unique '...'`, not the preceding `create table` — Laravel compiles `$table->unique()` inside a
+`Schema::create()` closure into its own post-`CREATE TABLE` `ALTER TABLE` statement, and that statement is
+what MariaDB rejects.
+**Cause:** Laravel's default index name is `{table}_{col1}_{col2}_..._unique`. SQLite has no identifier
+length limit, so this only ever surfaces against real MySQL/MariaDB — exactly the gap `docs/REQUIREMENTS.md`
+§5's "SQLite (development), MySQL (production-ready)" split creates: a migration can look correct through
+the entire local workflow and still fail on its first production deploy. `schedule_event_attribute_values_
+schedule_event_id_category_attribute_id_unique` is 81 characters, well past MariaDB's 64-char cap on
+identifiers (table, column, *and* index/constraint names alike). This is a repeat of the exact same bug
+already fixed once in `2026_08_26_000003_create_feature_announcement_dismissals_table.php` (that migration's
+own default name was 72 chars) — that fix wasn't generalized or written up here, so the next long-named
+compound-unique migration (`schedule_event_attribute_values`, added 2026-08-30) hit it again.
+**Fix:** any `$table->unique([...])` (or `->index([...])`) whose table+column names are individually long
+enough to push the auto-generated `{table}_{cols}_unique` name past 64 characters needs an explicit short
+name as the second argument: `$table->unique(['schedule_event_id', 'category_attribute_id'],
+'seav_event_attribute_unique')`. **The general lesson, since this has now recurred once already:** before
+adding a compound unique/index to a new table, roughly sum `strlen(table) + strlen(each column) + 8` (for
+the underscores + `_unique`/`_index` suffix) and pass an explicit short name proactively whenever a table
+name is already long (e.g. anything derived from two joined entity names, like `schedule_event_attribute_
+values` or `feature_announcement_dismissals`) rather than waiting to hit the production-only failure.
+**If this happens after a deploy has already partially run:** MySQL/MariaDB DDL auto-commits per statement,
+so the preceding `CREATE TABLE` (and any foreign keys, which compile as their own `ALTER TABLE`s before the
+unique index does) already committed before the `ADD UNIQUE` failed — the table exists on production
+without its unique constraint, and without a row in `migrations` (since the migration as a whole threw).
+Re-running `php artisan migrate --force` after only fixing the index name will then fail again, this time
+with `table already exists`. Drop that specific table on production (`DROP TABLE
+schedule_event_attribute_values;` — safe here since it was only just created and empty; back it up first if
+in doubt) before re-running the migration, rather than trying to `migrate:rollback` a migration that was
+never recorded as run.
+
 ### CSS classes applied only from JavaScript are silently purged out of the build
 **Symptom:** a rule written in `resources/css/app.css` simply does not exist at runtime — no typo, no
 specificity fight, no cascade problem. `getComputedStyle` returns the untouched defaults, and searching

@@ -15,7 +15,10 @@ return new class extends Migration
             $table->text('value')->nullable();
             $table->timestamps();
 
-            $table->unique(['schedule_event_id', 'category_attribute_id']);
+            // Explicit short name: Laravel's auto-generated name (81 chars) exceeds
+            // MySQL/MariaDB's 64-char identifier limit — SQLite (local dev) doesn't
+            // enforce this, so the default name only failed once it hit production.
+            $table->unique(['schedule_event_id', 'category_attribute_id'], 'seav_event_attribute_unique');
         });
     }
 
