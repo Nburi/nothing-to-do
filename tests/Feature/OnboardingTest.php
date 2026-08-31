@@ -28,6 +28,15 @@ class OnboardingTest extends TestCase
         $this->get(route('onboarding'))->assertRedirect(route('login'));
     }
 
+    public function test_the_3_things_step_links_to_the_list_concept_setting(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('onboarding'))
+            ->assertOk()
+            ->assertSee(route('settings').'?highlight='.urlencode('#list-concept'), false);
+    }
+
     public function test_a_brand_new_account_needs_onboarding(): void
     {
         $user = User::factory()->create();

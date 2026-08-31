@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Services\AppModules;
+use App\Services\ListConcepts;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -89,6 +90,16 @@ class QuickCapture extends Component
      * @var array{title: string, label: string}|null
      */
     public ?array $captured = null;
+
+    /**
+     * ListConcepts' one QuickCapture hook: which target the panel opens on by
+     * default. Every concept except 'simple' wants today's Inbox default —
+     * see ListConcepts::defaultCaptureList().
+     */
+    public function mount(): void
+    {
+        $this->target = ListConcepts::defaultCaptureList(auth()->user());
+    }
 
     /**
      * TARGETS filtered to modules the user hasn't hidden (Settings' "Module"
@@ -235,6 +246,11 @@ class QuickCapture extends Component
     {
         $this->reset(['title', 'target', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
+
+        // reset() restores 'target' to its bare class-declared default
+        // ('inbox'), not mount()'s concept-aware value — recompute it
+        // explicitly so a re-opened panel still honors ListConcepts.
+        $this->target = ListConcepts::defaultCaptureList(auth()->user());
 
         if ($target !== null && in_array($target, $this->availableTargets, true)) {
             $this->target = $target;

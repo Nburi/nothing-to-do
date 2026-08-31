@@ -1,9 +1,30 @@
 # Plan: To-Do-Listen-Konzepte (List Concepts)
 
-Status: **planning-only, not implemented**. Written on branch `feature/list-concepts-plan`
-(branched off `main` at commit `7fe5c7c`, 2026-08-31). No feature code was written in this
-session — see "Housekeeping note" at the bottom for why this branches off `main` instead of
-`feature/feature-announcements` as originally instructed.
+Status: **infra implemented, the four concepts themselves not yet.** Plan written on branch
+`feature/list-concepts-plan` (branched off `main` at commit `7fe5c7c`, 2026-08-31) — see
+"Housekeeping note" at the bottom for why that branches off `main` instead of
+`feature/feature-announcements` as originally instructed. The infra session described in §4
+"Shared" then landed on **`feature/list-concepts-infra`** (branched off `feature/list-concepts-plan`,
+2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
+`partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card (including the
+real-data preview-thumbnail signature moment, §5 option C), and the `QuickCapture` hook — with
+the full automated suite green (1146 tests). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte"
+section and in `TODO.md`'s matching follow-up entry, which is also where the three remaining
+concept sessions (Simple/Eisenhower/Kanban) are tracked as next steps, each branching off
+`feature/list-concepts-infra`. **Not merged, not pushed.**
+
+Two small, deliberate deviations from this document, both explained in CLAUDE.md/TODO.md:
+- `ListConcepts::CATALOG` ships **all four** concepts now (with an `available` flag), rather than
+  starting with only `three_things` and having each concept session add its own array entry from
+  scratch — this lets Settings show the other three as "bald verfügbar" today, which is more
+  honest/discoverable than them not existing in the UI at all yet. A concept session still only
+  ever touches its own entry (flips `available` to `true`), so §8's "small, predictable conflicts"
+  coordination note still applies unchanged.
+- The `simple`-only `QuickCapture::availableTargets()` chip-collapse described in §4 was left for
+  the `simple` session itself rather than stubbed by infra, since `simple` isn't selectable yet —
+  building it now would have been unreachable, unverifiable code. `defaultCaptureList()` (the
+  other half of the same paragraph) **was** built and wired in, since it's real, testable
+  behavior today (`'inbox'` for every currently-available concept).
 
 Goal: let a user pick which mental model their to-do list follows — instead of forcing
 everyone through "3 Things" — and switch between them without ever losing data.
