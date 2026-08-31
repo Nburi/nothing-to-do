@@ -94,7 +94,7 @@
                     <div class="mt-3 space-y-3">
                         <select
                             id="formRelatedModule"
-                            wire:model="formRelatedModule"
+                            wire:model.live="formRelatedModule"
                             class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
                         >
                             <option value="">Bitte wählen</option>
@@ -105,6 +105,47 @@
                         @error('formRelatedModule')
                             <p class="text-xs text-signal">{{ $message }}</p>
                         @enderror
+
+                        {{-- Only rendered for a module that has a genuine
+                             "hasn't visited it" state (isScopableModule()) —
+                             the toggle would be a no-op for Board/Settings. --}}
+                        @if ($this->moduleUsageEstimate)
+                            @php $estimate = $this->moduleUsageEstimate; @endphp
+                            <div>
+                                <label class="mb-1.5 block text-xs font-medium text-ink-soft">Zielgruppe</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button
+                                        type="button"
+                                        wire:click="$set('formOnlyForModuleUsers', false)"
+                                        @class([
+                                            'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                            'bg-ink text-white shadow-sm' => ! $formOnlyForModuleUsers,
+                                            'bg-paper text-ink-soft hover:text-ink' => $formOnlyForModuleUsers,
+                                        ])
+                                    >Alle Personen</button>
+                                    <button
+                                        type="button"
+                                        wire:click="$set('formOnlyForModuleUsers', true)"
+                                        @class([
+                                            'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                            'bg-ink text-white shadow-sm' => $formOnlyForModuleUsers,
+                                            'bg-paper text-ink-soft hover:text-ink' => ! $formOnlyForModuleUsers,
+                                        ])
+                                    >Nur {{ $this->moduleOptions[$formRelatedModule]['label'] }}-Nutzer</button>
+                                </div>
+                                <p class="mt-1.5 text-xs text-ink-soft">
+                                    @if ($formOnlyForModuleUsers)
+                                        @if ($estimate['inUse'] === 0)
+                                            Erreicht aktuell niemanden — noch hat niemand {{ $this->moduleOptions[$formRelatedModule]['label'] }} besucht.
+                                        @else
+                                            Erreicht aktuell {{ $estimate['inUse'] }} von {{ $estimate['total'] }} {{ $estimate['total'] === 1 ? 'Person' : 'Personen' }} — nur wer {{ $this->moduleOptions[$formRelatedModule]['label'] }} bereits besucht hat.
+                                        @endif
+                                    @else
+                                        Erreicht aktuell alle {{ $estimate['total'] }} {{ $estimate['total'] === 1 ? 'Person' : 'Personen' }}.
+                                    @endif
+                                </p>
+                            </div>
+                        @endif
 
                         <div>
                             <label for="formHighlightSelector" class="mb-1.5 block text-xs font-medium text-ink-soft">CSS-Selektor zum Hervorheben (optional)</label>
@@ -224,7 +265,9 @@
                                 'bg-line text-ink-faint' => ! $announcement->is_published,
                             ])>{{ $announcement->is_published ? 'Veröffentlicht' : 'Entwurf' }}</span>
                             @if ($announcement->relatedModuleLabel())
-                                <span class="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink-soft">{{ $announcement->relatedModuleLabel() }}</span>
+                                <span class="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink-soft">
+                                    {{ $announcement->relatedModuleLabel() }}{{ $announcement->only_for_module_users ? ' · nur Besucher' : '' }}
+                                </span>
                             @elseif ($announcement->isExternalLink())
                                 <span class="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink-soft">↗ externer Link</span>
                             @endif

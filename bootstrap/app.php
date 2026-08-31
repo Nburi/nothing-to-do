@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RecordModuleVisit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+
+        // No-ops on every route that isn't a module page — see the
+        // middleware's own docblock for why this is registered globally
+        // instead of attached per-route.
+        $middleware->web(append: [RecordModuleVisit::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

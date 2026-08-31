@@ -1850,6 +1850,48 @@ authors announcements, and a per-user toast every regular user sees until they d
   later markup change silently just does nothing (fails quietly in `highlightFromQueryParam()`, never
   a broken page), which is an acceptable trade for a developer-facing, admin-only field.
 
+**Audience scoping — "only for people who actually use this page" (built).** `related_module` alone
+only ever decided the announcement's *link*; it never restricted who it reaches. **`feature_
+announcements.only_for_module_users`** (boolean, default `false`) adds that restriction as a
+separate, explicit opt-in — deliberately not automatic just from setting `related_module`, since an
+announcement about a brand-new opt-in page (e.g. "Planer ist jetzt da!") still has to reach *everyone*,
+including people who have never opened it yet; that's the entire point of announcing it. Only offered
+for a **scopable** module (`FeatureAnnouncement::isScopableModule()` — every `AppModules::CATALOG` key
+plus **`planner`**, which `FeatureAnnouncement::scopableModules()` adds even though Planer isn't part
+of that catalog itself, for the same reason it never will be — see `AppModules`'s own docblock on a
+feature with its own dedicated toggle never getting a second one). Board and Settings are never
+scopable, since everyone always uses them.
+
+- **The signal is real visit history, not a settings/visibility check.** A module can be enabled and
+  visible in navigation and still never have been opened — "using it" specifically means having opened
+  it. **`module_visits`** (`user_id, module_key`, unique per pair; `created_at` = first visit,
+  `updated_at` = last) is stamped by **`App\Http\Middleware\RecordModuleVisit`**, registered globally
+  on the `web` middleware group (`bootstrap/app.php`) rather than attached to individual routes: it
+  derives the module key from the current request's route name via
+  `FeatureAnnouncement::moduleKeyForRouteName()` (the reverse of `scopableModules()`'s own `route`
+  field) and no-ops on everything else — the admin/API/`/livewire/update` routes included, and any
+  future scopable module becomes tracked automatically the moment it's added to `scopableModules()`,
+  with nothing here needing to change. A `wire:navigate` SPA jump still re-hits the named route
+  server-side (the same fact `FeatureAnnouncementToast`'s own session-flash-read-once behaviour already
+  relies on), so it counts as a visit exactly like a hard reload does.
+- **`FeatureAnnouncement::isModuleInUseBy(User, key)`** reads `module_visits` directly;
+  `scopeUnseenBy()` excludes a scoped row for anyone who has never visited its module (guarded with
+  `orWhereNull('related_module')` so a scoped row that somehow has no module — never possible through
+  the editor's own `save()`, but not enforced at the DB level either — fails open instead of vanishing
+  for everyone).
+- **The admin editor's live reach count is this feature's signature moment.** Once a scopable module is
+  picked, a line under the "Zielgruppe" chips reads real numbers straight from `module_visits` —
+  `FeatureAnnouncement::moduleReachCounts()` — updating the instant the module changes (the `<select>`
+  is `wire:model.live`, unlike every other deferred field on this form) or the audience toggle flips,
+  with its own copy for the "reaches nobody yet" case. Nobody has to publish first to find out whether
+  a restricted announcement would actually reach anyone.
+- **Admin list rows** get a quiet "· nur Besucher" suffix on the module badge when a row is scoped, so
+  it's visible without opening it.
+- Deliberately out of scope for this pass: retroactively crediting visits from before this feature
+  shipped (there's no historical log to reconstruct — same "clean count from ship day" limitation
+  `ProgressStats`' streak already has), targeting more than one module per announcement, and any other
+  targeting dimension (class-agenda membership, admin-only, …).
+
 ### Rückkehr-Begrüssung & Ankündigungs-Rückstand (built)
 
 Two small, independent additions for the "hasn't opened the app in a while" moment — a random
@@ -2583,6 +2625,22 @@ robust across Windows↔Linux git). Reference as `<livewire:task-board />` / rou
 **Fix (for verification only):** drive actions through the JS API via `preview_eval` —
 `Livewire.all()[0].$wire.call('method', ...args)` and `.$wire.set('prop', value, false)`. In Livewire 4
 the component object exposes a `.$wire` proxy (not top-level `.set`/`.call`). Real users are unaffected.
+
+### `document.querySelector('button[type="submit"]')` can silently click the wrong form entirely
+**Symptom:** while manually verifying a form via `javascript_tool`, calling `.click()` on "the" submit
+button appears to log the user out — the browser navigates to `/` and shows the guest landing page,
+with no server-side error anywhere (`storage/logs/laravel.log` stays clean) and no matching
+`/livewire/update` request in the network log at all.
+**Cause:** `document.querySelector('button[type="submit"]')` returns the *first* match in DOM order —
+and this app's header carries Breeze's own hidden "Log out" form (inside the avatar dropdown, present
+on every authenticated page, closed by default) *before* the page's own content in the DOM. A selector
+that isn't scoped to the actual form ends up clicking that logout button instead of the one intended,
+which explains the symptom exactly: a real POST to `route('logout')` followed by Breeze's own
+redirect to `/`.
+**Fix:** always scope the query to the specific form being tested —
+`document.querySelector('form[wire\\:submit] button[type="submit"]')` or, more simply, select by the
+button's own visible text (`[...document.querySelectorAll('button')].find(b => b.textContent.trim() ===
+'Anlegen')`) — never a bare `button[type="submit"]` on a page that might carry more than one form.
 
 ### `php artisan tinker --execute "…"` mangles quotes from PowerShell
 **Symptom:** a one-liner passed to `tinker --execute` dies with a PHP parse error (`unexpected '@'`) or

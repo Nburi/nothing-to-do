@@ -34,6 +34,15 @@ class AnnouncementEditor extends Component
     /** A key into FeatureAnnouncement::linkableModules(), or '' for "kein bestimmter Bereich". */
     public string $formRelatedModule = '';
 
+    /**
+     * Whether this announcement should only reach people who have actually
+     * visited formRelatedModule's page (see FeatureAnnouncement::isModuleInUseBy()),
+     * instead of everyone. Only meaningful — and only ever rendered — when a
+     * scopable module is chosen; save() forces this back to false otherwise,
+     * regardless of what a stale form field might still hold.
+     */
+    public bool $formOnlyForModuleUsers = false;
+
     /** 'none' | 'module' | 'external' — which of the two link fields below applies, mutually exclusive. */
     public string $formLinkType = 'none';
 
@@ -65,6 +74,29 @@ class AnnouncementEditor extends Component
         return FeatureAnnouncement::linkableModules();
     }
 
+    /**
+     * Real reach numbers for the currently-selected module — null unless a
+     * scopable module is actually chosen (isScopableModule() gates whether
+     * the "only for module users" toggle even renders, see the view). Backs
+     * this feature's one signature moment: the count is live, not something
+     * you only find out after publishing.
+     *
+     * @return array{total: int, inUse: int}|null
+     */
+    #[Computed]
+    public function moduleUsageEstimate(): ?array
+    {
+        if ($this->formLinkType !== 'module' || $this->formRelatedModule === '') {
+            return null;
+        }
+
+        if (! FeatureAnnouncement::isScopableModule($this->formRelatedModule)) {
+            return null;
+        }
+
+        return FeatureAnnouncement::moduleReachCounts($this->formRelatedModule);
+    }
+
     #[Computed]
     public function typeOptions(): array
     {
@@ -86,6 +118,7 @@ class AnnouncementEditor extends Component
             'description' => $this->formDescription,
             'type' => $this->formType,
             'related_module' => $this->formLinkType === 'module' && $this->formRelatedModule !== '' ? $this->formRelatedModule : null,
+            'only_for_module_users' => $this->formLinkType === 'module' && $this->formOnlyForModuleUsers,
             'external_url' => $this->formLinkType === 'external' && $this->formExternalUrl !== '' ? $this->formExternalUrl : null,
             'external_link_label' => $this->formLinkType === 'external' && $this->formExternalLinkLabel !== '' ? $this->formExternalLinkLabel : null,
             'highlight_selector' => $this->formLinkType === 'module' && $this->formHighlightSelector !== '' ? $this->formHighlightSelector : null,
@@ -99,6 +132,7 @@ class AnnouncementEditor extends Component
         $this->formDescription = '';
         $this->formType = FeatureAnnouncement::DEFAULT_TYPE;
         $this->formRelatedModule = '';
+        $this->formOnlyForModuleUsers = false;
         $this->formLinkType = 'none';
         $this->formExternalUrl = '';
         $this->formExternalLinkLabel = '';
@@ -115,6 +149,7 @@ class AnnouncementEditor extends Component
         $this->formDescription = $announcement->description;
         $this->formType = $announcement->type;
         $this->formRelatedModule = (string) ($announcement->related_module ?? '');
+        $this->formOnlyForModuleUsers = $announcement->only_for_module_users;
         $this->formLinkType = match (true) {
             $announcement->related_module !== null => 'module',
             $announcement->external_url !== null => 'external',
@@ -158,6 +193,9 @@ class AnnouncementEditor extends Component
             'description' => $data['formDescription'],
             'type' => $data['formType'],
             'related_module' => $this->formLinkType === 'module' ? $data['formRelatedModule'] : null,
+            'only_for_module_users' => $this->formLinkType === 'module'
+                && FeatureAnnouncement::isScopableModule($data['formRelatedModule'] ?? '')
+                && $this->formOnlyForModuleUsers,
             'external_url' => $this->formLinkType === 'external' ? $data['formExternalUrl'] : null,
             'external_link_label' => $this->formLinkType === 'external' && $data['formExternalLinkLabel'] !== ''
                 ? $data['formExternalLinkLabel']
