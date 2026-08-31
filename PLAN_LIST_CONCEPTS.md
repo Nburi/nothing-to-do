@@ -1,6 +1,6 @@
 # Plan: To-Do-Listen-Konzepte (List Concepts)
 
-Status: **infra implemented, the four concepts themselves not yet.** Plan written on branch
+Status: **infra + "Simple" implemented; Eisenhower/Kanban not yet.** Plan written on branch
 `feature/list-concepts-plan` (branched off `main` at commit `7fe5c7c`, 2026-08-31) — see
 "Housekeeping note" at the bottom for why that branches off `main` instead of
 `feature/feature-announcements` as originally instructed. The infra session described in §4
@@ -8,10 +8,17 @@ Status: **infra implemented, the four concepts themselves not yet.** Plan writte
 2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
 `partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card (including the
 real-data preview-thumbnail signature moment, §5 option C), and the `QuickCapture` hook — with
-the full automated suite green (1146 tests). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte"
-section and in `TODO.md`'s matching follow-up entry, which is also where the three remaining
-concept sessions (Simple/Eisenhower/Kanban) are tracked as next steps, each branching off
-`feature/list-concepts-infra`. **Not merged, not pushed.**
+the full automated suite green (1146 tests). The "Simple" concept session then landed on
+**`feature/list-concept-simple`** (branched off `feature/list-concepts-infra`, 2026-08-31) —
+`simple` flipped to `available: true`, `partials/board-simple.blade.php`,
+`TaskBoard::simpleTasks()`/`reorderSimple()`/`setTodaySimple()`/`swipeIntentSimple()`, the
+`QuickCapture` chip-collapse §4 deferred to it, and its own signature moment ("Heute-Puls" — see
+§5's option list below, none of which this concept-level moment is; it's scoped to this one
+concept's own flat-list UI, not the Settings-level switcher) — full automated suite green (1176
+tests). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte" and "To-Do-Listen-Konzepte — 'Simple'"
+sections and in `TODO.md`'s matching follow-up entry, which is also where the two remaining
+concept sessions (Eisenhower/Kanban) are tracked as next steps, each branching off
+`feature/list-concepts-infra`. **Neither infra nor "Simple" is merged or pushed.**
 
 Two small, deliberate deviations from this document, both explained in CLAUDE.md/TODO.md:
 - `ListConcepts::CATALOG` ships **all four** concepts now (with an `available` flag), rather than

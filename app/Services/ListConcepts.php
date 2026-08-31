@@ -8,7 +8,8 @@ use Illuminate\Support\Collection;
 
 /**
  * The catalog of mental models the board can be rendered through — "3 Things"
- * (the original, still the default), plus three more that are planned but not
+ * (the original, still the default), "Simple" (a single flat list, no
+ * triage), plus two more ("Eisenhower", "Kanban") that are planned but not
  * yet built (see PLAN_LIST_CONCEPTS.md). Deliberately built as a stateless
  * catalog (mirrors AppModules::CATALOG/HeaderBadges::CATALOG) rather than a
  * hardcoded switch scattered across TaskBoard, so a later concept session has
@@ -45,7 +46,7 @@ class ListConcepts
         'simple' => [
             'label' => 'Simple',
             'description' => 'Eine einzige flache Liste. Kein Inbox-Umweg, keine Triage.',
-            'available' => false,
+            'available' => true,
         ],
         'eisenhower' => [
             'label' => 'Eisenhower-Matrix',
@@ -109,9 +110,6 @@ class ListConcepts
      * QuickCapture's one concept-driven hook: which target its panel opens on
      * by default. Every concept except 'simple' (no Inbox-triage step, so
      * capture always writes a real task) wants the existing Inbox default.
-     * 'simple' isn't selectable yet (see CATALOG), so this always returns
-     * 'inbox' today — the branch exists so the 'simple' concept session has
-     * nothing left to wire up here when it lands.
      */
     public static function defaultCaptureList(User $user): string
     {

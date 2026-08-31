@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Settings;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -43,13 +44,24 @@ class SettingsListConceptTest extends TestCase
     {
         $user = User::factory()->create();
 
-        // 'three_things' is currently the only available concept — re-selecting
-        // it is still a legitimate, idempotent write and must succeed.
+        // 'three_things' is one of two currently-available concepts —
+        // re-selecting it is still a legitimate, idempotent write and must succeed.
         Livewire::actingAs($user)->test(Settings::class)
             ->call('setListConcept', 'three_things')
             ->assertSet('listConcept', 'three_things');
 
         $this->assertSame('three_things', $user->fresh()->list_concept);
+    }
+
+    public function test_set_list_concept_persists_simple(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->call('setListConcept', 'simple')
+            ->assertSet('listConcept', 'simple');
+
+        $this->assertSame('simple', $user->fresh()->list_concept);
     }
 
     public function test_settings_renders_the_list_concept_card(): void
@@ -59,5 +71,14 @@ class SettingsListConceptTest extends TestCase
         Livewire::actingAs($user)->test(Settings::class)
             ->assertSee('Listen-Konzept')
             ->assertSee('Bald verfügbar');
+    }
+
+    public function test_simple_row_previews_the_users_own_real_tasks(): void
+    {
+        $user = User::factory()->create();
+        Task::factory()->for($user)->inbox()->create(['title' => 'Regio-OL Karten drucken']);
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->assertSee('Regio-OL Karten drucken');
     }
 }

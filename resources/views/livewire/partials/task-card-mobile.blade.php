@@ -1,8 +1,12 @@
 @php
     $isInbox = $task->isInbox();
     // right = swipe-right action (anchored left), left = swipe-left action (anchored right)
-    $rightIntent = $isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today');
-    $leftIntent = $isInbox ? 'tasks' : 'edit';
+    // Both are overridable by the caller (see the "Simple" concept's flat
+    // list, partials/board-simple.blade.php) — Simple has no Inbox-triage
+    // swipe, only Today/edit, regardless of the task's underlying `list`.
+    $rightIntent = $rightIntent ?? ($isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today'));
+    $leftIntent = $leftIntent ?? ($isInbox ? 'tasks' : 'edit');
+    $wireMethod = $wireMethod ?? 'swipeIntent';
     $meta = [
         'todos'   => ['label' => 'To-Dos',      'bg' => 'bg-forest',  'fg' => 'text-white'],
         'tasks'   => ['label' => 'Tasks',        'bg' => 'bg-contour', 'fg' => 'text-white'],
@@ -18,7 +22,7 @@
     wire:key="m-task-{{ $task->id }}"
     @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
     class="relative select-none"
-    x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}' })"
+    x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}', wireMethod: '{{ $wireMethod }}' })"
 >
     {{-- swipe-right action, anchored left --}}
     <div

@@ -219,6 +219,16 @@
                                         </div>
                                     @endforeach
                                 </div>
+                            @elseif ($row['available'] && $row['key'] === 'simple')
+                                {{-- One flat list, no columns to split into — up to 4 of the
+                                     same real tasks the thumbnail above reads from, stacked. --}}
+                                <div class="mt-3 rounded-[0.5rem] border border-line/60 bg-surface p-2">
+                                    @forelse ($this->listConceptPreviewTasks->take(4) as $previewTask)
+                                        <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
+                                    @empty
+                                        <p class="text-[10px] text-ink-faint">—</p>
+                                    @endforelse
+                                </div>
                             @endif
                         </div>
                     </button>

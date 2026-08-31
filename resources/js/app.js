@@ -177,6 +177,43 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
+ * "Simple" concept's one flat list (see TaskBoard::reorderSimple() /
+ * partials/board-simple.blade.php). Deliberately its own small Sortable
+ * instance rather than reusing boardSortable: that one's onEnd always calls
+ * wire.reorder(list, today, ids), which would silently retriage every
+ * dragged task's `list` and clobber its Heute flag on every plain reorder —
+ * Simple's own reorder must touch neither (see reorderSimple()'s docblock).
+ *
+ * `data-today="true"` on the flat list is what lets a homework-preview card
+ * be dropped straight in to promote it (see homeworkDragSource's onEnd,
+ * which only accepts a `data-today="true"` destination) — the whole flat
+ * list doubles as Simple's one and only "today-eligible" zone, since there
+ * is no separate Heute area to distinguish it from. Group name 'board' with
+ * the same `put` allowlist as boardSortable's own Today zone is what makes
+ * that acceptance work; a homework-card drag always fires its OWN onEnd (the
+ * one attached where the drag started), never this list's, so it never
+ * races reorderSimple() with a stray AgendaEntry id.
+ */
+window.simpleListSortable = function (el, wire, handle = null) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: { name: 'board', put: ['board', 'homework-preview'] },
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const ids = Array.from(el.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderSimple(ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * Desktop drag source AND drop target for the dashboard's "Bald fällige
  * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
  * instance:
@@ -1007,6 +1044,12 @@ document.addEventListener('alpine:init', () => {
         id: cfg.id,
         leftIntent: cfg.left ?? null,
         rightIntent: cfg.right ?? null,
+        // Which $wire method a committed non-edit/non-menu intent calls.
+        // Defaults to the 3-Things board's own swipeIntent(); the "Simple"
+        // concept's flat list passes 'swipeIntentSimple' instead (see
+        // TaskBoard::swipeIntentSimple(), partials/board-simple.blade.php) —
+        // same gesture, different (isInbox()-unaware) server-side handler.
+        wireMethod: cfg.wireMethod ?? 'swipeIntent',
         dx: 0,
         dragging: false,
         flying: false,
@@ -1125,7 +1168,7 @@ document.addEventListener('alpine:init', () => {
             this.flying = true;
             this.dx = Math.sign(this.dx) * (this.$el.offsetWidth + 24);
             setTimeout(() => {
-                this.$wire.swipeIntent(this.id, intent);
+                this.$wire[this.wireMethod](this.id, intent);
             }, 150);
         },
     }));

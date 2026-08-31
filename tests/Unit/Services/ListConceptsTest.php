@@ -23,11 +23,18 @@ class ListConceptsTest extends TestCase
 
     public function test_for_self_heals_a_stored_value_that_is_not_currently_available(): void
     {
-        // 'simple' is a real catalog key, but not available yet — a stray
-        // stored value must never render nothing.
-        $user = User::factory()->create(['list_concept' => 'simple']);
+        // 'eisenhower' is a real catalog key, but not available yet — a
+        // stray stored value must never render nothing.
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
 
         $this->assertSame('three_things', ListConcepts::for($user));
+    }
+
+    public function test_for_returns_simple_once_it_is_available(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'simple']);
+
+        $this->assertSame('simple', ListConcepts::for($user));
     }
 
     public function test_for_self_heals_a_stored_value_that_is_not_a_real_key_at_all(): void
@@ -42,9 +49,13 @@ class ListConceptsTest extends TestCase
         $this->assertTrue(ListConcepts::isValid('three_things'));
     }
 
+    public function test_simple_is_valid(): void
+    {
+        $this->assertTrue(ListConcepts::isValid('simple'));
+    }
+
     public function test_an_unavailable_catalog_key_is_not_valid(): void
     {
-        $this->assertFalse(ListConcepts::isValid('simple'));
         $this->assertFalse(ListConcepts::isValid('eisenhower'));
         $this->assertFalse(ListConcepts::isValid('kanban'));
     }
@@ -65,7 +76,7 @@ class ListConceptsTest extends TestCase
         $this->assertSame(count(ListConcepts::CATALOG), $rows->count());
         $this->assertTrue($rows['three_things']['available']);
         $this->assertTrue($rows['three_things']['current']);
-        $this->assertFalse($rows['simple']['available']);
+        $this->assertTrue($rows['simple']['available']);
         $this->assertFalse($rows['simple']['current']);
         $this->assertFalse($rows['eisenhower']['available']);
         $this->assertFalse($rows['kanban']['available']);
@@ -90,13 +101,20 @@ class ListConceptsTest extends TestCase
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
     }
 
-    public function test_default_capture_list_falls_back_to_inbox_for_an_unreachable_simple_value(): void
+    public function test_default_capture_list_falls_back_to_inbox_for_an_unreachable_concept_value(): void
     {
-        // 'simple' isn't selectable yet, so for() self-heals it to
+        // 'eisenhower' isn't selectable yet, so for() self-heals it to
         // 'three_things' before defaultCaptureList() ever sees it.
-        $user = User::factory()->create(['list_concept' => 'simple']);
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
 
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
+    }
+
+    public function test_default_capture_list_is_tasks_for_simple(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'simple']);
+
+        $this->assertSame('tasks', ListConcepts::defaultCaptureList($user));
     }
 
     // ── previewTasksFor() ────────────────────────────────────────────────
