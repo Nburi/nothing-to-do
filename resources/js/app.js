@@ -177,6 +177,50 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
+ * "Kanban" concept's drag — one shared Sortable group ('kanban') spanning
+ * all three columns (desktop grid + mobile tab panels, same "one group name
+ * reused across every zone" shape as a 2×2/4-tab matrix concept would use).
+ * onEnd reads the destination zone's `data-column` and its full id order,
+ * handing both straight to TaskBoard::reorderKanban() — see
+ * PLAN_LIST_CONCEPTS.md §1/§4 and board-kanban.blade.php.
+ *
+ * The 'done' zone is drop-only (`pull: false`, `sort: false`): a completed
+ * task card never carries `data-id` (see task-card.blade.php's own
+ * `@unless($task->is_completed)` — an app-wide convention, every concept's
+ * board relies on it). A card being dropped INTO Erledigt still has its
+ * data-id at the moment of drop (it was non-completed, and therefore
+ * carried one, right up until it landed here), so completing a card by drag
+ * works fine — but a card already sitting in Erledigt has none, so dragging
+ * it back OUT (or reordering within the column) would silently fail to
+ * persist and the UI would lie. Refusing to let Erledigt act as a drag
+ * source/sort target sidesteps that entirely; the checkbox already on every
+ * card is the one, already-established way to un-complete something
+ * everywhere else in this app, and stays exactly that here too.
+ */
+window.kanbanColumnSortable = function (el, wire, handle = null) {
+    if (el._sortable) return el._sortable;
+    const isDone = el.dataset.column === 'done';
+    el._sortable = Sortable.create(el, {
+        group: isDone ? { name: 'kanban', pull: false } : 'kanban',
+        sort: !isDone,
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const to = evt.to;
+            if (to.dataset.column === undefined) return;
+            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderKanban(to.dataset.column, ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * Desktop drag source AND drop target for the dashboard's "Bald fällige
  * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
  * instance:
@@ -1001,12 +1045,16 @@ document.addEventListener('alpine:init', () => {
      * works), resists past the threshold, springs back if abandoned. Visual action
      * panels are rendered by Blade; this exposes geometry (dx/progress/dir/reached).
      *
-     * cfg: { id, left, right }  intent: 'todos'|'tasks'|'today'|'menu'|null
+     * cfg: { id, left, right, wireMethod }  intent: 'todos'|'tasks'|'today'|'advance'|'menu'|null
+     * wireMethod names the $wire action a committed non-menu/edit intent
+     * calls (defaults to the base swipeIntent() — see board-kanban.blade.php
+     * for a concept that needs its own, swipeIntentKanban).
      */
     window.Alpine.data('swipeCard', (cfg = {}) => ({
         id: cfg.id,
         leftIntent: cfg.left ?? null,
         rightIntent: cfg.right ?? null,
+        wireMethod: cfg.wireMethod ?? 'swipeIntent',
         dx: 0,
         dragging: false,
         flying: false,
@@ -1125,7 +1173,7 @@ document.addEventListener('alpine:init', () => {
             this.flying = true;
             this.dx = Math.sign(this.dx) * (this.$el.offsetWidth + 24);
             setTimeout(() => {
-                this.$wire.swipeIntent(this.id, intent);
+                this.$wire[this.wireMethod](this.id, intent);
             }, 150);
         },
     }));

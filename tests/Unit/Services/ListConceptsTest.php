@@ -42,11 +42,15 @@ class ListConceptsTest extends TestCase
         $this->assertTrue(ListConcepts::isValid('three_things'));
     }
 
+    public function test_kanban_is_valid(): void
+    {
+        $this->assertTrue(ListConcepts::isValid('kanban'));
+    }
+
     public function test_an_unavailable_catalog_key_is_not_valid(): void
     {
         $this->assertFalse(ListConcepts::isValid('simple'));
         $this->assertFalse(ListConcepts::isValid('eisenhower'));
-        $this->assertFalse(ListConcepts::isValid('kanban'));
     }
 
     public function test_an_unknown_key_is_not_valid(): void
@@ -68,17 +72,31 @@ class ListConceptsTest extends TestCase
         $this->assertFalse($rows['simple']['available']);
         $this->assertFalse($rows['simple']['current']);
         $this->assertFalse($rows['eisenhower']['available']);
-        $this->assertFalse($rows['kanban']['available']);
+        $this->assertTrue($rows['kanban']['available']);
+        $this->assertFalse($rows['kanban']['current']);
     }
 
     public function test_rows_for_reflects_a_self_healed_current_choice_not_the_raw_stored_value(): void
+    {
+        // 'simple' is a real catalog key but not available on this branch —
+        // the self-heal must fall back to 'three_things', not to whatever's
+        // stored.
+        $user = User::factory()->create(['list_concept' => 'simple']);
+
+        $rows = collect(ListConcepts::rowsFor($user))->keyBy('key');
+
+        $this->assertTrue($rows['three_things']['current']);
+        $this->assertFalse($rows['simple']['current']);
+    }
+
+    public function test_rows_for_marks_kanban_current_once_selected(): void
     {
         $user = User::factory()->create(['list_concept' => 'kanban']);
 
         $rows = collect(ListConcepts::rowsFor($user))->keyBy('key');
 
-        $this->assertTrue($rows['three_things']['current']);
-        $this->assertFalse($rows['kanban']['current']);
+        $this->assertFalse($rows['three_things']['current']);
+        $this->assertTrue($rows['kanban']['current']);
     }
 
     // ── defaultCaptureList() ─────────────────────────────────────────────
@@ -95,6 +113,16 @@ class ListConceptsTest extends TestCase
         // 'simple' isn't selectable yet, so for() self-heals it to
         // 'three_things' before defaultCaptureList() ever sees it.
         $user = User::factory()->create(['list_concept' => 'simple']);
+
+        $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
+    }
+
+    public function test_default_capture_list_is_inbox_for_kanban(): void
+    {
+        // Kanban's columns are is_today/is_completed, not list — capture
+        // needs no concept-specific wiring at all (see PLAN_LIST_CONCEPTS.md
+        // §4), so this just confirms the shared default still applies.
+        $user = User::factory()->create(['list_concept' => 'kanban']);
 
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
     }

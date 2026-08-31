@@ -1,17 +1,27 @@
 # Plan: To-Do-Listen-Konzepte (List Concepts)
 
-Status: **infra implemented, the four concepts themselves not yet.** Plan written on branch
-`feature/list-concepts-plan` (branched off `main` at commit `7fe5c7c`, 2026-08-31) — see
-"Housekeeping note" at the bottom for why that branches off `main` instead of
-`feature/feature-announcements` as originally instructed. The infra session described in §4
-"Shared" then landed on **`feature/list-concepts-infra`** (branched off `feature/list-concepts-plan`,
-2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
-`partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card (including the
-real-data preview-thumbnail signature moment, §5 option C), and the `QuickCapture` hook — with
-the full automated suite green (1146 tests). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte"
-section and in `TODO.md`'s matching follow-up entry, which is also where the three remaining
-concept sessions (Simple/Eisenhower/Kanban) are tracked as next steps, each branching off
-`feature/list-concepts-infra`. **Not merged, not pushed.**
+Status: **infra plus all four concepts implemented — but as separate, unmerged sibling branches,
+not yet on one branch lineage.** Plan written on branch `feature/list-concepts-plan` (branched off
+`main` at commit `7fe5c7c`, 2026-08-31) — see "Housekeeping note" at the bottom for why that
+branches off `main` instead of `feature/feature-announcements` as originally instructed. The infra
+session described in §4 "Shared" landed on **`feature/list-concepts-infra`** (branched off
+`feature/list-concepts-plan`, 2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the
+`TaskBoard` `@switch` seam + `partials/board-three-things.blade.php`, the Settings "Listen-Konzept"
+card (including the real-data preview-thumbnail signature moment, §5 option C), and the
+`QuickCapture` hook — with the full automated suite green (1146 tests). Each of the three
+remaining concepts then landed as its own session, each its own sibling branch off
+`feature/list-concepts-infra` directly (none depends on either of the other two):
+`feature/list-concept-simple` (signature moment "Heute-Puls"), `feature/list-concept-eisenhower`
+(2×2 quadrant grid reusing `is_important`/`isUrgent()`, signature moment "der Krisenring"), and
+`feature/list-concept-kanban` (3-column board reusing `is_today`/`is_completed`, signature moment
+"Zielfarbe voraus" — see CLAUDE.md's "To-Do-Listen-Konzepte — 'Kanban'" section for the full
+design, including a real, previously-dead-code bug this session found and fixed in
+`task-card-mobile.blade.php`/`app.js`'s shared `swipeCard` that both other concept branches were
+also silently affected by). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte" section (plus its
+own per-concept subsections) and in `TODO.md`'s matching follow-up entry. **None of the four
+branches is merged or pushed — merging them, in whatever sequence, resolving the small/predictable
+conflicts §8 already describes, is a human-reviewed decision this session deliberately left
+undone.**
 
 Two small, deliberate deviations from this document, both explained in CLAUDE.md/TODO.md:
 - `ListConcepts::CATALOG` ships **all four** concepts now (with an `available` flag), rather than

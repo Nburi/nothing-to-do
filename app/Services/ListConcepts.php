@@ -55,7 +55,7 @@ class ListConcepts
         'kanban' => [
             'label' => 'Kanban',
             'description' => 'Backlog, In Arbeit, Erledigt — als Spalten statt Listen.',
-            'available' => false,
+            'available' => true,
         ],
     ];
 

@@ -459,6 +459,32 @@
     .project-drop > [data-id] {
         display: none;
     }
+
+    /* "Kanban" concept's move pill (see partials/board-kanban.blade.php,
+       TaskBoard::setKanbanColumn()) — signature moment "Zielfarbe voraus":
+       tapping the pill washes a ring in the color of the column the card is
+       heading TOWARD, not one fixed color — contour for advancing into In
+       Arbeit, a neutral ink for retreating to Backlog — set per button
+       instance via the --kanban-pulse-color custom property, so you feel
+       which way a card is heading before the round trip confirms it. Same
+       ring shape/timing as the "Heute" pulse other list concepts use for
+       their own single, fixed-color toggle. */
+    @keyframes kanban-move-pulse {
+        0% { transform: scale(0.6); opacity: 0.6; }
+        100% { transform: scale(2.2); opacity: 0; }
+    }
+    .kanban-move-pill {
+        position: relative;
+        overflow: visible;
+    }
+    .kanban-move-pulse {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        border: 1.5px solid var(--kanban-pulse-color, rgb(var(--ink)));
+        animation: kanban-move-pulse 600ms ease-out;
+        pointer-events: none;
+    }
 }
 
 @layer utilities {

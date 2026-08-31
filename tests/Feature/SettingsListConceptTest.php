@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Settings;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -25,7 +26,7 @@ class SettingsListConceptTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Livewire::actingAs($user)->test(Settings::class)->call('setListConcept', 'kanban');
+        Livewire::actingAs($user)->test(Settings::class)->call('setListConcept', 'simple');
 
         $this->assertSame('three_things', $user->fresh()->list_concept);
     }
@@ -43,13 +44,24 @@ class SettingsListConceptTest extends TestCase
     {
         $user = User::factory()->create();
 
-        // 'three_things' is currently the only available concept — re-selecting
-        // it is still a legitimate, idempotent write and must succeed.
+        // Re-selecting the current choice is still a legitimate, idempotent
+        // write and must succeed.
         Livewire::actingAs($user)->test(Settings::class)
             ->call('setListConcept', 'three_things')
             ->assertSet('listConcept', 'three_things');
 
         $this->assertSame('three_things', $user->fresh()->list_concept);
+    }
+
+    public function test_set_list_concept_persists_kanban(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->call('setListConcept', 'kanban')
+            ->assertSet('listConcept', 'kanban');
+
+        $this->assertSame('kanban', $user->fresh()->list_concept);
     }
 
     public function test_settings_renders_the_list_concept_card(): void
@@ -59,5 +71,16 @@ class SettingsListConceptTest extends TestCase
         Livewire::actingAs($user)->test(Settings::class)
             ->assertSee('Listen-Konzept')
             ->assertSee('Bald verfügbar');
+    }
+
+    public function test_kanban_row_shows_a_real_data_preview_thumbnail(): void
+    {
+        $user = User::factory()->create();
+        Task::factory()->for($user)->create(['title' => 'Karten für Regio-OL drucken', 'list' => 'todos']);
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->assertSee('Backlog')
+            ->assertSee('In Arbeit')
+            ->assertSee('Karten für Regio-OL drucken');
     }
 }

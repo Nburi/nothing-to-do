@@ -1,50 +1,62 @@
 @php
     $isInbox = $task->isInbox();
-    // right = swipe-right action (anchored left), left = swipe-left action (anchored right)
-    $rightIntent = $isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today');
-    $leftIntent = $isInbox ? 'tasks' : 'edit';
+    // right = swipe-right action (anchored left), left = swipe-left action (anchored right).
+    // Both accept an override from the including view (see e.g.
+    // board-kanban.blade.php) — omitted/null falls back to the original
+    // 3-Things-shaped default below; an explicit '' means "no action on this
+    // side" (swipeCard treats a falsy intent as the dead side and just
+    // resists, never commits — see Alpine.data('swipeCard') in app.js).
+    // $wireMethod likewise defaults to the base swipeIntent() action.
+    $rightIntent = $rightIntent ?? ($isInbox ? 'todos' : ($task->is_today ? 'untoday' : 'today'));
+    $leftIntent = $leftIntent ?? ($isInbox ? 'tasks' : 'edit');
+    $wireMethod = $wireMethod ?? 'swipeIntent';
     $meta = [
         'todos'   => ['label' => 'To-Dos',      'bg' => 'bg-forest',  'fg' => 'text-white'],
         'tasks'   => ['label' => 'Tasks',        'bg' => 'bg-contour', 'fg' => 'text-white'],
         'today'   => ['label' => 'Heute',        'bg' => 'bg-forest',  'fg' => 'text-white'],
         'untoday' => ['label' => 'Kein Heute',   'bg' => 'bg-ink',     'fg' => 'text-paper'],
         'edit'    => ['label' => 'Bearbeiten',   'bg' => 'bg-ink',     'fg' => 'text-paper'],
+        'advance' => ['label' => 'Weiter',       'bg' => 'bg-contour', 'fg' => 'text-white'],
     ];
-    $rm = $meta[$rightIntent];
-    $lm = $meta[$leftIntent];
+    $rm = $rightIntent !== '' ? $meta[$rightIntent] : null;
+    $lm = $leftIntent !== '' ? $meta[$leftIntent] : null;
 @endphp
 
 <div
     wire:key="m-task-{{ $task->id }}"
     @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
     class="relative select-none"
-    x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}' })"
+    x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}', wireMethod: '{{ $wireMethod }}' })"
 >
-    {{-- swipe-right action, anchored left --}}
-    <div
-        class="pointer-events-none absolute inset-0 flex items-center justify-start gap-2 rounded-card pl-5 text-sm font-medium {{ $rm['bg'] }} {{ $rm['fg'] }}"
-        x-show="dir === 'right'" :style="{ opacity: progress }" style="display: none;"
-    >
-        <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
-            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span>
-        {{ $rm['label'] }}
-    </div>
+    @if ($rm)
+        {{-- swipe-right action, anchored left --}}
+        <div
+            class="pointer-events-none absolute inset-0 flex items-center justify-start gap-2 rounded-card pl-5 text-sm font-medium {{ $rm['bg'] }} {{ $rm['fg'] }}"
+            x-show="dir === 'right'" :style="{ opacity: progress }" style="display: none;"
+        >
+            <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            {{ $rm['label'] }}
+        </div>
+    @endif
 
-    {{-- swipe-left action, anchored right --}}
-    <div
-        class="pointer-events-none absolute inset-0 flex items-center justify-end gap-2 rounded-card pr-5 text-sm font-medium {{ $lm['bg'] }} {{ $lm['fg'] }}"
-        x-show="dir === 'left'" :style="{ opacity: progress }" style="display: none;"
-    >
-        {{ $lm['label'] }}
-        <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
-            @if ($leftIntent === 'edit')
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            @else
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m0 0 5-5m-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            @endif
-        </span>
-    </div>
+    @if ($lm)
+        {{-- swipe-left action, anchored right --}}
+        <div
+            class="pointer-events-none absolute inset-0 flex items-center justify-end gap-2 rounded-card pr-5 text-sm font-medium {{ $lm['bg'] }} {{ $lm['fg'] }}"
+            x-show="dir === 'left'" :style="{ opacity: progress }" style="display: none;"
+        >
+            {{ $lm['label'] }}
+            <span :style="'transform: scale(' + (0.85 + progress * 0.15) + ')'" class="inline-flex">
+                @if ($leftIntent === 'edit')
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                @else
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 10H4m0 0 5-5m-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                @endif
+            </span>
+        </div>
+    @endif
 
     {{-- the card that tracks the finger --}}
     {{-- touch-action lives in a class, not inline style: Alpine's :style transform

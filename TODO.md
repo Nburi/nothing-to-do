@@ -5,40 +5,67 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
-### To-Do-Listen-Konzepte — concept sessions can branch off `feature/list-concepts-infra`
+### To-Do-Listen-Konzepte — all four concepts built; four branches still need a human-reviewed merge
 
 Infra shipped (`ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
 `partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card with real-data
 preview thumbnails, the `QuickCapture::defaultCaptureList()` hook) — see CLAUDE.md's
 "To-Do-Listen-Konzepte" section and `PLAN_LIST_CONCEPTS.md` for the full design. Branch:
 `feature/list-concepts-infra`, off `feature/list-concepts-plan` (itself off `main` at `7fe5c7c`).
-Full automated suite green (1146 tests) at the time this landed. **Not merged, not pushed.**
+Full automated suite green (1146 tests) at the time this landed.
 
-Each remaining concept is its own session, branched off `feature/list-concepts-infra`:
+All three remaining concepts have since landed too, each its own session, each its own sibling
+branch off `feature/list-concepts-infra` (none depends on either of the other two):
 
-1. `feature/list-concept-simple` — add `simple` to `ListConcepts::CATALOG` (`available: true`),
-   `partials/board-simple.blade.php` (desktop + mobile), fill in `defaultCaptureList()`'s
-   already-correct `simple` branch, and build the `QuickCapture::availableTargets()`
-   chip-collapse (Inbox/ToDos/Tasks → one "Aufgabe" chip) that the infra session deliberately
-   left unbuilt — it was structurally unreachable/unverifiable before `simple` existed in the
-   catalog as available. Add its Settings preview thumbnail alongside `three_things`'s.
-2. `feature/list-concept-eisenhower` — same shape, 2×2 quadrant board reusing `is_important`/
-   `isUrgent()`, quadrant tap-to-create pre-filling those flags on the `QuickCapture` call.
-3. `feature/list-concept-kanban` — same shape, 3-column board reusing `toggleComplete()`/
-   `setToday()`/`Task::todayDateFor()` exactly as they exist today.
+1. `feature/list-concept-simple` — `simple` flipped to `available: true`,
+   `partials/board-simple.blade.php` (desktop + mobile, one flat list), `defaultCaptureList()`'s
+   `simple` branch, `QuickCapture::availableTargets()`'s chip-collapse (Inbox/ToDos/Tasks → one
+   "Aufgabe" chip), signature moment "Heute-Puls".
+2. `feature/list-concept-eisenhower` — `eisenhower` flipped to `available: true`,
+   `partials/board-eisenhower.blade.php` (desktop 2×2 grid + mobile 4-tab layout) reusing
+   `is_important`/`isUrgent()`, `Task::isUrgencyLocked()`, quadrant tap-to-create pre-filling
+   those flags on the `QuickCapture` call, signature moment "der Krisenring".
+3. `feature/list-concept-kanban` — `kanban` flipped to `available: true`,
+   `partials/board-kanban.blade.php` (desktop 3-column grid + mobile 3-tab layout) reusing
+   `is_today`/`is_completed` — no new axis data, no new column. `TaskBoard::kanbanColumns()` +
+   `setKanbanColumn()`/`reorderKanban()`/`swipeIntentKanban()`, signature moment
+   "Zielfarbe voraus" (the per-card move pill's pulse ring is colored by the column it's heading
+   toward, not one fixed color). No `QuickCapture` changes needed at all — Backlog is already
+   capture's natural landing spot. **Verification was automated-tests-only this session too** (no
+   dev-server/browser pass, per instruction, same as the other two) — **a manual browser pass
+   (drag on both breakpoints, the move pill, the checkbox-driven Erledigt transitions, the pulse
+   colors) is still owed before merge.**
+   - Along the way, this session found and fixed a real, previously-unnoticed bug shared by *all
+     three* concept branches: `board-simple.blade.php`/`board-eisenhower.blade.php` both pass
+     `rightIntent`/`leftIntent`/`wireMethod` overrides into
+     `partials/task-card-mobile.blade.php`'s `@include`, but that partial never actually read
+     them (it unconditionally recomputed its own 3-Things-shaped intents, and `swipeCard` in
+     `app.js` always called the hardcoded `$wire.swipeIntent(...)`) — the override was silently
+     dead on both of those branches. Fixed in `task-card-mobile.blade.php` (now
+     `$rightIntent ?? …`/`$leftIntent ?? …`/`$wireMethod ?? 'swipeIntent'`, an explicit `''`
+     override means "no action on this side") and in `swipeCard`'s `fire()` (calls
+     `this.$wire[this.wireMethod](...)`) — both additive/backward-compatible, and neither
+     `simple` nor `eisenhower` touches this file themselves, so the fix carries over cleanly
+     whichever order the three branches get merged in. **Worth a quick manual swipe check on
+     Simple's and Eisenhower's own mobile boards once merged**, since their swipe intents were
+     likely relying on this partial's *old* default-computation fallback coincidentally
+     resembling what they wanted (see the file's own updated comment for exactly which case would
+     have been wrong: an inbox-list task surfaced in one of their boards).
 
-Expect small, predictable conflicts merging more than one concept branch back-to-back (each adds
-one `ListConcepts::CATALOG` entry + one `@case` in `task-board.blade.php`) — sequence the merges
-and re-resolve each array/switch by hand, per the plan's own coordination note (§8).
+**None of the four branches (infra, `simple`, `eisenhower`, `kanban`) is merged or pushed.**
+Merging them is a human call, not an agent one — sequence the merges and re-resolve each
+`ListConcepts::CATALOG` array entry / `task-board.blade.php` `@case` by hand (small, predictable
+conflicts, per the plan's own coordination note, §8); `simple`/`eisenhower`/`kanban` don't
+conflict with each other on `task-card-mobile.blade.php` or `app.js`'s `swipeCard`, since only
+`kanban` touches those.
 
 **Also deferred from infra, flagged but not done:**
 - A draft, unpublished `App\Models\FeatureAnnouncement` for this feature (CLAUDE.md §3.11 would
-  normally call for one on any user-facing feature) — skipped because it's admin-authored content
-  normally created through `AnnouncementEditor`'s own UI, and this session's verification was
-  automated-tests-only with no dev-server/browser access. Create one (title "Neu:
-  Listen-Konzepte", unpublished) via the admin panel once merged, mentioning at least the
-  Settings card; update its description as each concept lands, publish once the whole batch (or
-  a decided subset) is ready.
+  normally call for one on any user-facing feature) — skipped on every one of the four sessions
+  because it's admin-authored content normally created through `AnnouncementEditor`'s own UI, and
+  every session's verification was automated-tests-only with no dev-server/browser access.
+  Create one (title "Neu: Listen-Konzepte", unpublished) via the admin panel once merged,
+  mentioning the Settings card and all three concepts; publish once ready.
 
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 

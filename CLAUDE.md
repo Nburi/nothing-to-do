@@ -1631,7 +1631,7 @@ that should only cover currently-visible modules, and an admin-authored feature-
   per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
   feature-announcement system this catalog exists to eventually support.
 
-### To-Do-Listen-Konzepte (infra built; concepts themselves not yet — see `PLAN_LIST_CONCEPTS.md`)
+### To-Do-Listen-Konzepte (infra + "Kanban" list concept built; see `PLAN_LIST_CONCEPTS.md`)
 
 Lets a user pick which mental model their to-do list follows, instead of forcing everyone through
 "3 Things" (§1) forever. Full design (all four concepts, the exact data-mapping-without-migration
@@ -1645,9 +1645,10 @@ argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section d
   `HeaderBadges::CATALOG`, with one addition: every entry also carries an `available` flag. A
   concept can be *listed* (so Settings can show "bald verfügbar" and a user knows it's coming)
   without being *selectable* yet, because its board partial and `TaskBoard` computed properties
-  don't exist. `CATALOG` ships all four concepts from the plan today — only `three_things` has
-  `available: true`; `simple`/`eisenhower`/`kanban` are `false` until their own session flips the
-  flag in the same commit that adds their `@case` + partial. `for(User): string` is the
+  don't exist. `CATALOG` ships all four concepts from the plan today — `three_things` and, as of
+  its own session (see "To-Do-Listen-Konzepte — 'Kanban'" below), `kanban` have `available: true`;
+  `simple`/`eisenhower` are `false` until their own session flips the flag in the same commit that
+  adds their `@case` + partial. `for(User): string` is the
   self-healing read every consumer goes through (mirrors `AppModules`'s own dual-consistency
   pattern) — a stored `list_concept` for a concept that isn't available (or never was a real key)
   always falls back to `'three_things'`. `isValid(string): bool` (catalog membership **and**
@@ -1701,10 +1702,12 @@ argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section d
   `three_things`'s own thumbnail buckets that read into three small mini-columns (Inbox/To-Dos/
   Tasks) showing up to two real task titles each, with a quiet "—" placeholder for an empty
   bucket rather than nothing at all (the empty-state case, checked directly: a fresh account with
-  zero tasks renders the card cleanly). `simple`/`eisenhower`/`kanban` render no thumbnail at all
-  yet (there's no per-concept rendering logic to build one from) — each concept session adds its
-  own `@if ($row['key'] === '<key>')` thumbnail branch alongside its own `@case` once it has real
-  data to show, exactly the same way the board switch grows.
+  zero tasks renders the card cleanly). `kanban` gained its own two-mini-column thumbnail
+  (Backlog/In Arbeit — no Erledigt bucket, see its own section below for why) as of its own
+  session; `simple`/`eisenhower` render no thumbnail at all yet (there's no per-concept rendering
+  logic to build one from) — each concept session adds its own `@if ($row['key'] === '<key>')`
+  thumbnail branch alongside its own `@case` once it has real data to show, exactly the same way
+  the board switch grows.
 - **Onboarding discoverability nudge** — the existing "Die 3 Dinge" tutorial slide (see
   Onboarding-Tutorial below) keeps teaching 3 Things as the default exactly as before, but gained
   one appended line + a deep link reusing the already-built `?highlight=<selector>` flash
@@ -1723,10 +1726,113 @@ argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section d
   in the summary that one should be written").
 - Deliberately out of scope for this infra session (all tracked in `PLAN_LIST_CONCEPTS.md` §7 and
   `TODO.md`): the three concepts themselves (Simple/Eisenhower/Kanban — no board partial, no
-  `TaskBoard` computed properties, `available: false` in the catalog), the `simple` QuickCapture
-  chip-collapse (see above), the draft `FeatureAnnouncement` (see above), and everything else the
-  plan's own §7 already lists (Eat-the-Frog, time-blocking, a board-morph/FLIP animation, API
-  awareness of `list_concept`, coupling to `AppModules`).
+  `TaskBoard` computed properties, `available: false` in the catalog — Kanban has since been built
+  in its own session, see below), the `simple` QuickCapture chip-collapse (see above), the draft
+  `FeatureAnnouncement` (see above), and everything else the plan's own §7 already lists
+  (Eat-the-Frog, time-blocking, a board-morph/FLIP animation, API awareness of `list_concept`,
+  coupling to `AppModules`).
+
+### To-Do-Listen-Konzepte — "Kanban" (built)
+
+The last of the four concept sessions `PLAN_LIST_CONCEPTS.md`/`TODO.md` split off from infra
+(built independently as a sibling of `feature/list-concept-simple`/`-eisenhower`, all three
+branched off `feature/list-concepts-infra` — none depends on either of the other two, expect
+small predictable conflicts merging all three back-to-back, per the plan's own §8 coordination
+note). Three columns — Backlog / In Arbeit / Erledigt — built from the SAME two signals every
+other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_completed`
+(Erledigt). No new axis data at all, and no new column on `tasks`.
+`ListConcepts::CATALOG['kanban']['available']` is now `true`.
+
+- **`TaskBoard::kanbanColumns()`** (`#[Computed]`) is `boardTasks()`'s exact filter shape
+  (recently-completed visibility window, a grouped task hidden unless important/today) minus the
+  `inList()` call — same idea as `eisenhowerQuadrants()`/`simpleTasks()` — fetched once and
+  bucketed into the three columns **in PHP** (`is_today`/`is_completed` are plain flags, not worth
+  three separate queries). `boardOrdered()`'s own tie-breakers already give a sensible in-column
+  order for free, preserved by the bucketing (`Collection::filter()` keeps relative order).
+  Unlike Eisenhower's/Simple's own "done" strip (an overflow area outside their real grid),
+  **Erledigt is one of Kanban's three named columns** — the whole point of the concept — so it's a
+  full grid column, not an afterthought below it.
+- **Own UX question this concept has that no other one does: how does a task actually move
+  between columns?** Two complementary answers:
+  1. **The Backlog ⇄ In Arbeit axis (`is_today`) gets exactly one new per-card control**, since
+     nothing else in the app already has one: a small pill on every Backlog/In Arbeit card
+     (`TaskBoard::setKanbanColumn()`) whose label always names the *destination* ("→ In Arbeit" /
+     "← Backlog"), not the current state. **The Erledigt axis (`is_completed`) needs no new
+     control at all** — the checkbox already on every card everywhere in this app
+     (`ManagesTasks::toggleComplete()`) already does exactly this, unchanged; a done card
+     therefore carries no move pill, only the checkbox.
+  2. **Drag, as a spatial shortcut on top of #1 — one shared Sortable group ('kanban') across all
+     three columns**, desktop grid and mobile tab panels alike (`window.kanbanColumnSortable` in
+     `app.js`, mirroring Eisenhower's own "one group name reused across every zone" shape). The
+     **Erledigt zone is drop-only** (`pull: false`, `sort: false`): a completed task card never
+     carries `data-id` anywhere in this app (`task-card.blade.php`'s/`task-card-mobile.blade.php`'s
+     own `@unless($task->is_completed)` — a pre-existing, app-wide convention this concept did not
+     invent). A card being *completed* by drag still works fine — it carried its `data-id` right
+     up until it landed there — but a card already sitting in Erledigt has none, so letting it act
+     as a drag *source* would silently fail to persist and the UI would lie. Refusing that
+     up front (rather than discovering it the hard way) keeps the one, already-established way to
+     un-complete a card — the checkbox — the only way out of Erledigt on every breakpoint.
+  `TaskBoard::applyKanbanColumn()` is the shared single-task primitive both `setKanbanColumn()` and
+  the batch `reorderKanban()` (desktop drag's `onEnd` handler) build on: it reuses
+  `ManagesTasks::toggleComplete()` **verbatim** for the `is_completed` axis — celebration/streak/
+  Agenda-sync side effects included — but only when the task's current state doesn't already match
+  the destination, so a batch reorder call (which receives the *whole* target zone's id list, not
+  just the one that moved) never re-fires it for an already-completed sibling. The `is_today` axis
+  reuses `Task::todayDateFor()` exactly like every other `is_today` write site (see CLAUDE.md's
+  "today_date" audit-lesson entry) rather than writing it inline. Leaving Erledigt never forces
+  `is_today` one way or the other — completing a task doesn't touch `is_today` anywhere else in
+  this app either, so un-completing one via the checkbox correctly returns it to wherever it was
+  before, Backlog or In Arbeit.
+- **`TaskBoard::swipeIntentKanban()`** — mobile's right-swipe always means "move one column
+  forward", resolved **server-side** from the task's actual current state (never baked into
+  whichever tab the swipe happened in), so it stays correct regardless. Left is always 'edit'.
+  Erledigt's cards swipe nowhere (`rightIntent` is `''` there, see below) — checkbox only.
+- **Bug found and fixed along the way, shared by all three concept branches**: `board-simple.blade.php`/
+  `board-eisenhower.blade.php` both pass `rightIntent`/`leftIntent`/`wireMethod` overrides into
+  `partials/task-card-mobile.blade.php`'s `@include`, but that partial never actually read them —
+  it unconditionally recomputed its own 3-Things-shaped intents from scratch, and `swipeCard` in
+  `app.js` always called the hardcoded `$wire.swipeIntent(...)` regardless of any `wireMethod`
+  passed in. The override was silently dead code on both of those branches (masked because the
+  default computation happened to coincidence-match what they wanted for a *non-inbox* task, but
+  not for one still sitting in `list='inbox'`). This concept's own mobile "advance" swipe needed a
+  real, working override to call `swipeIntentKanban()` instead of the base `swipeIntent()`, so this
+  session fixed the shared file rather than build a fourth copy of the same latent bug:
+  `task-card-mobile.blade.php` now reads `$rightIntent ?? (…default…)` / `$leftIntent ?? (…)` /
+  `$wireMethod ?? 'swipeIntent'` — an explicit `''` (not `null`) means "no action on this side",
+  which `swipeCard` already treats as the dead side (resists, never commits) once its own
+  `rightIntent`/`leftIntent` reads that empty string. `swipeCard.fire()` now calls
+  `this.$wire[this.wireMethod](...)` instead of the hardcoded name. Both changes are additive and
+  backward-compatible (every existing call site that doesn't pass these params keeps its exact
+  prior behavior) — and since neither `simple` nor `eisenhower` touches this file or `app.js`'s
+  `swipeCard` themselves, the fix carries over cleanly regardless of which order the three branches
+  get merged in, silently fixing their own latent bug too. See `TODO.md`.
+- **Signature moment — "Zielfarbe voraus" (target color ahead).** Tapping a move pill washes a
+  ring in the color of the column the card is heading **toward**, not one fixed color — `contour`
+  for advancing into In Arbeit, a neutral `ink` for retreating to Backlog — set per button instance
+  via a `--kanban-pulse-color` CSS custom property (`.kanban-move-pulse` in `app.css`, same ring
+  shape/timing as Simple's own single-color "Heute-Puls", just parameterized instead of fixed) so
+  the pulse itself tells you which way the card is going before the round trip confirms it.
+- **Settings' preview thumbnail** — a fourth branch in the "Listen-Konzept" card's real-data
+  preview renders **two** mini-columns, Backlog and In Arbeit (up to two real task titles each,
+  same "—" empty placeholder as every other concept's thumbnail) — deliberately **no Erledigt
+  bucket**: `ListConcepts::previewTasksFor()` samples active tasks only (same shared read every
+  concept's own thumbnail uses, including Eisenhower's four quadrants, which for the identical
+  reason also has no "done" bucket), so a completed task never appears in this preview at all — a
+  third, permanently-empty "Erledigt" mini-column would read as broken, not accurate.
+- **No `FeatureAnnouncement` draft was created this session either** — same reasoning as every
+  other session in this batch: admin-authored content needs the admin UI, and this session's
+  verification was explicitly test-suite-only, with no browser access to use that UI safely.
+  Flagged here and in `TODO.md`.
+- Deliberately out of scope for this session (tracked in `PLAN_LIST_CONCEPTS.md` §7/§8 and
+  `TODO.md`): Simple/Eisenhower themselves (built independently on their own sibling branches),
+  user-defined/renameable columns (ships with the fixed Backlog/In Arbeit/Erledigt set, per the
+  plan), any `QuickCapture` changes (none needed — Backlog is already capture's natural landing
+  spot for every list value), the still-unwritten `FeatureAnnouncement` draft (see above), and a
+  board-morph/FLIP animation (explicitly deferred at the infra level already). Verification for
+  this session was automated-tests-only (per explicit instruction, same known dev-server-hang trap
+  the other two sessions avoided) — a manual browser pass (both breakpoints, the drag gesture
+  across all three columns, the move pill's pulse colors, the checkbox-driven Erledigt transitions)
+  is still owed before merge.
 
 ### Onboarding-Tutorial (built)
 
@@ -3041,6 +3147,40 @@ touch drag still can't cross containers while a same-day touch reorder is comple
 general lesson: a `matchMedia`/`navigator`-level capability check answers "what can this device do", never
 "what is this specific interaction doing" — for the latter, capture the real triggering event instead, the
 same way `plannerTap` already did next to the bug this whole time.
+
+### A Blade partial's `@php` block silently overwrites a variable passed in via `@include`, instead of falling back to it
+**Symptom:** two sibling concept branches (`feature/list-concept-simple`, `feature/list-concept-eisenhower`)
+each pass `'rightIntent' => ..., 'leftIntent' => ..., 'wireMethod' => '...'` into
+`@include('livewire.partials.task-card-mobile', [...])`, and both looked correct in review — but a real
+mobile swipe on either board silently called the *base* `TaskBoard::swipeIntent()` action, never the
+concept's own `swipeIntentSimple()`/`swipeIntentEisenhower()`. No error anywhere; the swipe visibly worked
+most of the time anyway, which is exactly what made it easy to miss.
+**Cause:** `task-card-mobile.blade.php`'s own `@php` block unconditionally recomputed
+`$rightIntent`/`$leftIntent` from the task's own 3-Things-shaped logic (`$isInbox ? ... : ...`), silently
+clobbering whatever the including view had just passed in — Blade turns `@include(..., ['rightIntent' =>
+...])` array keys into real PHP variables in the included view's scope, but nothing stops the partial's own
+code from reassigning them right back over top. Separately, `swipeCard` in `app.js` had its `$wire` call
+hardcoded to `.swipeIntent(...)`, so even a `wireMethod` key correctly threaded through would have been
+ignored anyway. The bug was masked rather than visible: for a *non-inbox* task, the base file's own default
+formula (`$task->is_today ? 'untoday' : 'today'` / `'edit'`) happens to compute the exact same values the
+concept wanted, so the swipe "worked" — it just always called the wrong Livewire method, which for those two
+intents behaves almost identically to the concept's own override. Only a still-`list='inbox'` task (flagged
+important/today, so still visible in a quadrant/flat list despite being nominally "unsorted") would expose
+the real divergence.
+**Fix:** use `??`, not a bare assignment, so an explicitly-passed value survives:
+`$rightIntent = $rightIntent ?? ($isInbox ? 'todos' : ...)`. Do the same for `$wireMethod`, defaulting to
+`'swipeIntent'`. In PHP, `??` only falls through on `null`/undefined — so a caller can still force "no action
+on this side" with an explicit **empty string** (`''`), which is *not* null and therefore survives the
+coalesce untouched; `swipeCard` already treats a falsy `rightIntent`/`leftIntent` as the dead side (resists,
+never commits), so `''` is the correct way to say "nothing here" without also meaning "use the default".
+Route `swipeCard.fire()`'s final call through `this.$wire[this.wireMethod](...)` instead of a hardcoded
+method name, defaulting `wireMethod` itself to `'swipeIntent'` in the `cfg` destructuring so every existing
+call site (which never passes it) keeps its exact prior behavior. **The general lesson:** a partial that
+computes a variable for itself must guard that computation with `??` (or an `isset()`/`empty()` check, as
+appropriate) the moment it's plausible that some future caller wants to override it — a bare `=` inside an
+`@php` block silently wins over anything passed in through `@include`'s array, and unlike most Blade
+mistakes, this one produces no error, no warning, and can look correct in a diff review of the *including*
+file alone (the bug lives entirely in the file that was never touched by the branch that introduced it).
 
 ---
 
