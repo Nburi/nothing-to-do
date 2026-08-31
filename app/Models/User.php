@@ -130,6 +130,12 @@ class User extends Authenticatable
         return $this->hasMany(FeatureAnnouncement::class, 'created_by');
     }
 
+    /** Which module pages this user has ever opened — see ModuleVisit / RecordModuleVisit. */
+    public function moduleVisits(): HasMany
+    {
+        return $this->hasMany(ModuleVisit::class);
+    }
+
     /** Help-Center articles this user has authored — only ever populated for an admin. */
     public function createdHelpArticles(): HasMany
     {

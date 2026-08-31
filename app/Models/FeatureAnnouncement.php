@@ -45,6 +45,7 @@ class FeatureAnnouncement extends Model
         'description',
         'type',
         'related_module',
+        'only_for_module_users',
         'external_url',
         'external_link_label',
         'highlight_selector',
@@ -59,6 +60,7 @@ class FeatureAnnouncement extends Model
     protected function casts(): array
     {
         return [
+            'only_for_module_users' => 'boolean',
             'is_published' => 'boolean',
             'published_at' => 'datetime',
         ];
@@ -92,19 +94,119 @@ class FeatureAnnouncement extends Model
     }
 
     /**
+     * Every module an announcement can be scoped to (see only_for_module_users
+     * below) — AppModules::CATALOG plus Planer, which deliberately isn't part
+     * of that catalog (it has its own dedicated `planner_enabled` toggle
+     * rather than being hideable through the same "Module" settings card —
+     * see AppModules's own docblock on why a feature with its own on/off
+     * switch never gets a second one there). Kept in one place so
+     * linkableModules(), isScopableModule() and the route→module reverse
+     * lookup below can never disagree about which modules exist.
+     *
+     * @return array<string, array{label: string, route: string}>
+     */
+    public static function scopableModules(): array
+    {
+        return AppModules::CATALOG + [
+            'planner' => ['label' => 'Planer', 'route' => 'planner'],
+        ];
+    }
+
+    /**
      * Every internal page an announcement can link to — a superset of
-     * AppModules::CATALOG, which deliberately excludes the Board and
-     * Settings (they must always stay reachable via navigation, see that
-     * class's own docblock). An announcement isn't bound by that "always
-     * reachable" constraint, so it can point at either of those two as well.
+     * scopableModules(), which itself excludes the Board and Settings (they
+     * must always stay reachable via navigation, see AppModules's own
+     * docblock). An announcement isn't bound by that "always reachable"
+     * constraint, so it can point at either of those two as well — though
+     * neither is ever scopable (see isScopableModule()), since everyone
+     * always uses them.
      *
      * @return array<string, array{label: string, route: string}>
      */
     public static function linkableModules(): array
     {
-        return AppModules::CATALOG + [
+        return self::scopableModules() + [
             'settings' => ['label' => 'Einstellungen', 'route' => 'settings'],
             'app' => ['label' => 'Board', 'route' => 'app'],
+        ];
+    }
+
+    /**
+     * Whether $moduleKey has a genuine "hasn't used it" state worth scoping
+     * an announcement's audience around. The Board and Settings are always
+     * on for everyone, so offering the "only for module users" toggle there
+     * would be a no-op — never offered for those two.
+     */
+    public static function isScopableModule(string $moduleKey): bool
+    {
+        return array_key_exists($moduleKey, self::scopableModules());
+    }
+
+    /**
+     * The scopable-module key whose page this route name belongs to, or null
+     * if the route isn't one of them — the reverse of scopableModules()'s own
+     * `route` field. Used by App\Http\Middleware\RecordModuleVisit to decide
+     * whether the current request is a visit worth recording, without that
+     * middleware needing its own copy of the module→route map.
+     */
+    public static function moduleKeyForRouteName(?string $routeName): ?string
+    {
+        if ($routeName === null) {
+            return null;
+        }
+
+        foreach (self::scopableModules() as $key => $meta) {
+            if ($meta['route'] === $routeName) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether $user has ever visited $moduleKey's page (see ModuleVisit /
+     * RecordModuleVisit) — the real usage signal behind only_for_module_users,
+     * deliberately not a settings/visibility check: a module can be enabled
+     * and still never opened, and this is specifically about the latter.
+     */
+    public static function isModuleInUseBy(User $user, string $moduleKey): bool
+    {
+        return ModuleVisit::query()
+            ->where('user_id', $user->id)
+            ->where('module_key', $moduleKey)
+            ->exists();
+    }
+
+    /**
+     * Every scopable module key $user has never visited — the complement of
+     * isModuleInUseBy() across the whole catalog, computed once per user so
+     * scopeUnseenBy() can filter with a single whereNotIn() instead of one
+     * exists() query per row.
+     *
+     * @return list<string>
+     */
+    protected static function modulesNotInUseBy(User $user): array
+    {
+        $visited = ModuleVisit::query()->where('user_id', $user->id)->pluck('module_key')->all();
+
+        return array_values(array_diff(array_keys(self::scopableModules()), $visited));
+    }
+
+    /**
+     * How many people in total, and how many of them have ever visited
+     * $moduleKey's page — feeds the admin editor's live reach estimate so
+     * "only for module users" is a real number, not a guess, before
+     * publishing. A plain count of module_visits rows for this key already
+     * is the distinct-visitor count, since (user_id, module_key) is unique.
+     *
+     * @return array{total: int, inUse: int}
+     */
+    public static function moduleReachCounts(string $moduleKey): array
+    {
+        return [
+            'total' => User::query()->count(),
+            'inUse' => ModuleVisit::query()->where('module_key', $moduleKey)->count(),
         ];
     }
 
@@ -218,9 +320,21 @@ class FeatureAnnouncement extends Model
      */
     public function scopeUnseenBy(Builder $query, User $user): Builder
     {
+        $notInUse = self::modulesNotInUseBy($user);
+
         return $query->published()
             ->where('published_at', '>=', $user->created_at)
             ->whereDoesntHave('dismissedBy', fn (Builder $q) => $q->whereKey($user->id))
+            // Only a row that's both scoped (only_for_module_users) *and*
+            // tied to a module this user hasn't visited gets excluded here —
+            // whereNull guards a (should-never-happen, but validated nowhere
+            // at the DB level) scoped row with no related_module at all, so
+            // it fails open rather than silently vanishing for everyone.
+            ->when($notInUse !== [], fn (Builder $q) => $q->where(function (Builder $q2) use ($notInUse) {
+                $q2->where('only_for_module_users', false)
+                    ->orWhereNull('related_module')
+                    ->orWhereNotIn('related_module', $notInUse);
+            }))
             ->orderBy('published_at')
             ->orderBy('id');
     }
