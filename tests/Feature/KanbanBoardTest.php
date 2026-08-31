@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\TaskBoard;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
@@ -9,7 +10,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
-use App\Livewire\TaskBoard;
 
 /**
  * The "Kanban" list concept: three columns — Backlog / In Arbeit / Erledigt
