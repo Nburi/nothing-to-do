@@ -92,4 +92,85 @@ class QuickCaptureListConceptTest extends TestCase
             ->call('save')
             ->assertSet('important', false);
     }
+
+    // ── Eisenhower's chip-collapse: To-Dos/Tasks fold into the Inbox chip ──
+
+    public function test_three_things_still_offers_all_three_task_chips(): void
+    {
+        $user = User::factory()->create();
+
+        $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
+
+        $this->assertContains('inbox', $targets);
+        $this->assertContains('todos', $targets);
+        $this->assertContains('tasks', $targets);
+    }
+
+    public function test_eisenhower_collapses_todos_and_tasks_out_of_the_chip_row(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
+
+        $this->assertContains('inbox', $targets);
+        $this->assertNotContains('todos', $targets);
+        $this->assertNotContains('tasks', $targets);
+    }
+
+    public function test_eisenhower_keeps_every_other_chip(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
+
+        $this->assertContains('group', $targets);
+        $this->assertContains('project', $targets);
+        $this->assertContains('craft', $targets);
+        $this->assertContains('agenda', $targets);
+    }
+
+    public function test_eisenhower_still_opens_on_the_inbox_target_by_default(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)->assertSet('target', 'inbox');
+    }
+
+    public function test_eisenhower_labels_the_inbox_chip_aufgabe(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+        $this->actingAs($user);
+
+        $this->assertSame('Aufgabe', QuickCapture::labelFor('inbox'));
+    }
+
+    public function test_three_things_still_labels_the_inbox_chip_inbox(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $this->assertSame('Inbox', QuickCapture::labelFor('inbox'));
+    }
+
+    public function test_setting_a_collapsed_target_under_eisenhower_is_ignored(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)
+            ->call('setTarget', 'todos')
+            ->assertSet('target', 'inbox');
+    }
+
+    public function test_capturing_under_eisenhower_writes_a_task_in_the_inbox_list(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)
+            ->set('title', 'Postenbeschreibung studieren')
+            ->call('save');
+
+        $task = Task::query()->forUser($user)->sole();
+        $this->assertSame('inbox', $task->list);
+        $this->assertSame('Postenbeschreibung studieren', $task->title);
+    }
 }

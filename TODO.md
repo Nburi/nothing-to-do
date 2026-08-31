@@ -38,6 +38,12 @@ Each remaining concept is its own session, branched off `feature/list-concepts-i
    instruction, avoiding a known dev-server-hang trap) — no browser click-through was done
    (desktop drag gesture, the lock badge, the Krisenring's actual visual timing, both mobile
    tabs); worth a manual pass before merging, same as `simple`.
+   **Revised in a later bugfix pass on the same branch:** added the `QuickCapture` chip-collapse
+   the original session had left out (`defaultCaptureList()` staying `'inbox'` only covered the
+   *default target*, not the fact that three chips still advertised a list-distinction this
+   concept's board ignores) — `availableTargets()` now drops To-Dos/Tasks, keeping `'inbox'`
+   (labelled "Aufgabe") as the sole task chip. See CLAUDE.md's "Bugfix pass" bullet at the end of
+   that section. Still automated-tests-only for the same dev-server-hang reason.
 3. `feature/list-concept-kanban` — the one concept left. Same shape, 3-column board reusing
    `toggleComplete()`/`setToday()`/`Task::todayDateFor()` exactly as they exist today. Branch off
    `feature/list-concepts-infra`, same as its two now-done siblings.

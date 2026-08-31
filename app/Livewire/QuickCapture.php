@@ -106,8 +106,7 @@ class QuickCapture extends Component
 
     /**
      * ListConcepts' one QuickCapture hook: which target the panel opens on by
-     * default. Every concept except 'simple' wants today's Inbox default —
-     * see ListConcepts::defaultCaptureList().
+     * default — see ListConcepts::defaultCaptureList().
      */
     public function mount(): void
     {
@@ -121,6 +120,16 @@ class QuickCapture extends Component
      * Hiding a module has to remove its capture entry point too, or "hide
      * everything except Agenda" would stay half-done.
      *
+     * Under the "Eisenhower" concept, To-Dos/Tasks additionally collapse out
+     * of the row, leaving Inbox as the one remaining task chip — Eisenhower
+     * ignores `list` for display entirely (see TaskBoard::eisenhowerQuadrants(),
+     * ListConcepts), so offering three separate chips advertises a distinction
+     * that has no effect here. Inbox (not Tasks, unlike "Simple"/"Kanban") is
+     * what's kept: it's already ListConcepts::defaultCaptureList()'s existing
+     * default for this concept, and it's the more honest value to round-trip
+     * back to "3 Things" with — a capture made with no quadrant chosen hasn't
+     * actually been triaged, which is exactly what list='inbox' means there.
+     *
      * @return list<string>
      */
     #[Computed]
@@ -128,7 +137,7 @@ class QuickCapture extends Component
     {
         $user = auth()->user();
 
-        return array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
+        $targets = array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
             $moduleKey = match ($target) {
                 'craft' => 'crafts',
                 'agenda' => 'agenda',
@@ -137,11 +146,28 @@ class QuickCapture extends Component
 
             return $moduleKey === null || AppModules::isVisible($user, $moduleKey);
         }));
+
+        if (ListConcepts::for($user) === 'eisenhower') {
+            $targets = array_values(array_filter($targets, fn (string $t) => ! in_array($t, ['todos', 'tasks'], true)));
+        }
+
+        return $targets;
     }
 
-    /** Human label per target — used for the chips and the confirmation line. */
+    /**
+     * Human label per target — used for the chips and the confirmation line.
+     * 'inbox' reads "Aufgabe" under the "Eisenhower" concept (see
+     * availableTargets() above) rather than "Inbox" — once To-Dos/Tasks are
+     * gone from the row, "Inbox" would misleadingly imply an unsorted/triage
+     * step this concept doesn't have (a captured task already lands in the
+     * right quadrant via its is_important/isUrgent() flags).
+     */
     public static function labelFor(string $target): string
     {
+        if ($target === 'inbox' && auth()->user() && ListConcepts::for(auth()->user()) === 'eisenhower') {
+            return 'Aufgabe';
+        }
+
         return match ($target) {
             'todos' => 'To-Do',
             'tasks' => 'Task',

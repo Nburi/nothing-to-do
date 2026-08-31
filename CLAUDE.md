@@ -1815,9 +1815,18 @@ SAME two signals every other concept already reads: `is_important` and `Task::is
   `deadline`/`dueDate` already do, not carried across a multi-capture session the way `target`
   itself is — an item-level attribute, not a routing choice.
 - **`defaultCaptureList()` stays `'inbox'` for this concept**, deliberately not special-cased the
-  way `simple` is — a task's `list` is ignored for display under Eisenhower regardless (§3), so a
-  plain Inbox capture already shows up in whichever quadrant its `is_important`/`isUrgent()` flags
-  put it in; only the quadrant "+" needs (and gets) a dedicated pre-fill.
+  way `simple`/`kanban` are (they write straight to `'tasks'`) — a task's `list` is ignored for
+  display under Eisenhower regardless (§3), so a plain Inbox capture already shows up in whichever
+  quadrant its `is_important`/`isUrgent()` flags put it in; only the quadrant "+" needs (and gets) a
+  dedicated pre-fill.
+- **`QuickCapture`'s chip-collapse, added in a later bugfix pass:** `availableTargets()` now drops
+  `'todos'`/`'tasks'` from the chip row under `eisenhower`, leaving `'inbox'` as the one remaining
+  task chip (kept, not `'tasks'` like Simple/Kanban, for the reason in the bullet just above — see
+  `availableTargets()`'s own docblock). `labelFor('inbox')` reads "Aufgabe" instead of "Inbox" once
+  To-Dos/Tasks are gone from the row, so the surviving chip doesn't misleadingly imply an unsorted/
+  triage step this concept doesn't have. This mirrors the fix Simple's own QuickCapture chip-collapse
+  already has, applied here because Eisenhower's board ignores `list` for display just as completely
+  — see `QuickCaptureListConceptTest.php`.
 - **Signature moment — "der Krisenring".** The instant a task genuinely lands in "Wichtig &
   Dringend" — by drag, by tapping the star, by a date change, or by a fresh quadrant-tap capture —
   that quadrant's whole card washes once in a slow, calm ring in the star's own tone (`overprint`),
@@ -1866,6 +1875,11 @@ SAME two signals every other concept already reads: `is_important` and `Task::is
   instruction, same known dev-server-hang trap `simple` avoided) — a manual browser pass (both
   breakpoints, the drag gesture, the lock badge, the Krisenring's actual visual timing) is still
   owed before merge.
+- **Bugfix pass (later commit on this same branch):** added the `QuickCapture` chip-collapse
+  described above — the original session's own reasoning ("`defaultCaptureList()` stays `'inbox'`,
+  deliberately not special-cased") was about the *default target*, not the *chip row*, and didn't
+  account for the three chips still advertising a distinction Eisenhower's board doesn't have.
+  Verification was automated-tests-only again, for the same dev-server-hang reason.
 
 ### Onboarding-Tutorial (built)
 
