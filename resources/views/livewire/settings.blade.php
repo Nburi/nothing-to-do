@@ -198,83 +198,9 @@
                             <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">{{ $row['description'] }}</p>
 
                             {{-- Real-data thumbnail — only for a concept that's actually built. --}}
-                            @if ($row['available'] && $row['key'] === 'three_things')
-                                @php
-                                    $listConceptPreviewTasks = $this->listConceptPreviewTasks;
-                                    $listConceptPreviewColumns = [
-                                        'inbox' => ['label' => 'Inbox', 'tasks' => $listConceptPreviewTasks->where('list', 'inbox')],
-                                        'todos' => ['label' => 'To-Dos', 'tasks' => $listConceptPreviewTasks->where('list', 'todos')],
-                                        'tasks' => ['label' => 'Tasks', 'tasks' => $listConceptPreviewTasks->where('list', 'tasks')],
-                                    ];
-                                @endphp
-                                <div class="mt-3 grid grid-cols-3 gap-2">
-                                    @foreach ($listConceptPreviewColumns as $column)
-                                        <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
-                                            <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $column['label'] }}</p>
-                                            @forelse ($column['tasks']->take(2) as $previewTask)
-                                                <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
-                                            @empty
-                                                <p class="text-[10px] text-ink-faint">—</p>
-                                            @endforelse
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @elseif ($row['available'] && $row['key'] === 'simple')
-                                {{-- One flat list, no columns to split into — up to 4 of the
-                                     same real tasks the thumbnail above reads from, stacked. --}}
-                                <div class="mt-3 rounded-[0.5rem] border border-line/60 bg-surface p-2">
-                                    @forelse ($this->listConceptPreviewTasks->take(4) as $previewTask)
-                                        <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
-                                    @empty
-                                        <p class="text-[10px] text-ink-faint">—</p>
-                                    @endforelse
-                                </div>
-                            @elseif ($row['available'] && $row['key'] === 'eisenhower')
-                                @php
-                                    $eisenhowerPreviewTasks = $this->listConceptPreviewTasks;
-                                    $eisenhowerPreviewQuadrants = [
-                                        ['label' => 'Wichtig & Dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => $t->is_important && $t->isUrgent())],
-                                        ['label' => 'Wichtig & Nicht dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => $t->is_important && ! $t->isUrgent())],
-                                        ['label' => 'Nicht wichtig & Dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => ! $t->is_important && $t->isUrgent())],
-                                        ['label' => 'Nicht wichtig & Nicht dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => ! $t->is_important && ! $t->isUrgent())],
-                                    ];
-                                @endphp
-                                <div class="mt-3 grid grid-cols-2 gap-2">
-                                    @foreach ($eisenhowerPreviewQuadrants as $quadrant)
-                                        <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
-                                            <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $quadrant['label'] }}</p>
-                                            @forelse ($quadrant['tasks']->take(2) as $previewTask)
-                                                <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
-                                            @empty
-                                                <p class="text-[10px] text-ink-faint">—</p>
-                                            @endforelse
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @elseif ($row['available'] && $row['key'] === 'kanban')
-                                {{-- Only Backlog/In Arbeit are shown — ListConcepts::previewTasksFor()
-                                     samples active tasks only (same as every other concept's own
-                                     thumbnail, e.g. Eisenhower's four quadrants above), so a completed
-                                     task never appears in this preview and an "Erledigt" bucket here
-                                     would always read as a misleading, permanently-empty placeholder. --}}
-                                @php
-                                    $kanbanPreviewTasks = $this->listConceptPreviewTasks;
-                                    $kanbanPreviewColumns = [
-                                        ['label' => 'Backlog', 'tasks' => $kanbanPreviewTasks->where('is_today', false)],
-                                        ['label' => 'In Arbeit', 'tasks' => $kanbanPreviewTasks->where('is_today', true)],
-                                    ];
-                                @endphp
-                                <div class="mt-3 grid grid-cols-2 gap-2">
-                                    @foreach ($kanbanPreviewColumns as $column)
-                                        <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
-                                            <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $column['label'] }}</p>
-                                            @forelse ($column['tasks']->take(2) as $previewTask)
-                                                <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
-                                            @empty
-                                                <p class="text-[10px] text-ink-faint">—</p>
-                                            @endforelse
-                                        </div>
-                                    @endforeach
+                            @if ($row['available'])
+                                <div class="mt-3">
+                                    @include('livewire.partials.list-concept-preview', ['conceptKey' => $row['key'], 'previewTasks' => $this->listConceptPreviewTasks])
                                 </div>
                             @endif
                         </div>

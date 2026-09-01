@@ -2113,75 +2113,89 @@ other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_c
   dev-server-hang reason. Full suite green (1187 tests, one pre-existing unrelated risky test in
   `CraftIdeasTest`).
 
-### Onboarding-Tutorial (built)
+### Onboarding-Tutorial (built, v2: quiz-driven)
 
 The second of the two features that catalog was built to eventually support (the first being
 itself, above; the third — an admin-authored feature-announcement system shown to *existing*
-users — is still unbuilt, tracked in `TODO.md`). A skippable, replayable walkthrough that covers
-the "3 Things" framework (see §1) and every feature area of the app, ending on a functional
-module-visibility/default-landing-page step.
+users — is a separate, later feature, see "Feature-Ankündigungen" below). A skippable, replayable
+walkthrough that opens with a one-question quiz, uses it to pre-select a board mental model (see
+"To-Do-Listen-Konzepte" above) and a set of optional feature areas, then gives each activated area
+its own explanation slide — so the tutorial's length and content both depend on what the answer
+actually was, not a fixed script everyone sees identically. Reworked from the original v1 (fixed
+14-slide walkthrough, no personalization) once all four list concepts had shipped and were worth
+teaching up front rather than only via a passing mention.
 
+- **`App\Services\OnboardingQuiz`** — a stateless catalog (mirrors `AppModules`/`ListConcepts`):
+  nine answers to "Warum suchst du gerade eine To-Do-Liste?", each optionally casting one vote for
+  a `ListConcepts` key and/or adding to a set of `AppModules` keys. Three answers (Bastelideen,
+  Fortschritt, "einfach mal reinschnuppern") deliberately cast no concept vote, so they combine with
+  any concept answer without skewing it. `resolve(array $selectedKeys)` tallies votes and unions
+  modules in one pass; a tie goes to whichever concept's first vote appears earliest in `ANSWERS`'
+  own order (a strictly-greater count is the only thing that ever replaces the running leader); no
+  concept vote at all falls back to `'simple'`.
 - **`App\Livewire\Onboarding`** (`/app/onboarding`, `route('onboarding')`, `#[Layout('layouts.app')]`)
-  is a single continuous flow, not a wizard with server-tracked position — the 14 slides are
-  static content, not data, so step position is **pure client-side Alpine state** (the
-  `onboarding` store in `app.js`: `step`/`total`/`next()`/`back()`), the same "ephemeral UI state
-  lives in Alpine" convention as `prepare`/`celebration`/`quickCapture`. Unlike `prepare`, it needs
-  no seeded-order bookkeeping or re-run guard — `init(total)` only ever sets the slide count (read
-  out of the Blade view via `$stepCount` so the two can never drift), which is harmless to
-  re-apply on every Livewire re-render the module-visibility step's toggles cause, since it never
-  touches `step`.
-- **`users.onboarding_completed_at`** (nullable timestamp) — `null` means "never opened it",
-  true for a brand-new registration and for any pre-existing account that predates this feature
-  (neither is ever retroactively forced through it). `User::needsOnboarding()`/
-  `markOnboardingSeen()` are the only two access points. Stamped by **both** `finish()` and
-  `skip()` — skipping counts as "seen it" just as much as finishing does, mirroring
-  `PrepareTomorrow::finish()`'s own either-button-counts shape — and **re-stamped on every
-  replay**, so the same column doubles as "last viewed on" for Settings' own card (below).
-- **Auto-redirect on a brand-new registration only** — `RegisteredUserController::store()` builds
-  its `redirect()->intended($default)` fallback from `$user->needsOnboarding()` instead of always
-  pointing at `route('dashboard')`. Since `intended()` only overrides that fallback when a
-  `url.intended` session value is already pending — which is exactly the shape of "a classmate
-  followed a class-agenda invite link, got bounced to `/login`, and registered from there" (see
-  Agenda — Klassen teilen, "the invite link requires login and returns after it") — that flow is
-  completely unaffected: it still lands exactly on the invite it followed, never detoured through
-  onboarding first. A plain "just register" has no intended URL pending, so it *does* fall through
-  to onboarding. Nothing about a normal *login* (as opposed to registration) ever redirects here.
-- **Replay is unconditional** — Settings' new "Tutorial" card (Allgemein tab) always links to
-  `route('onboarding')` regardless of `onboarding_completed_at`, with the button label and a
-  "Zuletzt angesehen am …" caption both switching on whether it's set. Visiting the route itself
-  never stamps anything — only `finish()`/`skip()` do — so a user can open it, look around, and
-  leave via the header logo without disturbing the stored "last viewed on" date.
-- **`App\Livewire\Concerns\ManagesModuleSettings`** — the module-visibility/default-landing-page
-  step (the one place this tutorial is genuinely interactive, not just descriptive) needed the
-  exact same `toggleModule()`/`setDefaultPage()` self-healing logic Settings already had, so that
-  logic was extracted out of `Settings` into this trait and both components now `use` it — the
-  "hiding the current default page resets it to the board" rule now lives in exactly one place
-  instead of two copies that could drift. The trait's `mountManagesModuleSettings()` seeds
-  `$defaultPage` on mount via Livewire's automatic trait-hook convention (a method named
-  `mount<TraitBasename>` is called automatically for every trait a component uses — see
-  `SupportLifecycleHooks::callTraitHook()`) — **it must be `public`**, not `protected`: Livewire
-  invokes it via `Illuminate\Container\BoundMethod`-style resolution from outside the class, which
-  silently fails with a "method does not exist"-shaped error against a non-public method (caught by
-  every test that mounts either component, not a subtle runtime-only gap).
-- **Signature moment — the "3 Things" step teaches by feel, not by caption.** Three chips
-  (To-Do/Task/Project) sit above one sample card; tapping between them doesn't just swap a label —
-  the card itself visibly grows (width, padding, weight, colour) at each size, and at "Project" it
-  splits apart into three small stacked, slightly rotated cards to make "a container for
-  mehrteilige Arbeit" tangible rather than read. Pure Alpine/CSS (`x-transition.scale`), no
-  Livewire round trip — the whole slide is local `x-data="{ size: 'todo' }"` nested inside the
-  step's `x-show` block.
-- Every other feature area gets one slide each (Heute/Wichtig/Termine, Schnellerfassung, das
-  Board, Projekte & Gruppen, Vorbereitung, Zeitplan & Fokus, Wochenplan & Ferien, Notfallmodus,
-  Agenda, Bastelideen & Fortschritt); Header-Badges and the API/Shortcuts docs get a passing
-  mention rather than a dedicated slide (the module step's footer note and the closing slide,
-  respectively) since neither needs a decision made on day one.
-- Deliberately out of scope for this pass: a live-DOM spotlight tour over the real pages (rejected
-  in favour of this dedicated full-screen flow — a spotlight touching a dozen pages, several
-  needing real data like an active project or a populated Wochenplan, would be fragile for one
-  pass, whereas this app already has a proven "dedicated full-screen ritual" shape in
-  `PrepareTomorrow`/`EmergencyMode`), per-step analytics, a deep link to resume one specific slide,
-  and the admin feature-announcement system (see "Feature-Ankündigungen" below) this and the
-  module catalog were built to eventually support.
+  is still a single continuous flow, not a wizard with server-tracked position — step *position*
+  stays pure client-side Alpine state (the `onboarding` store in `app.js`: `step`/`total`/`next()`/
+  `back()`), same convention as `prepare`/`celebration`/`quickCapture`. What's new is that the step
+  *count* is no longer fixed: `$stepCount` in the Blade view is `6 + count($this->activeFeatureSteps)`
+  (Welcome, Frage, Konzept, Feature-Galerie, Kernkonzept-Vertiefung, one slide per active feature
+  area, Abschluss), recomputed on every render from the user's *current* `hidden_modules`. This
+  still needs no new bookkeeping on the JS side — the root's `x-init="$store.onboarding.init($stepCount)"`
+  already re-runs on every Livewire action (the "Livewire re-runs a component root's `x-init` on
+  every action" gotcha, §10), which is exactly the mechanism that keeps `total` in sync the instant
+  a toggle in the Feature-Galerie step (or the quiz itself) changes how many feature slides exist.
+- **`applyQuizAnswers(array $selectedKeys)`** — called once, from the Frage step's own "Weiter"
+  button, right before it advances past that step
+  (`$wire.applyQuizAnswers(Object.keys(quizAnswers).filter(k => quizAnswers[k])).then(() =>
+  $store.onboarding.next())`, an Alpine `$wire` call chained via `.then()`, not a plain `wire:click`,
+  since the array of checked answer keys has to be computed client-side first). It runs
+  `OnboardingQuiz::resolve()` and writes **two real, immediate-save settings** — `setListConcept()`
+  (from `ManagesListConceptSettings`, see below) and `users.hidden_modules` (every catalog key not
+  in the resolved module set) — exactly as if the user had picked them by hand in Settings. This is
+  why the Konzept/Feature-Galerie steps right after need no separate "confirm" step of their own:
+  they're just Settings' own pickers, already live, freely overridable on the spot.
+- **`App\Livewire\Concerns\ManagesListConceptSettings`** (new, mirrors `ManagesModuleSettings`'s own
+  shape) — `listConcept`/`listConceptRows()`/`listConceptPreviewTasks()`/`setListConcept()` were
+  extracted out of `Settings` into this trait so the Konzept step's live tabs (real `list_concept`
+  writes, same real-data thumbnail Settings' own "Listen-Konzept" card shows) and Settings itself
+  can never drift apart. The four-concept real-data thumbnail markup (one branch per concept key)
+  now lives in its own shared partial, `partials/list-concept-preview.blade.php`, `@include`d by
+  both Settings and the Konzept step with `$conceptKey`/`$previewTasks` — same "shared partial so two
+  renderers can't diverge" pattern as `partials/announcement-toast-card.blade.php`.
+- **`App\Livewire\Concerns\ManagesModuleSettings`** — unchanged from v1, still shared with Settings
+  for the Feature-Galerie step's toggles/Startseite picker. `Onboarding::activeFeatureSteps()` (a
+  `#[Computed]`) reads `AppModules::CATALOG` in its own fixed order, filtered to what's currently
+  visible — this is both what drives `$stepCount` and what the per-feature-slide `@foreach` iterates.
+- **`users.onboarding_completed_at`** (nullable timestamp) — unchanged: `null` means "never opened
+  it"; `User::needsOnboarding()`/`markOnboardingSeen()` are the only two access points; stamped by
+  both `finish()` and `skip()`, re-stamped on every replay.
+- **Skipping no longer redirects.** `skip()` still stamps `onboarding_completed_at`, but the client
+  shows an inline "Übersprungen" confirmation (a `skipped` Alpine flag on the root, flipped by a
+  `@click` alongside the `wire:click="skip"` on the same button — the app's usual dual-fire
+  convention, §10) with an explicit "Weiter zur App" link, rather than yanking the page away
+  mid-click the instant the button is pressed. Finishing (the last step's "Los geht's") is
+  unchanged — it still redirects straight to `defaultLandingRouteName()`.
+- **Auto-redirect on a brand-new registration only** — unchanged (`RegisteredUserController::store()`
+  builds its `intended()` fallback from `needsOnboarding()`; a pending class-agenda invite intent is
+  never detoured through onboarding).
+- **Replay is unconditional** — unchanged, Settings' "Tutorial" card always links to
+  `route('onboarding')`.
+- **The step list, in order:** Welcome → Frage (nine checkboxes, at least one required, "Weiter"
+  disabled otherwise) → Konzept (four tabs, `ListConcepts` label + description + real-data preview,
+  live-switchable) → Feature-Galerie (the same toggle rows + Startseite picker v1 had, now
+  pre-seeded by the quiz instead of starting all-on) → Kernkonzept-Vertiefung (one slide, content
+  branches on the *current* `listConcept` — replaces v1's interactive tap-through "3 Things" demo,
+  which didn't generalise to four concepts) → one slide per currently-active feature area (label +
+  description straight from `AppModules::CATALOG`, plus a "you can toggle this later" hint — the
+  descriptions are shared verbatim with the Feature-Galerie step's own toggle rows, no separate copy
+  to maintain) → Abschluss (a summary line naming the chosen concept + active-area count, plus the
+  same "find this again in Settings" reminder v1 had).
+- Deliberately out of scope for this pass: a live-DOM spotlight tour over the real pages (same
+  reasoning as v1), per-step analytics, a deep link to resume one specific slide, click-order tie-
+  breaking in `OnboardingQuiz::resolve()` (ties currently break by the answers' fixed catalog order,
+  not the order the user actually clicked them in), and reconciling an *existing* account's
+  carefully-curated `hidden_modules`/`list_concept` before a quiz replay overwrites them (replaying
+  the quiz always overwrites both, same as picking them by hand in Settings would).
 
 ### Feature-Ankündigungen (built)
 

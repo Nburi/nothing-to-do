@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesListConceptSettings;
 use App\Livewire\Concerns\ManagesModuleSettings;
 use App\Models\AgendaEntry;
 use App\Models\CategoryAttribute;
@@ -10,7 +11,6 @@ use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Services\HeaderBadges;
-use App\Services\ListConcepts;
 use App\Services\PushNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -23,6 +23,7 @@ use Livewire\Component;
 class Settings extends Component
 {
     use ManagesModuleSettings;
+    use ManagesListConceptSettings;
 
     public string $resetTime = '01:00';
 
@@ -68,9 +69,6 @@ class Settings extends Component
     public string $dailyReminderTime = '19:00';
 
     public bool $notifyStreakRisk = false;
-
-    // Listen-Konzept
-    public string $listConcept = 'three_things';
 
     // Add-category form
     public string $newCategoryName = '';
@@ -121,7 +119,6 @@ class Settings extends Component
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
-        $this->listConcept = ListConcepts::for($user);
     }
 
     /** Autosaves on change — see the "Erledigte Aufgaben" card. */
@@ -249,41 +246,6 @@ class Settings extends Component
         $user = auth()->user();
         $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
-    }
-
-    // ── Listen-Konzept ──────────────────────────────────────────────────
-
-    /**
-     * @return list<array{key: string, label: string, description: string, available: bool, current: bool}>
-     */
-    #[Computed]
-    public function listConceptRows(): array
-    {
-        return ListConcepts::rowsFor(auth()->user());
-    }
-
-    /**
-     * Shared real-data preview behind every available concept's pill — see
-     * ListConcepts::previewTasksFor() and the "Listen-Konzept" card. Fetched
-     * once per request regardless of how many pills render one.
-     *
-     * @return Collection<int, Task>
-     */
-    #[Computed]
-    public function listConceptPreviewTasks(): Collection
-    {
-        return ListConcepts::previewTasksFor(auth()->user());
-    }
-
-    /** Immediate-save pick, like Startseite — only a currently-available concept can actually be chosen. */
-    public function setListConcept(string $key): void
-    {
-        if (! ListConcepts::isValid($key)) {
-            return;
-        }
-
-        $this->listConcept = $key;
-        auth()->user()->update(['list_concept' => $key]);
     }
 
     // ── Header badges ─────────────────────────────────────────────────
