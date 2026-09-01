@@ -196,6 +196,45 @@ class TaskBoard extends Component
     }
 
     /**
+     * "Simple" concept's one flat list: every active on-board task across
+     * every `list` value (Inbox/To-Dos/Tasks/standalone-Projekte), ignoring
+     * `list` for display entirely — see ListConcepts/PLAN_LIST_CONCEPTS.md §3.
+     * Identical filter shape to boardTasks() (recently-completed visibility
+     * window, grouped tasks hidden unless important/today — a grouped task's
+     * home is its Group page, exactly as a 3-Things column already treats it
+     * when no group box is around to surface it) minus the `inList()` call,
+     * so nothing about which tasks are visible changes, only that every list
+     * is merged into one instead of three.
+     *
+     * @return Collection<int, Task>
+     */
+    #[Computed]
+    public function simpleTasks(): Collection
+    {
+        $windowStart = auth()->user()->completedWindowStart();
+
+        return Task::query()
+            ->forUser(auth()->user())
+            ->onBoard()
+            ->with('dayPlan')
+            ->where(function ($q) {
+                $q->whereNull('group_id')
+                    ->orWhere('is_important', true)
+                    ->orWhere('is_today', true);
+            })
+            ->where(function ($q) use ($windowStart) {
+                $q->where('is_completed', false)
+                    ->orWhere(function ($q2) use ($windowStart) {
+                        $q2->where('is_completed', true)
+                            ->where('completed_at', '>=', $windowStart);
+                    });
+            })
+            ->orderBy('is_completed')
+            ->boardOrdered()
+            ->get();
+    }
+
+    /**
      * The user's task groups with their working set — one query for the cards,
      * one for the completed counts, regardless of how many groups there are.
      *
@@ -909,6 +948,99 @@ class TaskBoard extends Component
                 'today_date' => $task->todayDateFor(true, auth()->user()->localToday()),
             ]),
             'untoday' => $task->isInbox() ? null : $task->update(['is_today' => false, 'today_date' => null]),
+            default => null,
+        };
+    }
+
+    // ── "Simple" concept — flat-list drag & Today zone ─────────────────
+
+    /**
+     * Simple's flat-list drag reorder — now zone-based, mirroring reorder()'s
+     * own shape: `$today` is which zone the drop landed in (see
+     * partials/board-simple.blade.php's Heute box vs. the rest of the list),
+     * and every id in that zone gets `is_today`/`today_date` set to match,
+     * exactly like a 3-Things column's own Heute area. Unlike reorder(),
+     * `list` itself is still never touched — Simple ignores `list` for
+     * display entirely (see ListConcepts/PLAN_LIST_CONCEPTS.md §3), so
+     * switching back to "3 Things" still shows every task under whichever
+     * list it already carried — except the same isInbox() fix
+     * setTodaySimple() already applies: entering Today from `list='inbox'`
+     * still moves it to `'tasks'`, upholding the same invariant the rest of
+     * the app relies on (no task has is_today=true while list='inbox').
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    public function reorderSimple(bool $today, array $ids): void
+    {
+        $targetDate = $today ? auth()->user()->localToday() : null;
+
+        foreach (array_values($ids) as $position => $id) {
+            $task = auth()->user()->tasks()->find((int) $id);
+
+            if ($task === null) {
+                continue; // ignore ids that aren't ours
+            }
+
+            $updates = [
+                'is_today' => $today,
+                'today_date' => $task->todayDateFor($today, $targetDate),
+                'sort_order' => $position,
+            ];
+
+            if ($today && $task->list === 'inbox') {
+                $updates['list'] = 'tasks';
+            }
+
+            $task->update($updates);
+        }
+    }
+
+    /**
+     * Simple's single-task Today toggle — now only reached via the mobile
+     * swipe path (swipeIntentSimple() below); the desktop board sets
+     * is_today through reorderSimple() instead, by dropping into or out of
+     * the Heute zone (see partials/board-simple.blade.php). Unlike
+     * setToday()/swipeIntent(), never blocks on isInbox() — Simple has no
+     * Inbox concept to exclude from Today. Turning one ON for a task that
+     * still carries list='inbox' (left over from before switching concepts)
+     * also moves it to 'tasks': not a display change under Simple (list is
+     * invisible here), but it upholds an invariant the rest of the app
+     * relies on — no task has is_today=true while list='inbox' (see
+     * setToday()'s own isInbox() guard, and reorderSimple()'s matching
+     * fix) — so switching back to "3 Things" never surfaces a
+     * structurally-impossible Inbox+Heute combination, and the shared edit
+     * sheet's own list picker (ManagesTasks::saveEdit(), which resets
+     * is_today for anything outside Task::TODAY_LISTS) doesn't quietly
+     * clear the flag the next time this task is edited.
+     */
+    public function setTodaySimple(int $id, bool $value): void
+    {
+        $task = $this->userTask($id);
+
+        $updates = [
+            'is_today' => $value,
+            'today_date' => $task->todayDateFor($value, auth()->user()->localToday()),
+        ];
+
+        if ($value && $task->isInbox()) {
+            $updates['list'] = 'tasks';
+        }
+
+        $task->update($updates);
+    }
+
+    /**
+     * Simple's mobile swipe outcomes — only ever 'today'/'untoday' reach
+     * here ('edit' is handled client-side by swipeCard before any $wire call
+     * is made). Routes 'today' through setTodaySimple() so the isInbox()
+     * list-fix above applies to a swipe exactly like it does to the desktop
+     * badge.
+     */
+    public function swipeIntentSimple(int $id, string $intent): void
+    {
+        match ($intent) {
+            'today' => $this->setTodaySimple($id, true),
+            'untoday' => $this->setTodaySimple($id, false),
             default => null,
         };
     }

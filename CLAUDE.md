@@ -1631,7 +1631,7 @@ that should only cover currently-visible modules, and an admin-authored feature-
   per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
   feature-announcement system this catalog exists to eventually support.
 
-### To-Do-Listen-Konzepte (infra built; concepts themselves not yet — see `PLAN_LIST_CONCEPTS.md`)
+### To-Do-Listen-Konzepte (infra + "Simple" built; Eisenhower/Kanban not yet — see `PLAN_LIST_CONCEPTS.md`)
 
 Lets a user pick which mental model their to-do list follows, instead of forcing everyone through
 "3 Things" (§1) forever. Full design (all four concepts, the exact data-mapping-without-migration
@@ -1640,6 +1640,8 @@ argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section d
 ("3 Things") that renders through it today. Landed on `feature/list-concepts-infra` (branched off
 `feature/list-concepts-plan`, itself off `main`); the three remaining concept sessions
 (`feature/list-concept-simple`/`-eisenhower`/`-kanban`) each branch off `feature/list-concepts-infra`.
+The **"Simple" concept session** landed next, on `feature/list-concept-simple` (branched off
+`feature/list-concepts-infra`) — see its own subsection below, right after this one.
 
 - **`App\Services\ListConcepts`** — a stateless catalog, same shape as `AppModules::CATALOG`/
   `HeaderBadges::CATALOG`, with one addition: every entry also carries an `available` flag. A
@@ -1727,6 +1729,118 @@ argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section d
   chip-collapse (see above), the draft `FeatureAnnouncement` (see above), and everything else the
   plan's own §7 already lists (Eat-the-Frog, time-blocking, a board-morph/FLIP animation, API
   awareness of `list_concept`, coupling to `AppModules`).
+
+### To-Do-Listen-Konzepte — "Simple" (built)
+
+The first of the three per-concept sessions `PLAN_LIST_CONCEPTS.md`/`TODO.md` split off from infra
+(see the section above). Branched off `feature/list-concepts-infra`. One flat, undivided list — no
+Inbox/To-Do/Task distinction, no triage step. `ListConcepts::CATALOG['simple']['available']` is now
+`true`.
+
+- **`TaskBoard::simpleTasks()`** (`#[Computed]`) is `boardTasks()`'s exact filter shape (recently-
+  completed visibility window, a grouped task hidden unless important/today — its home is its own
+  Group page, precisely how a 3-Things column already treats it when there's no group box to
+  surface it in) **minus the `inList()` call**, so every `list` value (Inbox/To-Dos/Tasks and a
+  standalone `list='projects'` task) merges into one query instead of three — literalizing
+  `PLAN_LIST_CONCEPTS.md` §3's "`list` ignored for display (all shown together)". Nothing about
+  *which* tasks are visible changed from `boardTasks()`, only that every list is merged.
+- **`partials/board-simple.blade.php`** — one sortable flat list (desktop **and** mobile, per
+  `PLAN_LIST_CONCEPTS.md` §4's "mobile is per-concept, no shared tab-bar abstraction": Simple's own
+  mobile shape is simply no tabs at all, the same one screen as desktop) plus a completed section
+  below it. The same top-of-page furniture as `board-three-things.blade.php` renders unchanged
+  (Zeitplan focus strip, Notfallmodus banner, Vorbereitung prompt, Hausaufgaben-Vorschau) — per
+  §2 requirement 6, companion features stay concept-agnostic. What does **not** carry over is the
+  *per-list* pinning those features do inside a 3-Things column (numbered emergency tasks per list,
+  task-group boxes per list) — Simple has no per-list buckets for them to pin into; the banner/
+  arrange-screen/group-dashboard themselves stay fully reachable, they just don't get a second,
+  column-shaped rendering here. Reuses `partials/task-card.blade.php`/`task-card-mobile.blade.php`
+  verbatim (both already generic across `TaskBoard`/`ProjectPage`/`GroupPage`) — no new card markup.
+- **`is_today` has a real "Heute" zone, mirroring a 3-Things column's own** (revised after an
+  earlier button-based iteration — see below). The flat list is split into two sortable zones: a
+  Heute box above (styled like `column.blade.php`'s own Heute box, `data-today="true"`) and the rest
+  of the list below (`data-today="false"`). A task enters/leaves Today by being dragged between the
+  two zones — desktop and mobile both use `window.simpleListSortable`, mobile via the card's own
+  drag handle (`[data-drag-handle]`), exactly as a 3-Things column's Heute area already works (see
+  `partials/mobile-task-list.blade.php`'s identical two-zone shape). Mobile additionally keeps the
+  right-swipe today/untoday gesture as a second way to move a card in/out of the zone — a 3-Things
+  card inside its own Heute area stays swipeable too, so this isn't new asymmetry.
+  **Earlier iteration, replaced:** the first shipped version had no spatial zone at all — a flat list
+  has nowhere for a card to visibly move into — so `is_today` was a plain per-card toggle badge, with
+  a short radiating pulse (`.today-pulse-ring`/`@keyframes today-pulse`, `app.css`, now removed) as a
+  temporal stand-in for the spatial "it landed in the Heute zone" feedback 3 Things gets for free.
+  That trade-off turned out to be the wrong call once tested against the actual 3-Things pattern this
+  concept is supposed to mirror — a real zone is both more consistent with the rest of the app and
+  removes an entire bespoke interaction (the toggle button, its aria-label pair, the pulse animation)
+  in favour of reusing `reorder()`'s own established zone-based shape. The badge, its CSS, and the
+  pulse are gone; there is no signature moment standing in for the spatial zone any more, since the
+  zone itself is the feedback now.
+- **`TaskBoard::reorderSimple(bool $today, array $ids)`** — zone-based, mirroring `reorder()`'s own
+  shape: `$today` is which zone the drop landed in, and every id in that zone gets `is_today`/
+  `today_date` set to match. Unlike `reorder()`, `list` itself is still never touched — Simple
+  ignores `list` for display entirely (see `ListConcepts`/`PLAN_LIST_CONCEPTS.md` §3), so switching
+  back to "3 Things" still shows every task under whichever list it already carried — **except** the
+  same `isInbox()` fix `setTodaySimple()` already applied: entering Today from `list='inbox'` still
+  moves it to `'tasks'`, upholding the same invariant the rest of the app relies on (no task has
+  `is_today=true` while `list='inbox'` — see `setToday()`'s own `isInbox()` guard, and
+  `ManagesTasks::saveEdit()`, which resets `is_today` for anything outside `Task::TODAY_LISTS` the
+  next time the shared edit sheet saves that task) — the exact "a new invariant added after other
+  code already assumed the old one" trap documented under *Known Issues* for `today_date`/
+  Task-Gruppen, checked again here rather than re-broken by this revision.
+  **`TaskBoard::setTodaySimple(int $id, bool $value)`** still exists — now reached only via the
+  mobile swipe path (`swipeIntentSimple()`, `today`/`untoday` intents; `'edit'` never reaches it at
+  all, handled client-side by `swipeCard` before any `$wire` call) rather than a desktop button — same
+  never-blocks-on-`isInbox()`/list-fix behaviour as before, just a narrower set of callers.
+- **`window.simpleListSortable(el, wire, handle)`** (`app.js`) — still its own small Sortable
+  instance rather than reusing `window.boardSortable` (whose `onEnd` always calls `wire.reorder(list,
+  today, ids)`, which would retriage `list` too — `reorderSimple()` must never touch it). Now computes
+  its `group` the same way `boardSortable` does: only the Heute zone (`data-today="true"`) gets the
+  `put: ['board', 'homework-preview']` allowlist that lets a Hausaufgaben-Vorschau card be dragged
+  straight in to promote it (mirroring a 3-Things column's own Today-zone-only acceptance, not the
+  whole-list acceptance the single-zone version had); both zones share the plain `'board'` group name
+  so a task can be dragged between them. `onEnd` reads `evt.to.dataset.today` to know which zone the
+  drop landed in and calls `wire.reorderSimple(today, ids)` — mirroring `boardSortable`'s own
+  `to.dataset.list === undefined` bail, but checking `data-today` instead, since neither of Simple's
+  own zones needs a `data-list` distinction the way a 3-Things column's `data-list` per-column value
+  does (both carry `data-list="tasks"` — only present so a homework promotion, which reads
+  `to.dataset.list`, has something to pass). `homeworkDragSource`'s own `onEnd` (the *origin* of a
+  homework-card drag) still handles the promotion and never races `reorderSimple()`, unchanged.
+  Dragging a homework-derived card back out onto the strip (`removeHomeworkFromToday()`) still needs
+  no new code — the existing `data-homework="true"` attribute and `homeworkDragSource`'s function-form
+  `put` predicate cover it regardless of which of Simple's two zones the card started in.
+- **`swipeCard` (app.js) gained one config field, `wireMethod`** (defaults to `'swipeIntent'`,
+  backward-compatible with every existing caller) — Simple's mobile card passes
+  `'swipeIntentSimple'` instead. **`task-card-mobile.blade.php` gained two optional overrides**,
+  `$rightIntent`/`$leftIntent` (fall back to the existing `isInbox()`-based computation when omitted
+  — zero behavior change for 3 Things/any future concept that doesn't pass them) — Simple always
+  passes `today`/`untoday` + `edit`, since an Inbox-vs-Tasks triage swipe has no meaning here
+  regardless of a task's underlying `list`.
+- **QuickCapture's deferred chip-collapse, now built**: `availableTargets()` drops `'inbox'`/
+  `'todos'` from the chip row under `simple` (kept: `'tasks'`, plus group/project/craft/agenda per
+  the existing module-visibility filter) — not a new target, `'tasks'` is exactly what
+  `ListConcepts::defaultCaptureList()` already returned for `simple`, and `save()`'s existing
+  `default` arm already writes any `TASK_TARGETS` value straight to `list`, so no new capture logic
+  exists, only which chips are offered. **`labelFor('tasks')` reads "Aufgabe"** under `simple`
+  (auth-guarded — falls back to the ordinary label if called with no authenticated user, so the
+  static helper stays safe to call from any context) rather than "Task": once Inbox/To-Dos are gone
+  from the row, "Task" would misleadingly imply the size distinction 3 Things makes and Simple
+  deliberately doesn't.
+- **Settings' preview thumbnail** — a fourth `@elseif` branch in the "Listen-Konzept" card renders
+  up to 4 of the same real `listConceptPreviewTasks` the `three_things` thumbnail already reads,
+  stacked in one box instead of three mini-columns (no columns to split into under this concept).
+- Deliberately out of scope for this session (tracked in `PLAN_LIST_CONCEPTS.md` §7/§8 and
+  `TODO.md`): Eisenhower/Kanban themselves, the still-unwritten `FeatureAnnouncement` draft (same
+  reasoning as infra's own — admin-authored content needs the admin UI, and this session had no
+  browser access either; still flagged in `TODO.md`), and a board-morph/FLIP animation (signature-
+  moment option B from the plan, explicitly deferred there). Verification for this session was
+  automated-tests-only (per explicit instruction, to avoid a known dev-server-hang trap) — the usual
+  browser-based Runde 1/3/4 review passes were substituted with an equivalent code-reading trace
+  through the same scenarios instead of an actual click-through; flagged here as a real limitation,
+  not a shortcut taken by choice.
+- **Bugfix pass (later commit on this same branch):** replaced the per-card Heute toggle badge with
+  the two-zone `reorderSimple(bool $today, array $ids)` drag interaction described above — the
+  original toggle-button version worked but didn't match the "adopt 3 Things' zone-based interaction"
+  ask once actually compared side by side. Verification was automated-tests-only again, for the same
+  known dev-server-hang reason as the original session.
 
 ### Onboarding-Tutorial (built)
 

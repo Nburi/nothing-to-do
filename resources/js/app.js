@@ -177,6 +177,49 @@ window.boardSortable = function (el, wire, handle = null) {
 };
 
 /**
+ * "Simple" concept's two zones — a Heute box and the rest of the flat list
+ * (see TaskBoard::reorderSimple() / partials/board-simple.blade.php).
+ * Deliberately its own small Sortable instance rather than reusing
+ * boardSortable: that one's onEnd always calls wire.reorder(list, today,
+ * ids), which would silently retriage a dragged task's `list` too —
+ * Simple's own reorder must never touch `list` (see reorderSimple()'s
+ * docblock), only `is_today`.
+ *
+ * Mirrors boardSortable's own group computation: only the Heute zone
+ * (`data-today="true"`) accepts a drop from the homework-preview strip (see
+ * homeworkDragSource below) — exactly like a 3-Things column's Today area —
+ * so a homework card promoted here always lands in Simple's Heute zone, never
+ * its rest zone. Both zones share the plain 'board' group name so a task can
+ * be dragged between them (in or out of Today), the same as a 3-Things
+ * column's own two zones do.
+ */
+window.simpleListSortable = function (el, wire, handle = null) {
+    if (el._sortable) return el._sortable;
+    const group = el.dataset.today === 'true'
+        ? { name: 'board', put: ['board', 'homework-preview'] }
+        : 'board';
+    el._sortable = Sortable.create(el, {
+        group,
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        handle: handle ?? undefined,
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const to = evt.to;
+            // A drop that isn't one of Simple's own two zones (e.g. rejected
+            // by group matching) has nothing to persist here.
+            if (to.dataset.today === undefined) return;
+            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
+            wire.reorderSimple(to.dataset.today === 'true', ids);
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * Desktop drag source AND drop target for the dashboard's "Bald fällige
  * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
  * instance:
@@ -1007,6 +1050,12 @@ document.addEventListener('alpine:init', () => {
         id: cfg.id,
         leftIntent: cfg.left ?? null,
         rightIntent: cfg.right ?? null,
+        // Which $wire method a committed non-edit/non-menu intent calls.
+        // Defaults to the 3-Things board's own swipeIntent(); the "Simple"
+        // concept's flat list passes 'swipeIntentSimple' instead (see
+        // TaskBoard::swipeIntentSimple(), partials/board-simple.blade.php) —
+        // same gesture, different (isInbox()-unaware) server-side handler.
+        wireMethod: cfg.wireMethod ?? 'swipeIntent',
         dx: 0,
         dragging: false,
         flying: false,
@@ -1125,7 +1174,7 @@ document.addEventListener('alpine:init', () => {
             this.flying = true;
             this.dx = Math.sign(this.dx) * (this.$el.offsetWidth + 24);
             setTimeout(() => {
-                this.$wire.swipeIntent(this.id, intent);
+                this.$wire[this.wireMethod](this.id, intent);
             }, 150);
         },
     }));

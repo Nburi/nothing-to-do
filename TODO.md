@@ -16,12 +16,24 @@ Full automated suite green (1146 tests) at the time this landed. **Not merged, n
 
 Each remaining concept is its own session, branched off `feature/list-concepts-infra`:
 
-1. `feature/list-concept-simple` — add `simple` to `ListConcepts::CATALOG` (`available: true`),
-   `partials/board-simple.blade.php` (desktop + mobile), fill in `defaultCaptureList()`'s
-   already-correct `simple` branch, and build the `QuickCapture::availableTargets()`
-   chip-collapse (Inbox/ToDos/Tasks → one "Aufgabe" chip) that the infra session deliberately
-   left unbuilt — it was structurally unreachable/unverifiable before `simple` existed in the
-   catalog as available. Add its Settings preview thumbnail alongside `three_things`'s.
+1. ~~`feature/list-concept-simple`~~ — **done.** `simple` flipped to `available: true` in
+   `ListConcepts::CATALOG`, `partials/board-simple.blade.php` (desktop + mobile, one flat sortable
+   list), `TaskBoard::simpleTasks()`/`reorderSimple()`/`setTodaySimple()`/`swipeIntentSimple()`,
+   the `QuickCapture::availableTargets()` chip-collapse (Inbox/ToDos/Tasks → one "Aufgabe" chip)
+   and its Settings preview thumbnail — see CLAUDE.md's "To-Do-Listen-Konzepte — 'Simple'" section
+   for the full detail, including the `isInbox()`-invariant fix `setTodaySimple()`/`reorderSimple()`
+   account for. Branch `feature/list-concept-simple`, off `feature/list-concepts-infra`. Full
+   automated suite green (1176 tests). **Not merged, not pushed.** Verification was
+   automated-tests-only (explicit instruction, avoiding a known dev-server-hang trap) — no browser
+   click-through was done; worth a manual pass before merging.
+   **Revised in a later bugfix pass on the same branch:** the original per-card Heute toggle badge
+   (the "Heute-Puls" pulse animation) was replaced with a real two-zone drag interaction —
+   `reorderSimple(bool $today, array $ids)` now mirrors `reorder()`'s zone-based `is_today`
+   assignment instead of only persisting `sort_order` — matching how a 3-Things column's own Heute
+   area works. See CLAUDE.md's "Bugfix pass" bullet at the end of that section. Full suite green
+   again (1183 tests, one pre-existing unrelated risky test in `CraftIdeasTest`). Still
+   automated-tests-only for the same dev-server-hang reason; still worth a manual pass before
+   merging.
 2. `feature/list-concept-eisenhower` — same shape, 2×2 quadrant board reusing `is_important`/
    `isUrgent()`, quadrant tap-to-create pre-filling those flags on the `QuickCapture` call.
 3. `feature/list-concept-kanban` — same shape, 3-column board reusing `toggleComplete()`/
@@ -31,14 +43,14 @@ Expect small, predictable conflicts merging more than one concept branch back-to
 one `ListConcepts::CATALOG` entry + one `@case` in `task-board.blade.php`) — sequence the merges
 and re-resolve each array/switch by hand, per the plan's own coordination note (§8).
 
-**Also deferred from infra, flagged but not done:**
+**Also deferred from infra, flagged but not done — still applies after the "Simple" session too:**
 - A draft, unpublished `App\Models\FeatureAnnouncement` for this feature (CLAUDE.md §3.11 would
   normally call for one on any user-facing feature) — skipped because it's admin-authored content
-  normally created through `AnnouncementEditor`'s own UI, and this session's verification was
-  automated-tests-only with no dev-server/browser access. Create one (title "Neu:
+  normally created through `AnnouncementEditor`'s own UI, and neither the infra nor the "Simple"
+  session had dev-server/browser access to use that UI safely. Create one (title "Neu:
   Listen-Konzepte", unpublished) via the admin panel once merged, mentioning at least the
-  Settings card; update its description as each concept lands, publish once the whole batch (or
-  a decided subset) is ready.
+  Settings card and that "Simple" is available; update its description as each further concept
+  lands, publish once the whole batch (or a decided subset) is ready.
 
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 

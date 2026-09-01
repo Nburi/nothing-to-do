@@ -43,4 +43,14 @@ class BoardListConceptTest extends TestCase
             ->assertSet('listConcept', 'three_things')
             ->assertSee('Karten für Regio-OL drucken');
     }
+
+    public function test_the_simple_board_renders_a_real_task_via_the_switch_seam(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'simple']);
+        Task::factory()->for($user)->inbox()->create(['title' => 'Karten für Regio-OL drucken']);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->assertSet('listConcept', 'simple')
+            ->assertSee('Karten für Regio-OL drucken');
+    }
 }

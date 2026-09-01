@@ -108,6 +108,16 @@ class QuickCapture extends Component
      * Hiding a module has to remove its capture entry point too, or "hide
      * everything except Agenda" would stay half-done.
      *
+     * Under the "Simple" concept, Inbox/To-Dos/Tasks additionally collapse
+     * into the single 'tasks' target — Simple has no triage step, so
+     * offering three separate chips for it would advertise a distinction
+     * that doesn't exist under this concept (see ListConcepts,
+     * PLAN_LIST_CONCEPTS.md §4). 'tasks' is what's kept, not a new target:
+     * it's already what ListConcepts::defaultCaptureList() returns for
+     * 'simple', and QuickCapture::save()'s 'default' arm already writes any
+     * TASK_TARGETS value straight to `list`, so no new capture logic exists
+     * either — only which chips are offered changes.
+     *
      * @return list<string>
      */
     #[Computed]
@@ -115,7 +125,7 @@ class QuickCapture extends Component
     {
         $user = auth()->user();
 
-        return array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
+        $targets = array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
             $moduleKey = match ($target) {
                 'craft' => 'crafts',
                 'agenda' => 'agenda',
@@ -124,11 +134,27 @@ class QuickCapture extends Component
 
             return $moduleKey === null || AppModules::isVisible($user, $moduleKey);
         }));
+
+        if (ListConcepts::for($user) === 'simple') {
+            $targets = array_values(array_filter($targets, fn (string $t) => ! in_array($t, ['inbox', 'todos'], true)));
+        }
+
+        return $targets;
     }
 
-    /** Human label per target — used for the chips and the confirmation line. */
+    /**
+     * Human label per target — used for the chips and the confirmation line.
+     * 'tasks' reads "Aufgabe" under the "Simple" concept (see
+     * availableTargets() above) rather than "Task" — once Inbox/To-Dos are
+     * gone from the chip row, "Task" would misleadingly imply the size
+     * distinction 3 Things makes and Simple deliberately doesn't.
+     */
     public static function labelFor(string $target): string
     {
+        if ($target === 'tasks' && auth()->user() && ListConcepts::for(auth()->user()) === 'simple') {
+            return 'Aufgabe';
+        }
+
         return match ($target) {
             'todos' => 'To-Do',
             'tasks' => 'Task',
