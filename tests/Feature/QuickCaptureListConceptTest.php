@@ -10,14 +10,14 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * QuickCapture's per-concept chip-collapse and hooks. The "Simple" list
- * concept collapses Inbox/To-Dos/Tasks into a single "Aufgabe" chip; the
- * "Eisenhower" concept collapses To-Dos/Tasks into a single "Aufgabe" chip
- * (kept as 'inbox', not 'tasks' — see QuickCapture::availableTargets()'s own
- * docblock) and additionally gets a quadrant tap-to-create hook that
- * pre-fills $important/$dueDate via resetPanel()'s extra params (see
- * board-eisenhower.blade.php's per-quadrant "+" and PLAN_LIST_CONCEPTS.md
- * §4's "small, optional-params extension").
+ * QuickCapture's per-concept chip-collapse and hooks. The "Simple" and
+ * "Kanban" list concepts each collapse Inbox/To-Dos/Tasks into a single
+ * "Aufgabe" chip (kept as 'tasks'); the "Eisenhower" concept collapses
+ * To-Dos/Tasks into a single "Aufgabe" chip (kept as 'inbox', not 'tasks' —
+ * see QuickCapture::availableTargets()'s own docblock) and additionally
+ * gets a quadrant tap-to-create hook that pre-fills $important/$dueDate via
+ * resetPanel()'s extra params (see board-eisenhower.blade.php's per-quadrant
+ * "+" and PLAN_LIST_CONCEPTS.md §4's "small, optional-params extension").
  */
 class QuickCaptureListConceptTest extends TestCase
 {
@@ -250,5 +250,80 @@ class QuickCaptureListConceptTest extends TestCase
         $task = Task::query()->forUser($user)->sole();
         $this->assertSame('inbox', $task->list);
         $this->assertSame('Postenbeschreibung studieren', $task->title);
+    }
+
+    // ── Kanban's chip-collapse: Inbox/To-Dos fold into the Tasks chip ───
+
+    public function test_kanban_collapses_inbox_and_todos_out_of_the_chip_row(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
+
+        $this->assertNotContains('inbox', $targets);
+        $this->assertNotContains('todos', $targets);
+        $this->assertContains('tasks', $targets);
+    }
+
+    public function test_kanban_keeps_every_other_chip(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
+
+        $this->assertContains('group', $targets);
+        $this->assertContains('project', $targets);
+        $this->assertContains('craft', $targets);
+        $this->assertContains('agenda', $targets);
+    }
+
+    public function test_kanban_opens_on_the_tasks_target_by_default(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)->assertSet('target', 'tasks');
+    }
+
+    public function test_kanban_labels_the_tasks_chip_aufgabe(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+        $this->actingAs($user);
+
+        $this->assertSame('Aufgabe', QuickCapture::labelFor('tasks'));
+    }
+
+    public function test_setting_the_collapsed_inbox_target_under_kanban_is_ignored(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)
+            ->call('setTarget', 'inbox')
+            ->assertSet('target', 'tasks');
+    }
+
+    public function test_capturing_under_kanban_writes_a_task_in_the_tasks_list(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)
+            ->set('title', 'Postenbeschreibung studieren')
+            ->call('save');
+
+        $task = Task::query()->forUser($user)->sole();
+        $this->assertSame('tasks', $task->list);
+        $this->assertSame('Postenbeschreibung studieren', $task->title);
+    }
+
+    public function test_a_kanban_captured_task_lands_in_backlog(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        Livewire::actingAs($user)->test(QuickCapture::class)
+            ->set('title', 'Fresh capture')
+            ->call('save');
+
+        $task = Task::query()->forUser($user)->sole();
+        $this->assertFalse($task->is_today);
+        $this->assertFalse($task->is_completed);
     }
 }

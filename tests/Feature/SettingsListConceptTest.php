@@ -22,15 +22,6 @@ class SettingsListConceptTest extends TestCase
         $this->assertTrue($rows['three_things']['current']);
     }
 
-    public function test_set_list_concept_is_a_no_op_for_an_unavailable_concept(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)->test(Settings::class)->call('setListConcept', 'kanban');
-
-        $this->assertSame('three_things', $user->fresh()->list_concept);
-    }
-
     public function test_set_list_concept_is_a_no_op_for_a_garbage_key(): void
     {
         $user = User::factory()->create();
@@ -44,8 +35,8 @@ class SettingsListConceptTest extends TestCase
     {
         $user = User::factory()->create();
 
-        // 'three_things' is one of two currently-available concepts —
-        // re-selecting it is still a legitimate, idempotent write and must succeed.
+        // Re-selecting the current choice is still a legitimate, idempotent
+        // write and must succeed.
         Livewire::actingAs($user)->test(Settings::class)
             ->call('setListConcept', 'three_things')
             ->assertSet('listConcept', 'three_things');
@@ -75,6 +66,17 @@ class SettingsListConceptTest extends TestCase
         $this->assertSame('eisenhower', $user->fresh()->list_concept);
     }
 
+    public function test_set_list_concept_persists_kanban(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->call('setListConcept', 'kanban')
+            ->assertSet('listConcept', 'kanban');
+
+        $this->assertSame('kanban', $user->fresh()->list_concept);
+    }
+
     public function test_settings_renders_the_list_concept_card(): void
     {
         $user = User::factory()->create();
@@ -82,7 +84,7 @@ class SettingsListConceptTest extends TestCase
         Livewire::actingAs($user)->test(Settings::class)
             ->assertSee('Listen-Konzept')
             ->assertSee('Eisenhower-Matrix')
-            ->assertSee('Bald verfügbar');
+            ->assertSee('Kanban');
     }
 
     public function test_simple_row_previews_the_users_own_real_tasks(): void
@@ -101,5 +103,16 @@ class SettingsListConceptTest extends TestCase
 
         Livewire::actingAs($user)->test(Settings::class)
             ->assertSee('Regio-OL Karten drucken');
+    }
+
+    public function test_kanban_row_shows_a_real_data_preview_thumbnail(): void
+    {
+        $user = User::factory()->create();
+        Task::factory()->for($user)->create(['title' => 'Karten für Regio-OL drucken', 'list' => 'todos']);
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->assertSee('Backlog')
+            ->assertSee('In Arbeit')
+            ->assertSee('Karten für Regio-OL drucken');
     }
 }

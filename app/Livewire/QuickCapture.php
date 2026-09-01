@@ -106,7 +106,8 @@ class QuickCapture extends Component
 
     /**
      * ListConcepts' one QuickCapture hook: which target the panel opens on by
-     * default — see ListConcepts::defaultCaptureList().
+     * default — see ListConcepts::defaultCaptureList() for which concepts
+     * want the Inbox default vs. writing straight to a real task.
      */
     public function mount(): void
     {

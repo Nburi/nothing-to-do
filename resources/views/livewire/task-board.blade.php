@@ -22,8 +22,9 @@
             @include('livewire.partials.board-eisenhower')
             @break
 
-        {{-- 'kanban' — added by its own session, its own @case +
-             partials/board-kanban.blade.php. --}}
+        @case('kanban')
+            @include('livewire.partials.board-kanban')
+            @break
 
         @default
             @include('livewire.partials.board-three-things')

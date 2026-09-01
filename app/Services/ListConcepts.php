@@ -57,7 +57,7 @@ class ListConcepts
         'kanban' => [
             'label' => 'Kanban',
             'description' => 'Backlog, In Arbeit, Erledigt — als Spalten statt Listen.',
-            'available' => false,
+            'available' => true,
         ],
     ];
 
@@ -109,12 +109,17 @@ class ListConcepts
 
     /**
      * QuickCapture's one concept-driven hook: which target its panel opens on
-     * by default. Every concept except 'simple' (no Inbox-triage step, so
-     * capture always writes a real task) wants the existing Inbox default.
+     * by default. 'three_things' (the only concept with a real Inbox-triage
+     * step) wants the existing Inbox default; 'simple' and 'kanban' both have
+     * no such step — Simple has no Inbox at all, and Kanban's own "Backlog"
+     * is already a real, meaningful state rather than an unsorted holding pen
+     * — so both write a real task straight away. 'eisenhower' keeps the Inbox
+     * default too, deliberately not special-cased the same way — see
+     * QuickCapture::availableTargets()'s own docblock for why.
      */
     public static function defaultCaptureList(User $user): string
     {
-        return self::for($user) === 'simple' ? 'tasks' : 'inbox';
+        return in_array(self::for($user), ['simple', 'kanban'], true) ? 'tasks' : 'inbox';
     }
 
     /**

@@ -34,9 +34,11 @@ class BoardListConceptTest extends TestCase
         Livewire::actingAs($user)->test(TaskBoard::class)->assertSee('Karten für Regio-OL drucken');
     }
 
-    public function test_a_stored_value_for_an_unbuilt_concept_still_renders_the_three_things_board(): void
+    public function test_for_self_heals_a_stored_value_that_is_not_a_real_key_at_all(): void
     {
-        $user = User::factory()->create(['list_concept' => 'kanban']);
+        // Every real catalog key is available as of this branch, so the only
+        // remaining self-heal case is a value that was never a real key.
+        $user = User::factory()->create(['list_concept' => 'not-a-real-concept']);
         Task::factory()->for($user)->inbox()->create(['title' => 'Karten für Regio-OL drucken']);
 
         Livewire::actingAs($user)->test(TaskBoard::class)
@@ -62,5 +64,18 @@ class BoardListConceptTest extends TestCase
         Livewire::actingAs($user)->test(TaskBoard::class)
             ->assertSet('listConcept', 'eisenhower')
             ->assertSee('Karten für Regio-OL drucken');
+    }
+
+    public function test_a_user_on_kanban_renders_the_kanban_board(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+        Task::factory()->for($user)->create(['title' => 'Karten für Regio-OL drucken', 'list' => 'todos']);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->assertSet('listConcept', 'kanban')
+            ->assertSee('Karten für Regio-OL drucken')
+            ->assertSee('Backlog')
+            ->assertSee('In Arbeit')
+            ->assertSee('Erledigt');
     }
 }

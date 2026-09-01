@@ -324,6 +324,58 @@ class TaskBoard extends Component
     }
 
     /**
+     * "Kanban" concept's three columns — Backlog / In Arbeit / Erledigt —
+     * built from the SAME two signals every other write path already uses:
+     * an active, not-today task is Backlog; an active, today-flagged task is
+     * In Arbeit; a completed task (within the board's existing recently-
+     * completed visibility window, same as every other concept) is Erledigt.
+     * No new axis data at all — see ListConcepts and PLAN_LIST_CONCEPTS.md §1/§3.
+     *
+     * Identical filter shape to boardTasks()/eisenhowerQuadrants() (same
+     * completed-visibility window, same grouped-task-hidden-unless-important-
+     * or-today rule — a grouped task's home is its Group page, exactly as a
+     * 3-Things column already treats it when no group box is around to
+     * surface it) minus the `inList()` call, then bucketed in PHP —
+     * is_completed/is_today are plain flags, not worth three separate queries.
+     * boardOrdered()'s own tie-breakers already give a sensible in-column
+     * order for free, preserved by the bucketing (Collection filters keep
+     * relative order).
+     *
+     * @return array{backlog: Collection<int, Task>, in_progress: Collection<int, Task>, done: Collection<int, Task>}
+     */
+    #[Computed]
+    public function kanbanColumns(): array
+    {
+        $windowStart = auth()->user()->completedWindowStart();
+
+        $tasks = Task::query()
+            ->forUser(auth()->user())
+            ->onBoard()
+            ->with('dayPlan')
+            ->where(function ($q) {
+                $q->whereNull('group_id')
+                    ->orWhere('is_important', true)
+                    ->orWhere('is_today', true);
+            })
+            ->where(function ($q) use ($windowStart) {
+                $q->where('is_completed', false)
+                    ->orWhere(function ($q2) use ($windowStart) {
+                        $q2->where('is_completed', true)
+                            ->where('completed_at', '>=', $windowStart);
+                    });
+            })
+            ->orderBy('is_completed')
+            ->boardOrdered()
+            ->get();
+
+        return [
+            'backlog' => $tasks->where('is_completed', false)->where('is_today', false)->values(),
+            'in_progress' => $tasks->where('is_completed', false)->where('is_today', true)->values(),
+            'done' => $tasks->where('is_completed', true)->values(),
+        ];
+    }
+
+    /**
      * The user's task groups with their working set — one query for the cards,
      * one for the completed counts, regardless of how many groups there are.
      *
@@ -1149,6 +1201,108 @@ class TaskBoard extends Component
         }
     }
 
+    // ── "Kanban" concept — column drag, move pill, swipe ───────────────
+
+    /** The three Kanban columns, in their fixed left-to-right order. */
+    private const KANBAN_COLUMNS = ['backlog', 'in_progress', 'done'];
+
+    /** Which Kanban column a task currently sits in, derived from is_completed/is_today — never stored. */
+    private function kanbanColumnOf(Task $task): string
+    {
+        if ($task->is_completed) {
+            return 'done';
+        }
+
+        return $task->is_today ? 'in_progress' : 'backlog';
+    }
+
+    /**
+     * Writes a task's state to match a Kanban column — the single-task
+     * primitive both setKanbanColumn() (the per-card move pill) and
+     * reorderKanban() (desktop drag, below) build on.
+     *
+     * Reuses ManagesTasks::toggleComplete() verbatim for the is_completed
+     * axis — celebration/streak/Agenda-sync side effects included, exactly
+     * as the checkbox already on every card triggers — but only when the
+     * task's current completion state doesn't already match the destination,
+     * so reordering within an already-correct column (see reorderKanban())
+     * never re-fires it. The is_today axis reuses Task::todayDateFor()
+     * exactly like every other is_today write site in this app (see
+     * CLAUDE.md's "today_date" audit-lesson entry) rather than writing it
+     * inline. Deliberately leaves is_today untouched while landing in/
+     * leaving Erledigt — completing a task doesn't touch is_today anywhere
+     * else in this app either, so un-completing one (via the checkbox, the
+     * only way back out of Erledigt — see window.kanbanColumnSortable in
+     * app.js for why drag can't do it) correctly returns it to wherever it
+     * was before, Backlog or In Arbeit.
+     */
+    private function applyKanbanColumn(Task $task, string $column): Task
+    {
+        $shouldBeCompleted = $column === 'done';
+
+        if ($task->is_completed !== $shouldBeCompleted) {
+            $this->toggleComplete($task->id);
+            $task->refresh();
+        }
+
+        if (! $shouldBeCompleted) {
+            $task->update([
+                'is_today' => $column === 'in_progress',
+                'today_date' => $task->todayDateFor($column === 'in_progress', auth()->user()->localToday()),
+            ]);
+        }
+
+        return $task;
+    }
+
+    /**
+     * Single-card column move. The desktop board no longer has a per-card
+     * button for this (see board-kanban.blade.php — the Backlog ⇄ In Arbeit
+     * pill was removed as pure redundancy once drag between the same two
+     * columns already existed); this is now reached only by Kanban's mobile
+     * "advance" swipe (swipeIntentKanban() below). The Erledigt transitions
+     * never call this directly: the checkbox already on every card calls
+     * ManagesTasks::toggleComplete() itself, which is exactly what this
+     * method would do for that axis too.
+     */
+    public function setKanbanColumn(int $id, string $column): void
+    {
+        if (! in_array($column, self::KANBAN_COLUMNS, true)) {
+            return;
+        }
+
+        $this->applyKanbanColumn($this->userTask($id), $column);
+    }
+
+    /**
+     * Desktop drag & drop across all three columns — one shared Sortable
+     * group (see window.kanbanColumnSortable), mirroring the "receive the
+     * destination zone's full ordered id list" shape reorder() already
+     * uses. Idempotent for a card that's already in the right column (only
+     * its sort_order changes), so reordering within a column never re-fires
+     * applyKanbanColumn()'s toggleComplete() call for anything but the one
+     * card that actually moved.
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    public function reorderKanban(string $column, array $ids): void
+    {
+        if (! in_array($column, self::KANBAN_COLUMNS, true)) {
+            return;
+        }
+
+        foreach (array_values($ids) as $position => $id) {
+            $task = auth()->user()->tasks()->find((int) $id);
+
+            if ($task === null) {
+                continue; // ignore ids that aren't ours
+            }
+
+            $task = $this->applyKanbanColumn($task, $column);
+            $task->update(['sort_order' => $position]);
+        }
+    }
+
     /**
      * Simple's single-task Today toggle — now only reached via the mobile
      * swipe path (swipeIntentSimple() below); the desktop board sets
@@ -1231,6 +1385,33 @@ class TaskBoard extends Component
             'untoday' => $this->setTodayEisenhower($id, false),
             default => null,
         };
+    }
+
+    /**
+     * Kanban's mobile swipe — right always means "move one column forward"
+     * (Backlog → In Arbeit → Erledigt), resolved server-side from the
+     * task's actual current state rather than baked into whichever tab the
+     * swipe happened in, so it stays correct regardless. Left is 'edit',
+     * handled entirely client-side by swipeCard before any $wire call — the
+     * Erledigt tab's cards swipe nowhere at all (rightIntent is '' there,
+     * see board-kanban.blade.php), so only 'advance' ever reaches here.
+     */
+    public function swipeIntentKanban(int $id, string $intent): void
+    {
+        if ($intent !== 'advance') {
+            return;
+        }
+
+        $task = $this->userTask($id);
+        $next = match ($this->kanbanColumnOf($task)) {
+            'backlog' => 'in_progress',
+            'in_progress' => 'done',
+            default => null,
+        };
+
+        if ($next !== null) {
+            $this->setKanbanColumn($id, $next);
+        }
     }
 
     /**

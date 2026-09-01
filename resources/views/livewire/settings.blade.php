@@ -251,6 +251,31 @@
                                         </div>
                                     @endforeach
                                 </div>
+                            @elseif ($row['available'] && $row['key'] === 'kanban')
+                                {{-- Only Backlog/In Arbeit are shown — ListConcepts::previewTasksFor()
+                                     samples active tasks only (same as every other concept's own
+                                     thumbnail, e.g. Eisenhower's four quadrants above), so a completed
+                                     task never appears in this preview and an "Erledigt" bucket here
+                                     would always read as a misleading, permanently-empty placeholder. --}}
+                                @php
+                                    $kanbanPreviewTasks = $this->listConceptPreviewTasks;
+                                    $kanbanPreviewColumns = [
+                                        ['label' => 'Backlog', 'tasks' => $kanbanPreviewTasks->where('is_today', false)],
+                                        ['label' => 'In Arbeit', 'tasks' => $kanbanPreviewTasks->where('is_today', true)],
+                                    ];
+                                @endphp
+                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                    @foreach ($kanbanPreviewColumns as $column)
+                                        <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+                                            <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $column['label'] }}</p>
+                                            @forelse ($column['tasks']->take(2) as $previewTask)
+                                                <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
+                                            @empty
+                                                <p class="text-[10px] text-ink-faint">—</p>
+                                            @endforelse
+                                        </div>
+                                    @endforeach
+                                </div>
                             @endif
                         </div>
                     </button>

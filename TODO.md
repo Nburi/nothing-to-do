@@ -5,37 +5,30 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
-### To-Do-Listen-Konzepte — `kanban` is the one concept left to merge
+### To-Do-Listen-Konzepte — merged; a manual browser pass and a FeatureAnnouncement draft remain
 
-Infra, `simple` and `eisenhower` have all been merged into `main` (in that order, resolving the
-expected small conflicts by hand per the plan's own coordination note, §8): `ListConcepts` catalog,
-`users.list_concept`, the `TaskBoard` `@switch` seam + `partials/board-three-things.blade.php`, the
-Settings "Listen-Konzept" card with real-data preview thumbnails, `partials/board-simple.blade.php`
-(desktop + mobile, one flat sortable list, a drag-sortable "Heute" zone — see CLAUDE.md's
-"To-Do-Listen-Konzepte — 'Simple'" section), and `partials/board-eisenhower.blade.php` (desktop 2×2
-grid + mobile 4-tab layout, "der Krisenring" signature moment — see CLAUDE.md's
-"To-Do-Listen-Konzepte — 'Eisenhower-Matrix'" section). Both concepts' own `QuickCapture` chip-
-collapse fixes were compared side by side and each applied to the other during their respective
-bugfix passes.
+All four branches (infra, `simple`, `eisenhower`, `kanban`) are merged into `main`, in that order,
+resolving the expected small conflicts by hand per the plan's own coordination note (§8) — see
+CLAUDE.md's "To-Do-Listen-Konzepte" section and its three per-concept subsections for the full
+design, and `PLAN_LIST_CONCEPTS.md` for the plan itself. Full automated suite green after each
+merge step; the merge itself found and fixed a handful of test fixtures that used another
+concept's key as their own "not yet available" example, now stale since every real catalog key is
+available.
 
-One concept is still outstanding, on its own unmerged branch:
-
-1. `feature/list-concept-kanban` — same shape, 3-column board reusing `toggleComplete()`/
-   `setToday()`/`Task::todayDateFor()` exactly as they exist today. Branch off
-   `feature/list-concepts-infra`, same as its two now-merged siblings — expect the same kind of
-   small, predictable conflicts merging it (another `ListConcepts::CATALOG` entry + `@case` in
-   `task-board.blade.php`, plus a `QuickCapture` chip-collapse conflict, same shape as the ones
-   already resolved for `simple`/`eisenhower`).
-
-**Also deferred from infra, flagged but not done — still applies after `simple`/`eisenhower`
-merged too:**
+Still outstanding:
+- **A manual browser pass** (never done on any of the four branches, each verified automated-
+  tests-only to avoid a known dev-server-hang trap) — desktop drag on all three concept-specific
+  boards, the Eisenhower lock badge and "der Krisenring" visual timing, both Simple's and
+  Eisenhower's mobile swipe intents specifically (their board partials pass `rightIntent`/
+  `leftIntent`/`wireMethod` overrides into `partials/task-card-mobile.blade.php` that were
+  silently dead code until Kanban's own session fixed the shared partial — worth confirming they
+  now actually take effect), and the Kanban board's drag/checkbox-driven Erledigt transitions.
 - A draft, unpublished `App\Models\FeatureAnnouncement` for this feature (CLAUDE.md §3.11 would
-  normally call for one on any user-facing feature) — skipped because it's admin-authored content
-  normally created through `AnnouncementEditor`'s own UI, and none of infra/`simple`/`eisenhower`
-  had dev-server/browser access to use that UI safely. Create one (title "Neu:
-  Listen-Konzepte", unpublished) via the admin panel, mentioning at least the Settings card and
-  that "Simple" and "Eisenhower-Matrix" are both available; update its description once `kanban`
-  lands, publish once the whole batch (or a decided subset) is ready.
+  normally call for one on any user-facing feature) — skipped on every one of the four sessions
+  because it's admin-authored content normally created through `AnnouncementEditor`'s own UI, and
+  every session's verification was automated-tests-only with no dev-server/browser access.
+  Create one (title "Neu: Listen-Konzepte", unpublished) via the admin panel, mentioning the
+  Settings card and all three newly-available concepts; publish once ready.
 
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 

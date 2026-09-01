@@ -21,11 +21,11 @@ class ListConceptsTest extends TestCase
         $this->assertSame('three_things', ListConcepts::for($user));
     }
 
-    public function test_for_self_heals_a_stored_value_that_is_not_currently_available(): void
+    public function test_for_self_heals_a_stored_value_that_is_not_a_real_key_at_all(): void
     {
-        // 'kanban' is a real catalog key, but not available yet — a
-        // stray stored value must never render nothing.
-        $user = User::factory()->create(['list_concept' => 'kanban']);
+        // Every real catalog key is available as of this branch, so the only
+        // remaining self-heal case is a value that was never a real key.
+        $user = User::factory()->create(['list_concept' => 'not-a-real-concept']);
 
         $this->assertSame('three_things', ListConcepts::for($user));
     }
@@ -37,11 +37,18 @@ class ListConceptsTest extends TestCase
         $this->assertSame('simple', ListConcepts::for($user));
     }
 
-    public function test_for_self_heals_a_stored_value_that_is_not_a_real_key_at_all(): void
+    public function test_for_returns_eisenhower_once_it_is_available(): void
     {
-        $user = User::factory()->create(['list_concept' => 'not-a-real-concept']);
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
 
-        $this->assertSame('three_things', ListConcepts::for($user));
+        $this->assertSame('eisenhower', ListConcepts::for($user));
+    }
+
+    public function test_for_returns_kanban_once_it_is_available(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        $this->assertSame('kanban', ListConcepts::for($user));
     }
 
     public function test_three_things_is_valid(): void
@@ -59,16 +66,9 @@ class ListConceptsTest extends TestCase
         $this->assertTrue(ListConcepts::isValid('eisenhower'));
     }
 
-    public function test_an_unavailable_catalog_key_is_not_valid(): void
+    public function test_kanban_is_valid(): void
     {
-        $this->assertFalse(ListConcepts::isValid('kanban'));
-    }
-
-    public function test_for_returns_eisenhower_once_it_is_available(): void
-    {
-        $user = User::factory()->create(['list_concept' => 'eisenhower']);
-
-        $this->assertSame('eisenhower', ListConcepts::for($user));
+        $this->assertTrue(ListConcepts::isValid('kanban'));
     }
 
     public function test_an_unknown_key_is_not_valid(): void
@@ -91,17 +91,29 @@ class ListConceptsTest extends TestCase
         $this->assertFalse($rows['simple']['current']);
         $this->assertTrue($rows['eisenhower']['available']);
         $this->assertFalse($rows['eisenhower']['current']);
-        $this->assertFalse($rows['kanban']['available']);
+        $this->assertTrue($rows['kanban']['available']);
+        $this->assertFalse($rows['kanban']['current']);
     }
 
     public function test_rows_for_reflects_a_self_healed_current_choice_not_the_raw_stored_value(): void
+    {
+        // A garbage stored value must self-heal to 'three_things', not
+        // whatever was actually stored.
+        $user = User::factory()->create(['list_concept' => 'not-a-real-concept']);
+
+        $rows = collect(ListConcepts::rowsFor($user))->keyBy('key');
+
+        $this->assertTrue($rows['three_things']['current']);
+    }
+
+    public function test_rows_for_marks_kanban_current_once_selected(): void
     {
         $user = User::factory()->create(['list_concept' => 'kanban']);
 
         $rows = collect(ListConcepts::rowsFor($user))->keyBy('key');
 
-        $this->assertTrue($rows['three_things']['current']);
-        $this->assertFalse($rows['kanban']['current']);
+        $this->assertFalse($rows['three_things']['current']);
+        $this->assertTrue($rows['kanban']['current']);
     }
 
     // ── defaultCaptureList() ─────────────────────────────────────────────
@@ -115,9 +127,9 @@ class ListConceptsTest extends TestCase
 
     public function test_default_capture_list_falls_back_to_inbox_for_an_unreachable_concept_value(): void
     {
-        // 'kanban' isn't selectable yet, so for() self-heals it to
-        // 'three_things' before defaultCaptureList() ever sees it.
-        $user = User::factory()->create(['list_concept' => 'kanban']);
+        // A garbage stored value isn't a real key at all, so for() self-heals
+        // it to 'three_things' before defaultCaptureList() ever sees it.
+        $user = User::factory()->create(['list_concept' => 'not-a-real-concept']);
 
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
     }
@@ -141,6 +153,18 @@ class ListConceptsTest extends TestCase
         $user = User::factory()->create(['list_concept' => 'eisenhower']);
 
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
+    }
+
+    public function test_default_capture_list_is_tasks_for_kanban(): void
+    {
+        // Kanban's columns are is_today/is_completed, not list, and its
+        // "Backlog" is already a real, meaningful state rather than an
+        // unsorted holding pen — same reasoning "Simple" already applies,
+        // so capture writes straight to a real task here too (see
+        // QuickCapture's chip-collapse, PLAN_LIST_CONCEPTS.md §4).
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        $this->assertSame('tasks', ListConcepts::defaultCaptureList($user));
     }
 
     // ── previewTasksFor() ────────────────────────────────────────────────

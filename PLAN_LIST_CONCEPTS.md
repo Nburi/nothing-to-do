@@ -1,7 +1,6 @@
 # Plan: To-Do-Listen-Konzepte (List Concepts)
 
-Status: **infra + "Simple" + "Eisenhower-Matrix" implemented and merged into `main`; Kanban not yet.**
-Plan written on branch
+Status: **infra + all four concepts implemented and merged into `main`.** Plan written on branch
 `feature/list-concepts-plan` (branched off `main` at commit `7fe5c7c`, 2026-08-31) — see
 "Housekeeping note" at the bottom for why that branches off `main` instead of
 `feature/feature-announcements` as originally instructed. The infra session described in §4
@@ -9,27 +8,32 @@ Plan written on branch
 2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
 `partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card (including the
 real-data preview-thumbnail signature moment, §5 option C), and the `QuickCapture` hook — with
-the full automated suite green (1146 tests). Two independent sibling sessions then each built one
-concept off `feature/list-concepts-infra`, neither depending on the other or containing the
-other's commits: the "Simple" concept on **`feature/list-concept-simple`** — `simple` flipped to
-`available: true`, `partials/board-simple.blade.php`,
+the full automated suite green (1146 tests). Three independent sibling sessions then each built
+one concept off `feature/list-concepts-infra`, none depending on either of the other two: the
+"Simple" concept on `feature/list-concept-simple` — `simple` flipped to `available: true`,
+`partials/board-simple.blade.php`,
 `TaskBoard::simpleTasks()`/`reorderSimple()`/`setTodaySimple()`/`swipeIntentSimple()`, the
 `QuickCapture` chip-collapse §4 deferred to it, and a drag-sortable "Heute" zone (added in a later
-bugfix pass, replacing an earlier per-card toggle badge) — full automated suite green (1183 tests
-at the time of its last bugfix pass); and the "Eisenhower-Matrix" concept on
-**`feature/list-concept-eisenhower`** — `eisenhower` flipped to `available: true`,
+bugfix pass, replacing an earlier per-card toggle badge); the "Eisenhower-Matrix" concept on
+`feature/list-concept-eisenhower` — `eisenhower` flipped to `available: true`,
 `partials/board-eisenhower.blade.php` (desktop 2×2 grid + mobile 4-tab layout),
 `TaskBoard::eisenhowerQuadrants()`/`reorderEisenhower()`/`setTodayEisenhower()`/
 `swipeIntentEisenhower()`, `Task::isUrgencyLocked()`, the `QuickCapture` quadrant tap-to-create
-pre-fill hook, and its own signature moment ("der Krisenring") — full automated suite green (1200
-tests at the time of its last bugfix pass). Both branches' own QuickCapture chip-collapse got a
-matching fix for the sibling concept once compared side by side (see CLAUDE.md's "Bugfix pass"
-notes in each concept's own section). All three (infra, `simple`, `eisenhower`) have since been
-merged into `main`, in that order, resolving the expected small conflicts by hand per §8's
-coordination note. Full detail in CLAUDE.md's "To-Do-Listen-Konzepte", "To-Do-Listen-Konzepte —
-'Simple'" and "To-Do-Listen-Konzepte — 'Eisenhower-Matrix'" sections and in `TODO.md`'s matching
-follow-up entry, which is also where `kanban` — the one concept still on its own unmerged branch —
-is tracked as the next step.
+pre-fill hook, and its own signature moment ("der Krisenring"); and the "Kanban" concept on
+`feature/list-concept-kanban` — `kanban` flipped to `available: true`,
+`partials/board-kanban.blade.php` (desktop 3-column grid + mobile 3-tab layout),
+`TaskBoard::kanbanColumns()`/`reorderKanban()`/`setKanbanColumn()`/`swipeIntentKanban()`, and a
+real, previously-dead-code bug this session found and fixed in
+`task-card-mobile.blade.php`/`app.js`'s shared `swipeCard` that Simple's and Eisenhower's own
+branches were also silently affected by. All three concepts' own `QuickCapture` chip-collapse got
+a matching fix for whichever sibling concept(s) hadn't built one yet, once compared side by side
+(see CLAUDE.md's "Bugfix pass" notes in each concept's own section). All four branches (infra,
+`simple`, `eisenhower`, `kanban`) have since been merged into `main`, in that order, resolving the
+expected small conflicts by hand per §8's coordination note — including a handful of test
+fixtures that used another concept as their own "not yet available" example, now fixed to use a
+genuinely-invalid key instead, since every real catalog key is available once all four land. Full
+detail in CLAUDE.md's "To-Do-Listen-Konzepte" section and its three per-concept subsections, and
+in `TODO.md`'s matching follow-up entry (now closed).
 
 Two small, deliberate deviations from this document, both explained in CLAUDE.md/TODO.md:
 - `ListConcepts::CATALOG` ships **all four** concepts now (with an `available` flag), rather than

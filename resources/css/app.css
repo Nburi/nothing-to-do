@@ -500,6 +500,7 @@
     .project-drop > [data-id] {
         display: none;
     }
+
 }
 
 @layer utilities {
