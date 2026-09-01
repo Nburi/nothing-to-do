@@ -1014,6 +1014,29 @@ document.addEventListener('livewire:init', () => {
             el.classList.add('eisenhower-crisis-ring');
         });
     });
+
+    /**
+     * Streak flame ignition (see ProgressStats::celebrationFor(), the
+     * --ember-* tokens and .flame-ignite keyframes in app.css) — the header's
+     * streak badge actually catches fire the instant today's streak is
+     * extended: 'celebrate' already fires exactly on that moment (a perfect
+     * day, or a fresh streak record) from every place a task can be
+     * completed (board, project page, Zeitplan strip), same dispatch this
+     * app's existing celebration overlay listens to. Same remove/reflow/add
+     * shape as weekplan-ripple/eisenhower-crisis above. A no-op if the badge
+     * isn't in the DOM this pageview (streak was 0 on the last page load, so
+     * HeaderBadges::visibleFor() didn't render it) — it simply shows up
+     * already lit on the next navigation, the same limitation every header
+     * badge already has (see CLAUDE.md's Header-Badges section).
+     */
+    Livewire.on('celebrate', ({ kind }) => {
+        if (kind !== 'perfect-day' && kind !== 'streak-record') return;
+        document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
+            el.classList.remove('flame-ignite');
+            void el.offsetWidth;
+            el.classList.add('flame-ignite');
+        });
+    });
 });
 
 document.addEventListener('alpine:init', () => {

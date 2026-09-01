@@ -36,12 +36,15 @@
 
         <div class="rounded-card border border-line bg-surface p-5 shadow-map">
             <div class="flex items-center gap-3.5">
+                {{-- Same --ember-* fire gradient as the header streak badge (see
+                     partials/header-badge.blade.php) — kept consistent so the two
+                     renderings of "current streak" can never visually disagree. --}}
                 <div @class([
                     'grid h-11 w-11 flex-none place-items-center rounded-full',
-                    'bg-paper text-ink-faint' => $tier <= 1,
-                    'bg-contour-soft text-contour' => $tier === 2,
-                    'bg-forest-soft text-forest' => $tier === 3,
-                    'bg-forest text-white' => $tier === 4,
+                    'bg-paper text-[rgb(var(--ember-glow))]' => $tier <= 1,
+                    'bg-[rgb(var(--ember-warm-soft))] text-[rgb(var(--ember-warm))]' => $tier === 2,
+                    'bg-[rgb(var(--ember-hot-soft))] text-[rgb(var(--ember-hot))]' => $tier === 3,
+                    'bg-[rgb(var(--ember-blaze))] text-white streak-tier-4' => $tier === 4,
                 ])>
                     <x-flame-icon class="h-5 w-5" />
                 </div>

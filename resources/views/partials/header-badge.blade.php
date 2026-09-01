@@ -6,18 +6,23 @@
 
     Colour: every badge except 'streak' uses its catalog 'tone' at a flat
     "soft" strength ('ink' = neutral border, 'signal' = the Notfall/warning
-    tint used everywhere else that badge appears). 'streak' keeps its
-    pre-existing tiered escalation (capped at forest) via $badge['tier'].
+    tint used everywhere else that badge appears). 'streak' uses its own
+    --ember-* fire gradient (app.css) instead — a deliberate exception to
+    the four-tone Topografie palette, since a flame that never turns
+    yellow/orange doesn't read as one — via $badge['tier']. data-badge="streak"
+    is the JS target the 'celebrate' Livewire listener (app.js) re-triggers
+    .flame-ignite on the instant today's streak is extended.
 --}}
 <a
     href="{{ $badge['href'] }}"
     wire:navigate
+    @if ($badge['key'] === 'streak') data-badge="streak" @endif
     @class([
         'flex flex-none items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition',
-        'border border-line text-ink-faint hover:text-ink' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) <= 1,
-        'bg-contour-soft text-contour hover:brightness-95' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 2,
-        'bg-forest-soft text-forest hover:brightness-95' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 3,
-        'bg-forest text-white hover:brightness-110' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 4,
+        'border border-line text-[rgb(var(--ember-glow))] hover:text-ink' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) <= 1,
+        'bg-[rgb(var(--ember-warm-soft))] text-[rgb(var(--ember-warm))] hover:brightness-95' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 2,
+        'bg-[rgb(var(--ember-hot-soft))] text-[rgb(var(--ember-hot))] hover:brightness-95' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 3,
+        'bg-[rgb(var(--ember-blaze))] text-white hover:brightness-110 streak-tier-4' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 4,
         'border border-line text-ink-faint hover:text-ink' => $badge['key'] !== 'streak' && $badge['tone'] === 'ink',
         'bg-signal-soft text-signal hover:brightness-95' => $badge['key'] !== 'streak' && $badge['tone'] === 'signal',
     ])
@@ -25,7 +30,9 @@
 >
     @switch($badge['icon'])
         @case('streak')
-            <x-flame-icon class="h-3.5 w-3.5" />
+            <span class="relative inline-flex flame-spark-anchor">
+                <x-flame-icon class="h-3.5 w-3.5" />
+            </span>
             @break
 
         @case('agenda')
