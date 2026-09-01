@@ -977,6 +977,100 @@ window.newProjectDropZone = function (el, wire) {
 };
 
 /**
+ * Streak flame ignition, part 1 — tracking where a "mark done" click
+ * actually happened, for the flying-spark flourish below. Every place a
+ * task/agenda entry can be completed by a click is a <button> carrying a
+ * wire:click(.modifier)* attribute whose value starts with one of these
+ * three action names (ManagesTasks::toggleComplete, or the Zeitplan
+ * deadline strip's own toggleDeadlineTaskDone/toggleDeadlineAgendaDone —
+ * see CLAUDE.md's Schedule "All-day strip" section). Checked by scanning
+ * the clicked button's own attributes rather than a CSS attribute
+ * selector, since Livewire's dot-modifiers (.stop, .prevent, ...) change
+ * the attribute *name* itself (wire:click vs wire:click.stop) — a CSS
+ * selector would have to enumerate every modifier combination in use
+ * across the app; a plain attribute scan doesn't care.
+ *
+ * Captured at click time, before the Livewire round trip even starts —
+ * by the time 'celebrate' arrives, the clicked card has very likely
+ * already been re-rendered, reordered, or removed (that's the whole point
+ * of completing it), so only the coordinates are kept, never the element.
+ *
+ * Registered on the CAPTURE phase (the trailing `true`), not bubble —
+ * board/project task cards use wire:click.stop on this exact button
+ * (task-card.blade.php), and .stop calls stopPropagation() during the
+ * bubble phase. A bubble-phase listener on `document` would never see
+ * those clicks at all; capture runs first, before .stop has a chance to
+ * cut the event off.
+ */
+const COMPLETION_ACTIONS = /^(toggleComplete|toggleDeadlineTaskDone|toggleDeadlineAgendaDone)\(/;
+let lastCompletionOrigin = null;
+document.addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+    const isCompletionToggle = [...button.attributes].some(
+        (attr) => attr.name.startsWith('wire:click') && COMPLETION_ACTIONS.test(attr.value)
+    );
+    if (!isCompletionToggle) return;
+    const r = button.getBoundingClientRect();
+    lastCompletionOrigin = { x: r.left + r.width / 2, y: r.top + r.height / 2, at: Date.now() };
+}, true);
+
+/**
+ * Streak flame ignition, part 2 — the flying spark itself. A small ember
+ * launches from wherever the completing click happened (see above) and
+ * arcs up to the header's streak badge, landing exactly as .flame-ignite
+ * (app.css) starts — the flourish this app's plan called "der fliegende
+ * Funke", building on the simpler in-place flicker ("der Flackermoment")
+ * that already fires as a fallback below. Plain Web Animations API, no
+ * new dependency: the flight path is different on every call (a curved
+ * offset toward the badge), which a static CSS @keyframes rule can't
+ * express, so this is computed and animated directly instead.
+ */
+function flyStreakSpark(origin, badgeEl, onArrive) {
+    const target = badgeEl.getBoundingClientRect();
+    const endX = target.left + target.width / 2;
+    const endY = target.top + target.height / 2;
+    const dx = endX - origin.x;
+    const dy = endY - origin.y;
+    // Bow the midpoint away from a straight line — mostly upward, with a
+    // touch of sideways randomness so two sparks in a row don't trace the
+    // exact same arc.
+    const midX = dx * 0.5 + (Math.random() * 30 - 15);
+    const midY = dy * 0.5 - Math.max(50, Math.abs(dy) * 0.35);
+
+    const spark = document.createElement('div');
+    spark.className = 'streak-spark-flight';
+    spark.style.left = `${origin.x}px`;
+    spark.style.top = `${origin.y}px`;
+    document.body.appendChild(spark);
+
+    const anim = spark.animate(
+        [
+            { transform: 'translate(-50%, -50%) scale(0.5)', opacity: 0 },
+            { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.12 },
+            {
+                transform: `translate(calc(-50% + ${midX}px), calc(-50% + ${midY}px)) scale(1.1)`,
+                opacity: 1,
+                offset: 0.55,
+            },
+            {
+                transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.35)`,
+                opacity: 0.9,
+                offset: 1,
+            },
+        ],
+        { duration: 620, easing: 'cubic-bezier(0.3, 0, 0.2, 1)' }
+    );
+
+    const finish = () => {
+        spark.remove();
+        onArrive();
+    };
+    anim.onfinish = finish;
+    anim.oncancel = finish;
+}
+
+/**
  * Week plan ripple (see WeekPlan::saveEventForm and the .weekplan-ripple
  * keyframes in app.css) — after a block is saved spanning more than one
  * weekday, briefly flashes each affected day column in sequence, so "this
@@ -1022,19 +1116,53 @@ document.addEventListener('livewire:init', () => {
      * extended: 'celebrate' already fires exactly on that moment (a perfect
      * day, or a fresh streak record) from every place a task can be
      * completed (board, project page, Zeitplan strip), same dispatch this
-     * app's existing celebration overlay listens to. Same remove/reflow/add
+     * app's existing celebration overlay listens to.
+     *
+     * Two layered flourishes, in priority order:
+     *  1. "Der fliegende Funke" — if a completion click was captured
+     *     recently (lastCompletionOrigin, part 1 above) and the badge is
+     *     currently in the DOM, a spark visibly flies from that click to
+     *     the badge and ignites it on arrival.
+     *  2. "Der Flackermoment" — the fallback, and the only thing that ever
+     *     ran before the flying spark existed: ignite in place, no flight.
+     *     Used whenever there's no usable origin (completed via some path
+     *     this app doesn't have yet, or the click is already stale) — a
+     *     spark starting from nowhere would be worse than no spark.
+     * Both end the same way: remove/reflow/add .flame-ignite, same restart
      * shape as weekplan-ripple/eisenhower-crisis above. A no-op if the badge
      * isn't in the DOM this pageview (streak was 0 on the last page load, so
      * HeaderBadges::visibleFor() didn't render it) — it simply shows up
      * already lit on the next navigation, the same limitation every header
      * badge already has (see CLAUDE.md's Header-Badges section).
+     *
+     * The flying spark is driven by the Web Animations API, not a CSS
+     * @keyframes rule — unlike .flame-ignite itself, it does NOT get
+     * prefers-reduced-motion collapsed for free by the global rule in
+     * app.css (that rule only touches CSS animation-duration/transition-
+     * duration, which WAAPI calls bypass entirely). Checked explicitly
+     * here instead: reduced motion always skips straight to the in-place
+     * ignite, never the flight.
      */
     Livewire.on('celebrate', ({ kind }) => {
         if (kind !== 'perfect-day' && kind !== 'streak-record') return;
-        document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
+
+        const ignite = (el) => {
             el.classList.remove('flame-ignite');
             void el.offsetWidth;
             el.classList.add('flame-ignite');
+        };
+
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const origin = lastCompletionOrigin;
+        const isFresh = !reducedMotion && origin && Date.now() - origin.at < 5000;
+        lastCompletionOrigin = null;
+
+        document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
+            if (isFresh) {
+                flyStreakSpark(origin, el, () => ignite(el));
+            } else {
+                ignite(el);
+            }
         });
     });
 });

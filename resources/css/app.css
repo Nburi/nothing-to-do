@@ -597,6 +597,24 @@
         animation: flame-pill-glow 950ms ease-out, ember-breathe 3.2s ease-in-out infinite;
     }
 
+    /* "Der fliegende Funke" — the flying-spark element flyStreakSpark()
+       (app.js) creates and animates via the Web Animations API (the path
+       differs on every flight, so a static @keyframes rule can't express
+       it). Not itself an @keyframes/animation rule — WAAPI drives its
+       transform/opacity directly — but it still respects reduced-motion:
+       app.js checks prefers-reduced-motion before ever creating one and
+       ignites the badge immediately instead (see flyStreakSpark's caller). */
+    .streak-spark-flight {
+        position: fixed;
+        z-index: 60;
+        width: 6px;
+        height: 6px;
+        border-radius: 9999px;
+        background: rgb(var(--ember-warm));
+        box-shadow: 0 0 6px 2px rgb(var(--ember-warm) / 0.6);
+        pointer-events: none;
+    }
+
     /* While a task is being dragged, project cards hint that they accept a drop. */
     body.dragging-task .project-drop {
         outline: 1.5px dashed rgb(var(--line));
