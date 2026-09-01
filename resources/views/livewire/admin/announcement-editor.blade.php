@@ -232,6 +232,7 @@
                     'announcement' => $this->previewAnnouncement,
                     'remaining' => 0,
                     'interactive' => false,
+                    'linkTestable' => true,
                 ])
                 <button
                     type="button"
@@ -325,6 +326,7 @@
                         'announcement' => $announcement,
                         'remaining' => 0,
                         'interactive' => false,
+                        'linkTestable' => true,
                     ])
                 </div>
             </div>

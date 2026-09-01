@@ -8,13 +8,22 @@
      an admin preview where clicking must not do anything.
      $welcomeMessage/$showProgress/$position/$total/$isLast: the backlog/
      welcome-back extras — all optional, default to "off" so the admin
-     preview (which never passes them) renders exactly as before. --}}
+     preview (which never passes them) renders exactly as before.
+     $linkTestable: true lets the "Ansehen" link (only) be clicked from an
+     otherwise-inert ($interactive=false) admin preview, so a chosen module/
+     highlight-selector or external URL can actually be tried out before
+     publishing. Always opens in a new tab — even for a module link, which
+     the real toast wire:navigates to in place — so following it never
+     navigates the admin away from their in-progress, unsaved edit form.
+     Never fires the dismiss side effects, since there is nothing to dismiss
+     for an unsaved/still-being-previewed announcement. --}}
 @php
     $welcomeMessage ??= null;
     $showProgress ??= false;
     $position ??= null;
     $total ??= null;
     $isLast ??= false;
+    $linkTestable ??= false;
 
     $iconClasses = match ($announcement->type) {
         'maintenance' => 'bg-contour-soft text-contour',
@@ -98,6 +107,13 @@
                             $wire.dismiss({{ $announcement->id }});
                         @endif
                     "
+                    class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
+                >{{ $announcement->linkLabel() }} →</a>
+            @elseif ($linkTestable)
+                <a
+                    href="{{ $announcement->linkHref() }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     class="rounded-card border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
                 >{{ $announcement->linkLabel() }} →</a>
             @else
