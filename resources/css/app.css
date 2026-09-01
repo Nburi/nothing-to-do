@@ -443,6 +443,47 @@
         animation: announcement-highlight 1400ms ease-out;
     }
 
+    /* "Eisenhower" concept's "Krisenring" signature moment (see
+       TaskBoard::trackEisenhowerCrisisEntries(), the "eisenhower-crisis"
+       Livewire listener in app.js) — a slow, calm wash across the "Wichtig &
+       Dringend" quadrant the instant a task genuinely lands there (drag,
+       star-tap, a date change, or a fresh quadrant-tap capture), in the
+       star's own tone (overprint) rather than this app's danger tone
+       (signal) — an acknowledgment, not an alarm. */
+    @keyframes eisenhower-crisis-ring {
+        0% { box-shadow: inset 0 0 0 9999px rgb(var(--overprint) / 0.22); }
+        100% { box-shadow: inset 0 0 0 9999px rgb(var(--overprint) / 0); }
+    }
+    .eisenhower-crisis-ring {
+        animation: eisenhower-crisis-ring 1400ms ease-out;
+    }
+
+    /* "Eisenhower" concept's Heute badge (partials/board-eisenhower.blade.php,
+       TaskBoard::setTodayEisenhower()) — is_today has no quadrant of its own
+       to visually drop into (the grid is already spoken for by importance/
+       urgency), so tapping the badge fires a short radiating pulse instead —
+       a temporal confirmation standing in for a spatial one this concept
+       doesn't have for that particular flag. (NOTE for the eventual merge
+       with feature/list-concept-simple: that sibling branch independently
+       built the identical .today-toggle/.today-pulse-ring/@keyframes
+       today-pulse rule for its own Heute badge — keep one copy when
+       resolving that conflict, not both.) */
+    @keyframes today-pulse {
+        0% { transform: scale(0.6); opacity: 0.55; }
+        100% { transform: scale(2.4); opacity: 0; }
+    }
+    .today-toggle {
+        overflow: visible;
+    }
+    .today-pulse-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        border: 1.5px solid rgb(var(--forest));
+        animation: today-pulse 650ms ease-out;
+        pointer-events: none;
+    }
+
     /* While a task is being dragged, project cards hint that they accept a drop. */
     body.dragging-task .project-drop {
         outline: 1.5px dashed rgb(var(--line));

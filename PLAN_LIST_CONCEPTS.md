@@ -1,6 +1,7 @@
 # Plan: To-Do-Listen-Konzepte (List Concepts)
 
-Status: **infra + "Simple" implemented; Eisenhower/Kanban not yet.** Plan written on branch
+Status: **infra + "Simple" + "Eisenhower-Matrix" implemented and merged into `main`; Kanban not yet.**
+Plan written on branch
 `feature/list-concepts-plan` (branched off `main` at commit `7fe5c7c`, 2026-08-31) — see
 "Housekeeping note" at the bottom for why that branches off `main` instead of
 `feature/feature-announcements` as originally instructed. The infra session described in §4
@@ -8,17 +9,27 @@ Status: **infra + "Simple" implemented; Eisenhower/Kanban not yet.** Plan writte
 2026-08-31) — `ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
 `partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card (including the
 real-data preview-thumbnail signature moment, §5 option C), and the `QuickCapture` hook — with
-the full automated suite green (1146 tests). The "Simple" concept session then landed on
-**`feature/list-concept-simple`** (branched off `feature/list-concepts-infra`, 2026-08-31) —
-`simple` flipped to `available: true`, `partials/board-simple.blade.php`,
+the full automated suite green (1146 tests). Two independent sibling sessions then each built one
+concept off `feature/list-concepts-infra`, neither depending on the other or containing the
+other's commits: the "Simple" concept on **`feature/list-concept-simple`** — `simple` flipped to
+`available: true`, `partials/board-simple.blade.php`,
 `TaskBoard::simpleTasks()`/`reorderSimple()`/`setTodaySimple()`/`swipeIntentSimple()`, the
-`QuickCapture` chip-collapse §4 deferred to it, and its own signature moment ("Heute-Puls" — see
-§5's option list below, none of which this concept-level moment is; it's scoped to this one
-concept's own flat-list UI, not the Settings-level switcher) — full automated suite green (1176
-tests). Full detail in CLAUDE.md's "To-Do-Listen-Konzepte" and "To-Do-Listen-Konzepte — 'Simple'"
-sections and in `TODO.md`'s matching follow-up entry, which is also where the two remaining
-concept sessions (Eisenhower/Kanban) are tracked as next steps, each branching off
-`feature/list-concepts-infra`. **Neither infra nor "Simple" is merged or pushed.**
+`QuickCapture` chip-collapse §4 deferred to it, and a drag-sortable "Heute" zone (added in a later
+bugfix pass, replacing an earlier per-card toggle badge) — full automated suite green (1183 tests
+at the time of its last bugfix pass); and the "Eisenhower-Matrix" concept on
+**`feature/list-concept-eisenhower`** — `eisenhower` flipped to `available: true`,
+`partials/board-eisenhower.blade.php` (desktop 2×2 grid + mobile 4-tab layout),
+`TaskBoard::eisenhowerQuadrants()`/`reorderEisenhower()`/`setTodayEisenhower()`/
+`swipeIntentEisenhower()`, `Task::isUrgencyLocked()`, the `QuickCapture` quadrant tap-to-create
+pre-fill hook, and its own signature moment ("der Krisenring") — full automated suite green (1200
+tests at the time of its last bugfix pass). Both branches' own QuickCapture chip-collapse got a
+matching fix for the sibling concept once compared side by side (see CLAUDE.md's "Bugfix pass"
+notes in each concept's own section). All three (infra, `simple`, `eisenhower`) have since been
+merged into `main`, in that order, resolving the expected small conflicts by hand per §8's
+coordination note. Full detail in CLAUDE.md's "To-Do-Listen-Konzepte", "To-Do-Listen-Konzepte —
+'Simple'" and "To-Do-Listen-Konzepte — 'Eisenhower-Matrix'" sections and in `TODO.md`'s matching
+follow-up entry, which is also where `kanban` — the one concept still on its own unmerged branch —
+is tracked as the next step.
 
 Two small, deliberate deviations from this document, both explained in CLAUDE.md/TODO.md:
 - `ListConcepts::CATALOG` ships **all four** concepts now (with an `available` flag), rather than

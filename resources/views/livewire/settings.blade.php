@@ -229,6 +229,28 @@
                                         <p class="text-[10px] text-ink-faint">—</p>
                                     @endforelse
                                 </div>
+                            @elseif ($row['available'] && $row['key'] === 'eisenhower')
+                                @php
+                                    $eisenhowerPreviewTasks = $this->listConceptPreviewTasks;
+                                    $eisenhowerPreviewQuadrants = [
+                                        ['label' => 'Wichtig & Dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => $t->is_important && $t->isUrgent())],
+                                        ['label' => 'Wichtig & Nicht dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => $t->is_important && ! $t->isUrgent())],
+                                        ['label' => 'Nicht wichtig & Dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => ! $t->is_important && $t->isUrgent())],
+                                        ['label' => 'Nicht wichtig & Nicht dringend', 'tasks' => $eisenhowerPreviewTasks->filter(fn ($t) => ! $t->is_important && ! $t->isUrgent())],
+                                    ];
+                                @endphp
+                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                    @foreach ($eisenhowerPreviewQuadrants as $quadrant)
+                                        <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+                                            <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $quadrant['label'] }}</p>
+                                            @forelse ($quadrant['tasks']->take(2) as $previewTask)
+                                                <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
+                                            @empty
+                                                <p class="text-[10px] text-ink-faint">—</p>
+                                            @endforelse
+                                        </div>
+                                    @endforeach
+                                </div>
                             @endif
                         </div>
                     </button>

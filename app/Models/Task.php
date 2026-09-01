@@ -236,6 +236,21 @@ class Task extends Model
         return $this->list === 'inbox';
     }
 
+    /**
+     * True whenever a hard `deadline` is set — meaning the Dringend axis of
+     * the "Eisenhower" list concept can never be moved by touching
+     * `due_date` alone, since effectiveDate() always prefers `deadline` over
+     * `due_date` regardless of what the latter holds. Used to reject a
+     * quadrant drag across that axis for such a task (see
+     * TaskBoard::reorderEisenhower(), partials/board-eisenhower.blade.php) —
+     * the point being to never silently rewrite a hard, externally-imposed
+     * deadline just because a card was dropped in a different column.
+     */
+    public function isUrgencyLocked(): bool
+    {
+        return $this->deadline !== null;
+    }
+
     public function isInProject(): bool
     {
         return $this->project_id !== null;

@@ -42,6 +42,19 @@ class QuickCapture extends Component
 
     public ?string $dueDate = null;
 
+    /**
+     * Pre-filled (never manually toggled from the panel itself) by the
+     * "Eisenhower" concept's quadrant tap-to-create — see resetPanel()'s
+     * $important/$dueDate params and board-eisenhower.blade.php's "+" per
+     * quadrant. Every other capture path leaves this at its default and a
+     * freshly captured task's importance is set afterward the same way it
+     * always has been (the card's own title-tap), so this needed no new
+     * chip/UI in the panel — only a pre-fill hook for one concept's own
+     * entry point, exactly the "small, optional-params extension" scoped to
+     * this session by PLAN_LIST_CONCEPTS.md §4.
+     */
+    public bool $important = false;
+
     public string $notes = '';
 
     /**
@@ -93,8 +106,7 @@ class QuickCapture extends Component
 
     /**
      * ListConcepts' one QuickCapture hook: which target the panel opens on by
-     * default. Every concept except 'simple' wants today's Inbox default —
-     * see ListConcepts::defaultCaptureList().
+     * default — see ListConcepts::defaultCaptureList().
      */
     public function mount(): void
     {
@@ -108,15 +120,17 @@ class QuickCapture extends Component
      * Hiding a module has to remove its capture entry point too, or "hide
      * everything except Agenda" would stay half-done.
      *
-     * Under the "Simple" concept, Inbox/To-Dos/Tasks additionally collapse
-     * into the single 'tasks' target — Simple has no triage step, so
-     * offering three separate chips for it would advertise a distinction
-     * that doesn't exist under this concept (see ListConcepts,
-     * PLAN_LIST_CONCEPTS.md §4). 'tasks' is what's kept, not a new target:
-     * it's already what ListConcepts::defaultCaptureList() returns for
-     * 'simple', and QuickCapture::save()'s 'default' arm already writes any
-     * TASK_TARGETS value straight to `list`, so no new capture logic exists
-     * either — only which chips are offered changes.
+     * Under the "Simple"/"Kanban" concepts, Inbox/To-Dos/Tasks additionally
+     * collapse into the single 'tasks' target, and under "Eisenhower" To-Dos/
+     * Tasks collapse into the single 'inbox' target — none of the three
+     * distinguishes `list` for display (see ListConcepts,
+     * PLAN_LIST_CONCEPTS.md §4), so offering three separate chips advertises
+     * a distinction that doesn't exist under any of them. Whichever chip is
+     * kept is not a new target: it's already what
+     * ListConcepts::defaultCaptureList() returns for that concept, and
+     * QuickCapture::save()'s 'default' arm already writes any TASK_TARGETS
+     * value straight to `list`, so no new capture logic exists either — only
+     * which chips are offered changes.
      *
      * @return list<string>
      */
@@ -135,8 +149,12 @@ class QuickCapture extends Component
             return $moduleKey === null || AppModules::isVisible($user, $moduleKey);
         }));
 
-        if (ListConcepts::for($user) === 'simple') {
+        if (in_array(ListConcepts::for($user), ['simple', 'kanban'], true)) {
             $targets = array_values(array_filter($targets, fn (string $t) => ! in_array($t, ['inbox', 'todos'], true)));
+        }
+
+        if (ListConcepts::for($user) === 'eisenhower') {
+            $targets = array_values(array_filter($targets, fn (string $t) => ! in_array($t, ['todos', 'tasks'], true)));
         }
 
         return $targets;
@@ -144,14 +162,22 @@ class QuickCapture extends Component
 
     /**
      * Human label per target — used for the chips and the confirmation line.
-     * 'tasks' reads "Aufgabe" under the "Simple" concept (see
+     * 'tasks' reads "Aufgabe" under the "Simple"/"Kanban" concepts (see
      * availableTargets() above) rather than "Task" — once Inbox/To-Dos are
      * gone from the chip row, "Task" would misleadingly imply the size
-     * distinction 3 Things makes and Simple deliberately doesn't.
+     * distinction 3 Things makes, which neither concept has. 'inbox' reads
+     * "Aufgabe" under "Eisenhower" for the same reason — "Inbox" would
+     * misleadingly imply an unsorted/triage step that concept doesn't have
+     * either (a captured task already lands in the right quadrant via its
+     * is_important/isUrgent() flags).
      */
     public static function labelFor(string $target): string
     {
-        if ($target === 'tasks' && auth()->user() && ListConcepts::for(auth()->user()) === 'simple') {
+        if ($target === 'tasks' && auth()->user() && in_array(ListConcepts::for(auth()->user()), ['simple', 'kanban'], true)) {
+            return 'Aufgabe';
+        }
+
+        if ($target === 'inbox' && auth()->user() && ListConcepts::for(auth()->user()) === 'eisenhower') {
             return 'Aufgabe';
         }
 
@@ -266,11 +292,20 @@ class QuickCapture extends Component
      * `$target` lets the trigger open the panel on a chip other than Inbox —
      * a page about one specific kind of thing should capture that thing. An
      * unknown value falls back to the Inbox default rather than being trusted.
+     *
+     * `$important`/`$dueDate` are the "Eisenhower" concept's one capture hook
+     * (board-eisenhower.blade.php's per-quadrant "+"): pre-fill the two flags
+     * that decide which quadrant a freshly captured task lands in, so tapping
+     * a specific quadrant to add something doesn't always dump it into
+     * "Nicht wichtig & Nicht dringend" and require a manual drag afterward.
+     * No other target/page passes these, so every other capture path is
+     * unaffected — $important stays false and $dueDate stays whatever the
+     * reset above already cleared it to.
      */
     #[On('quick-capture-opened')]
-    public function resetPanel(?string $target = null, ?int $groupId = null): void
+    public function resetPanel(?string $target = null, ?int $groupId = null, ?bool $important = null, ?string $dueDate = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
 
         // reset() restores 'target' to its bare class-declared default
@@ -280,6 +315,14 @@ class QuickCapture extends Component
 
         if ($target !== null && in_array($target, $this->availableTargets, true)) {
             $this->target = $target;
+        }
+
+        if ($important !== null) {
+            $this->important = $important;
+        }
+
+        if ($dueDate !== null) {
+            $this->dueDate = $dueDate;
         }
 
         // Opened straight onto the agenda target (e.g. Agenda's own page-matching
@@ -368,7 +411,7 @@ class QuickCapture extends Component
             $this->newGroupName = '';
 
             $this->captured = ['title' => $title, 'label' => 'Gruppe · '.$group->name];
-            $this->reset(['title', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin']);
+            $this->reset(['title', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin']);
             $this->dispatch('captured');
 
             return;
@@ -397,6 +440,7 @@ class QuickCapture extends Component
             default => $user->tasks()->create([
                 'title' => $title,
                 'list' => $this->target,
+                'is_important' => $this->important,
                 'deadline' => $this->deadline ?: null,
                 'due_date' => $this->dueDate ?: null,
                 // Re-checked here, not just relied on from setTarget()'s clearing —
@@ -424,7 +468,7 @@ class QuickCapture extends Component
         // shouldn't mean re-picking the chip every time. Agenda's Fach, date,
         // type and class survive for the same reason — writing down three things
         // the teacher just set, all for the same class, is the normal case.
-        $this->reset(['title', 'deadline', 'dueDate', 'duration', 'notes', 'whereToBegin']);
+        $this->reset(['title', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin']);
 
         $this->dispatch('captured');
     }

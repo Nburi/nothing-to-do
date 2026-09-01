@@ -53,4 +53,14 @@ class BoardListConceptTest extends TestCase
             ->assertSet('listConcept', 'simple')
             ->assertSee('Karten für Regio-OL drucken');
     }
+
+    public function test_the_eisenhower_board_renders_a_real_task_via_the_switch_seam(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+        Task::factory()->for($user)->tasks()->create(['title' => 'Karten für Regio-OL drucken']);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->assertSet('listConcept', 'eisenhower')
+            ->assertSee('Karten für Regio-OL drucken');
+    }
 }

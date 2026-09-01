@@ -64,12 +64,24 @@ class SettingsListConceptTest extends TestCase
         $this->assertSame('simple', $user->fresh()->list_concept);
     }
 
+    public function test_set_list_concept_persists_eisenhower(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->call('setListConcept', 'eisenhower')
+            ->assertSet('listConcept', 'eisenhower');
+
+        $this->assertSame('eisenhower', $user->fresh()->list_concept);
+    }
+
     public function test_settings_renders_the_list_concept_card(): void
     {
         $user = User::factory()->create();
 
         Livewire::actingAs($user)->test(Settings::class)
             ->assertSee('Listen-Konzept')
+            ->assertSee('Eisenhower-Matrix')
             ->assertSee('Bald verfügbar');
     }
 
@@ -77,6 +89,15 @@ class SettingsListConceptTest extends TestCase
     {
         $user = User::factory()->create();
         Task::factory()->for($user)->inbox()->create(['title' => 'Regio-OL Karten drucken']);
+
+        Livewire::actingAs($user)->test(Settings::class)
+            ->assertSee('Regio-OL Karten drucken');
+    }
+
+    public function test_eisenhower_row_previews_the_users_own_real_tasks(): void
+    {
+        $user = User::factory()->create();
+        Task::factory()->for($user)->create(['title' => 'Regio-OL Karten drucken', 'list' => 'tasks']);
 
         Livewire::actingAs($user)->test(Settings::class)
             ->assertSee('Regio-OL Karten drucken');

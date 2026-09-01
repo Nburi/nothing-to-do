@@ -9,8 +9,9 @@ use Illuminate\Support\Collection;
 /**
  * The catalog of mental models the board can be rendered through — "3 Things"
  * (the original, still the default), "Simple" (a single flat list, no
- * triage), plus two more ("Eisenhower", "Kanban") that are planned but not
- * yet built (see PLAN_LIST_CONCEPTS.md). Deliberately built as a stateless
+ * triage), "Eisenhower-Matrix" (four quadrants by urgent/important), plus
+ * one more ("Kanban") that is planned but not yet built (see
+ * PLAN_LIST_CONCEPTS.md). Deliberately built as a stateless
  * catalog (mirrors AppModules::CATALOG/HeaderBadges::CATALOG) rather than a
  * hardcoded switch scattered across TaskBoard, so a later concept session has
  * exactly one array entry + one `@case` to add, nothing else to wire up.
@@ -51,7 +52,7 @@ class ListConcepts
         'eisenhower' => [
             'label' => 'Eisenhower-Matrix',
             'description' => 'Wichtig × Dringend — vier Quadranten statt Listen.',
-            'available' => false,
+            'available' => true,
         ],
         'kanban' => [
             'label' => 'Kanban',

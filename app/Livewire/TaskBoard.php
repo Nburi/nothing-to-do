@@ -32,6 +32,20 @@ class TaskBoard extends Component
     public string $groupNameDraft = '';
 
     /**
+     * "Eisenhower" concept's "Krisenring" signature moment — ids already
+     * seen in the "Wichtig & Dringend" quadrant on some earlier render this
+     * page life (see trackEisenhowerCrisisEntries(), render(), and
+     * .eisenhower-crisis-ring in app.css). Public so Livewire persists it
+     * across requests; seeded once in mount() rather than lazily, since a
+     * private "have I seeded yet" flag would itself reset to its default on
+     * every request (only public properties survive between them) and would
+     * make every single request look like the first one.
+     *
+     * @var list<int>
+     */
+    public array $eisenhowerCrisisSeenIds = [];
+
+    /**
      * The "Heute" header badge (HeaderBadges::todayBadge()) links here with
      * ?tab=today so its click behaves like an actual shortcut on mobile, not
      * just a generic link to the board — desktop has no separate Today view
@@ -57,6 +71,15 @@ class TaskBoard extends Component
             if ($task !== null) {
                 $this->startEdit($task->id);
             }
+        }
+
+        if (ListConcepts::for(auth()->user()) === 'eisenhower') {
+            // Whatever's already in the crisis quadrant the moment the page
+            // first loads is the starting state, not something that just
+            // "arrived" — seeding here (mount() runs once per page load,
+            // never on a later action request) is what keeps the very first
+            // render from pulsing on every single task already sitting there.
+            $this->eisenhowerCrisisSeenIds = $this->eisenhowerQuadrants['important_urgent']->pluck('id')->all();
         }
     }
 
@@ -232,6 +255,72 @@ class TaskBoard extends Component
             ->orderBy('is_completed')
             ->boardOrdered()
             ->get();
+    }
+
+    /**
+     * "Eisenhower" concept's four quadrants — Wichtig×Dringend / Wichtig×Nicht
+     * Dringend / Nicht Wichtig×Dringend / Nicht Wichtig×Nicht Dringend — built
+     * from the SAME two signals every other concept already reads:
+     * `is_important` and `Task::isUrgent()` (deadline/due-date within
+     * Task::URGENCY_DAYS). No new axis data at all — see ListConcepts and
+     * PLAN_LIST_CONCEPTS.md §1/§3.
+     *
+     * Fetches once with the identical filter shape as boardTasks() (same
+     * completed-visibility window, same grouped-task-hidden-unless-
+     * important-or-today rule — a grouped task's home is its Group page,
+     * exactly as a 3-Things column already treats it when no group box is
+     * around to surface it) minus the `inList()` call, then buckets the
+     * ACTIVE tasks into the four quadrants in PHP — is_important/isUrgent()
+     * are plain flags/methods, not worth four separate queries.
+     * boardOrdered()'s own tie-breakers (due-soonest, then manual order)
+     * already give a sensible in-quadrant order for free, since every task
+     * in one quadrant already agrees on the coarse bucket that sort
+     * partitions by. Completed tasks (same recently-completed window as
+     * every other concept) come back separately under 'done' — completion
+     * ends a task's relationship with either axis, so it gets one shared
+     * strip below the grid instead of living in a quadrant it may no longer
+     * even qualify for.
+     *
+     * @return array{important_urgent: Collection<int, Task>, important_not_urgent: Collection<int, Task>, not_important_urgent: Collection<int, Task>, not_important_not_urgent: Collection<int, Task>, done: Collection<int, Task>}
+     */
+    #[Computed]
+    public function eisenhowerQuadrants(): array
+    {
+        $windowStart = auth()->user()->completedWindowStart();
+
+        $tasks = Task::query()
+            ->forUser(auth()->user())
+            ->onBoard()
+            ->with('dayPlan')
+            ->where(function ($q) {
+                $q->whereNull('group_id')
+                    ->orWhere('is_important', true)
+                    ->orWhere('is_today', true);
+            })
+            ->where(function ($q) use ($windowStart) {
+                $q->where('is_completed', false)
+                    ->orWhere(function ($q2) use ($windowStart) {
+                        $q2->where('is_completed', true)
+                            ->where('completed_at', '>=', $windowStart);
+                    });
+            })
+            ->orderBy('is_completed')
+            ->boardOrdered()
+            ->get();
+
+        $active = $tasks->where('is_completed', false);
+
+        $bucket = fn (bool $important, bool $urgent) => $active
+            ->filter(fn (Task $t) => $t->is_important === $important && $t->isUrgent() === $urgent)
+            ->values();
+
+        return [
+            'important_urgent' => $bucket(true, true),
+            'important_not_urgent' => $bucket(true, false),
+            'not_important_urgent' => $bucket(false, true),
+            'not_important_not_urgent' => $bucket(false, false),
+            'done' => $tasks->where('is_completed', true)->values(),
+        ];
     }
 
     /**
@@ -995,6 +1084,71 @@ class TaskBoard extends Component
         }
     }
 
+    // ── "Eisenhower" concept — quadrant drag, Today toggle ─────────────
+
+    /**
+     * Eisenhower's cross- and within-quadrant drag. Unlike reorder(), the
+     * destination is described by two flags — $important (row) and $urgent
+     * (column) — instead of a `list`/`today` pair, since a quadrant is a
+     * position on those two axes, not a board list.
+     *
+     * The importance axis is a plain, always-safe write: `is_important` is
+     * already a directly user-owned flag everywhere else in this app (the
+     * card's own title-tap toggles it identically), so setting it to match
+     * the destination row is exactly what dropping a card there means.
+     *
+     * The urgency axis is NOT a stored flag — it's `Task::isUrgent()`,
+     * derived from `deadline ?? due_date`, and `effectiveDate()` always
+     * prefers a hard `deadline` over the soft `due_date` when both exist.
+     * So this only ever touches `due_date`, never `deadline` — silently
+     * rewriting a hard, externally-imposed deadline just because a card
+     * landed in a different column would be exactly the kind of surprise
+     * this app avoids everywhere else that distinction matters (CLAUDE.md's
+     * deadline-vs-due_date convention). For a task with `isUrgencyLocked()`
+     * (a real deadline), touching due_date could never move it anyway — the
+     * client already refuses that drop up front (see the `put` predicate in
+     * window.eisenhowerQuadrantSortable, board-eisenhower.blade.php's
+     * data-urgency-locked), and the guard below is kept as a second,
+     * server-side line of defence rather than trusted client-only.
+     *
+     * Making a task "dringend" sets due_date to the far edge of the urgency
+     * window (today + Task::URGENCY_DAYS, still inside it) rather than
+     * today — a self-imposed "due soon", not an invented same-day deadline.
+     * Making it "nicht dringend" clears due_date outright — always safe,
+     * since a soft date is freely reversible by design.
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    public function reorderEisenhower(bool $important, bool $urgent, array $ids): void
+    {
+        $today = auth()->user()->localToday();
+
+        foreach (array_values($ids) as $position => $id) {
+            $task = auth()->user()->tasks()->find((int) $id);
+
+            if ($task === null) {
+                continue;
+            }
+
+            $updates = [
+                'sort_order' => $position,
+                'is_important' => $important,
+            ];
+
+            if (! $task->isUrgencyLocked()) {
+                $currentlyUrgent = $task->isUrgent();
+
+                if ($urgent && ! $currentlyUrgent) {
+                    $updates['due_date'] = $today->copy()->addDays(Task::URGENCY_DAYS)->toDateString();
+                } elseif (! $urgent && $currentlyUrgent) {
+                    $updates['due_date'] = null;
+                }
+            }
+
+            $task->update($updates);
+        }
+    }
+
     /**
      * Simple's single-task Today toggle — now only reached via the mobile
      * swipe path (swipeIntentSimple() below); the desktop board sets
@@ -1030,6 +1184,30 @@ class TaskBoard extends Component
     }
 
     /**
+     * Eisenhower's Today toggle — same isInbox()-fixup shape as every other
+     * concept's own override (see 3-Things' plain setToday()/swipeIntent()):
+     * is_today has no quadrant of its own to live in (the grid is already
+     * spoken for by importance/urgency), so it surfaces as a plain badge on
+     * the card face instead, exactly the way the data-mapping table
+     * (PLAN_LIST_CONCEPTS.md §3) describes it for every concept but 3-Things.
+     */
+    public function setTodayEisenhower(int $id, bool $value): void
+    {
+        $task = $this->userTask($id);
+
+        $updates = [
+            'is_today' => $value,
+            'today_date' => $task->todayDateFor($value, auth()->user()->localToday()),
+        ];
+
+        if ($value && $task->isInbox()) {
+            $updates['list'] = 'tasks';
+        }
+
+        $task->update($updates);
+    }
+
+    /**
      * Simple's mobile swipe outcomes — only ever 'today'/'untoday' reach
      * here ('edit' is handled client-side by swipeCard before any $wire call
      * is made). Routes 'today' through setTodaySimple() so the isInbox()
@@ -1043,6 +1221,43 @@ class TaskBoard extends Component
             'untoday' => $this->setTodaySimple($id, false),
             default => null,
         };
+    }
+
+    /** Eisenhower's mobile swipe outcomes — routes today/untoday through setTodayEisenhower(). */
+    public function swipeIntentEisenhower(int $id, string $intent): void
+    {
+        match ($intent) {
+            'today' => $this->setTodayEisenhower($id, true),
+            'untoday' => $this->setTodayEisenhower($id, false),
+            default => null,
+        };
+    }
+
+    /**
+     * Detects a task genuinely ENTERING the crisis quadrant since the last
+     * render — by drag, by tapping the star, by setting/clearing a date, or
+     * by a fresh quadrant-tap capture — regardless of which of those caused
+     * it, since this simply diffs the quadrant's current membership against
+     * what was there last time (see $eisenhowerCrisisSeenIds), rather than
+     * hooking each individual mutation (several of which — toggleImportant,
+     * quickSetDates — are shared code this concept must not modify).
+     * Dispatches 'eisenhower-crisis' with the newly-arrived ids for app.js
+     * to animate. Mirrors WeekPlan's own dispatch-driven ripple, deliberately
+     * NOT an x-init/wire:key trick — a nested element's x-init does not
+     * reliably re-fire on every Livewire morph, only a genuine node
+     * replacement does (see CLAUDE.md §10), so a dispatched browser event is
+     * the reliable way to fire a one-shot animation on every relevant
+     * update, not just the first render.
+     */
+    private function trackEisenhowerCrisisEntries(Collection $crisisTasks): void
+    {
+        $currentIds = $crisisTasks->pluck('id')->all();
+        $newIds = array_values(array_diff($currentIds, $this->eisenhowerCrisisSeenIds));
+        $this->eisenhowerCrisisSeenIds = $currentIds;
+
+        if ($newIds !== []) {
+            $this->dispatch('eisenhower-crisis', ids: $newIds);
+        }
     }
 
     protected function userScheduleEvent(int $id): ScheduleEvent
@@ -1115,6 +1330,10 @@ class TaskBoard extends Component
 
     public function render()
     {
+        if ($this->listConcept === 'eisenhower') {
+            $this->trackEisenhowerCrisisEntries($this->eisenhowerQuadrants['important_urgent']);
+        }
+
         return view('livewire.task-board');
     }
 }

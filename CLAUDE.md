@@ -1631,7 +1631,7 @@ that should only cover currently-visible modules, and an admin-authored feature-
   per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
   feature-announcement system this catalog exists to eventually support.
 
-### To-Do-Listen-Konzepte (infra + "Simple" built; Eisenhower/Kanban not yet — see `PLAN_LIST_CONCEPTS.md`)
+### To-Do-Listen-Konzepte (infra + "Simple" + "Eisenhower-Matrix" built; Kanban not yet — see `PLAN_LIST_CONCEPTS.md`)
 
 Lets a user pick which mental model their to-do list follows, instead of forcing everyone through
 "3 Things" (§1) forever. Full design (all four concepts, the exact data-mapping-without-migration
@@ -1640,16 +1640,17 @@ argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section d
 ("3 Things") that renders through it today. Landed on `feature/list-concepts-infra` (branched off
 `feature/list-concepts-plan`, itself off `main`); the three remaining concept sessions
 (`feature/list-concept-simple`/`-eisenhower`/`-kanban`) each branch off `feature/list-concepts-infra`.
-The **"Simple" concept session** landed next, on `feature/list-concept-simple` (branched off
-`feature/list-concepts-infra`) — see its own subsection below, right after this one.
+The **"Simple"** and **"Eisenhower-Matrix"** concept sessions landed next, as independent siblings —
+see their own subsections below, right after this one.
 
 - **`App\Services\ListConcepts`** — a stateless catalog, same shape as `AppModules::CATALOG`/
   `HeaderBadges::CATALOG`, with one addition: every entry also carries an `available` flag. A
   concept can be *listed* (so Settings can show "bald verfügbar" and a user knows it's coming)
   without being *selectable* yet, because its board partial and `TaskBoard` computed properties
-  don't exist. `CATALOG` ships all four concepts from the plan today — only `three_things` has
-  `available: true`; `simple`/`eisenhower`/`kanban` are `false` until their own session flips the
-  flag in the same commit that adds their `@case` + partial. `for(User): string` is the
+  don't exist. `CATALOG` ships all four concepts from the plan today — `three_things` and, as of
+  its own session (see below), `eisenhower` have `available: true`; `simple`/`kanban` are `false`
+  until their own session flips the flag in the same commit that adds their `@case` + partial.
+  `for(User): string` is the
   self-healing read every consumer goes through (mirrors `AppModules`'s own dual-consistency
   pattern) — a stored `list_concept` for a concept that isn't available (or never was a real key)
   always falls back to `'three_things'`. `isValid(string): bool` (catalog membership **and**
@@ -1675,9 +1676,10 @@ The **"Simple" concept session** landed next, on `feature/list-concept-simple` (
   list vs. 4 quadrants vs. 3 Kanban columns), so `board-three-things.blade.php` owns its own nav
   rather than the infra session inventing one generic tab-bar abstraction all four would have to
   squeeze into.
-- **`QuickCapture` gained one hook**, wired but only exercising the `three_things` branch today:
+- **`QuickCapture` gained one hook**:
   `ListConcepts::defaultCaptureList(User): string` (`'tasks'` under `simple`, `'inbox'`
-  otherwise — always `'inbox'` right now, since `simple` isn't selectable yet) feeds
+  otherwise — `eisenhower` deliberately stays on the `'inbox'` default too, see its own section
+  below for why) feeds
   `QuickCapture::$target`'s value both at `mount()` and at the top of `resetPanel()` — the latter
   needed explicitly because Livewire's `reset()` restores a property to its bare class-declared
   default (`'inbox'`), not to whatever `mount()` computed, so re-opening the panel without this
@@ -1703,8 +1705,9 @@ The **"Simple" concept session** landed next, on `feature/list-concept-simple` (
   `three_things`'s own thumbnail buckets that read into three small mini-columns (Inbox/To-Dos/
   Tasks) showing up to two real task titles each, with a quiet "—" placeholder for an empty
   bucket rather than nothing at all (the empty-state case, checked directly: a fresh account with
-  zero tasks renders the card cleanly). `simple`/`eisenhower`/`kanban` render no thumbnail at all
-  yet (there's no per-concept rendering logic to build one from) — each concept session adds its
+  zero tasks renders the card cleanly). `eisenhower` gained its own 2×2 mini-grid thumbnail as of
+  its own session (see below); `simple`/`kanban` render no thumbnail at all yet (there's no
+  per-concept rendering logic to build one from) — each concept session adds its
   own `@if ($row['key'] === '<key>')` thumbnail branch alongside its own `@case` once it has real
   data to show, exactly the same way the board switch grows.
 - **Onboarding discoverability nudge** — the existing "Die 3 Dinge" tutorial slide (see
@@ -1725,10 +1728,160 @@ The **"Simple" concept session** landed next, on `feature/list-concept-simple` (
   in the summary that one should be written").
 - Deliberately out of scope for this infra session (all tracked in `PLAN_LIST_CONCEPTS.md` §7 and
   `TODO.md`): the three concepts themselves (Simple/Eisenhower/Kanban — no board partial, no
-  `TaskBoard` computed properties, `available: false` in the catalog), the `simple` QuickCapture
-  chip-collapse (see above), the draft `FeatureAnnouncement` (see above), and everything else the
-  plan's own §7 already lists (Eat-the-Frog, time-blocking, a board-morph/FLIP animation, API
-  awareness of `list_concept`, coupling to `AppModules`).
+  `TaskBoard` computed properties, `available: false` in the catalog — Eisenhower has since been
+  built in its own session, see below), the `simple` QuickCapture chip-collapse (see above), the
+  draft `FeatureAnnouncement` (see above), and everything else the plan's own §7 already lists
+  (Eat-the-Frog, time-blocking, a board-morph/FLIP animation, API awareness of `list_concept`,
+  coupling to `AppModules`).
+
+### To-Do-Listen-Konzepte — "Eisenhower-Matrix" (built)
+
+The second of the four concept sessions `PLAN_LIST_CONCEPTS.md`/`TODO.md` split off from infra
+(built independently as a sibling of `feature/list-concept-simple`, both branched off
+`feature/list-concepts-infra` — neither depends on the other, expect small predictable conflicts
+merging both back-to-back, per the plan's own §8 coordination note). A 2×2 grid — Wichtig×Dringend
+/ Wichtig×Nicht Dringend / Nicht Wichtig×Dringend / Nicht Wichtig×Nicht Dringend — built from the
+SAME two signals every other concept already reads: `is_important` and `Task::isUrgent()`
+(deadline/due-date within `Task::URGENCY_DAYS`). No new axis data at all, and no new column on
+`tasks`. `ListConcepts::CATALOG['eisenhower']['available']` is now `true`.
+
+- **`TaskBoard::eisenhowerQuadrants()`** (`#[Computed]`) is `boardTasks()`'s exact filter shape
+  (recently-completed visibility window, a grouped task hidden unless important/today) minus the
+  `inList()` call — same idea as `simpleTasks()` — fetched once and bucketed into the four
+  quadrants **in PHP** (`is_important`/`isUrgent()` are plain flags/methods, not worth four
+  separate queries). `boardOrdered()`'s own tie-breakers (due-soonest, then manual order) already
+  give a sensible in-quadrant order for free, since every task in one quadrant already agrees on
+  the coarse bucket that sort partitions by. Completed tasks come back separately under `'done'`
+  — completion ends a task's relationship with either axis, so it gets one shared strip below the
+  grid instead of living in a quadrant it may no longer even qualify for.
+- **`Task::isUrgencyLocked()`** — `true` whenever a hard `deadline` is set. `effectiveDate()`
+  always prefers `deadline` over `due_date`, so for such a task nothing written to `due_date`
+  could ever actually change `isUrgent()`'s answer. This is the one new model method this session
+  added, and it exists specifically to let the drag gesture below refuse a drop it could never
+  honor, rather than silently accepting one that would just snap back on the next render.
+- **Own UX question this concept has that no other one does: how does a task actually move between
+  quadrants?** Two complementary answers, and the first needed zero new code:
+  1. **The card's own existing controls, unchanged.** Tapping a card's title already toggles
+     `is_important` everywhere in this app (`ManagesTasks::toggleImportant()`); tapping the date
+     badge already opens the existing deadline/due-date popover
+     (`ManagesTasks::quickSetDates()`), which is exactly what decides `isUrgent()`. Both work on
+     every card, in every concept, including a locked card (edit the deadline directly — that
+     *is* how you'd change what governs its urgency) and on mobile, where only one quadrant is
+     visible at a time. Since these already fully and safely cover "move a task to any quadrant",
+     nothing about them needed to change for this concept to work.
+  2. **Drag, as a spatial shortcut on top of #1 — desktop only.** Mobile's 4-tab layout only ever
+     shows one quadrant at a time, and a drag physically can't reach a hidden one (no hit-testing
+     on a `display:none` element), so no extra guard code was needed to keep cross-quadrant drag
+     desktop-only — it simply cannot happen on mobile. `window.eisenhowerQuadrantSortable`
+     (`app.js`) gives all four quadrant containers one shared Sortable group (`'eisenhower'`); the
+     destination's `data-important`/`data-urgent` attributes tell `TaskBoard::reorderEisenhower()`
+     which two flags to write. Moving rows (importance) is a plain, always-safe write. Moving
+     columns (urgency) only ever touches `due_date`, never `deadline` — making a task "dringend"
+     sets `due_date` to the far edge of the urgency window (`today + Task::URGENCY_DAYS`, a
+     self-imposed "due soon", not an invented same-day deadline); making it "nicht dringend"
+     clears `due_date` outright. A card with `isUrgencyLocked()` (a real deadline) refuses to
+     cross columns at all — Sortable's function-form `group.put` rejects the drop up front (same
+     pattern as `homeworkDragSource`'s own function-form `put`, see CLAUDE.md's own drag-and-drop
+     entries below) rather than accepting it and letting it silently snap back on the next render,
+     which would be exactly the "UI lies" trap this app avoids everywhere else. A small lock badge
+     on the card face says why before anyone even tries.
+  This concept deliberately has **no task-grouping gesture on its grid** (unlike `boardSortable`'s
+  drop-onto-a-card-to-group band) — grouping stays reachable through its normal paths (the group's
+  own page, the edit sheet's Gruppe field, QuickCapture's group target), exactly as for every other
+  concept, so `eisenhowerQuadrantSortable` is a smaller, separate Sortable instance rather than a
+  variant of `boardSortable`.
+- **`TaskBoard::setTodayEisenhower()`/`swipeIntentEisenhower()`** — `is_today` has no quadrant of
+  its own (the grid is already spoken for by importance/urgency), so it surfaces as a plain "Heute"
+  badge on the card face instead, exactly as `PLAN_LIST_CONCEPTS.md` §3's data-mapping table
+  describes for every concept but 3-Things. Same `isInbox()`-fixup shape as `setToday()`'s own
+  guard: flagging a still-`list='inbox'` task for today also moves it to `'tasks'`, upholding the
+  same "no task has `is_today=true` while `list='inbox'`" invariant `setTodaySimple()` already
+  protects (see CLAUDE.md's own "a new invariant added after a feature already exists" lesson,
+  Known Issues below — checked deliberately this time, not found the hard way). Reuses the
+  `.today-toggle`/`.today-pulse-ring` pulse `simple` built for the identical underlying problem
+  (a flag with no spatial zone to visually enter) — built independently on this sibling branch
+  since the two never share code before merging; expect a trivial duplicate-rule conflict there.
+- **Quadrant tap-to-create** — each quadrant header (desktop) / active tab (mobile) has a small
+  "+" that opens the app-wide QuickCapture panel pre-filled for that exact quadrant, so tapping
+  "Wichtig & Dringend" and capturing doesn't dump the new task into "Nicht wichtig & Nicht
+  dringend" by default, requiring a manual drag afterward. `Alpine.store('quickCapture').show()`
+  gained a fourth, backward-compatible `extra` params object spread into the
+  `quick-capture-opened` dispatch; `QuickCapture::resetPanel()` gained matching optional
+  `$important`/`$dueDate` params (the "small, optional-params extension" `PLAN_LIST_CONCEPTS.md`
+  §4 scoped to this session) and a new `public bool $important` property, persisted into a
+  captured task's `is_important` column for the `TASK_TARGETS`/`group` create paths. Deliberately
+  **no new chip/UI in the panel itself** — every other capture path leaves `$important` at its
+  default `false`, and a freshly captured task's importance is still set afterward the same way it
+  always has been (the card's own title-tap) — this is a pre-fill hook for one concept's own entry
+  point, not a general feature. `$important`/`$dueDate` reset after every save, like
+  `deadline`/`dueDate` already do, not carried across a multi-capture session the way `target`
+  itself is — an item-level attribute, not a routing choice.
+- **`defaultCaptureList()` stays `'inbox'` for this concept**, deliberately not special-cased the
+  way `simple`/`kanban` are (they write straight to `'tasks'`) — a task's `list` is ignored for
+  display under Eisenhower regardless (§3), so a plain Inbox capture already shows up in whichever
+  quadrant its `is_important`/`isUrgent()` flags put it in; only the quadrant "+" needs (and gets) a
+  dedicated pre-fill.
+- **`QuickCapture`'s chip-collapse, added in a later bugfix pass:** `availableTargets()` now drops
+  `'todos'`/`'tasks'` from the chip row under `eisenhower`, leaving `'inbox'` as the one remaining
+  task chip (kept, not `'tasks'` like Simple/Kanban, for the reason in the bullet just above — see
+  `availableTargets()`'s own docblock). `labelFor('inbox')` reads "Aufgabe" instead of "Inbox" once
+  To-Dos/Tasks are gone from the row, so the surviving chip doesn't misleadingly imply an unsorted/
+  triage step this concept doesn't have. This mirrors the fix Simple's own QuickCapture chip-collapse
+  already has, applied here because Eisenhower's board ignores `list` for display just as completely
+  — see `QuickCaptureListConceptTest.php`.
+- **Signature moment — "der Krisenring".** The instant a task genuinely lands in "Wichtig &
+  Dringend" — by drag, by tapping the star, by a date change, or by a fresh quadrant-tap capture —
+  that quadrant's whole card washes once in a slow, calm ring in the star's own tone (`overprint`),
+  never this app's danger tone (`signal`, reserved for something actually gone wrong) — an
+  acknowledgment, not an alarm. **`TaskBoard::trackEisenhowerCrisisEntries()`** is the detector: it
+  diffs the crisis quadrant's current membership against `$eisenhowerCrisisSeenIds` (persisted,
+  seeded once in `mount()` from whatever's already there — arriving on a page that already has
+  crisis tasks isn't an "entry", it's the starting state) on every `render()`, regardless of which
+  of the several possible causes triggered it — deliberately **not** hooked into each individual
+  mutation, several of which (`toggleImportant`, `quickSetDates`) are shared code this concept must
+  never modify. Dispatches `'eisenhower-crisis'` with the newly-arrived ids; a
+  `Livewire.on('eisenhower-crisis', …)` listener in `app.js` re-triggers `.eisenhower-crisis-ring`
+  (a `box-shadow` inset wash, same shape as `.weekplan-ripple`/`.badge-jump-highlight`) on the
+  matching `[data-eisenhower-quadrant="important_urgent"]` element. Deliberately dispatch-driven,
+  not an `x-init`/`wire:key` trick — a nested element's `x-init` does not reliably re-fire on every
+  Livewire morph, only a genuine node replacement does (see Known Issues below), so a dispatched
+  browser event is what fires reliably on every relevant update, not just the first render. Fully
+  covered by tests (`EisenhowerBoardTest`'s "Krisenring" section) independent of any browser check
+  — entering fires once, reordering within the quadrant doesn't re-fire, leaving doesn't fire, and
+  the very first page load never pulses for tasks already sitting there.
+- **Empty-state copy is quadrant-specific, not one generic placeholder** — "Nichts brennt gerade."
+  for the crisis quadrant, "Der ruhigste Ort im Haus — bleib hier, wenn du kannst." for the
+  opposite corner, and so on for the other two — a small detail, not the signature moment itself,
+  but deliberately not left as four copies of the same sentence.
+- **Companion features stay concept-agnostic** per `PLAN_LIST_CONCEPTS.md` §2 requirement 6 — the
+  same top-of-page furniture (Zeitplan focus strip, Notfallmodus banner, Vorbereitung prompt,
+  Hausaufgaben-Vorschau) renders unchanged on both breakpoints, `@include`d verbatim exactly as
+  `board-three-things.blade.php`/`board-simple.blade.php` already do.
+- **Settings' preview thumbnail** — a third branch in the "Listen-Konzept" card's real-data
+  preview renders a small 2×2 mini-grid (up to two real task titles per quadrant, a quiet "—" for
+  an empty one), reading the same shared `listConceptPreviewTasks` every other concept's thumbnail
+  already reads, bucketed the identical way `eisenhowerQuadrants()` buckets the real board.
+- **No `FeatureAnnouncement` draft was created this session either** — same reasoning as infra's
+  own and `simple`'s own: admin-authored content needs the admin UI, and this session's
+  verification was explicitly test-suite-only (avoiding a known dev-server-hang trap), with no
+  browser access to use that UI safely. Flagged here and in `TODO.md`.
+- Deliberately out of scope for this session (tracked in `PLAN_LIST_CONCEPTS.md` §7/§8 and
+  `TODO.md`): Simple/Kanban themselves (built independently on their own sibling branches),
+  dragging a homework-preview card straight onto a quadrant on desktop (the strip's own mobile
+  swipe-to-promote still works unchanged, since it's a self-contained `$wire` call with no
+  drop-zone dependency — only the desktop *drag*-to-promote path needs a `data-today="true"`
+  receiving zone, which no Eisenhower quadrant declares this round), drag-to-group within the grid
+  (still reachable through the group's own page/edit sheet/QuickCapture), the still-unwritten
+  `FeatureAnnouncement` draft (see above), and a board-morph/FLIP animation (explicitly deferred at
+  the infra level already). Verification for this session was automated-tests-only (per explicit
+  instruction, same known dev-server-hang trap `simple` avoided) — a manual browser pass (both
+  breakpoints, the drag gesture, the lock badge, the Krisenring's actual visual timing) is still
+  owed before merge.
+- **Bugfix pass (later commit on this same branch):** added the `QuickCapture` chip-collapse
+  described above — the original session's own reasoning ("`defaultCaptureList()` stays `'inbox'`,
+  deliberately not special-cased") was about the *default target*, not the *chip row*, and didn't
+  account for the three chips still advertising a distinction Eisenhower's board doesn't have.
+  Verification was automated-tests-only again, for the same dev-server-hang reason.
 
 ### To-Do-Listen-Konzepte — "Simple" (built)
 

@@ -23,9 +23,9 @@ class ListConceptsTest extends TestCase
 
     public function test_for_self_heals_a_stored_value_that_is_not_currently_available(): void
     {
-        // 'eisenhower' is a real catalog key, but not available yet — a
+        // 'kanban' is a real catalog key, but not available yet — a
         // stray stored value must never render nothing.
-        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+        $user = User::factory()->create(['list_concept' => 'kanban']);
 
         $this->assertSame('three_things', ListConcepts::for($user));
     }
@@ -54,10 +54,21 @@ class ListConceptsTest extends TestCase
         $this->assertTrue(ListConcepts::isValid('simple'));
     }
 
+    public function test_eisenhower_is_valid(): void
+    {
+        $this->assertTrue(ListConcepts::isValid('eisenhower'));
+    }
+
     public function test_an_unavailable_catalog_key_is_not_valid(): void
     {
-        $this->assertFalse(ListConcepts::isValid('eisenhower'));
         $this->assertFalse(ListConcepts::isValid('kanban'));
+    }
+
+    public function test_for_returns_eisenhower_once_it_is_available(): void
+    {
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        $this->assertSame('eisenhower', ListConcepts::for($user));
     }
 
     public function test_an_unknown_key_is_not_valid(): void
@@ -78,7 +89,8 @@ class ListConceptsTest extends TestCase
         $this->assertTrue($rows['three_things']['current']);
         $this->assertTrue($rows['simple']['available']);
         $this->assertFalse($rows['simple']['current']);
-        $this->assertFalse($rows['eisenhower']['available']);
+        $this->assertTrue($rows['eisenhower']['available']);
+        $this->assertFalse($rows['eisenhower']['current']);
         $this->assertFalse($rows['kanban']['available']);
     }
 
@@ -103,9 +115,9 @@ class ListConceptsTest extends TestCase
 
     public function test_default_capture_list_falls_back_to_inbox_for_an_unreachable_concept_value(): void
     {
-        // 'eisenhower' isn't selectable yet, so for() self-heals it to
+        // 'kanban' isn't selectable yet, so for() self-heals it to
         // 'three_things' before defaultCaptureList() ever sees it.
-        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+        $user = User::factory()->create(['list_concept' => 'kanban']);
 
         $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
     }
@@ -115,6 +127,20 @@ class ListConceptsTest extends TestCase
         $user = User::factory()->create(['list_concept' => 'simple']);
 
         $this->assertSame('tasks', ListConcepts::defaultCaptureList($user));
+    }
+
+    public function test_default_capture_list_is_inbox_for_eisenhower(): void
+    {
+        // Unlike 'simple', Eisenhower has no triage step to skip either — but
+        // it also has no reason to bypass Inbox by default: a task's `list`
+        // is ignored for display under this concept regardless (see
+        // PLAN_LIST_CONCEPTS.md §3), so a fresh Inbox capture already shows
+        // up in whichever quadrant its is_important/isUrgent() flags put it
+        // in. Only the concept's own quadrant "+" pre-fills importance/date
+        // and always targets 'tasks' directly (see QuickCapture::resetPanel()).
+        $user = User::factory()->create(['list_concept' => 'eisenhower']);
+
+        $this->assertSame('inbox', ListConcepts::defaultCaptureList($user));
     }
 
     // ── previewTasksFor() ────────────────────────────────────────────────
