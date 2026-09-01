@@ -5,6 +5,41 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
+### To-Do-Listen-Konzepte — concept sessions can branch off `feature/list-concepts-infra`
+
+Infra shipped (`ListConcepts` catalog, `users.list_concept`, the `TaskBoard` `@switch` seam +
+`partials/board-three-things.blade.php`, the Settings "Listen-Konzept" card with real-data
+preview thumbnails, the `QuickCapture::defaultCaptureList()` hook) — see CLAUDE.md's
+"To-Do-Listen-Konzepte" section and `PLAN_LIST_CONCEPTS.md` for the full design. Branch:
+`feature/list-concepts-infra`, off `feature/list-concepts-plan` (itself off `main` at `7fe5c7c`).
+Full automated suite green (1146 tests) at the time this landed. **Not merged, not pushed.**
+
+Each remaining concept is its own session, branched off `feature/list-concepts-infra`:
+
+1. `feature/list-concept-simple` — add `simple` to `ListConcepts::CATALOG` (`available: true`),
+   `partials/board-simple.blade.php` (desktop + mobile), fill in `defaultCaptureList()`'s
+   already-correct `simple` branch, and build the `QuickCapture::availableTargets()`
+   chip-collapse (Inbox/ToDos/Tasks → one "Aufgabe" chip) that the infra session deliberately
+   left unbuilt — it was structurally unreachable/unverifiable before `simple` existed in the
+   catalog as available. Add its Settings preview thumbnail alongside `three_things`'s.
+2. `feature/list-concept-eisenhower` — same shape, 2×2 quadrant board reusing `is_important`/
+   `isUrgent()`, quadrant tap-to-create pre-filling those flags on the `QuickCapture` call.
+3. `feature/list-concept-kanban` — same shape, 3-column board reusing `toggleComplete()`/
+   `setToday()`/`Task::todayDateFor()` exactly as they exist today.
+
+Expect small, predictable conflicts merging more than one concept branch back-to-back (each adds
+one `ListConcepts::CATALOG` entry + one `@case` in `task-board.blade.php`) — sequence the merges
+and re-resolve each array/switch by hand, per the plan's own coordination note (§8).
+
+**Also deferred from infra, flagged but not done:**
+- A draft, unpublished `App\Models\FeatureAnnouncement` for this feature (CLAUDE.md §3.11 would
+  normally call for one on any user-facing feature) — skipped because it's admin-authored content
+  normally created through `AnnouncementEditor`'s own UI, and this session's verification was
+  automated-tests-only with no dev-server/browser access. Create one (title "Neu:
+  Listen-Konzepte", unpublished) via the admin panel once merged, mentioning at least the
+  Settings card; update its description as each concept lands, publish once the whole batch (or
+  a decided subset) is ready.
+
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 
 Shipped in the shared class agenda (branch `feature/agenda-class-spaces`, 2026-08-11): "done" moved from

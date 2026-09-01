@@ -1631,6 +1631,103 @@ that should only cover currently-visible modules, and an admin-authored feature-
   per-module hide affecting the API/Shortcuts surface, and the onboarding tutorial / admin
   feature-announcement system this catalog exists to eventually support.
 
+### To-Do-Listen-Konzepte (infra built; concepts themselves not yet — see `PLAN_LIST_CONCEPTS.md`)
+
+Lets a user pick which mental model their to-do list follows, instead of forcing everyone through
+"3 Things" (§1) forever. Full design (all four concepts, the exact data-mapping-without-migration
+argument, the session split) lives in `PLAN_LIST_CONCEPTS.md` — this section documents what the
+**infra session** actually shipped: the shared catalog, the switching seam, and the one board
+("3 Things") that renders through it today. Landed on `feature/list-concepts-infra` (branched off
+`feature/list-concepts-plan`, itself off `main`); the three remaining concept sessions
+(`feature/list-concept-simple`/`-eisenhower`/`-kanban`) each branch off `feature/list-concepts-infra`.
+
+- **`App\Services\ListConcepts`** — a stateless catalog, same shape as `AppModules::CATALOG`/
+  `HeaderBadges::CATALOG`, with one addition: every entry also carries an `available` flag. A
+  concept can be *listed* (so Settings can show "bald verfügbar" and a user knows it's coming)
+  without being *selectable* yet, because its board partial and `TaskBoard` computed properties
+  don't exist. `CATALOG` ships all four concepts from the plan today — only `three_things` has
+  `available: true`; `simple`/`eisenhower`/`kanban` are `false` until their own session flips the
+  flag in the same commit that adds their `@case` + partial. `for(User): string` is the
+  self-healing read every consumer goes through (mirrors `AppModules`'s own dual-consistency
+  pattern) — a stored `list_concept` for a concept that isn't available (or never was a real key)
+  always falls back to `'three_things'`. `isValid(string): bool` (catalog membership **and**
+  available) is what `Settings::setListConcept()` gates writes on, so a user can never end up with
+  a stored value `for()` wouldn't also accept. `rowsFor(User)` is what Settings' picker renders —
+  every catalog key, in order, each carrying `available` and whether it's the (self-healed)
+  current choice.
+- **`users.list_concept`** (string, default `'three_things'`, mirrored in `User::$attributes` —
+  same fresh-model-gotcha guard as `default_page`, see §10) — not nullable, same shape as
+  `default_page`.
+- **The one seam**: `resources/views/livewire/task-board.blade.php` is now a thin `@switch` over
+  `TaskBoard::listConcept()` (a `#[Computed]` wrapping `ListConcepts::for()`), each `@case`
+  `@include`ing `partials/board-<key>.blade.php`. The infra session's whole board-side job was
+  extracting the **entire** pre-existing board markup (both breakpoints, the mobile bottom-nav,
+  the edit-sheet/project-picker-sheet includes — literally everything that used to be
+  `task-board.blade.php`'s content) **verbatim** into `partials/board-three-things.blade.php` —
+  a pure refactor, proven behavior-neutral by the existing test suite (`BoardListConceptTest` adds
+  a direct regression check: a task title still renders through the new seam). No existing
+  `TaskBoard`/`ManagesTasks` computed property or mutation changed at all; a concept session only
+  ever *adds* a new `@case` + its own partial + whatever new computed properties its view needs —
+  never touches another concept's branch. **Mobile layout is per-concept by design, not shared**
+  (PLAN_LIST_CONCEPTS.md §4) — the bottom-nav tab shape genuinely differs (3 columns vs. one flat
+  list vs. 4 quadrants vs. 3 Kanban columns), so `board-three-things.blade.php` owns its own nav
+  rather than the infra session inventing one generic tab-bar abstraction all four would have to
+  squeeze into.
+- **`QuickCapture` gained one hook**, wired but only exercising the `three_things` branch today:
+  `ListConcepts::defaultCaptureList(User): string` (`'tasks'` under `simple`, `'inbox'`
+  otherwise — always `'inbox'` right now, since `simple` isn't selectable yet) feeds
+  `QuickCapture::$target`'s value both at `mount()` and at the top of `resetPanel()` — the latter
+  needed explicitly because Livewire's `reset()` restores a property to its bare class-declared
+  default (`'inbox'`), not to whatever `mount()` computed, so re-opening the panel without this
+  extra line would silently ignore the hook the moment `simple` actually lands.
+  **Deliberately deferred to the `simple` concept session itself**: `availableTargets()`
+  collapsing the Inbox/ToDos/Tasks chips into one "Aufgabe" chip under `simple`. The plan describes
+  this as infra "stubbing" the branch — but since `simple` isn't in the catalog as available yet,
+  any such condition would be structurally unreachable and unverifiable this session; building it
+  now would mean the `simple` session inherits untested, possibly-wrong UI it has to re-derive
+  anyway once it can actually see its own board. Tracked in `TODO.md`.
+- **Settings' "Listen-Konzept" card** (`id="list-concept"`, in the Allgemein section, right after
+  Startseite) — one immediate-save pick per catalog row (`Settings::setListConcept()`, same
+  immediate-save convention as every comparable pill row in this app), each row showing its
+  label + description, an "Aktiv" tag on the current choice, and a "Bald verfügbar" tag (plus a
+  disabled, unclickable row) for anything not yet `available`. A static reassurance line under the
+  card heading ("Deine Aufgaben bleiben dabei immer erhalten — nur die Ansicht wechselt.") states
+  the plan's core promise (§2, requirement 2) up front.
+  **Signature moment — real-data preview thumbnails, not mock data.** Every *available* row's
+  preview reads `ListConcepts::previewTasksFor(User, limit=6)` — the user's own real, currently
+  active board tasks, the same shared read every future concept's own thumbnail (and eventually
+  its real board) would read from too, per the plan's data-mapping table (§3): no concept owns
+  data another concept can't interpret, so one query already serves every concept's preview.
+  `three_things`'s own thumbnail buckets that read into three small mini-columns (Inbox/To-Dos/
+  Tasks) showing up to two real task titles each, with a quiet "—" placeholder for an empty
+  bucket rather than nothing at all (the empty-state case, checked directly: a fresh account with
+  zero tasks renders the card cleanly). `simple`/`eisenhower`/`kanban` render no thumbnail at all
+  yet (there's no per-concept rendering logic to build one from) — each concept session adds its
+  own `@if ($row['key'] === '<key>')` thumbnail branch alongside its own `@case` once it has real
+  data to show, exactly the same way the board switch grows.
+- **Onboarding discoverability nudge** — the existing "Die 3 Dinge" tutorial slide (see
+  Onboarding-Tutorial below) keeps teaching 3 Things as the default exactly as before, but gained
+  one appended line + a deep link reusing the already-built `?highlight=<selector>` flash
+  mechanism (`resources/js/app.js`'s `highlightFromQueryParam()`, originally built for
+  Feature-Announcements — it's a plain query-param reader, not announcement-specific, so pointing
+  it at `#list-concept` needed no changes there at all): *"Das ist nicht die einzige Ansicht.
+  Probier andere Listen-Konzepte in den Einstellungen aus →"*, linking to
+  `route('settings').'?highlight='.urlencode('#list-concept')`. Deliberately just a line + link,
+  not a live picker inside the tutorial itself (see plan §7's "later" list) — growing the "3
+  Dinge" slide into an interactive concept-switcher is a reasonable follow-up once concepts are
+  proven, not required for this pass.
+- **No `FeatureAnnouncement` draft was created this session** (CLAUDE.md §3.11 would normally call
+  for one) — it's admin-authored content, normally created through `AnnouncementEditor`'s UI, and
+  this session's verification was test-suite-only with no browser/dev-server access to use that
+  UI safely. Flagged here and in `TODO.md` instead, per that rule's own escape valve ("or … flag
+  in the summary that one should be written").
+- Deliberately out of scope for this infra session (all tracked in `PLAN_LIST_CONCEPTS.md` §7 and
+  `TODO.md`): the three concepts themselves (Simple/Eisenhower/Kanban — no board partial, no
+  `TaskBoard` computed properties, `available: false` in the catalog), the `simple` QuickCapture
+  chip-collapse (see above), the draft `FeatureAnnouncement` (see above), and everything else the
+  plan's own §7 already lists (Eat-the-Frog, time-blocking, a board-morph/FLIP animation, API
+  awareness of `list_concept`, coupling to `AppModules`).
+
 ### Onboarding-Tutorial (built)
 
 The second of the two features that catalog was built to eventually support (the first being

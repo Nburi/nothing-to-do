@@ -35,6 +35,7 @@ use Laravel\Sanctum\HasApiTokens;
     'hidden_modules', 'default_page', 'onboarding_completed_at',
     'is_admin',
     'last_login_at',
+    'list_concept',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -62,6 +63,7 @@ class User extends Authenticatable
         'daily_reminder_time' => '19:00',
         'notify_streak_risk' => false,
         'default_page' => 'app',
+        'list_concept' => 'three_things',
     ];
 
     /** @return HasMany<Task, $this> */

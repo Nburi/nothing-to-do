@@ -9,6 +9,7 @@ use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Services\AppModules;
+use App\Services\ListConcepts;
 use App\Services\PomodoroSessionService;
 use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
@@ -72,6 +73,19 @@ class TaskBoard extends Component
     }
 
     // ── Reads (computed, cached per request) ──────────────────────────
+
+    /**
+     * Which mental model the board renders through — the one seam the view
+     * branches on (see task-board.blade.php's `@switch`). Self-healing via
+     * ListConcepts::for(): a stored value for a concept that isn't available
+     * (or never was a real key) quietly falls back to 'three_things' instead
+     * of rendering nothing.
+     */
+    #[Computed]
+    public function listConcept(): string
+    {
+        return ListConcepts::for(auth()->user());
+    }
 
     /**
      * Tasks visible in a board column: active tasks + tasks completed within the

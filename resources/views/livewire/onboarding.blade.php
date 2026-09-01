@@ -86,6 +86,15 @@
                     <template x-if="size === 'task'"><span><span class="font-medium text-ink">Task</span> — grösser, aber trotzdem ein einzelner Arbeitsschritt.</span></template>
                     <template x-if="size === 'project'"><span><span class="font-medium text-ink">Project</span> — ein Behälter für mehrteilige, nicht dringende Arbeit mit eigener Seite.</span></template>
                 </p>
+
+                {{-- Discoverability nudge for App\Services\ListConcepts — deliberately
+                     just a line + deep link, not a live picker here (see
+                     PLAN_LIST_CONCEPTS.md §4/§7 for why). Reuses the same
+                     ?highlight=<selector> flash mechanism Feature-Announcements built. --}}
+                <p class="mx-auto max-w-sm text-xs leading-relaxed text-ink-faint">
+                    Das ist nicht die einzige Ansicht.
+                    <a href="{{ route('settings').'?highlight='.urlencode('#list-concept') }}" wire:navigate class="font-medium text-forest underline decoration-forest/40 underline-offset-2 hover:decoration-forest">Probier andere Listen-Konzepte in den Einstellungen aus →</a>
+                </p>
             </div>
         </div>
 

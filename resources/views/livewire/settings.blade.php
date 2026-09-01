@@ -159,6 +159,73 @@
             </p>
         </div>
 
+        {{-- Listen-Konzept — which mental model the board renders through (see
+             App\Services\ListConcepts). Signature moment: each available pill
+             previews the user's own real, currently active tasks — not mock
+             data — so switching is "try it on", not a blind label pick.
+             Concepts not built yet show "Bald verfügbar" and can't be
+             selected (their session flips `available` when it lands). --}}
+        <div id="list-concept" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Listen-Konzept</h3>
+            <p class="mb-5 text-sm text-ink-soft leading-relaxed">
+                Wie deine Liste organisiert ist. Deine Aufgaben bleiben dabei immer erhalten — nur die
+                Ansicht wechselt.
+            </p>
+
+            <div class="space-y-3">
+                @foreach ($this->listConceptRows as $row)
+                    <button
+                        type="button"
+                        wire:key="list-concept-{{ $row['key'] }}"
+                        @if ($row['available']) wire:click="setListConcept('{{ $row['key'] }}')" @endif
+                        @disabled(! $row['available'])
+                        @class([
+                            'flex w-full items-start gap-4 rounded-card border p-4 text-left transition',
+                            'border-forest bg-forest-soft/40' => $row['current'],
+                            'border-line bg-paper hover:border-ink-soft' => ! $row['current'] && $row['available'],
+                            'cursor-not-allowed border-line/60 bg-paper/50 opacity-60' => ! $row['available'],
+                        ])
+                    >
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <p @class(['text-sm font-medium', 'text-ink' => $row['available'], 'text-ink-faint' => ! $row['available']])>{{ $row['label'] }}</p>
+                                @if ($row['current'])
+                                    <span class="rounded-full bg-forest px-1.5 py-0.5 text-[10px] font-medium text-white">Aktiv</span>
+                                @elseif (! $row['available'])
+                                    <span class="rounded-full bg-line px-1.5 py-0.5 text-[10px] font-medium text-ink-faint">Bald verfügbar</span>
+                                @endif
+                            </div>
+                            <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">{{ $row['description'] }}</p>
+
+                            {{-- Real-data thumbnail — only for a concept that's actually built. --}}
+                            @if ($row['available'] && $row['key'] === 'three_things')
+                                @php
+                                    $listConceptPreviewTasks = $this->listConceptPreviewTasks;
+                                    $listConceptPreviewColumns = [
+                                        'inbox' => ['label' => 'Inbox', 'tasks' => $listConceptPreviewTasks->where('list', 'inbox')],
+                                        'todos' => ['label' => 'To-Dos', 'tasks' => $listConceptPreviewTasks->where('list', 'todos')],
+                                        'tasks' => ['label' => 'Tasks', 'tasks' => $listConceptPreviewTasks->where('list', 'tasks')],
+                                    ];
+                                @endphp
+                                <div class="mt-3 grid grid-cols-3 gap-2">
+                                    @foreach ($listConceptPreviewColumns as $column)
+                                        <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+                                            <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $column['label'] }}</p>
+                                            @forelse ($column['tasks']->take(2) as $previewTask)
+                                                <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
+                                            @empty
+                                                <p class="text-[10px] text-ink-faint">—</p>
+                                            @endforelse
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+
         {{-- Tutorial — always offered, whether this account finished it, skipped
              it, or never even had it (see App\Livewire\Onboarding). Re-running it
              never resets anything here; it just re-stamps "last viewed on". --}}

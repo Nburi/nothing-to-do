@@ -418,4 +418,21 @@ class QuickCaptureTest extends TestCase
         $this->assertDatabaseHas('tasks', ['title' => 'Meine Aufgabe', 'user_id' => $user->id]);
         $this->assertDatabaseMissing('tasks', ['title' => 'Meine Aufgabe', 'user_id' => $other->id]);
     }
+
+    /**
+     * The default target is wired through App\Services\ListConcepts::
+     * defaultCaptureList(), not hardcoded — this pins that seam so a future
+     * 'simple' concept session (whose default is 'tasks', not 'inbox') can't
+     * silently regress the "3 Things" default while wiring in its own.
+     */
+    public function test_default_target_survives_a_reopen_of_the_panel(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test(QuickCapture::class)
+            ->set('target', 'tasks')
+            ->call('resetPanel')
+            ->assertSet('target', 'inbox');
+    }
 }
