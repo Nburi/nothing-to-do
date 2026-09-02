@@ -162,6 +162,18 @@ class User extends Authenticatable
         return $this->hasMany(AgendaSpace::class, 'owner_id');
     }
 
+    /** Shared household task lists this user belongs to. */
+    public function familySpaces(): BelongsToMany
+    {
+        return $this->belongsToMany(FamilySpace::class)->withPivot('color')->withTimestamps();
+    }
+
+    /** @return HasMany<FamilySpace, $this> */
+    public function ownedFamilySpaces(): HasMany
+    {
+        return $this->hasMany(FamilySpace::class, 'owner_id');
+    }
+
     /**
      * Hands ownership of every class/group agenda this user owns to the next
      * longest-standing member — the same rule ManagesAgendaSpaces::leaveSpace()
@@ -177,6 +189,18 @@ class User extends Authenticatable
     public function reassignOwnedAgendaSpaces(): void
     {
         $this->ownedAgendaSpaces->each(function (AgendaSpace $space) {
+            $successor = $space->nextOwnerCandidate(excludingUserId: $this->id);
+
+            if ($successor !== null) {
+                $space->update(['owner_id' => $successor->id]);
+            }
+        });
+    }
+
+    /** Same reasoning as reassignOwnedAgendaSpaces() — see ProfileController::destroy(). */
+    public function reassignOwnedFamilySpaces(): void
+    {
+        $this->ownedFamilySpaces->each(function (FamilySpace $space) {
             $successor = $space->nextOwnerCandidate(excludingUserId: $this->id);
 
             if ($successor !== null) {

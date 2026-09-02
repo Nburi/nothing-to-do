@@ -26,6 +26,24 @@
         --signal-soft: 246 225 220;
         --shadow-map: 0 1px 2px rgb(35 41 31 / 0.07), 0 2px 8px rgb(35 41 31 / 0.04);
         color-scheme: light;
+
+        /* ── Familie · one color per person ─────────────────────────────
+           Deliberately NOT part of the Topografie accent system above —
+           forest/overprint/contour/signal already each mean something
+           specific everywhere else in the app (today/done, important,
+           deadline, destructive/overdue), so a family member's card color
+           can't reuse any of them without colliding with that meaning. A
+           small, vivid, bring!-style palette instead — see
+           App\Livewire\Support\FamilyColors, which is the only place that
+           turns one of these keys into a Tailwind class. */
+        --fam-coral: 214 89 74;
+        --fam-amber: 199 138 40;
+        --fam-lime: 107 150 45;
+        --fam-teal: 34 132 122;
+        --fam-sky: 47 118 173;
+        --fam-indigo: 90 96 196;
+        --fam-violet: 138 76 173;
+        --fam-pink: 190 66 130;
     }
 
     /* ── Topografie · map at night ───────────────────────────────────── */
@@ -47,6 +65,17 @@
             --signal-soft: 44 23 20;
             --shadow-map: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 10px rgb(0 0 0 / 0.3);
             color-scheme: dark;
+
+            /* Familie palette, brightened for a dark ground — same hues as the
+               light block above, lifted so they stay vivid against --paper. */
+            --fam-coral: 230 129 114;
+            --fam-amber: 214 168 92;
+            --fam-lime: 150 189 100;
+            --fam-teal: 88 176 166;
+            --fam-sky: 108 168 214;
+            --fam-indigo: 138 144 224;
+            --fam-violet: 176 128 209;
+            --fam-pink: 214 118 165;
         }
     }
 
@@ -482,6 +511,28 @@
         border: 1.5px solid rgb(var(--forest));
         animation: today-pulse 650ms ease-out;
         pointer-events: none;
+    }
+
+    /* Familie's signature moment — "Farbklecks beim Beanspruchen": tapping an
+       unclaimed card floods it with the claimer's own color instantly, with a
+       short satisfying wobble, rather than a dropdown/confirm step. The color
+       itself is set per-card via the inline `--fam-tap` custom property (see
+       partials/family-task-card.blade.php — always one of the fixed
+       FamilyColors keys, never raw input). This class is left ON a claimed
+       card permanently (not removed after it plays) — `animation-fill-mode:
+       both` freezes the 100% keyframe forever, which is deliberately how the
+       card's resting "claimed" background is produced, not a separate static
+       color class layered underneath. A claimed card's wire:key is stable
+       across the Livewire morph that follows a claim, so the browser sees the
+       class genuinely appear on an existing node and plays the animation —
+       no dispatched event or JS needed, this is pure CSS. */
+    @keyframes family-claim-flood {
+        0% { background-color: rgb(var(--surface)); transform: scale(1); }
+        45% { transform: scale(1.045); }
+        100% { background-color: rgb(var(--fam-tap)); transform: scale(1); }
+    }
+    .family-claim-flood {
+        animation: family-claim-flood 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     /* While a task is being dragged, project cards hint that they accept a drop. */

@@ -71,6 +71,11 @@ class AppModules
             'description' => 'Serie, Tagesziel und die Heatmap erledigter Aufgaben.',
             'route' => 'progress',
         ],
+        'family' => [
+            'label' => 'Familie',
+            'description' => 'Geteilte Aufgaben für die Familie — pro Person eine eigene Farbe.',
+            'route' => 'family',
+        ],
     ];
 
     /**

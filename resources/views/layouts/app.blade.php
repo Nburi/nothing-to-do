@@ -68,7 +68,7 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'planner', 'agenda', 'emergency', 'crafts']);
+                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'planner', 'agenda', 'emergency', 'crafts', 'family']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
 
@@ -85,7 +85,8 @@
                             $showCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
                             $showEmergencyNav = \App\Services\AppModules::isVisible(auth()->user(), 'emergency') || auth()->user()->isInEmergencyMode();
                             $showProgressNav = \App\Services\AppModules::isVisible(auth()->user(), 'progress');
-                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showAgendaNav || $showCraftsNav || $showEmergencyNav;
+                            $showFamilyNav = \App\Services\AppModules::isVisible(auth()->user(), 'family');
+                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showAgendaNav || $showCraftsNav || $showEmergencyNav || $showFamilyNav;
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
@@ -210,6 +211,16 @@
                                 ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
                                     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
                                     Bastelideen
+                                </a>
+                                @endif
+                                @if ($showFamilyNav)
+                                <a href="{{ route('family') }}" wire:navigate @class([
+                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+                                    'bg-paper font-medium text-ink' => request()->routeIs('family'),
+                                    'text-ink-soft hover:text-ink' => !request()->routeIs('family'),
+                                ]) @if(request()->routeIs('family')) aria-current="page" @endif>
+                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="6.5" r="2.5"/><circle cx="14" cy="6.5" r="2" /><path d="M2.5 17v-1.5A3.5 3.5 0 0 1 6 12h2a3.5 3.5 0 0 1 3.5 3.5V17"/><path d="M12.5 12.3A3 3 0 0 1 15 15v2"/></svg>
+                                    Familie
                                 </a>
                                 @endif
                                 {{-- Notfall is always listed here now (no longer conditionally

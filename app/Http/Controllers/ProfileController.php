@@ -54,6 +54,7 @@ class ProfileController extends Controller
         // would otherwise silently destroy any shared class agenda this user
         // owns instead of handing it to the next member — see the method doc.
         $user->reassignOwnedAgendaSpaces();
+        $user->reassignOwnedFamilySpaces();
 
         $user->delete();
 

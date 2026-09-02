@@ -8,9 +8,11 @@ use App\Livewire\Admin\SupportQueue;
 use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
 use App\Livewire\EmergencyMode;
+use App\Livewire\FamilyList;
 use App\Livewire\GroupPage;
 use App\Livewire\Help;
 use App\Livewire\JoinAgendaSpace;
+use App\Livewire\JoinFamilySpace;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
 use App\Livewire\PrepareTomorrow;
@@ -135,6 +137,17 @@ Route::get('/app/agenda/join/{code}', JoinAgendaSpace::class)
 Route::get('/app/crafts', CraftIdeas::class)
     ->middleware('auth')
     ->name('crafts');
+
+Route::get('/app/family', FamilyList::class)
+    ->middleware('auth')
+    ->name('family');
+
+// Invite link into a shared family task list. Same auth-gating and
+// intended()-redirect reasoning as agenda.join above — a family member
+// without an account yet needs to register first, then land right back here.
+Route::get('/app/family/join/{code}', JoinFamilySpace::class)
+    ->middleware('auth')
+    ->name('family.join');
 
 Route::get('/app/progress', Progress::class)
     ->middleware('auth')

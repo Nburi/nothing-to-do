@@ -2867,6 +2867,96 @@ thing became a Project, which is exactly what made that column unreadable (see �
   `null` instead of the real default. Caught by an end-to-end curl smoke test, not by PHPUnit (the difference
   only shows up in the *first* response after an insert).
 
+### Familie — geteilte Aufgaben (built)
+
+A shared household task list — several accounts, one list of chores/errands, each member visually
+distinguished by a small fixed color (the bring! app's own card language, which is what this feature was
+explicitly asked to bring in). The one open design question this feature started from: build it as a **5th
+`ListConcepts` entry**, or as a **standalone feature**? Standalone won, for two reasons worth keeping in
+mind if this ever comes up again — see the actual conversation for the full back-and-forth:
+
+1. Every `ListConcepts` entry (3 Things/Simple/Eisenhower/Kanban) is a pure *rearrangement* of one user's
+   own `Task` rows — same data, same owner, only the on-screen grouping changes. A shared family list needs
+   rows from *other accounts*, which is a fundamentally different operation (a cross-user query, not a
+   re-sort), and grafting that into a mechanism whose whole contract is "switching never changes what data
+   exists or who can see it" would break that contract for every other concept too.
+2. There's no good answer to "what happens to family tasks when you switch to a different personal-board
+   concept" if it were a 5th entry — leak into every other concept's columns forever, or vanish from view
+   the moment you switch board style. A standalone page has neither problem: always reachable regardless of
+   which personal-board concept is active, exactly like Agenda already is.
+- **`App\Models\FamilySpace`** — `owner_id, name, invite_code`, membership shape (invite code, no approval
+  step, ownership handover on leave, last-member-out deletes the space) copied close to verbatim from
+  `AgendaSpace` — the one place "several accounts, one invite code" was already solved correctly in this
+  app. `family_space_user` (pivot: `family_space_id, user_id, color`) additionally carries each member's
+  **card color** — a per-*membership* attribute, not a per-account one, since someone in two family spaces
+  (in-laws, a shared flat) can have a different color in each. `FamilySpace::nextAvailableColor()` picks the
+  first unused key from the fixed 8-color palette on join/create, wrapping around (reusing a color) past 8
+  members rather than growing the palette or erroring.
+- **`App\Livewire\Support\FamilyColors`** — the fixed 8-key palette (`coral/amber/lime/teal/sky/indigo/
+  violet/pink`), deliberately separate from this app's own 4-tone Topografie accent system
+  (forest/contour/overprint/signal): every one of those already means something specific elsewhere
+  (today/done, important, deadline, destructive/overdue), so a person's card color must not collide with
+  any of it. **Lives under `app/Livewire/Support/`, not `app/Models` or a generic `app/Support`** — every
+  method returns a complete, literal Tailwind class token (`bg-[rgb(var(--fam-coral))]`, never built by
+  string concatenation), and `tailwind.config.js`'s `content` scan only globs `./resources/views/**/*.blade.php`
+  and `./app/Livewire/**/*.php` — a class-producing helper placed in `app/Models` or `app/Support` would be
+  silently purged from the production build, the exact PHP-side version of the JS-applied-classes trap
+  already documented below. The 8 `--fam-*` CSS custom properties (space-separated RGB, light + dark
+  variants) live in `resources/css/app.css` next to the Topografie tokens.
+- **`App\Models\FamilyTask`** — its own table, **never** a column/relation on `tasks`: the personal board's
+  `Task` model is already deeply wired into Projects/Groups/Pomodoro-links/DayPlanner/streaks, and grafting
+  multi-owner semantics onto it would be both risky and unnecessary for a feature whose data never needs to
+  interact with any of that. Shaped differently on purpose, too: **one shared completion**, like a chore —
+  not per-person completion the way Agenda homework needs — so unlike `agenda_entries` there is no separate
+  completions pivot at all, just `is_completed`/`completed_by`/`completed_at` directly on the row.
+- **The tap cycle — one tap target, three states, no checkbox:**
+  - **Unclaimed → tap claims it for the tapper** (`FamilyTask::claim()`) — this is the signature moment,
+    see below. Guarded and idempotent-safe: a no-op if the card is already assigned to *anyone* by the time
+    the request lands, so two family members tapping the same unclaimed card within moments of each other
+    can never result in the second tap silently completing a card someone else just grabbed.
+  - **Claimed → tap marks it done** (`FamilyTask::completeBy()`), credited to whoever tapped — **not**
+    gated to the assignee. A family task has one shared completion; if someone else did the chore instead,
+    they tap it done, full stop. Guarded: a no-op on an unclaimed or already-done card.
+  - **Done → tap reopens it** (`FamilyTask::reopen()`), keeping the same assignee — an undo for a mis-tap
+    with no confirm dialog needed, consistent with this app's "nothing destructive without an easy way
+    back" habit.
+  - **Unclaiming** (sending a card back to grey) only happens through the edit sheet's assignee picker
+    ("Niemand") — there's no tap gesture left for it once "tap an assigned card" means "complete it".
+- **The deliberate "assign to someone else" path** — `FamilyList::assignTask(taskId, ?userId)`, reached via
+  the edit sheet's chip row (one per family member + "Niemand"), separate from the quick tap-to-claim
+  gesture. Works regardless of completion state; validates the target id is actually a member of the task's
+  own space before writing (a stale/foreign id is silently ignored, never trusted).
+- **`App\Livewire\FamilyList`** (`/app/family`, `route('family')`) is the whole page: the card grid, an
+  inline quick-add (mirrors `ProjectPage`/`CraftIdeas`'s own in-context capture — no `QuickCapture` target
+  in this pass, see "später"), the edit sheet, and the family-management sheet (create/join/leave/delete/
+  regenerate invite code/pick your own color). **Every mutating action resolves its target through the
+  task's/space's own membership via the query itself** (`whereHas('familySpace', fn ($q) =>
+  $q->forMember(auth()->user()))->findOrFail($id)`), never "fetch unscoped, then `abort()` if not a member"
+  — a bare `abort()`'s `HttpException` does not propagate out of a Livewire action the same way
+  `ModelNotFoundException` does (see the `ManagesAgendaSpaces::removeMember()` lesson elsewhere in this
+  file), so every id lookup here follows the same `findOrFail()`-against-an-already-scoped-query shape as
+  the rest of the app. A user can belong to more than one family; `$activeSpaceId` decides which one is on
+  screen, defaulting to the first on mount, switchable from the management sheet.
+- **`App\Livewire\JoinFamilySpace`** (`/app/family/join/{code}`, `route('family.join')`) — mirrors
+  `JoinAgendaSpace` exactly, joins on a button press, never on the GET.
+- **Signature moment — "Farbklecks beim Beanspruchen".** Tapping an unclaimed card doesn't open a menu or a
+  confirm step — it floods with the claimer's own color instantly, with a short satisfying wobble. Built as
+  **pure CSS**, no dispatched event/JS listener needed: `.family-claim-flood`
+  (`resources/css/app.css`) is a `background-color` keyframe from the card's neutral surface to
+  `rgb(var(--fam-tap))` (the claimer's color, set inline per-card) with `animation-fill-mode: both` — the
+  class is left **on** a claimed card permanently rather than removed after it plays, since the animation's
+  frozen 100% keyframe *is* the card's resting "claimed" background, not a separate style layered
+  underneath. Because the card keeps its stable `wire:key`, Livewire's morph adds the class to the same DOM
+  node rather than replacing it, and a CSS animation genuinely restarts whenever `animation-name` transitions
+  from `none` to a named animation via a class being added — which is exactly what a claim's morph does.
+- **Never color-only** — every claimed/done card also shows the assignee's initial in a small dot (plus
+  their full name as a tooltip/footer line), so the "who" is never conveyed by color alone.
+- Deliberately out of scope for this pass ("später"): a `QuickCapture` target for family tasks (capture
+  stays on the page itself, like Projects/Crafts), push notifications when a task is claimed/completed by
+  someone else, recurring/templated family chores, more than one assignee per card, a member-management
+  view beyond leave/transfer-via-leave (no dedicated "remove someone" admin action, unlike Agenda's own
+  member sheet), and real photos instead of color-initial dots.
+
 ---
 
 ## 8. Conventions
