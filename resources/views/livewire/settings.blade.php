@@ -985,19 +985,25 @@
     </div>
     </section>
 
-    {{-- Shortcuts & API --}}
+    {{-- Shortcuts, API & MCP --}}
     <section id="developer" class="scroll-mt-28 space-y-5">
     <h2 class="text-lg font-medium tracking-tight text-ink">Entwickler</h2>
     <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-        <div class="mb-1 flex items-center justify-between gap-3">
-            <h3 class="text-base font-medium text-ink">Shortcuts & API</h3>
-            <a href="{{ route('docs.api') }}" class="text-sm font-medium text-overprint hover:underline" wire:navigate>
-                API-Dokumentation →
-            </a>
+        <div class="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <h3 class="text-base font-medium text-ink">Shortcuts, API & MCP</h3>
+            <span class="flex gap-3 text-sm font-medium">
+                <a href="{{ route('docs.api') }}" class="text-overprint hover:underline" wire:navigate>
+                    API-Doku →
+                </a>
+                <a href="{{ route('docs.mcp') }}" class="text-overprint hover:underline" wire:navigate>
+                    MCP-Doku →
+                </a>
+            </span>
         </div>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
-            Persönliche Zugriffstoken für Apple Shortcuts und andere Automatisierungen. Ein Token verhält sich wie
-            ein Passwort für deinen Account — jedes trägt volle Rechte auf alle deine Daten.
+            Persönliche Zugriffstoken für Apple Shortcuts, andere Automatisierungen, und für einen
+            MCP-Client wie Claude (siehe MCP-Doku). Jedes Token trägt die Rechte, die du unten wählst —
+            Lesen ist bei jedem Token dabei, Schreiben und Löschen sind einzeln zuschaltbar.
         </p>
 
         @if ($createdToken)
@@ -1039,6 +1045,20 @@
                                 · noch nie verwendet
                             @endif
                         </p>
+                        <p class="mt-1 flex flex-wrap gap-1">
+                            @php $abilities = $token->abilities ?? []; @endphp
+                            @if (in_array('*', $abilities, true))
+                                <span class="rounded-full bg-signal-soft px-2 py-0.5 text-[11px] font-medium text-signal">Alle Rechte (alt)</span>
+                            @else
+                                <span class="rounded-full bg-line px-2 py-0.5 text-[11px] font-medium text-ink-soft">Lesen</span>
+                                @if (in_array('mcp:write', $abilities, true))
+                                    <span class="rounded-full bg-line px-2 py-0.5 text-[11px] font-medium text-ink-soft">Schreiben</span>
+                                @endif
+                                @if (in_array('mcp:delete', $abilities, true))
+                                    <span class="rounded-full bg-signal-soft px-2 py-0.5 text-[11px] font-medium text-signal">Löschen</span>
+                                @endif
+                            @endif
+                        </p>
                     </div>
                     <button
                         type="button"
@@ -1058,17 +1078,29 @@
             @endforelse
         </div>
 
-        <form wire:submit="createApiToken" class="mt-4 flex items-center gap-2 border-t border-line pt-4">
-            <input
-                type="text"
-                wire:model="newTokenName"
-                placeholder="Name — z. B. iPhone Shortcuts"
-                autocomplete="off"
-                class="min-w-0 flex-1 rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
-            />
-            <button type="submit" class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
-                Token erstellen
-            </button>
+        <form wire:submit="createApiToken" class="mt-4 space-y-3 border-t border-line pt-4">
+            <div class="flex items-center gap-2">
+                <input
+                    type="text"
+                    wire:model="newTokenName"
+                    placeholder="Name — z. B. iPhone Shortcuts / Claude"
+                    autocomplete="off"
+                    class="min-w-0 flex-1 rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                />
+                <button type="submit" class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
+                    Token erstellen
+                </button>
+            </div>
+            <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-soft">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" wire:model="newTokenCanWrite" class="rounded border-line text-forest focus:ring-forest" />
+                    Schreiben erlauben (Aufgaben anlegen/ändern, Einstellungen setzen)
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" wire:model="newTokenCanDelete" class="rounded border-line text-signal focus:ring-signal" />
+                    Löschen erlauben
+                </label>
+            </div>
         </form>
         @error('newTokenName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
     </div>

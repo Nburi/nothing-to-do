@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
+use App\Support\TaskMutator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -74,26 +75,7 @@ class TaskController extends Controller
             'is_important' => ['sometimes', 'boolean'],
         ]);
 
-        $title = trim($data['title']);
-        $notes = isset($data['notes']) ? trim($data['notes']) : '';
-
-        $attributes = [
-            'title' => $title,
-            'deadline' => $data['deadline'] ?? null,
-            'due_date' => $data['due_date'] ?? null,
-            'notes' => $notes !== '' ? $notes : null,
-            'is_important' => $data['is_important'] ?? false,
-            'sort_order' => 0,
-        ];
-
-        if (! empty($data['project_id'])) {
-            $attributes['project_id'] = $data['project_id'];
-            $attributes['list'] = 'projects';
-        } else {
-            $attributes['list'] = $data['list'] ?? 'inbox';
-        }
-
-        $task = $request->user()->tasks()->create($attributes);
+        $task = $request->user()->tasks()->create(TaskMutator::attributesForCreate($data));
 
         return (new TaskResource($task->fresh()))->response()->setStatusCode(201);
     }
@@ -119,67 +101,9 @@ class TaskController extends Controller
             'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
         ]);
 
-        $updates = [];
+        $task = TaskMutator::applyUpdate($task, $request->user(), $data);
 
-        if (array_key_exists('title', $data)) {
-            $updates['title'] = trim($data['title']);
-        }
-        if (array_key_exists('deadline', $data)) {
-            $updates['deadline'] = $data['deadline'];
-        }
-        if (array_key_exists('due_date', $data)) {
-            $updates['due_date'] = $data['due_date'];
-        }
-        if (array_key_exists('notes', $data)) {
-            $notes = $data['notes'] !== null ? trim($data['notes']) : null;
-            $updates['notes'] = $notes !== '' ? $notes : null;
-        }
-        if (array_key_exists('is_important', $data)) {
-            $updates['is_important'] = $data['is_important'];
-        }
-        if (array_key_exists('is_completed', $data)) {
-            $updates['is_completed'] = $data['is_completed'];
-            $updates['completed_at'] = $data['is_completed'] ? now() : null;
-        }
-
-        // Resolve the list/project destination together, same as the edit sheet:
-        // an explicit project_id always wins and forces list=projects.
-        if (array_key_exists('project_id', $data)) {
-            if ($data['project_id'] !== null) {
-                $updates['project_id'] = $data['project_id'];
-                $updates['list'] = 'projects';
-                $updates['is_today'] = false;
-                $updates['today_date'] = null;
-            } else {
-                $updates['project_id'] = null;
-                $updates['list'] = $data['list'] ?? 'inbox';
-            }
-        } elseif (array_key_exists('list', $data)) {
-            $updates['list'] = $data['list'];
-            $updates['project_id'] = null;
-            if (! in_array($data['list'], Task::TODAY_LISTS, true)) {
-                $updates['is_today'] = false;
-                $updates['today_date'] = null;
-            }
-        }
-
-        if (array_key_exists('is_today', $data)) {
-            $finalList = $updates['list'] ?? $task->list;
-            $finalProjectId = array_key_exists('project_id', $updates) ? $updates['project_id'] : $task->project_id;
-
-            if (in_array($finalList, Task::TODAY_LISTS, true) && $finalProjectId === null) {
-                $updates['is_today'] = $data['is_today'];
-                $updates['today_date'] = $task->todayDateFor($data['is_today'], $request->user()->localToday());
-            }
-        }
-
-        $task->update($updates);
-
-        if (array_key_exists('is_completed', $updates)) {
-            $task->syncLinkedAgendaEntry($request->user(), $updates['is_completed']);
-        }
-
-        return (new TaskResource($task->fresh()))->response();
+        return (new TaskResource($task))->response();
     }
 
     public function destroy(Request $request, int $id): JsonResponse

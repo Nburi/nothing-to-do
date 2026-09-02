@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\EventCategoryController;
 use App\Http\Controllers\Api\EventTemplateController;
+use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ScheduleEventController;
@@ -18,9 +19,15 @@ use Illuminate\Support\Facades\Route;
 | token (Settings → Shortcuts & API) and is scoped to that token's user —
 | see the in-app API docs page (/docs/api) for the full reference.
 |
+| /mcp is a separate concern living in the same auth:sanctum group: a
+| single JSON-RPC (Model Context Protocol) endpoint for AI assistants —
+| see App\Http\Controllers\Api\McpController and /docs/mcp.
+|
 */
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/mcp', McpController::class);
+
     Route::get('/me', [MeController::class, 'show']);
     Route::patch('/me', [MeController::class, 'update']);
 

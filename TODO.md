@@ -5,6 +5,26 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
+### MCP-Server — built; a FeatureAnnouncement draft and a live client check remain
+
+See CLAUDE.md's "MCP-Server — KI-Zugriff" section for the full design. Built on `main` directly (no
+branch), full automated suite green (1322 tests). Still outstanding:
+
+- A draft, unpublished `App\Models\FeatureAnnouncement` (CLAUDE.md §3.11) — skipped for the same reason
+  every other admin-authored-content gap in this file was: `AnnouncementEditor` needs its own admin UI,
+  and this session had no safe browser access to use it. Create one (title e.g. "Neu: MCP-Server für
+  KI-Assistenten", unpublished) via the admin panel once ready, linking to `/docs/mcp`.
+- **No live MCP client was ever connected** to `/api/mcp` — verification was automated-tests-only
+  (`tests/Feature/Mcp/`), deliberately, matching this project's "don't wait forever on a live
+  connection" discipline (CLAUDE.md §10). Worth a real check with an actual client (Claude Desktop's
+  custom connector config, or `npx @modelcontextprotocol/inspector`) once there's time to babysit it:
+  point it at `{{ url }}/api/mcp` with a Bearer token from Settings, confirm `initialize`/`tools/list`/
+  `tools/call` round-trip as expected against a real client's own JSON-RPC implementation, not just this
+  project's own tests of it.
+- Deliberately out of scope for the first version (see CLAUDE.md for the full list): MCP CRUD for
+  projects/groups/schedule events/categories/templates, Pomodoro session control via MCP, posting into a
+  shared Agenda space, and OAuth-based MCP authorization.
+
 ### To-Do-Listen-Konzepte — merged; a manual browser pass and a FeatureAnnouncement draft remain
 
 All four branches (infra, `simple`, `eisenhower`, `kanban`) are merged into `main`, in that order,
