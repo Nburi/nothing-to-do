@@ -2854,10 +2854,13 @@ thing became a Project, which is exactly what made that column unreadable (see �
   manual-advance/skip-a-break behavior over the API), `EventCategoryController`, `EventTemplateController`,
   `MeController` (account info, rhythm/autostart/notification/timezone settings, board counts). Responses
   are shaped by `App\Http\Resources\*Resource` classes.
-- **Auth:** Laravel Sanctum personal access tokens, managed from **Settings → Shortcuts & API**
+- **Auth:** Laravel Sanctum personal access tokens, managed from **Settings → Shortcuts, API & MCP**
   (`App\Livewire\Settings::createApiToken()`/`revokeApiToken()`) — the plaintext token is shown exactly
   once at creation, never stored/re-displayed; revoke uses the same armed double-click pattern as every
-  other destructive action in the app.
+  other destructive action in the app. As of the MCP server below, a new token also carries explicit
+  Sanctum **abilities** (`mcp:read` always, `mcp:write`/`mcp:delete` opt-in checkboxes) — this REST API
+  itself still never calls `tokenCan()` on any of them, so an old or new token works against it identically
+  regardless of which boxes were checked; only the MCP endpoint enforces them.
 - **Docs:** `/docs/api` (`resources/views/docs/api.blade.php`, auth-gated, linked from Settings) — full
   endpoint reference plus a walkthrough for building Apple Shortcuts against it (the "Get Contents of URL"
   action's config, and five worked example Shortcuts).
@@ -2866,6 +2869,119 @@ thing became a Project, which is exactly what made that column unreadable (see �
   the in-memory attribute bag until reloaded, so the first JSON response after creation would otherwise show
   `null` instead of the real default. Caught by an end-to-end curl smoke test, not by PHPUnit (the difference
   only shows up in the *first* response after an insert).
+
+### MCP-Server — KI-Zugriff (built)
+
+Lets an external AI assistant (Claude Desktop, Claude Code, any MCP client) read and organize a user's own
+tasks, agenda, categories, progress and settings — the first time this app hands read/write access to
+something outside its own UI and REST API. Built as a sibling to the Shortcuts API above, deliberately
+reusing its authentication story rather than inventing a second one.
+
+- **Transport — HTTP, not stdio, and stateless.** A single JSON-RPC 2.0 endpoint, `POST /api/mcp`
+  (`App\Http\Controllers\Api\McpController`), implementing MCP's **Streamable HTTP** transport (spec
+  `2025-06-18`): every request gets one `application/json` response, never an SSE stream — this server
+  never needs to push more than one message per call, so opening one would only add complexity. No
+  `Mcp-Session-Id` either, for the same reason: nothing is tracked between requests. This was the
+  deliberate choice over a local stdio process (the shape most personal MCP servers take): a stdio server
+  would need its own copy of the DB credentials and a way to be launched as a subprocess, on a stack that
+  has already gone out of its way to avoid a second long-running process (no queue worker, no Reverb — see
+  §7 Notifications/Planer). Riding the existing Laravel request/auth lifecycle instead means zero new
+  infrastructure and zero new deployment step.
+- **Auth — the same Sanctum personal access tokens as Shortcuts, with real abilities added.** Before this
+  feature, `tokenCan()` was never called anywhere in the app (every token effectively had `'*'`). A new
+  token now carries three possible Sanctum abilities (`App\Mcp\McpAbility`): `mcp:read` (implicit, every
+  token gets it), `mcp:write` (create/update/complete/reorder/settings — reversible mutations, checked on
+  by default), `mcp:delete` (permanent deletion, off by default, its own explicit checkbox). A pre-existing
+  `'*'` token (or any Sanctum `TransientToken` from a session-authenticated request) already satisfies every
+  check — `Laravel\Sanctum\HasApiTokens::tokenCan()` handles both cases correctly on its own, which is why
+  `App\Mcp\McpServer`/`McpController` never inspect a token's raw `abilities` array themselves and instead
+  always go through a `callable(string): bool` built from `$user->tokenCan(...)` (see the Known Issues entry
+  below for the bug this sidesteps).
+- **Why delete needed a different safety net than "armed double-click".** This app's global rule (§10) bans
+  blocking confirm dialogs for destructive actions in favor of a two-click "arm, then click again" UI
+  pattern — but an AI agent calling a tool has no click to arm. Two independent layers stand in for it:
+  1. **`mcp:delete` is a separate, opt-in ability**, chosen once at token-creation time in Settings, not
+     something a write-capable token gets for free. `delete_task` simply isn't offered — not "offered but
+     rejected" — to any token without it (see the signature moment below).
+  2. **`delete_task` additionally requires `confirm_title`** to exactly match the task's current title. A
+     model acting on a stale read or a hallucinated id gets the real title back and a refusal instead of a
+     silent delete — the headless equivalent of "you're about to delete X, are you sure", forcing a second,
+     deliberate round trip through the conversation rather than a single blind call.
+  `complete_task` is offered as the obvious non-destructive alternative for "get this off my list" —
+  `delete_task`'s own description text tells a calling model to prefer it, and to confirm with the user
+  first regardless.
+- **Signature moment — the tool list itself adapts, live, to what's actually available.** `tools/list` is
+  computed fresh on every call from the current user's `AppModules` module visibility and the calling
+  token's abilities — never a fixed catalog. Hide the Agenda module in Settings, and `list_agenda_entries`/
+  `create_agenda_entry` are simply gone from the next `tools/list` response, with no "disabled" marker and
+  no error — exactly the "zero footprint when off" rule this app already applies everywhere else (nav links,
+  header badges, QuickCapture chips), extended here to an AI's own view of what it can do. Calling a tool
+  that exists but isn't currently available (module hidden, ability missing) fails with the **identical**
+  error a genuinely nonexistent tool name would (`Unknown tool: X`, JSON-RPC `-32602`) — deliberately no
+  distinct "forbidden" response, so a token never learns what capability would unlock something by probing.
+  `App\Mcp\McpServer::availableTools()` is the one gate both `tools/list` and `tools/call` go through, so the
+  two can never disagree.
+- **19 tools, in `App\Mcp\Tools\`** (`App\Mcp\McpServer` is the registry): read tools always need only
+  `mcp:read` — `list_tasks` (flat, filtered, independent of list concept), `get_board` (bucketed the way the
+  user's *active* list concept actually shows it — three_things/simple/eisenhower/kanban each get their own
+  bucketing, a deliberately simplified projection that skips grouped-task-box pinning/Notfallmodus overlays/
+  homework-preview merging), `get_task`, `list_projects`, `list_task_groups`, `list_categories` (+ Pomodoro
+  rhythm/autostart, gated on the `schedule` module), `list_agenda_entries` (gated on `agenda`), `get_progress`
+  (streak/heatmap summary, gated on `progress`), `get_settings` (list concept, visible modules, default page,
+  and only the goal/Pomodoro fields whose own module is visible). Write tools need `mcp:write` —
+  `create_task`, `update_task`, `complete_task`, `reopen_task`, `set_task_order` (a deliberately
+  concept-agnostic bulk `sort_order` write — see below), `set_list_concept`, `set_module_visibility`,
+  `set_default_landing_page`, `create_agenda_entry` (gated on `agenda`, **always private** — see below).
+  `delete_task` alone needs `mcp:delete`.
+- **`App\Support\TaskMutator`** — the create/update logic behind both `create_task`/`update_task` and
+  `Api\TaskController::store()`/`update()`, extracted into one shared class specifically so the two can never
+  independently drift on the invariants already documented above in this same Known-Issues-shaped history
+  (`today_date` must follow `is_today`, `is_completed` must sync a linked Agenda entry, leaving a group must
+  prune it once too small). `TaskController` was refactored to call it — a pure extraction, verified
+  behavior-identical by the pre-existing `TaskApiTest` suite passing unchanged. This is a second instance of
+  the same "don't build a second mutation path for the same thing" outcome the group-pruning/`today_date`
+  audit lessons already teach, applied proactively this time instead of discovered as a bug later.
+- **`set_task_order` is deliberately not a mirror of each list concept's own zone-based reorder** (three_
+  things' list+today zones, simple's today/other zones, eisenhower's quadrant axes, kanban's columns) — those
+  each also flip other fields (`is_today`, `list`) as a side effect of which zone a card lands in, which
+  belongs in `update_task`/`complete_task`, not a bulk reorder call. Instead it writes plain `sort_order`
+  sequentially for a given id list, which every concept's own ordering ties back to eventually
+  (`Task::scopeBoardOrdered()`/`scopeGroupOrdered()`) — one simple, concept-agnostic primitive instead of
+  four parallel reorder tools.
+- **`create_agenda_entry` never posts into a shared class space** — no `agenda_space_id` parameter exists at
+  all, even for a user who belongs to one. Posting into a space a classmate also sees is a small
+  "visible to other people" action (§7 "Agenda — Klassen teilen"), and letting an AI post there on the
+  user's behalf without them seeing it first felt like the wrong default for a first version; sharing an
+  entry afterwards is a normal edit in the app itself.
+- **`TaskResource` gained a `group_id` field** (previously absent — the REST API had no group support at
+  all) purely additively; every existing REST API consumer just sees one more key in the JSON it already got.
+- **Docs:** `/docs/mcp` (`resources/views/docs/mcp.blade.php`, auth-gated, linked from Settings) — connection
+  URL, the ability model, and the full tool catalog grouped by required ability. Generated from
+  `McpServer::allToolDefinitions()` (every tool, unfiltered — reference documentation, never used to decide
+  what a live `tools/list` call actually returns) rather than hand-maintained prose, so it can't drift from
+  what's actually implemented the way a hand-written doc page could.
+- **Settings** — the existing "Shortcuts & API" card became **"Shortcuts, API & MCP"**: the same token
+  list/create/revoke flow, now with two checkboxes ("Schreiben erlauben", default on; "Löschen erlauben",
+  default off) and small per-token ability pills. A legacy `'*'` token shows "Alle Rechte (alt)" instead.
+- **Tests:** `tests/Feature/Mcp/` — `McpToolsTest` calls every tool directly through `McpServer` (gating,
+  each tool's actual behavior, the ownership scoping, the delete confirmation), `McpTransportTest` covers the
+  JSON-RPC framing itself (auth required, `initialize`, notification → 202 no body, a business error → `isError:
+  true` vs. an unknown tool → a protocol-level `-32602`), `McpDocsPageTest` checks the docs page renders.
+  `tests/Feature/ApiTokensTest.php` gained coverage for the new ability checkboxes and their defaults.
+  Verification was test-suite-only, deliberately — no live MCP client connection was attempted, matching this
+  project's existing "don't wait forever on the dev server/browser preview" discipline (§10) applied to a new
+  kind of long-running connection this project hasn't needed to verify live before.
+- **No `FeatureAnnouncement` draft was created** for this feature, matching the established pattern for
+  every other admin-authored-content gap in this file (module settings, list concepts, …): the editor is an
+  admin-only Livewire UI, and this session had no safe way to exercise it. Flagged here and in `TODO.md` —
+  worth writing once merged, since a new "Shreiben/Löschen"-checkbox pair in an existing Settings card is
+  exactly the kind of change a returning user could otherwise miss entirely.
+- Deliberately out of scope for this pass: full CRUD over MCP for projects/groups/schedule
+  events/categories/templates (read-only for now), Pomodoro session control (start/stop/continue/skip) via
+  MCP, per-list-concept reorder semantics (see `set_task_order` above), posting into a shared Agenda space,
+  SSE/server-initiated notifications (`tools/list_changed` is declared `false`), JSON-RPC batching, MCP
+  session management, and OAuth-based MCP authorization (a plain Bearer PAT was judged sufficient, matching
+  the existing Shortcuts API's own auth model on a stack with no OAuth provider of its own).
 
 ---
 
@@ -3508,6 +3624,28 @@ appropriate) the moment it's plausible that some future caller wants to override
 `@php` block silently wins over anything passed in through `@include`'s array, and unlike most Blade
 mistakes, this one produces no error, no warning, and can look correct in a diff review of the *including*
 file alone (the bug lives entirely in the file that was never touched by the branch that introduced it).
+
+### `property_exists()` on an Eloquent attribute lies — always go through Sanctum's own `tokenCan()`
+**Symptom, caught in review before it ever shipped:** an early draft of the MCP server's ability check
+(`App\Http\Controllers\Api\McpController`) tried to read a Sanctum token's `abilities` array directly —
+`property_exists($token, 'abilities') ? (array) $token->abilities : ['*']` — reasoning that a real
+`PersonalAccessToken` has an `abilities` property and a session's `TransientToken` doesn't. This is
+backwards. `Laravel\Sanctum\PersonalAccessToken` is a normal Eloquent model: `->abilities` is a magic
+attribute backed by the protected `$attributes` array (via `__get`), which `property_exists()` does **not**
+see — it only reports real, declared object properties. `Laravel\Sanctum\TransientToken`, by contrast,
+*does* declare a real `public $abilities = ['*'];` property. So the check above returns `true` (and
+therefore the correct scoped array) for exactly the case that has no real abilities to read, and `false`
+(silently defaulting to `['*']`, i.e. full access) for every real, scoped `PersonalAccessToken` — the
+precise opposite of the intended behavior, and a real MCP token created with only `mcp:read` would have
+gotten `mcp:write`/`mcp:delete` anyway.
+**Fix:** never hand-inspect a token object's shape to answer "what can this ability check do". Use
+`Laravel\Sanctum\HasApiTokens::tokenCan(string $ability): bool` on the authenticated **user**, not the
+token — it already dispatches correctly for both cases (`PersonalAccessToken::can()` checks its real
+abilities array, `TransientToken::can()` always returns `true`) without the caller needing to know which
+one it's holding. `McpServer`/`McpController` take a `callable(string): bool` built from `$user->tokenCan(...)`
+rather than a raw abilities array, for exactly this reason — the general lesson being that `tokenCan()`
+(or any library-provided ability check) should always be preferred over re-deriving "does this token allow
+X" from the token's own structure, however obvious the structure looks from the outside.
 
 ---
 
