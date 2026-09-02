@@ -21,6 +21,7 @@ use App\Livewire\Settings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
+use App\Mcp\McpServer;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -148,6 +149,13 @@ Route::post('/app/heartbeat', PresenceController::class)
 Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
     ->middleware('auth')
     ->name('docs.api');
+
+Route::get('/docs/mcp', function () {
+    return view('docs.mcp', [
+        'mcpUrl' => url('/api/mcp'),
+        'tools' => app(McpServer::class)->allToolDefinitions(),
+    ]);
+})->middleware('auth')->name('docs.mcp');
 
 // Breeze posts login/registration through to route('dashboard'); send it to
 // whichever page the user has chosen as their default landing page (see

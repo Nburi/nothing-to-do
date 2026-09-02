@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesListConceptSettings;
 use App\Livewire\Concerns\ManagesModuleSettings;
+use App\Mcp\McpAbility;
 use App\Models\AgendaEntry;
 use App\Models\CategoryAttribute;
 use App\Models\EventCategory;
@@ -829,9 +830,22 @@ class Settings extends Component
         unset($this->linkingCategory);
     }
 
-    // ── Shortcuts & API tokens ──────────────────────────────────────────
+    // ── Shortcuts, API & MCP tokens ──────────────────────────────────────
 
     public string $newTokenName = '';
+
+    /**
+     * A brand-new token always reads (implicit — every token can read); these
+     * two checkboxes are the only choice the user makes. Both default on
+     * except delete, mirroring the "reversible mutations are fine, deletion
+     * needs an explicit opt-in" split the MCP server enforces (see
+     * App\Mcp\McpAbility) — the same principle behind this app's
+     * armed-double-click pattern, moved to token-creation time since a
+     * headless MCP tool call has no click to arm.
+     */
+    public bool $newTokenCanWrite = true;
+
+    public bool $newTokenCanDelete = false;
 
     /** The plaintext token, shown exactly once right after creation — never stored, never shown again. */
     public ?string $createdToken = null;
@@ -850,10 +864,20 @@ class Settings extends Component
             'newTokenName' => ['required', 'string', 'max:255'],
         ]);
 
-        $token = auth()->user()->createToken($data['newTokenName']);
+        $abilities = [McpAbility::READ];
+        if ($this->newTokenCanWrite) {
+            $abilities[] = McpAbility::WRITE;
+        }
+        if ($this->newTokenCanDelete) {
+            $abilities[] = McpAbility::DELETE;
+        }
+
+        $token = auth()->user()->createToken($data['newTokenName'], $abilities);
 
         $this->createdToken = $token->plainTextToken;
         $this->newTokenName = '';
+        $this->newTokenCanWrite = true;
+        $this->newTokenCanDelete = false;
         unset($this->apiTokens);
     }
 
