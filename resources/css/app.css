@@ -632,6 +632,25 @@
         display: none;
     }
 
+    /* Mobile header redesign — "Mehr" folded into the avatar menu (see
+       partials/mehr-nav-links.blade.php's $stagger param, layouts/app.blade.php).
+       The signature moment: opening the newly-combined mobile menu, each
+       feature link fans in from the avatar button ~35ms after the last —
+       a quick, calm proof that nothing vanished when the two separate icon
+       buttons merged into one, not just a static list appearing. Restarts
+       every time the menu reopens for free: Alpine's x-show toggles the
+       panel's own `display: none`, and a CSS animation on a display:none-d
+       descendant restarts from its 0% state the next time it's shown.
+       Respects prefers-reduced-motion via the global animation-collapse
+       rule below — nothing extra needed here. */
+    @keyframes header-menu-fan-in {
+        0% { opacity: 0; transform: translateY(4px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+    .header-menu-fan-in {
+        animation: header-menu-fan-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
 }
 
 @layer utilities {

@@ -61,9 +61,13 @@
         <div class="min-h-[100dvh]">
             <header class="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-sm">
                 <div class="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6">
+                    {{-- The wordmark hides on mobile like every other text label in this
+                         header (avatar name, "Mehr" label) — the logo icon alone already
+                         carries the brand, and the freed width matters more on a narrow
+                         screen than the extra word does. --}}
                     <a href="{{ url('/app') }}" class="flex items-center gap-2.5" wire:navigate>
                         <x-logo class="h-6 w-6 text-forest" />
-                        <span class="text-[15px] font-medium tracking-tight">nothing-to-do</span>
+                        <span class="hidden text-[15px] font-medium tracking-tight sm:inline">nothing-to-do</span>
                     </a>
 
                     @auth
@@ -96,7 +100,14 @@
                              homework preview strip). See App\Services\HeaderBadges. --}}
                         @php $headerBadges = \App\Services\HeaderBadges::visibleFor(auth()->user()); @endphp
                         @if (count($headerBadges) > 0)
-                            <div class="flex max-w-[38vw] items-center gap-1.5 overflow-x-auto sm:max-w-none">
+                            {{-- max-w-[45vw]: bumped up from the original 38vw now that the
+                                 wordmark hides and "Mehr" folds into the avatar menu on
+                                 mobile (see both below) — there's more real width to spare
+                                 before this needs to fall back to its own horizontal scroll,
+                                 without risking the header itself overflowing on a narrow
+                                 (~320px) phone. Still capped, still scrollable — the safety
+                                 net for a wide badge selection stays exactly as before. --}}
+                            <div class="flex max-w-[45vw] items-center gap-1.5 overflow-x-auto sm:max-w-none">
                                 @foreach ($headerBadges as $badge)
                                     @include('partials.header-badge', ['badge' => $badge])
                                 @endforeach
@@ -104,15 +115,22 @@
                         @endif
 
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills
-                             (Vorbereiten/Zeitplan/Agenda/Notfall) and the mobile-only
-                             duplicate list that used to live inside the avatar menu — a
-                             single control that behaves identically at every breakpoint,
-                             styled like the avatar menu below so it reads as native to the
-                             app rather than a second, differently-built dropdown. Bastelideen
-                             moves in too: it never had a header pill of its own before, but
-                             it's exactly the same kind of "additional feature". --}}
+                             (Vorbereiten/Zeitplan/Agenda/Notfall), styled like the avatar
+                             menu below so it reads as native to the app rather than a
+                             second, differently-built dropdown. Bastelideen is in here too:
+                             it never had a header pill of its own before, but it's exactly
+                             the same kind of "additional feature".
+
+                             Desktop only (sm and up) as of the mobile header redesign — on
+                             mobile this whole trigger+panel folds into the avatar menu below
+                             instead (see that menu's own "Weitere Funktionen" section), since
+                             two near-identical round icon buttons sitting this close together
+                             on a narrow phone was the actual source of the "überladen"
+                             feeling, more than the badges themselves. Content is included
+                             from partials/mehr-nav-links.blade.php so the desktop panel and
+                             the mobile section can never drift apart. --}}
                         @if ($anyMehrNavVisible)
-                        <div x-data="{ open: false }" class="relative">
+                        <div x-data="{ open: false }" class="relative hidden sm:block">
                             <button
                                 type="button"
                                 @click="open = !open"
@@ -132,7 +150,7 @@
                                     <rect x="3" y="11" width="6" height="6" rx="1.5"/>
                                     <rect x="11" y="11" width="6" height="6" rx="1.5"/>
                                 </svg>
-                                <span class="hidden sm:inline">Mehr</span>
+                                <span>Mehr</span>
                                 @if (auth()->user()->isInEmergencyMode())
                                     <span class="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true"></span>
                                 @endif
@@ -145,99 +163,7 @@
                                 class="absolute right-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
                                 style="display: none;"
                             >
-                                @if ($showPrepareNav)
-                                <a href="{{ route('prepare') }}" wire:navigate @class([
-                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-paper font-medium text-ink' => request()->routeIs('prepare'),
-                                    'text-ink-soft hover:text-ink' => !request()->routeIs('prepare'),
-                                ]) @if(request()->routeIs('prepare')) aria-current="page" @endif>
-                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
-                                    Vorbereiten
-                                </a>
-                                @endif
-                                @if ($showScheduleNav)
-                                <a href="{{ route('schedule') }}" wire:navigate @class([
-                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-paper font-medium text-ink' => request()->routeIs('schedule'),
-                                    'text-ink-soft hover:text-ink' => !request()->routeIs('schedule'),
-                                ]) @if(request()->routeIs('schedule')) aria-current="page" @endif>
-                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
-                                    Zeitplan
-                                </a>
-                                @endif
-                                @if ($showWeekplanNav)
-                                <a href="{{ route('weekplan') }}" wire:navigate @class([
-                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-paper font-medium text-ink' => request()->routeIs('weekplan'),
-                                    'text-ink-soft hover:text-ink' => !request()->routeIs('weekplan'),
-                                ]) @if(request()->routeIs('weekplan')) aria-current="page" @endif>
-                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                                    Wochenplan &amp; Ferien
-                                </a>
-                                @endif
-                                {{-- Off by default (users.planner_enabled) — the pill itself only
-                                     ever renders once someone has opted in via Settings, so a
-                                     visit to /app/planner while it's off (Planner::mount()) and the
-                                     total absence of this entry from a fresh account's "Mehr" menu
-                                     are the same zero-footprint story. Deliberately not part of
-                                     AppModules::CATALOG — the Planner toggle predates and is
-                                     unrelated to the module-visibility system. --}}
-                                @if (auth()->user()->planner_enabled)
-                                    <a href="{{ route('planner') }}" wire:navigate @class([
-                                        'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                        'bg-paper font-medium text-ink' => request()->routeIs('planner'),
-                                        'text-ink-soft hover:text-ink' => !request()->routeIs('planner'),
-                                    ]) @if(request()->routeIs('planner')) aria-current="page" @endif>
-                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5"/></svg>
-                                        Planer
-                                    </a>
-                                @endif
-                                @if ($showAgendaNav)
-                                <a href="{{ route('agenda') }}" wire:navigate @class([
-                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-paper font-medium text-ink' => request()->routeIs('agenda'),
-                                    'text-ink-soft hover:text-ink' => !request()->routeIs('agenda'),
-                                ]) @if(request()->routeIs('agenda')) aria-current="page" @endif>
-                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
-                                    Agenda
-                                </a>
-                                @endif
-                                @if ($showCraftsNav)
-                                <a href="{{ route('crafts') }}" wire:navigate @class([
-                                    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-paper font-medium text-ink' => request()->routeIs('crafts'),
-                                    'text-ink-soft hover:text-ink' => !request()->routeIs('crafts'),
-                                ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
-                                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
-                                    Bastelideen
-                                </a>
-                                @endif
-                                {{-- Notfall is always listed here now (no longer conditionally
-                                     hidden from the header) — an "Aktiv" badge communicates the
-                                     running state instead of the item's presence/absence. Still
-                                     wrapped in $showEmergencyNav, which itself stays true whenever
-                                     an emergency is actually running, regardless of the module
-                                     toggle — see the $showEmergencyNav definition above. --}}
-                                @if ($showEmergencyNav)
-                                <a href="{{ route('emergency') }}" wire:navigate @class([
-                                    'flex items-center justify-between gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-                                    'bg-signal-soft font-medium text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
-                                    'bg-paper font-medium text-ink' => !auth()->user()->isInEmergencyMode() && request()->routeIs('emergency'),
-                                    'text-ink-soft hover:text-ink' => !auth()->user()->isInEmergencyMode() && !request()->routeIs('emergency'),
-                                ]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
-                                    <span class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                            <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                                            <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                            <circle cx="10" cy="14" r="1" fill="currentColor"/>
-                                        </svg>
-                                        Notfall
-                                    </span>
-                                    @if (auth()->user()->isInEmergencyMode())
-                                        <span class="rounded-full bg-signal px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">Aktiv</span>
-                                    @endif
-                                </a>
-                                @endif
+                                @include('partials.mehr-nav-links')
                             </div>
                         </div>
                         @endif
@@ -265,14 +191,24 @@
                         </button>
                         <div x-data="{ open: false }" class="relative">
                             <button
+                                type="button"
                                 @click="open = !open"
                                 @keydown.escape.window="open = false"
                                 class="flex items-center gap-2 rounded-card px-2.5 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                                 :aria-expanded="open"
                                 aria-haspopup="true"
+                                aria-label="Konto{{ $anyMehrNavVisible ? ' & weitere Funktionen' : '' }}"
                             >
-                                <span class="grid h-7 w-7 place-items-center rounded-full bg-forest-soft text-[12px] font-medium text-forest">
+                                <span class="relative grid h-7 w-7 place-items-center rounded-full bg-forest-soft text-[12px] font-medium text-forest">
                                     {{ Str::of(auth()->user()->name)->trim()->substr(0, 1)->upper() }}
+                                    {{-- Mobile only: the "Mehr" button's own emergency dot
+                                         (desktop, sm and up) has no home once that button hides
+                                         on mobile — this is a safety-relevant ambient signal
+                                         (you should see you're in an emergency even with the
+                                         menu closed), so it moves here instead of disappearing. --}}
+                                    @if (auth()->user()->isInEmergencyMode())
+                                        <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-signal ring-2 ring-paper sm:hidden" aria-hidden="true"></span>
+                                    @endif
                                 </span>
                                 <span class="hidden sm:inline">{{ Str::of(auth()->user()->name)->before(' ') }}</span>
                             </button>
@@ -288,6 +224,17 @@
                                     <p class="truncate text-sm font-medium text-ink">{{ auth()->user()->name }}</p>
                                     <p class="truncate text-xs text-ink-faint">{{ auth()->user()->email }}</p>
                                 </div>
+                                {{-- Mobile only: the "Mehr" feature links, folded in here
+                                     since the standalone desktop trigger is hidden below sm.
+                                     Same partial the desktop panel uses (see above), so the
+                                     two lists can never disagree — only the stagger flourish
+                                     differs, see header-menu-fan-in in app.css. --}}
+                                @if ($anyMehrNavVisible)
+                                <div class="border-b border-line py-1 sm:hidden">
+                                    <p class="px-4 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Weitere Funktionen</p>
+                                    @include('partials.mehr-nav-links', ['stagger' => true])
+                                </div>
+                                @endif
                                 <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Profil
                                 </a>
