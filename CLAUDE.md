@@ -3085,6 +3085,19 @@ and `app:send-progress-reminders`, the five commands that make Pomodoro/event-st
 Vorbereitung/Fortschritt push notifications fire even with no tab open. No separate queue worker is
 needed (notifications send synchronously inline).
 
+**Every generated URL is forced to `https://` in production** (`App\Providers\AppServiceProvider::boot()`,
+`URL::forceScheme('https')`, gated on `APP_ENV=production` so local `http://` dev is untouched) — added
+alongside the MCP server, whose endpoint URL (shown on `/docs/mcp` and used by any MCP client, e.g. Claude)
+must be `https://`, not `http://`, for most clients to even accept it. `bootstrap/app.php`'s
+`trustProxies(at: '*')` already makes Laravel trust the reverse proxy's `X-Forwarded-Proto` header, which
+*should* already produce `https://` URLs on its own behind a correctly configured proxy — `forceScheme` is
+the belt-and-suspenders guarantee that holds even if that header is ever missing or misconfigured. This only
+helps if **`APP_URL` in the production `.env` is actually `https://nothing-to-do.ch`** (step 3 of "First
+deploy" above) — `forceScheme` fixes the *scheme* Laravel writes into a generated URL, it can't fix a wrong
+*host* baked into `APP_URL` itself. Worth a one-time check on an already-live install: `php artisan tinker`
+is off the table (see Known Issues), so confirm instead by loading `/docs/mcp` while logged in and checking
+the shown endpoint URL starts with `https://nothing-to-do.ch`.
+
 ---
 
 ## 10. Known Issues & Solutions
