@@ -3026,6 +3026,72 @@ reusing its authentication story rather than inventing a second one.
   session management, and OAuth-based MCP authorization (a plain Bearer PAT was judged sufficient, matching
   the existing Shortcuts API's own auth model on a stack with no OAuth provider of its own).
 
+### Fehler-Statistiken (built)
+
+Custom, on-brand error pages (never Laravel's/Symfony's default white page, never a stack trace or raw
+exception message — CLAUDE.md §3), plus an admin-only view of how often each one actually happens.
+
+- **`resources/views/errors/shell.blade.php`** is the shared, standalone shell (mirrors `welcome.blade.php`'s
+  `<head>`, not `layouts.app` — an error can hit a guest just as easily as a logged-in user, and it must
+  never itself depend on anything that could be part of what's broken). Takes `$title`/`$heading`/`$message`
+  plus an optional `$icon`/`$iconClass`; the back button reads `auth()->check()` at render time to point at
+  `defaultLandingRouteName()` or the guest home.
+- **Laravel already ships its own default views for 401/402/403/404/419/429/500/503** (bundled inside
+  `laravel/framework`, registered under the same `errors::` namespace the app's own `resources/views/errors/`
+  uses). `View::exists()` on that namespace matches whichever hint path has the file first, and the app's own
+  path is checked before the framework's fallback — but only for an *exact* match. A generic
+  `errors/4xx.blade.php`/`errors/5xx.blade.php` (Laravel's own documented range-fallback mechanism, used when
+  no exact-code file exists) is therefore **only ever reached for a code Laravel doesn't already bundle** —
+  for every code above, Laravel's own bundled default wins first, silently. Caught by a test asserting the
+  German heading text (`ErrorPagesTest`), not by inspection — the failure output showed the actual HTML
+  returned, which turned out to be Laravel's old Tailwind-v1-style default 403 page. Fixed with one
+  exact-named file per bundled code (`401.blade.php`, `402.blade.php`, `403.blade.php`, `419.blade.php`,
+  `429.blade.php`, `500.blade.php`, `503.blade.php`), each a one-line `@include('errors.4xx')`/
+  `@include('errors.5xx')` — the shared template still branches on `$exception->getStatusCode()` for its
+  copy, so this is one line per code, not a duplicated page. **The general lesson: never rely on Laravel's
+  `4xx`/`5xx` fallback alone for a status code this app actually cares about — check
+  `vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/views/` for which codes it already bundles,
+  and add an exact file for each one, even if that file is a one-liner.**
+- **404 gets the signature moment; 403/419/429/500/503 stay deliberately calm.** `<x-error-icon>` (a ring
+  that doesn't quite close, same economical single-color line-art as `<x-flame-icon>`) is reused unanimated
+  everywhere except the 404 page, which adds `.error-icon-settle` (`app.css`) — the icon pulses once,
+  slowly, over ~2s, then settles fully still and never loops. Respects `prefers-reduced-motion` for free via
+  the app's existing global animation-collapse rule, same as every other one-shot animation in this app.
+- **`error_occurrences`** (`status_code, exception_class?, message?, path, method, user_id?, user_agent?,
+  timestamps`) — one row per rendered HTML error page, written by **`App\Services\ErrorStats::record()`**,
+  called from a `render()` closure in `bootstrap/app.php`'s `withExceptions()`. That closure returns nothing
+  (`void`) so Laravel's own default rendering — the exact-code view lookup above — still runs afterwards;
+  the closure's only job is the side-effecting write. Gated on `! $request->expectsJson()`, the same check
+  `api/*`'s own `shouldRenderJsonWhen()` implies — this is what keeps a Livewire action's own `findOrFail()`
+  404 (already deliberately "invisible" as JSON, see every `userTask()`/`visibleEntry()` site in this app)
+  and the JSON API out of the stats entirely; only a genuine full-page navigation is counted. `path` is
+  `$request->path()` only, **never the query string** — a query string can carry a password-reset token or
+  search text, and this table is admin-visible.
+- **`record()` is wrapped end-to-end in try/catch** and swallows its own failure (a `Log::debug`, nothing
+  louder) — the one moment an error is being logged is also the one moment a database outage is most
+  plausibly the reason the original request failed at all, and a second, unhandled exception while *logging*
+  the first would defeat the entire point of a calm error page, right when it matters most. Verified directly
+  (`ErrorStatsTest`) by dropping the table and asserting `record()` still returns normally.
+- **`app:prune-error-occurrences`** (daily, registered like the other six scheduled commands, §9) deletes
+  anything older than 60 days — this app has no queue worker, so every occurrence is written synchronously
+  inside the request that already failed, and a single misbehaving page repeating thousands of times a day
+  shouldn't grow this table forever.
+- **`App\Livewire\Admin\ErrorLog`** (`/app/admin/errors`, `route('admin.errors')`, "Fehler-Statistiken") —
+  gated `abort_unless(is_admin, 403)` in `mount()`, same convention as every other admin page. A 14-day count
+  trend (plain bars, not the full `ProgressStats` heatmap — overkill for this), the most frequent broken
+  paths (the actually-actionable "go fix this link" list), status-code filter chips built from whatever
+  codes have actually occurred (no fixed catalog — unlike `SupportRequest::STATUSES`, there's no closed set
+  of "possible" error codes), and the 50 most recent occurrences. Nav entry in the profile dropdown, right
+  after "Support-Anfragen", admin-only.
+- **No `FeatureAnnouncement` draft was created this session** — same reasoning as every other admin-authored-
+  content gap in this file: the editor is an admin-only Livewire UI, and this session had no safe way to
+  exercise it. The 404 page itself *is* a visible, regular-user-facing change though (CLAUDE.md §3.11), so
+  this is worth writing once merged, more than most of the admin-only entries in this list.
+- Deliberately out of scope for this pass: rate-limiting/deduping the write itself (a repeated identical
+  error is counted every time, not just once), email/push alerting on an error spike, special 419-specific
+  recovery behavior (e.g. auto-resubmitting a form — it gets the same generic 4xx page as everything else),
+  and a second signature moment on any page besides 404.
+
 ---
 
 ## 8. Conventions
