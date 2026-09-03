@@ -137,6 +137,41 @@ class WeekPlanTest extends TestCase
         $this->assertSame('Das Feld Kategorie muss ausgefüllt werden.', $message);
     }
 
+    public function test_the_chosen_category_chip_gets_a_visible_ring_not_just_its_own_colour(): void
+    {
+        // UX finding: a category chip's dot always shows that category's own
+        // assigned colour, selected or not — with exactly one category (the
+        // common case right after creating the first one), that read as
+        // "already selected" and was the direct cause of the previous test's
+        // regression. A ring around the dot, matching the plain colour
+        // picker's own already-established selected-state language a few
+        // lines below in the same form, makes "selected" unambiguous
+        // regardless of the category's own colour.
+        $user = $this->actingUser();
+        $chosen = EventCategory::factory()->for($user)->create(['name' => 'Training']);
+        $other = EventCategory::factory()->for($user)->create(['name' => 'Schule']);
+
+        $html = Livewire::test(WeekPlan::class)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $chosen->id)
+            ->html();
+
+        // Anchor on the chip's own wire:click call (unique per category and
+        // only present in the picker, not the page's separate quick-create
+        // footer, which also shows the category name) rather than the bare
+        // name, so the window can't land on the wrong "Training" chip.
+        $chosenAnchor = strpos($html, "\$set('eventCategoryId', {$chosen->id})");
+        $otherAnchor = strpos($html, "\$set('eventCategoryId', {$other->id})");
+        $this->assertNotFalse($chosenAnchor);
+        $this->assertNotFalse($otherAnchor);
+
+        $chosenChip = substr($html, $chosenAnchor, 400);
+        $otherChip = substr($html, $otherAnchor, 400);
+
+        $this->assertStringContainsString('ring-2 ring-offset-1', $chosenChip);
+        $this->assertStringNotContainsString('ring-2 ring-offset-1', $otherChip);
+    }
+
     public function test_editing_a_template_updates_its_shape(): void
     {
         $user = $this->actingUser();
