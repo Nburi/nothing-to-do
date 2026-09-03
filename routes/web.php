@@ -3,6 +3,7 @@
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
 use App\Livewire\Admin\AnnouncementEditor;
+use App\Livewire\Admin\ErrorLog;
 use App\Livewire\Admin\HelpEditor;
 use App\Livewire\Admin\SupportQueue;
 use App\Livewire\Agenda;
@@ -110,6 +111,11 @@ Route::get('/app/admin/help', HelpEditor::class)
 Route::get('/app/admin/support', SupportQueue::class)
     ->middleware('auth')
     ->name('admin.support');
+
+// Admin-only — gated in ErrorLog::mount().
+Route::get('/app/admin/errors', ErrorLog::class)
+    ->middleware('auth')
+    ->name('admin.errors');
 
 Route::get('/app/help/support', SupportCenter::class)
     ->middleware('auth')

@@ -268,6 +268,9 @@
                                 <a href="{{ route('admin.support') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                                     Support-Anfragen
                                 </a>
+                                <a href="{{ route('admin.errors') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                    Fehler-Statistiken
+                                </a>
                                 @endif
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
