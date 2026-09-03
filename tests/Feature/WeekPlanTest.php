@@ -112,6 +112,31 @@ class WeekPlanTest extends TestCase
             ->assertHasErrors(['eventCategoryId']);
     }
 
+    public function test_the_missing_category_error_is_shown_in_german_not_englisch(): void
+    {
+        // Regression: this project had no lang/ directory at all, so this
+        // exact validation failure (no category picked on the Kategorie
+        // tab) rendered Laravel's raw English default — "The event
+        // category id field is required." — inside an otherwise fully
+        // German UI. See lang/de/validation.php.
+        $user = $this->actingUser();
+        EventCategory::factory()->for($user)->create(['name' => 'Training']);
+
+        $component = Livewire::test(WeekPlan::class)
+            ->set('eventKind', 'category')
+            ->set('eventStart', '17:00')
+            ->set('eventEnd', '19:00')
+            ->set('eventDays', [3])
+            ->call('saveEventForm');
+
+        $component->assertHasErrors(['eventCategoryId']);
+
+        $message = $component->errors()->first('eventCategoryId');
+
+        $this->assertStringNotContainsString('field is required', $message);
+        $this->assertSame('Das Feld Kategorie muss ausgefüllt werden.', $message);
+    }
+
     public function test_editing_a_template_updates_its_shape(): void
     {
         $user = $this->actingUser();
