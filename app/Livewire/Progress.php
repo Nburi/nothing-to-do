@@ -92,6 +92,22 @@ class Progress extends Component
         return ProgressStats::heatmap(auth()->user(), $this->counts);
     }
 
+    /**
+     * Today has real completions, but no task was ever flagged "Heute"
+     * today, so the streak (which only counts a day once every "Heute"
+     * task on it is done) has nothing to count and correctly stays at 0 —
+     * without this, that reads as broken rather than as "not started yet".
+     * UX research finding: easy to hit in Eisenhower, where "Heute" is one
+     * small toggle pill per card rather than a whole visible zone/column
+     * the way it is in 3 Things/Kanban, so it's easy to never use at all.
+     */
+    #[Computed]
+    public function todayHasCompletionsButNoTodayList(): bool
+    {
+        return $this->todayCount > 0
+            && ! isset($this->todayListStats[auth()->user()->localToday()->toDateString()]);
+    }
+
     public function render()
     {
         return view('livewire.progress');

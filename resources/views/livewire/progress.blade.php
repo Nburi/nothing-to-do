@@ -59,6 +59,18 @@
                             {{ $this->perfectDayRate }}% Erfolgsquote
                         </p>
                     @endif
+                    {{-- UX research finding: today can have real completions while the
+                         streak still shows 0, because the streak specifically counts
+                         days where every "Heute"-flagged task got done — a day with
+                         completions but no "Heute" flag at all otherwise reads as
+                         "broken" rather than "not started". Easiest to hit in
+                         Eisenhower, where "Heute" is one small toggle pill per card
+                         rather than a whole visible zone. --}}
+                    @if ($this->todayHasCompletionsButNoTodayList)
+                        <p class="mt-1.5 text-xs leading-relaxed text-ink-faint">
+                            Serie zählt nur Tage mit erledigten „Heute"-Aufgaben — heute ist noch keine markiert.
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>

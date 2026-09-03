@@ -47,6 +47,51 @@ class ProgressPageTest extends TestCase
         $this->assertSame(2, $page->totalCompleted());
     }
 
+    // UX research finding: today can have real completions while the streak
+    // still shows 0 (it only counts a fully-cleared "Heute" list), which read
+    // as broken with no explanation — see the hint on the streak tile.
+
+    public function test_shows_a_hint_when_today_has_completions_but_no_today_list_at_all(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        // Completed today, but never flagged "Heute" (today_date stays null).
+        Task::factory()->for($user)->completed()->create(['completed_at' => '2026-08-16 09:00:00']);
+
+        $page = Livewire::test(Progress::class);
+
+        $this->assertTrue($page->instance()->todayHasCompletionsButNoTodayList());
+        $page->assertSee('Serie zählt nur Tage mit erledigten');
+    }
+
+    public function test_hides_the_hint_once_today_has_a_today_list(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->todos()->todayOn('2026-08-16')->completed()->create(['completed_at' => '2026-08-16 09:00:00']);
+
+        $page = Livewire::test(Progress::class);
+
+        $this->assertFalse($page->instance()->todayHasCompletionsButNoTodayList());
+        $page->assertDontSee('Serie zählt nur Tage mit erledigten');
+    }
+
+    public function test_hides_the_hint_when_nothing_was_completed_today_at_all(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        $page = Livewire::test(Progress::class);
+
+        $this->assertFalse($page->instance()->todayHasCompletionsButNoTodayList());
+        $page->assertDontSee('Serie zählt nur Tage mit erledigten');
+    }
+
     public function test_it_computes_the_current_and_best_streak_from_cleared_today_lists(): void
     {
         Carbon::setTestNow('2026-08-16 18:00:00');
