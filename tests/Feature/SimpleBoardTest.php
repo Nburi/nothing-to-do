@@ -46,11 +46,19 @@ class SimpleBoardTest extends TestCase
 
     public function test_simple_tasks_excludes_tasks_assigned_to_a_real_project(): void
     {
+        // Not a page-text assertDontSee: a project's own preview card
+        // (partials/projects-quick-access.blade.php) legitimately previews
+        // this exact task's title as its "next active task" teaser, the same
+        // way the 3-Things board's Projekte column already does — so the
+        // string does appear on the page, just not as a standalone task card
+        // in the flat list, which is the thing this test actually cares about.
         $user = $this->simpleUser();
         $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id, 'title' => 'In a real project']);
+        $task = Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id, 'title' => 'In a real project']);
 
-        Livewire::actingAs($user)->test(TaskBoard::class)->assertDontSee('In a real project');
+        $simpleTasks = Livewire::actingAs($user)->test(TaskBoard::class)->get('simpleTasks');
+
+        $this->assertFalse($simpleTasks->contains('id', $task->id));
     }
 
     public function test_simple_tasks_excludes_grouped_tasks_unless_important_or_today(): void
@@ -318,5 +326,27 @@ class SimpleBoardTest extends TestCase
 
         $this->assertSame('tasks', $task->fresh()->list);
         $this->assertFalse($task->fresh()->is_today);
+    }
+
+    // ── Projects stay reachable even though Simple has no Projekte column ──
+    // (regression: a project captured while Simple was active used to be
+    // fully persisted but had no UI path back to it at all — see
+    // partials/projects-quick-access.blade.php)
+
+    public function test_an_existing_project_is_reachable_from_the_simple_board(): void
+    {
+        $user = $this->simpleUser();
+        $project = Project::factory()->for($user)->create(['name' => 'Kunden-Website Redesign']);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->assertSee('Kunden-Website Redesign')
+            ->assertSee(route('project.show', $project), false);
+    }
+
+    public function test_renders_cleanly_with_no_projects_at_all(): void
+    {
+        $user = $this->simpleUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
     }
 }

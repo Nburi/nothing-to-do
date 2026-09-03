@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\TaskBoard;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
@@ -363,5 +364,27 @@ class KanbanBoardTest extends TestCase
         $task->refresh();
         $this->assertFalse($task->is_today);
         $this->assertFalse($task->is_completed);
+    }
+
+    // ── Projects stay reachable even though Kanban has no Projekte column ──
+    // (regression: a project captured while Kanban was active used to be
+    // fully persisted but had no UI path back to it at all — see
+    // partials/projects-quick-access.blade.php)
+
+    public function test_an_existing_project_is_reachable_from_the_kanban_board(): void
+    {
+        $user = $this->kanbanUser();
+        $project = Project::factory()->for($user)->create(['name' => 'Kunden-Website Redesign']);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->assertSee('Kunden-Website Redesign')
+            ->assertSee(route('project.show', $project), false);
+    }
+
+    public function test_renders_cleanly_with_no_projects_at_all(): void
+    {
+        $user = $this->kanbanUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
     }
 }
