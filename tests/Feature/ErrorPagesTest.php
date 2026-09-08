@@ -6,6 +6,7 @@ use App\Models\ErrorOccurrence;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class ErrorPagesTest extends TestCase
@@ -83,5 +84,35 @@ class ErrorPagesTest extends TestCase
 
         $user = User::factory()->create();
         $this->actingAs($user)->get('/this-route-does-not-exist')->assertSee(route('app'), false);
+    }
+
+    /**
+     * Deliberately not a real `php artisan down`/`up` round trip: both write to and clear a real
+     * file on disk (storage/framework/down), which every parallel test worker shares — an
+     * artisan('down') call here left every *other* concurrently-running test in this class (and
+     * presumably beyond) seeing a 503 too, discovered when this test was first written and every
+     * sibling test in this file failed alongside it despite no code of theirs changing. Throwing
+     * the exact exception PreventRequestsDuringMaintenance itself throws exercises the same view
+     * -rendering path without touching shared global state.
+     */
+    public function test_maintenance_mode_renders_the_dedicated_page_with_a_reload_button(): void
+    {
+        Route::get('/__test-maintenance', fn () => throw new HttpException(503, 'Service Unavailable'));
+
+        $response = $this->get('/__test-maintenance');
+
+        $response->assertStatus(503);
+        $response->assertSee('Wir sind gleich wieder da.');
+        $response->assertSee('Seite neu laden');
+        $response->assertDontSee('Etwas ist schiefgelaufen.');
+    }
+
+    public function test_maintenance_mode_is_not_recorded_as_an_error(): void
+    {
+        Route::get('/__test-maintenance', fn () => throw new HttpException(503, 'Service Unavailable'));
+
+        $this->get('/__test-maintenance');
+
+        $this->assertSame(0, ErrorOccurrence::count());
     }
 }

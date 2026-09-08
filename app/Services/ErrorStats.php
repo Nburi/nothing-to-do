@@ -33,7 +33,11 @@ class ErrorStats
         try {
             $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
 
-            if ($status < 400) {
+            // 503 in this app is (near-)exclusively `php artisan down`'s own maintenance mode,
+            // not a genuine failure — every request during a maintenance window would otherwise
+            // flood this table with expected, non-actionable rows. It's also often exactly the
+            // moment a deploy/migration makes the database itself least reliable to write to.
+            if ($status < 400 || $status === 503) {
                 return;
             }
 

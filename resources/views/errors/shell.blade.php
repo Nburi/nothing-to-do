@@ -9,13 +9,19 @@
 
     Params: $title (browser tab), $heading, $message, $icon (optional Blade
     component name, defaults to 'error-icon'), $iconClass (extra classes,
-    e.g. the 404 page's error-icon-settle pulse).
+    e.g. the 404 page's error-icon-settle pulse), $reload (optional bool,
+    default false — swaps the CTA for a "reload this page" button instead of
+    a link back into the app; used by the maintenance page, where "back to
+    the board" would just hit the same maintenance response again).
 --}}
 @php
     $icon ??= 'error-icon';
     $iconClass ??= '';
-    $backRoute = auth()->check() ? auth()->user()->defaultLandingRouteName() : 'home';
-    $backLabel = auth()->check() ? 'Zurück zum Board' : 'Zurück zur Startseite';
+    $reload ??= false;
+    if (! $reload) {
+        $backRoute = auth()->check() ? auth()->user()->defaultLandingRouteName() : 'home';
+        $backLabel = auth()->check() ? 'Zurück zum Board' : 'Zurück zur Startseite';
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="de">
@@ -47,10 +53,18 @@
                     </span>
                     <h1 class="text-2xl font-medium tracking-tight">{{ $heading }}</h1>
                     <p class="mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">{{ $message }}</p>
-                    <a
-                        href="{{ route($backRoute) }}"
-                        class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-                    >{{ $backLabel }}</a>
+                    @if ($reload)
+                        <button
+                            type="button"
+                            onclick="location.reload()"
+                            class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                        >Seite neu laden</button>
+                    @else
+                        <a
+                            href="{{ route($backRoute) }}"
+                            class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                        >{{ $backLabel }}</a>
+                    @endif
                 </div>
             </main>
         </div>
