@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\RecordModuleVisit;
+use App\Services\ErrorStats;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +27,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Every rendered HTML error page (404/403/419/500/...) is counted for
+        // the admin "Fehler-Statistiken" page — but never a Livewire action
+        // or the JSON API, both already excluded by expectsJson() here. No
+        // return value: Laravel's own default rendering still runs
+        // afterwards, which is what actually picks up resources/views/errors/
+        // {404,4xx,5xx}.blade.php. See App\Services\ErrorStats::record().
+        $exceptions->render(function (Throwable $e, Request $request): void {
+            if (! $request->expectsJson()) {
+                ErrorStats::record($e, $request);
+            }
+        });
     })
     ->withSchedule(function (Schedule $schedule): void {
         // Both need production cron running `php artisan schedule:run` every
@@ -36,5 +49,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:send-prepare-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-progress-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('app:promote-day-plans-to-today')->everyMinute()->withoutOverlapping();
+        $schedule->command('app:prune-error-occurrences')->daily()->withoutOverlapping();
     })
     ->create();

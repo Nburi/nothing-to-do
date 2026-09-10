@@ -3026,6 +3026,86 @@ reusing its authentication story rather than inventing a second one.
   session management, and OAuth-based MCP authorization (a plain Bearer PAT was judged sufficient, matching
   the existing Shortcuts API's own auth model on a stack with no OAuth provider of its own).
 
+### Fehler-Statistiken (built)
+
+Custom, on-brand error pages (never Laravel's/Symfony's default white page, never a stack trace or raw
+exception message — CLAUDE.md §3), plus an admin-only view of how often each one actually happens.
+
+- **`resources/views/errors/shell.blade.php`** is the shared, standalone shell (mirrors `welcome.blade.php`'s
+  `<head>`, not `layouts.app` — an error can hit a guest just as easily as a logged-in user, and it must
+  never itself depend on anything that could be part of what's broken). Takes `$title`/`$heading`/`$message`
+  plus an optional `$icon`/`$iconClass`; the back button reads `auth()->check()` at render time to point at
+  `defaultLandingRouteName()` or the guest home.
+- **Laravel already ships its own default views for 401/402/403/404/419/429/500/503** (bundled inside
+  `laravel/framework`, registered under the same `errors::` namespace the app's own `resources/views/errors/`
+  uses). `View::exists()` on that namespace matches whichever hint path has the file first, and the app's own
+  path is checked before the framework's fallback — but only for an *exact* match. A generic
+  `errors/4xx.blade.php`/`errors/5xx.blade.php` (Laravel's own documented range-fallback mechanism, used when
+  no exact-code file exists) is therefore **only ever reached for a code Laravel doesn't already bundle** —
+  for every code above, Laravel's own bundled default wins first, silently. Caught by a test asserting the
+  German heading text (`ErrorPagesTest`), not by inspection — the failure output showed the actual HTML
+  returned, which turned out to be Laravel's old Tailwind-v1-style default 403 page. Fixed with one
+  exact-named file per bundled code (`401.blade.php`, `402.blade.php`, `403.blade.php`, `419.blade.php`,
+  `429.blade.php`, `500.blade.php`, `503.blade.php`), each a one-line `@include('errors.4xx')`/
+  `@include('errors.5xx')` — the shared template still branches on `$exception->getStatusCode()` for its
+  copy, so this is one line per code, not a duplicated page. **The general lesson: never rely on Laravel's
+  `4xx`/`5xx` fallback alone for a status code this app actually cares about — check
+  `vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/views/` for which codes it already bundles,
+  and add an exact file for each one, even if that file is a one-liner.**
+- **404 gets the signature moment; 403/419/429/500 stay deliberately calm.** `<x-error-icon>` (a ring
+  that doesn't quite close, same economical single-color line-art as `<x-flame-icon>`) is reused unanimated
+  everywhere except the 404 page, which adds `.error-icon-settle` (`app.css`) — the icon pulses once,
+  slowly, over ~2s, then settles fully still and never loops. Respects `prefers-reduced-motion` for free via
+  the app's existing global animation-collapse rule, same as every other one-shot animation in this app.
+- **503 gets its own dedicated page, not the generic 5xx one — because in this app it's (near-)exclusively
+  `php artisan down`, not a real failure.** `errors/503.blade.php` doesn't `@include('errors.5xx')` the way
+  401/402/403/419/429/500 all do; it has its own calm "Wir sind gleich wieder da." copy, its own icon
+  (`<x-maintenance-icon>` — a plain clock face, deliberately not `<x-error-icon>`, since planned maintenance
+  isn't a failure and shouldn't borrow that visual language), and its own CTA: `errors/shell.blade.php`
+  gained an optional `$reload` param that swaps the usual "back to the board" link for a "Seite neu laden"
+  button — during real downtime, "back to the board" would just hit the same maintenance response again.
+  Laravel's `PreventRequestsDuringMaintenance` middleware always throws `HttpException(503, 'Service
+  Unavailable', ...)` — that literal string is hardcoded in the framework, `php artisan down --message=`
+  isn't actually wired into it — so there's nothing worth reading off `$exception->getMessage()` here; the
+  copy is static. `ErrorStats::record()` explicitly skips status 503 (`$status === 503` alongside the
+  `< 400` guard) for the same reason the page itself exists: a maintenance window would otherwise flood the
+  admin stats page with expected, non-actionable rows, and `php artisan down` is often run around exactly
+  the moment (a deploy/migration) the database is least reliable to write an occurrence to anyway.
+- **`error_occurrences`** (`status_code, exception_class?, message?, path, method, user_id?, user_agent?,
+  timestamps`) — one row per rendered HTML error page, written by **`App\Services\ErrorStats::record()`**,
+  called from a `render()` closure in `bootstrap/app.php`'s `withExceptions()`. That closure returns nothing
+  (`void`) so Laravel's own default rendering — the exact-code view lookup above — still runs afterwards;
+  the closure's only job is the side-effecting write. Gated on `! $request->expectsJson()`, the same check
+  `api/*`'s own `shouldRenderJsonWhen()` implies — this is what keeps a Livewire action's own `findOrFail()`
+  404 (already deliberately "invisible" as JSON, see every `userTask()`/`visibleEntry()` site in this app)
+  and the JSON API out of the stats entirely; only a genuine full-page navigation is counted. `path` is
+  `$request->path()` only, **never the query string** — a query string can carry a password-reset token or
+  search text, and this table is admin-visible.
+- **`record()` is wrapped end-to-end in try/catch** and swallows its own failure (a `Log::debug`, nothing
+  louder) — the one moment an error is being logged is also the one moment a database outage is most
+  plausibly the reason the original request failed at all, and a second, unhandled exception while *logging*
+  the first would defeat the entire point of a calm error page, right when it matters most. Verified directly
+  (`ErrorStatsTest`) by dropping the table and asserting `record()` still returns normally.
+- **`app:prune-error-occurrences`** (daily, registered like the other six scheduled commands, §9) deletes
+  anything older than 60 days — this app has no queue worker, so every occurrence is written synchronously
+  inside the request that already failed, and a single misbehaving page repeating thousands of times a day
+  shouldn't grow this table forever.
+- **`App\Livewire\Admin\ErrorLog`** (`/app/admin/errors`, `route('admin.errors')`, "Fehler-Statistiken") —
+  gated `abort_unless(is_admin, 403)` in `mount()`, same convention as every other admin page. A 14-day count
+  trend (plain bars, not the full `ProgressStats` heatmap — overkill for this), the most frequent broken
+  paths (the actually-actionable "go fix this link" list), status-code filter chips built from whatever
+  codes have actually occurred (no fixed catalog — unlike `SupportRequest::STATUSES`, there's no closed set
+  of "possible" error codes), and the 50 most recent occurrences. Nav entry in the profile dropdown, right
+  after "Support-Anfragen", admin-only.
+- **No `FeatureAnnouncement` draft was created this session** — same reasoning as every other admin-authored-
+  content gap in this file: the editor is an admin-only Livewire UI, and this session had no safe way to
+  exercise it. The 404 page itself *is* a visible, regular-user-facing change though (CLAUDE.md §3.11), so
+  this is worth writing once merged, more than most of the admin-only entries in this list.
+- Deliberately out of scope for this pass: rate-limiting/deduping the write itself (a repeated identical
+  error is counted every time, not just once), email/push alerting on an error spike, special 419-specific
+  recovery behavior (e.g. auto-resubmitting a form — it gets the same generic 4xx page as everything else),
+  and a second signature moment on any page besides 404.
+
 ---
 
 ## 8. Conventions
@@ -3734,6 +3814,35 @@ one it's holding. `McpServer`/`McpController` take a `callable(string): bool` bu
 rather than a raw abilities array, for exactly this reason — the general lesson being that `tokenCan()`
 (or any library-provided ability check) should always be preferred over re-deriving "does this token allow
 X" from the token's own structure, however obvious the structure looks from the outside.
+
+### `php artisan down`/`up` inside a test leaks maintenance mode into every other test running in parallel
+**Symptom:** a single new test calling `$this->artisan('down')`, doing one assertion, then
+`$this->artisan('up')` in a `finally` block — a seemingly self-contained round trip — caused **every other,
+completely unrelated test in the same file** to fail with an unexpected `503` response, even tests that ran
+nowhere near it in declaration order and touched none of the same code. `storage/framework/down` did not
+exist on disk either before or after the full run, which made it look at first like the maintenance window
+couldn't possibly have been active during those other tests' requests.
+**Cause:** `php artisan test` in this project's setup runs the suite across **multiple parallel worker
+processes** (evidenced by 1300+ tests completing in ~60s) — and `artisan down`/`up` don't touch anything
+test-isolated (no DB transaction, no per-worker sandbox); they write to and delete one real,
+**process-wide** file, `storage/framework/down`, on the shared filesystem. The instant one worker's test
+called `down`, every other worker's in-flight HTTP request — regardless of which test or file it belonged
+to — started seeing a real `503` from `PreventRequestsDuringMaintenance`, for as long as that file existed.
+By the time the *whole* run finished, the offending test's own `up` call had already cleaned the file back
+up, which is why inspecting the filesystem afterward showed nothing wrong — the damage was only visible
+mid-run, in test results that had no apparent connection to the change.
+**Fix:** never call the real `artisan('down')`/`('up')` commands from a test in this project. To test
+maintenance-mode *rendering* (which status/view a 503 produces), throw the exact exception
+`PreventRequestsDuringMaintenance` itself throws from a throwaway route instead — same technique already
+used to test the generic 500 page:
+```php
+Route::get('/__test-maintenance', fn () => throw new \Symfony\Component\HttpKernel\Exception\HttpException(503, 'Service Unavailable'));
+$this->get('/__test-maintenance')->assertStatus(503);
+```
+This exercises the identical view-resolution path with zero shared global state. **The general lesson:**
+in this test suite specifically, any Artisan command whose effect is a *file on disk* rather than a
+database row (maintenance mode is the only one so far, but a future one could exist) is unsafe to run
+directly from a test — simulate its *effect* instead of invoking the real command.
 
 ---
 
