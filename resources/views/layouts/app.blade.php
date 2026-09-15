@@ -59,7 +59,22 @@
         </a>
 
         <div class="min-h-[100dvh]">
-            <header class="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-sm">
+            {{-- z-40, not the header's old z-30: the mobile bottom nav (board,
+                 group page) is `fixed inset-x-0 bottom-0 z-30` too — an exact
+                 tie, resolved by DOM order in the bottom nav's favour since it
+                 renders later in the page. That never mattered while the
+                 header's own painted area stayed within its h-16 bar at the
+                 top, but the avatar dropdown can now grow tall enough (see
+                 its own max-h-[calc(100dvh-5rem)] comment below) to visually
+                 reach down to where the bottom nav sits, and the bottom nav
+                 was winning that tie — covering the dropdown's own bottom
+                 rows (Abmelden included) even though they were still
+                 genuinely reachable by scroll. z-40 ties with the floating
+                 quick-capture FAB and the announcement toast instead, which
+                 never overlap the header's own screen region (top vs.
+                 bottom), so that tie is harmless; sheets/modals stay z-50,
+                 still safely above the header either way. --}}
+            <header class="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-sm">
                 <div class="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6">
                     {{-- The wordmark hides on mobile like every other text label in this
                          header (avatar name, "Mehr" label) — the logo icon alone already
@@ -213,11 +228,25 @@
                                 <span class="hidden sm:inline">{{ Str::of(auth()->user()->name)->before(' ') }}</span>
                             </button>
 
+                            {{-- max-h + overflow-y-auto (not a bare overflow-hidden): since the
+                                 mobile header redesign folded the whole "Weitere Funktionen"
+                                 section into this panel, its worst-case height (user info + up
+                                 to 7 nav links + Profil/Einstellungen/Fortschritt/Hilfe/Abmelden
+                                 + 3 admin links) comfortably exceeds most phone viewports.
+                                 overflow-hidden alone made the excess content not just
+                                 invisible but unreachable — no scrollbar, no way to tap it. The
+                                 cap leaves roughly the header's own height plus a little
+                                 breathing room, so the panel never runs past the bottom of the
+                                 screen; overflow-y-auto still clips to rounded-card's corners
+                                 exactly like overflow-hidden did (an overflow value other than
+                                 "visible" always clips to the border-radius), so the rounded
+                                 look is unchanged. overscroll-contain stops a reached scroll
+                                 boundary from chaining into the page behind it. --}}
                             <div
                                 x-show="open"
                                 x-transition.opacity.duration.150ms
                                 @click.outside="open = false"
-                                class="absolute right-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
+                                class="absolute right-0 mt-2 w-52 max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-card border border-line bg-surface py-1 shadow-map"
                                 style="display: none;"
                             >
                                 <div class="border-b border-line px-4 py-2.5">
