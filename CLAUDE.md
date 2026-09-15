@@ -716,6 +716,19 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   card (`users.deadline_preview_enabled` default `true`, `deadline_preview_days` default `2`,
   max `14`) — the toggle saves immediately via `toggleDeadlinePreviewEnabled()`, the days field autosaves
   via `saveDeadlinePreviewDays()` on `wire:change`.
+  - **A fourth item kind rides in the same strip: a Planer placement** (`kind=task, subtype=planned`) —
+    `Schedule::deadlineItems()` also reads every `TaskDayPlan` for the user's active tasks and contributes
+    one entry on its own `planned_date`, always `isPreview=false` (there's no advance-warning concept for
+    a day the user picked themselves the way there is for a deadline). Pure visibility: nothing here
+    changes how the Planer itself works, and a task can show both its own deadline chip *and* a separate
+    planned chip on two different days at once — "fällig Freitag, aber ich hab mir Mittwoch dafür
+    reserviert" is genuinely useful, not a duplicate. Styled with a filled dot (every hollow-ring
+    accent colour was already spoken for by the other three kinds) and its own tooltip/"Zum Planer" link.
+    **Deliberately scoped to `TaskDayPlan` only, not `TaskSplitSession`** (the Aufteilen-auf-mehrere-Tage
+    feature's extra day rows, see that feature's own section) — the two shipped as independent sibling
+    branches off `main` the same night, and this one intentionally has no dependency on the other so
+    either can merge first; once both are on `main`, adding a second, identically-shaped query over
+    `TaskSplitSession` here is a small, obvious follow-up (tracked in *TODO.md*).
 
 ### Kategorie-Aufgaben-Verknüpfung (built)
 

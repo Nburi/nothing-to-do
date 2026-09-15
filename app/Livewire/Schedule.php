@@ -7,6 +7,7 @@ use App\Models\AgendaEntry;
 use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Models\TaskDayPlan;
 use App\Services\ProgressStats;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -173,6 +174,24 @@ class Schedule extends Component
                     ]);
                 }
             });
+
+        // Planer placements — "you scheduled work on this task for this day", not a deadline of
+        // any kind. Pure visibility, deliberately never a preview copy (there's no advance-warning
+        // concept for a day you picked yourself the way there is for a deadline). A task can show
+        // both this and its own deadline chip on two different dates at once — "fällig Freitag,
+        // aber ich hab mir Mittwoch dafür reserviert" is genuinely useful, not a duplicate.
+        TaskDayPlan::query()
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active())
+            ->with('task')
+            ->get()
+            ->each(fn (TaskDayPlan $plan) => $items->push([
+                'kind' => 'task',
+                'subtype' => 'planned',
+                'id' => $plan->task_id,
+                'title' => $plan->task->title,
+                'date' => $plan->planned_date->copy(),
+                'isPreview' => false,
+            ]));
 
         return $items
             ->filter(fn (array $item) => $item['date']->between($weekStart, $weekEnd))
