@@ -45,6 +45,26 @@
     @endif
 
     <div class="flex flex-col gap-4">
+        {{-- Liegengeblieben: read-only in the sense that nothing here moves a task on its own — the chip is draggable/tappable exactly like a backlog chip, the user relocates it themselves. --}}
+        @if ($this->rollover->isNotEmpty())
+            <aside class="flex w-full flex-col gap-2.5 rounded-card border border-dashed border-signal/40 bg-signal-soft/40 p-3">
+                <div class="flex items-baseline justify-between gap-2">
+                    <h2 class="text-sm font-medium text-ink">Liegengeblieben</h2>
+                    <span class="tnum text-xs text-ink-faint">{{ $this->rollover->count() }}</span>
+                </div>
+                <div
+                    data-backlog
+                    x-data
+                    x-init="window.plannerDaySortable($el, $wire)"
+                    class="flex min-h-[3rem] flex-row flex-wrap items-start gap-1.5"
+                >
+                    @foreach ($this->rollover as $item)
+                        @include('livewire.partials.planner-task-chip', [...$item, 'showRemove' => false, 'fixedWidth' => 'max-w-56'])
+                    @endforeach
+                </div>
+            </aside>
+        @endif
+
         <aside class="flex w-full flex-col gap-2.5 rounded-card border border-dashed border-line bg-surface p-3">
             <div class="flex items-baseline justify-between gap-2">
                 <h2 class="text-sm font-medium text-ink">Nicht eingeplant</h2>

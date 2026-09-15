@@ -40,6 +40,7 @@
     $fixedWidth = $fixedWidth ?? null;
     $subject = $subject ?? null;
     $list = $list ?? null;
+    $plannedDateLabel = $plannedDateLabel ?? null;
     $listLabel = ['todos' => 'To-Do', 'tasks' => 'Task', 'projects' => 'Projekt'][$list] ?? null;
 @endphp
 <div
@@ -76,6 +77,9 @@
                 <span class="text-signal">· überfällig</span>
             @elseif ($deadlineLabel)
                 <span class="text-contour">· fällig {{ $deadlineLabel }}</span>
+            @endif
+            @if ($plannedDateLabel)
+                <span class="text-signal">· war für {{ $plannedDateLabel }} geplant</span>
             @endif
         </span>
     </span>

@@ -136,6 +136,48 @@ class DayPlanner
     }
 
     /**
+     * Day-plans whose date has already passed, for a task that never made it
+     * onto the board's own Today list in the meantime (is_today still
+     * false). Deliberately *not* every past-dated TaskDayPlan row: once a
+     * task is flagged Today — normally via PromoteDayPlansToToday, the
+     * passive cron equivalent of promoteIfToday() above — it's already
+     * visible and actionable on the main board, and showing it here too
+     * would just be noise. What this *does* still catch: a task whose day
+     * came and went while it was ineligible for that promotion in the first
+     * place (a Project-owned task, onBoard()-excluded — see
+     * promoteIfToday()'s own docblock) or one manually un-todayed later
+     * without its Planer placement ever being touched. Read-only by design
+     * (see the feature's own decision): nothing here rewrites planned_date
+     * or moves anything automatically — a chip just sits here, draggable
+     * like any backlog chip, until the user places it themselves.
+     *
+     * @return Collection<int, array>
+     */
+    public static function rollover(User $user): Collection
+    {
+        if (! $user->planner_enabled) {
+            return collect();
+        }
+
+        $today = $user->localToday();
+
+        return TaskDayPlan::query()
+            ->whereDate('planned_date', '<', $today->toDateString())
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active()->where('is_today', false))
+            ->with('task')
+            ->orderBy('planned_date')
+            ->get()
+            ->map(fn (TaskDayPlan $p) => array_merge(
+                self::itemFromTask($p->task, $today),
+                [
+                    'plannedDate' => $p->planned_date->toDateString(),
+                    'plannedDateLabel' => self::pastDateLabel($p->planned_date, $today),
+                ]
+            ))
+            ->values();
+    }
+
+    /**
      * Dated backlog items whose effective deadline has already passed —
      * the only thing left that's genuinely too late, not merely "not yet
      * decided". (A manual-first board means most dated items sit unplanned
@@ -447,6 +489,28 @@ class DayPlanner
         return $urgency * self::URGENCY_WEIGHT
             + $fit * self::FIT_WEIGHT
             + ($item['isImportant'] ? self::IMPORTANCE_BONUS : 0.0);
+    }
+
+    /**
+     * Short, calm "when was this actually for" label — gestern/weekday/d.m.,
+     * mirroring the app's other hand-rolled date labels (never
+     * diffForHumans(), see Task::effectiveDateLabel()). Reparses both sides
+     * from their plain Y-m-d strings rather than diffing the Carbon
+     * instances directly — $today (a startOfDay() instant) and $date (an
+     * already-midnight 'date:Y-m-d' cast) have no business disagreeing, but
+     * re-parsing from the date-only string is what actually guarantees an
+     * exact whole-day count regardless of how either instant got built (see
+     * CLAUDE.md's Known Issues entry on exact-date comparisons).
+     */
+    private static function pastDateLabel(Carbon $date, Carbon $today): string
+    {
+        $daysAgo = abs((int) Carbon::parse($today->toDateString())->diffInDays(Carbon::parse($date->toDateString())));
+
+        return match (true) {
+            $daysAgo === 1 => 'gestern',
+            $daysAgo >= 2 && $daysAgo <= 6 => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][$date->dayOfWeek],
+            default => $date->isoFormat('D.M.'),
+        };
     }
 
     private static function durationForTask(Task $task): int
