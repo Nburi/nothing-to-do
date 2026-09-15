@@ -6,6 +6,7 @@ use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskDayPlan;
 use App\Models\User;
 
 /**
@@ -22,9 +23,13 @@ use App\Models\User;
  *                            homework nudge/free text, if the category has one
  *                            (see EventCategory::$task_source). Applies on
  *                            every cycle of that session, not just the first.
- *   4. Cycle 1            → a generic nudge to clear the ToDos list.
- *   5. Any cycle          → the top active "today" task (board order).
- *   6. Fallback           → a project's next task or another active
+ *   4. Planer-Tagesplan   → (planner_enabled only) the first still-open task
+ *                            in *today's* Planer day-plan, in the order the
+ *                            user actually arranged it there — a deliberate,
+ *                            dated decision outranks a generic nudge below.
+ *   5. Cycle 1            → a generic nudge to clear the ToDos list.
+ *   6. Any cycle          → the top active "today" task (board order).
+ *   7. Fallback           → a project's next task or another active
  *                            todos/tasks-list task, picked deterministically
  *                            (stable across the header ring's 5s poll) from
  *                            a seed tied to the session + cycle.
@@ -39,6 +44,7 @@ class TaskSuggestor
      * Returns null, or one of:
      *   ['kind' => 'todos'|'agenda_generic'|'category_text', 'title' => string, 'subtitle' => ?string]
      *   ['kind' => 'task', 'title' => string, 'task_id' => int]
+     *   ['kind' => 'planned', 'title' => string, 'task_id' => int, 'subtitle' => string]
      *   ['kind' => 'project', 'title' => string, 'subtitle' => string, 'project_id' => int]
      *   ['kind' => 'category_group', 'title' => string, 'subtitle' => string, 'group_id' => int]
      *   ['kind' => 'category_agenda', 'title' => string, 'subtitle' => string, 'agenda_entry_id' => int]
@@ -71,6 +77,12 @@ class TaskSuggestor
             }
 
             // Linked source is empty, deleted, or (for agenda_entry) already done — fall through.
+        }
+
+        $planned = self::plannerSuggestion($user);
+
+        if ($planned !== null) {
+            return $planned;
         }
 
         if ($cycle === 1) {
@@ -142,6 +154,43 @@ class TaskSuggestor
             'title' => $next->title,
             'subtitle' => $project->name,
             'task_id' => $next->id,
+        ];
+    }
+
+    /**
+     * The first still-open task in *today's* Planer day-plan, in the exact
+     * order the user arranged it there (TaskDayPlan.sort_order) — not the
+     * board's own importance/urgency order the way tier 6 below reads,
+     * which won't generally match a day someone deliberately sequenced by
+     * hand. Deliberately reads TaskDayPlan directly rather than relying on
+     * is_today: a task planned for today normally gets flagged that way by
+     * PromoteDayPlansToToday, but only once that cron tick actually runs —
+     * this tier stays correct even a few minutes before it does, and (see
+     * DayPlanner's own guard) for a Project-owned task, which is never
+     * promoted to is_today at all yet can still be placed on today's plan.
+     * Off entirely when the feature itself is off (planner_enabled).
+     */
+    private static function plannerSuggestion(User $user): ?array
+    {
+        if (! $user->planner_enabled) {
+            return null;
+        }
+
+        $next = TaskDayPlan::forDate($user->localToday()->toDateString())
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active())
+            ->with('task')
+            ->ordered()
+            ->first();
+
+        if ($next === null) {
+            return null;
+        }
+
+        return [
+            'kind' => 'planned',
+            'title' => $next->task->title,
+            'task_id' => $next->task_id,
+            'subtitle' => 'Tagesplan',
         ];
     }
 

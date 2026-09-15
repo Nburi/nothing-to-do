@@ -1112,12 +1112,24 @@ plannable target.
   `skipBreak()` that existed only to carry it) came out cleanly; `PlannerPomodoroIntegrationTest`, which
   existed purely to confirm that hook fired, was deleted rather than adapted, since the behavior it tested
   no longer exists.
+- **Fokus-Timer-Rückkopplung (built)** — `TaskSuggestor::suggest()` gained a new tier, right after the
+  category link and before the cycle-1 ToDos nudge: the first still-open task in *today's* Planer
+  day-plan, in the exact order the user arranged it there (`TaskDayPlan.sort_order`), not the board's
+  own importance/urgency order the way the existing "top today task" tier reads. `kind='planned'`
+  (`subtitle: 'Tagesplan'`) renders through its own small branch in
+  `schedule-strip-suggestion.blade.php`, so it reads as "aus deinem Tagesplan" rather than blending into
+  the generic today-task suggestion. Off entirely when `planner_enabled` is false (every existing
+  `TaskSuggestor` test — none of which set that flag — is completely unaffected, confirmed by the full
+  suite staying green). **Deliberately reads `TaskDayPlan` directly instead of relying on `is_today`**:
+  a task planned for today normally gets flagged that way by the `app:promote-day-plans-to-today` cron,
+  but only once that tick actually runs, and a Project-owned task is never promoted to `is_today` at all
+  (see `promoteIfToday()`'s own `onBoard()` guard) yet can still sit on today's plan — reading the plan
+  table directly keeps this tier correct in both cases rather than depending on a flag that might lag or
+  never flip for exactly the tasks this tier most wants to catch.
 - **Later, deliberately not built**: a user-set flat daily capacity as a fallback for block-less days
   (capacity stays tied to real Pomodoro blocks only, an explicit choice — see above), splitting a task
   across multiple days, time-of-day precision within a day (that's what Zeitplan/the per-block link are
-  for), actually dropping `schedule_event_task_links.source` (see *TODO.md*), feeding today's day-plan
-  into the Pomodoro focus-timer's own task suggestion (a genuinely nice follow-up, but a separate
-  `TaskSuggestor` integration, not part of this rework), and any API/Shortcuts surface for day-planning.
+  for), and actually dropping `schedule_event_task_links.source` (see *TODO.md*).
 
 ### Wochenplan (built)
 

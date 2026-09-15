@@ -5,6 +5,38 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
+### Planer-Umbau (2026-09-15 Nachtsession) — five sibling branches, none merged yet
+
+Built overnight per direct request (brainstorming session decided the direction, mockups approved
+before each build): Rollover, Rasteransicht + Fälligkeits-Geister + Aufteilen-auf-mehrere-Tage,
+Kategorie-Filter, Zeitplan-Sichtbarkeit, Fokus-Timer-Rückkopplung. See each feature's own section in
+CLAUDE.md's "Planer" write-up for the full design. All branched independently off `main` the same
+night (siblings, not stacked) — expect small, predictable merge conflicts where more than one
+branch touches the same file (`CLAUDE.md`/`TODO.md` themselves included). Merge order only matters
+for one follow-up below.
+
+Branches: `feature/planner-rollover`, `feature/planner-grid-view` (also carries the Kategorie-Filter
+as a second commit on the same branch), `feature/planner-zeitplan-visibility`,
+`feature/planner-focus-timer-suggestion`.
+
+Still outstanding:
+- **Once both `feature/planner-grid-view` (Aufteilen-auf-mehrere-Tage) and
+  `feature/planner-zeitplan-visibility` / `feature/planner-focus-timer-suggestion` are on `main`**:
+  extend the Zeitplan strip's Planer-placement query (`Schedule::deadlineItems()`) and
+  `TaskSuggestor::plannerSuggestion()` to also read `TaskSplitSession`, not just `TaskDayPlan` — same
+  shape, one more query/merge each. Deliberately left out of both branches since they depend on a
+  model that didn't exist on `main` yet when they were built.
+- **No manual browser verification on any of these branches** — same "avoid the known dev-server-hang
+  trap" discipline as the List-Konzepte sessions; verified via the full automated suite (green after
+  each commit) plus `npm run build`/`artisan view:cache` to catch Blade/Tailwind-purge issues. A real
+  click-through (drag a chip across the new grid, try Aufteilen end-to-end, confirm the Zeitplan strip
+  and the focus-timer suggestion card both render the new pieces correctly in both themes) is still
+  owed before merging to `main`.
+- **No `FeatureAnnouncement` draft was created** for any of these — same reasoning as every other
+  admin-authored-content gap already documented in this file: the editor needs its own admin UI, and
+  this was a fully autonomous overnight session with no safe browser access to use it. Worth one once
+  merged — this is a real, regular-user-facing change to pages some users already have open daily.
+
 ### MCP-Server — built; a FeatureAnnouncement draft and a live client check remain
 
 See CLAUDE.md's "MCP-Server — KI-Zugriff" section for the full design. Built on `main` directly (no
