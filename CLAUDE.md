@@ -1778,6 +1778,18 @@ independent siblings — see their own subsections below, right after this one.
   QuickCapture chip-collapse (see above), the draft `FeatureAnnouncement` (see above), and
   everything else the plan's own §7 already lists (Eat-the-Frog, time-blocking, a board-morph/FLIP
   animation, API awareness of `list_concept`, coupling to `AppModules`).
+- **Fixed later (UX research pass, 2026-09-02): Projects were unreachable from Simple/Eisenhower/
+  Kanban.** `TaskBoard::projects()` (the same computed property 3 Things' own Projekte column reads)
+  was never surfaced anywhere in the other three boards — a Project captured via QuickCapture's
+  "Projekt" target while one of them was active was fully persisted (data was never at risk) but had
+  no column, link, or card anywhere in the UI, with zero feedback that the capture had even worked.
+  Confirmed live: an attentive tester still concluded the capture had silently failed and created a
+  duplicate project trying to fix it. Fixed with `partials/projects-quick-access.blade.php` — a
+  compact, horizontally-scrolling strip reusing `project-card.blade.php` (not 3 Things' full
+  drag-capable column, which would be a much heavier lift for three more layouts), wired into all
+  three boards' desktop and mobile sections right after their `homework-preview-strip` include.
+  Zero footprint when the account has no projects yet, same convention as that strip. See
+  `KanbanBoardTest`/`SimpleBoardTest`/`EisenhowerBoardTest` for coverage.
 
 ### To-Do-Listen-Konzepte — "Eisenhower-Matrix" (built)
 
@@ -3181,6 +3193,27 @@ the shown endpoint URL starts with `https://nothing-to-do.ch`.
 ---
 
 ## 10. Known Issues & Solutions
+
+### A required-field validation error can render in English on an otherwise fully German page
+**Symptom:** an empty required Livewire property surfaces Laravel's raw English default message
+(e.g. "The event category id field is required.") instead of German, even though the Blade view has
+a correctly-placed, correctly-styled `@error()` block right where it should be.
+**Cause:** `APP_LOCALE` has always been `de` in `.env`, but this project had **no `lang/` directory at
+all** until this was found in a UX research pass (confirmed live on Wochenplan's "+ Block" category
+picker and Settings' API token name field) — every one of Laravel's own built-in validation/auth/
+password-reset messages was silently falling through to the framework's internal English defaults.
+This is not a stack-trace/exception leak (that's a genuinely different, worse class of bug this app
+otherwise avoids) — it's specifically Laravel's own message vocabulary never having been translated.
+**Fix:** `lang/de/validation.php` (full parity with Laravel's own default keys — diff against
+`vendor/laravel/framework/.../Translation/lang/en/validation.php` if a future Laravel upgrade adds a
+new rule), `lang/de/auth.php`, `lang/de/passwords.php` (both confirmed reachable — Breeze's
+`LoginRequest` and password-reset flow reference them directly). `validation.php`'s own `attributes`
+array translates specific field names too (e.g. `eventCategoryId` → "Kategorie") so the message reads
+naturally instead of falling back to a de-camel-cased raw property name — only the fields already hit
+in practice are covered so far, **not an exhaustive sweep of every validated Livewire property in the
+app**; add more there as they're found. Regression tests assert the actual rendered message text at
+each confirmed site (`WeekPlanTest`, `ScheduleTest`, `ApiTokensTest`,
+`Auth/AuthenticationTest`, `Auth/PasswordResetTest`) so an accidental revert to English fails loudly.
 
 ### `openssl_pkey_new()` fails generating VAPID keys on the standalone Windows PHP install
 **Symptom:** `Minishlink\WebPush\VAPID::createVapidKeys()` (or any raw `openssl_pkey_new(['curve_name' =>

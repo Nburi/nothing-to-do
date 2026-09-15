@@ -123,6 +123,48 @@ class ScheduleTest extends TestCase
             ->assertHasErrors(['eventCategoryId']);
     }
 
+    public function test_the_missing_category_error_is_shown_in_german_not_english(): void
+    {
+        // Same regression as WeekPlanTest's own version — the "+ Termin"
+        // full form on the Zeitplan page shares the exact same category
+        // picker markup and validation rule. See lang/de/validation.php.
+        $user = $this->actingUser();
+        EventCategory::factory()->for($user)->create(['name' => 'Training']);
+
+        $component = Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventDate', '2026-06-26')
+            ->set('eventStart', '14:00')
+            ->set('eventEnd', '15:00')
+            ->call('saveEventForm');
+
+        $message = $component->errors()->first('eventCategoryId');
+
+        $this->assertStringNotContainsString('field is required', $message);
+        $this->assertSame('Das Feld Kategorie muss ausgefüllt werden.', $message);
+    }
+
+    public function test_the_chosen_category_chip_gets_a_visible_ring_not_just_its_own_colour(): void
+    {
+        // Same fix as WeekPlanTest's own version — see that test's docblock.
+        $user = $this->actingUser();
+        $chosen = EventCategory::factory()->for($user)->create(['name' => 'Training']);
+        $other = EventCategory::factory()->for($user)->create(['name' => 'Schule']);
+
+        $html = Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $chosen->id)
+            ->html();
+
+        $chosenAnchor = strpos($html, "\$set('eventCategoryId', {$chosen->id})");
+        $otherAnchor = strpos($html, "\$set('eventCategoryId', {$other->id})");
+        $this->assertNotFalse($chosenAnchor);
+        $this->assertNotFalse($otherAnchor);
+
+        $this->assertStringContainsString('ring-2 ring-offset-1', substr($html, $chosenAnchor, 400));
+        $this->assertStringNotContainsString('ring-2 ring-offset-1', substr($html, $otherAnchor, 400));
+    }
+
     public function test_a_user_cannot_use_another_users_category(): void
     {
         $this->actingUser();

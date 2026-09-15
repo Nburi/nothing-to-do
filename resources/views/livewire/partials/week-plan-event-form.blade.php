@@ -71,7 +71,12 @@
                                             'border-line text-ink-soft hover:border-ink-faint/60' => $eventCategoryId !== $cat->id,
                                         ])
                                     >
-                                        <span class="h-2.5 w-2.5 rounded-full {{ $swatches[$cat->color] ?? 'bg-contour' }}"></span>
+                                        <span
+                                            @class([
+                                                'h-2.5 w-2.5 rounded-full transition', $swatches[$cat->color] ?? 'bg-contour',
+                                                'ring-2 ring-offset-1 ring-offset-surface ring-ink/60' => $eventCategoryId === $cat->id,
+                                            ])
+                                        ></span>
                                         {{ $cat->name }}
                                     </button>
                                 @endforeach

@@ -207,4 +207,19 @@ class OnboardingTest extends TestCase
         $this->assertSame(2, substr_count($html, e(AppModules::CATALOG['schedule']['description'])));
         $this->assertSame(2, substr_count($html, e(AppModules::CATALOG['emergency']['description'])));
     }
+
+    public function test_the_kanban_concept_slide_names_the_real_column_names(): void
+    {
+        // Regression: this slide used to say "Offen" for the first column,
+        // but the real Kanban board (partials/board-kanban.blade.php) has
+        // always called it "Backlog" — a brand-new user was taught the
+        // wrong name for the one column every new card actually lands in.
+        $user = User::factory()->create(['list_concept' => 'kanban']);
+
+        $html = $this->actingAs($user)->get(route('onboarding'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Jede Karte hat einen Status', $html);
+        $this->assertStringContainsString('>Backlog<', $html);
+        $this->assertStringNotContainsString('>Offen<', $html);
+    }
 }

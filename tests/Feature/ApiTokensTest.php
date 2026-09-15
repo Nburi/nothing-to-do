@@ -82,13 +82,33 @@ class ApiTokensTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Livewire::actingAs($user)
+        $component = Livewire::actingAs($user)
             ->test(Settings::class)
             ->set('newTokenName', '   ')
-            ->call('createApiToken')
-            ->assertHasErrors(['newTokenName' => 'required']);
+            ->call('createApiToken');
+
+        $component->assertHasErrors(['newTokenName' => 'required']);
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_the_blank_token_name_error_is_shown_in_german_not_english(): void
+    {
+        // Regression: this project had no lang/ directory at all, so this
+        // exact validation failure rendered Laravel's raw English default
+        // — "The new token name field is required." — inside an otherwise
+        // fully German settings page. See lang/de/validation.php.
+        $user = User::factory()->create();
+
+        $component = Livewire::actingAs($user)
+            ->test(Settings::class)
+            ->set('newTokenName', '   ')
+            ->call('createApiToken');
+
+        $message = $component->errors()->first('newTokenName');
+
+        $this->assertStringNotContainsString('field is required', $message);
+        $this->assertSame('Das Feld Name muss ausgefüllt werden.', $message);
     }
 
     public function test_a_user_can_revoke_their_own_token(): void

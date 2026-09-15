@@ -228,7 +228,7 @@
                     @if ($this->listConcept === 'three_things')
                         <p>Bleibt eine Aufgabe klein und in einem Rutsch erledigt → <span class="font-medium text-ink">To-Do</span>. Braucht sie mehr Zeit oder Konzentration, bleibt aber ein einzelner Schritt → <span class="font-medium text-ink">Task</span>. Hat sie mehrere Teilschritte und ist nicht dringend → <span class="font-medium text-ink">Project</span> mit eigener Seite.</p>
                     @elseif ($this->listConcept === 'kanban')
-                        <p>Jede Karte hat einen Status — <span class="font-medium text-ink">Offen</span>, <span class="font-medium text-ink">In Arbeit</span> oder <span class="font-medium text-ink">Erledigt</span>. Die Grösse einer Aufgabe (To-Do/Task/Project) bleibt dabei bestehen — nur der Status ändert sich, wenn du eine Karte in die nächste Spalte ziehst.</p>
+                        <p>Jede Karte hat einen Status — <span class="font-medium text-ink">Backlog</span>, <span class="font-medium text-ink">In Arbeit</span> oder <span class="font-medium text-ink">Erledigt</span>. Die Grösse einer Aufgabe (To-Do/Task/Project) bleibt dabei bestehen — nur der Status ändert sich, wenn du eine Karte in die nächste Spalte ziehst.</p>
                     @elseif ($this->listConcept === 'eisenhower')
                         <p>„Wichtig" setzt du per Tipp auf den Titel, eine <span class="font-medium text-ink">Frist</span> per Tipp aufs Datum. Beides zusammen landet im Feld „Sofort", keins von beidem im Feld „Später".</p>
                     @elseif ($this->listConcept === 'simple')
