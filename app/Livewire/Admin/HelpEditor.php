@@ -23,6 +23,9 @@ class HelpEditor extends Component
 
     public string $formTitle = '';
 
+    /** Read-only in the UI (see updatedFormTitle()) — just so the admin can see/copy the real /hilfe/{slug} URL. */
+    public ?string $formSlug = null;
+
     /**
      * Not int-typed on purpose: the <select> syncs it as a string (or '' for
      * "Ohne Kategorie"), and Livewire's model sync doesn't coerce that to
@@ -179,6 +182,7 @@ class HelpEditor extends Component
     {
         $article = auth()->user()->createdHelpArticles()->create([
             'title' => 'Neuer Artikel',
+            'slug' => HelpArticle::generateSlug('Neuer Artikel'),
             'help_category_id' => $categoryId,
             'content' => null,
             'is_published' => false,
@@ -200,6 +204,7 @@ class HelpEditor extends Component
         $this->editingId = $article->id;
         $this->formTitle = $article->title;
         $this->formCategoryId = $article->help_category_id;
+        $this->formSlug = $article->slug;
         $this->formContent = (string) ($article->content ?? '');
         $this->formIsPublished = $article->is_published;
         $this->formPublishedAt = $article->published_at?->isoFormat('D.M.YYYY, HH:mm');
@@ -212,10 +217,26 @@ class HelpEditor extends Component
         unset($this->tree, $this->uncategorizedArticles);
     }
 
-    /** Autosaves on every change — no explicit "Speichern" button, this is a continuous writing surface. */
+    /**
+     * Autosaves on every change — no explicit "Speichern" button, this is a
+     * continuous writing surface. The slug tracks the title only while the
+     * article is still a draft: once published, a stable public URL
+     * (/hilfe/{slug}) matters more than the slug matching a later title
+     * tweak — the same "stamped once, never moves again" precedent
+     * published_at itself already follows, just applied to the URL instead
+     * of the timestamp.
+     */
     public function updatedFormTitle(): void
     {
-        $this->persist(['title' => trim($this->formTitle)]);
+        $title = trim($this->formTitle);
+        $attributes = ['title' => $title];
+
+        if (! $this->formIsPublished) {
+            $attributes['slug'] = HelpArticle::generateSlug($title !== '' ? $title : 'Neuer Artikel', $this->editingId);
+            $this->formSlug = $attributes['slug'];
+        }
+
+        $this->persist($attributes);
     }
 
     public function updatedFormContent(): void
