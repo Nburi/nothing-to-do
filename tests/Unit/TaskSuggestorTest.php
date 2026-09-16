@@ -6,6 +6,7 @@ use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskDayPlan;
 use App\Models\TaskGroup;
 use App\Models\User;
 use App\Services\TaskSuggestor;
@@ -362,5 +363,130 @@ class TaskSuggestorTest extends TestCase
 
         $this->assertSame('emergency', $suggestion['kind']);
         $this->assertSame($emergencyTask->id, $suggestion['task_id']);
+    }
+
+    // ── Planer day-plan (feeds today's arranged sequence into the suggestion) ──
+
+    private function planForToday(User $user, Task $task, int $order = 0): void
+    {
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->toDateString(), 'sort_order' => $order]);
+    }
+
+    public function test_planner_day_plan_suggests_the_first_task_in_arranged_order(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        $second = Task::factory()->for($user)->tasks()->create(['title' => 'Zweite Aufgabe']);
+        $first = Task::factory()->for($user)->tasks()->create(['title' => 'Erste Aufgabe']);
+        $this->planForToday($user, $second, 1);
+        $this->planForToday($user, $first, 0);
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 2, seedKey: 1);
+
+        $this->assertSame('planned', $suggestion['kind']);
+        $this->assertSame($first->id, $suggestion['task_id']);
+        $this->assertSame('Tagesplan', $suggestion['subtitle']);
+    }
+
+    public function test_planner_suggestion_is_skipped_entirely_when_the_feature_is_disabled(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => false]);
+        $planned = Task::factory()->for($user)->tasks()->create();
+        $today = Task::factory()->for($user)->today()->create();
+        TaskDayPlan::create(['task_id' => $planned->id, 'planned_date' => now()->toDateString(), 'sort_order' => 0]);
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 2, seedKey: 1);
+
+        // Falls straight through to the ordinary "today" tier — the planned task never even
+        // considered, since planner_enabled gates the tier off completely.
+        $this->assertSame($today->id, $suggestion['task_id']);
+    }
+
+    public function test_planner_suggestion_wins_over_the_cycle_one_todos_nudge(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        Task::factory()->for($user)->todos()->create(); // would win cycle 1 without the plan
+        $planned = Task::factory()->for($user)->tasks()->create();
+        $this->planForToday($user, $planned);
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1);
+
+        $this->assertSame('planned', $suggestion['kind']);
+        $this->assertSame($planned->id, $suggestion['task_id']);
+    }
+
+    public function test_planner_suggestion_wins_over_the_any_cycle_today_task(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        Task::factory()->for($user)->today()->create(); // would otherwise win
+        $planned = Task::factory()->for($user)->tasks()->create();
+        $this->planForToday($user, $planned);
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 3, seedKey: 1);
+
+        $this->assertSame('planned', $suggestion['kind']);
+        $this->assertSame($planned->id, $suggestion['task_id']);
+    }
+
+    public function test_a_category_link_still_outranks_a_planner_suggestion(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        $planned = Task::factory()->for($user)->tasks()->create();
+        $this->planForToday($user, $planned);
+        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'text', 'linked_text' => 'Kategorie gewinnt']);
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category);
+
+        $this->assertSame('category_text', $suggestion['kind']);
+    }
+
+    public function test_an_event_linked_task_still_outranks_a_planner_suggestion(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        $planned = Task::factory()->for($user)->tasks()->create();
+        $this->planForToday($user, $planned);
+        $eventTask = Task::factory()->for($user)->todos()->create();
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, linkedTask: $eventTask);
+
+        $this->assertSame($eventTask->id, $suggestion['task_id']);
+    }
+
+    public function test_emergency_mode_still_outranks_a_planner_suggestion(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        $project = Project::factory()->for($user)->create();
+        $emergencyTask = Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'sort_order' => 0]);
+        $user->update(['emergency_project_id' => $project->id]);
+        $planned = Task::factory()->for($user)->tasks()->create();
+        $this->planForToday($user, $planned);
+
+        $suggestion = TaskSuggestor::suggest($user->fresh(), cycle: 1, seedKey: 1);
+
+        $this->assertSame('emergency', $suggestion['kind']);
+        $this->assertSame($emergencyTask->id, $suggestion['task_id']);
+    }
+
+    public function test_planner_suggestion_ignores_a_task_planned_for_another_day(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        $tomorrowTask = Task::factory()->for($user)->tasks()->create();
+        TaskDayPlan::create(['task_id' => $tomorrowTask->id, 'planned_date' => now()->addDay()->toDateString(), 'sort_order' => 0]);
+        $today = Task::factory()->for($user)->today()->create();
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 2, seedKey: 1);
+
+        $this->assertSame($today->id, $suggestion['task_id']);
+    }
+
+    public function test_planner_suggestion_skips_a_meanwhile_completed_task(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => true]);
+        $done = Task::factory()->for($user)->tasks()->completed()->create();
+        $this->planForToday($user, $done);
+        $today = Task::factory()->for($user)->today()->create();
+
+        $suggestion = TaskSuggestor::suggest($user, cycle: 2, seedKey: 1);
+
+        $this->assertSame($today->id, $suggestion['task_id']);
     }
 }

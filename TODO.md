@@ -5,37 +5,39 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
-### Planer-Umbau (2026-09-15 Nachtsession) — five sibling branches, none merged yet
+### Planer-Umbau (2026-09-15 Nachtsession) — 3 of 4 branches merged; Rasteransicht rejected, needs rework
 
 Built overnight per direct request (brainstorming session decided the direction, mockups approved
 before each build): Rollover, Rasteransicht + Fälligkeits-Geister + Aufteilen-auf-mehrere-Tage,
 Kategorie-Filter, Zeitplan-Sichtbarkeit, Fokus-Timer-Rückkopplung. See each feature's own section in
-CLAUDE.md's "Planer" write-up for the full design. All branched independently off `main` the same
-night (siblings, not stacked) — expect small, predictable merge conflicts where more than one
-branch touches the same file (`planner.blade.php`, `planner-task-chip.blade.php`,
-`DayPlanner.php`), same coordination shape as the List-Konzepte branches. Merge order matters for
-exactly one follow-up below, nothing else.
+CLAUDE.md's "Planer" write-up for the full design (the Rasteransicht section describes what was
+*built*, not what's live — see below).
 
-Branches: `feature/planner-rollover`, `feature/planner-grid-view` (also carries the Kategorie-Filter
-as a second commit on the same branch — both are pure additions to the same rewritten board view),
-`feature/planner-zeitplan-visibility`, and (see its own TODO entry once built) the focus-timer one.
+**Reviewed 2026-09-16: Rollover, Zeitplan-Sichtbarkeit, and Fokus-Timer-Rückkopplung are merged into
+`main`.** `feature/planner-grid-view` (the board-redesign + Fälligkeits-Geister + Aufteilen-auf-
+mehrere-Tage + Kategorie-Filter) was explicitly **not** approved ("grid view is not ok") and is
+**not merged** — the branch still exists locally with all of that work, but the board on `main`
+today is still the original single-row 14-day strip, not the responsive grid described in CLAUDE.md.
+Needs a fresh look with Niels before any of it ships: what specifically didn't work (layout, the
+split-across-days flow, the ghost cards, the category filter, or some combination) is still unknown
+— ask before reworking rather than guessing at a fix.
 
-Still outstanding:
-- **Once both `feature/planner-grid-view` (Aufteilen) and `feature/planner-zeitplan-visibility` are
-  on `main`**: extend `Schedule::deadlineItems()`'s Planer-placement query to also read
-  `TaskSplitSession`, not just `TaskDayPlan` — same shape, one more `->get()->each()` block, so a
-  split task's *every* day shows in the Zeitplan strip, not just its anchor day. Deliberately left
-  out of the zeitplan-visibility branch itself since it depends on a model (`TaskSplitSession`) that
-  didn't exist on `main` yet when that branch was built.
-- **No manual browser verification on any of these branches** — same "avoid the known dev-server-hang
-  trap" discipline as the List-Konzepte sessions; verified via the full automated suite (green after
-  each commit) plus `npm run build`/`artisan view:cache` to catch Blade/Tailwind-purge issues. A real
-  click-through (drag a chip across the new grid, try Aufteilen end-to-end, confirm the Zeitplan strip
-  actually renders the new chip style in both themes) is still owed before merging to `main`.
-- **No `FeatureAnnouncement` draft was created** for any of these — same reasoning as every other
-  admin-authored-content gap already documented in this file: the editor needs its own admin UI, and
-  this was a fully autonomous overnight session with no safe browser access to use it. Worth one once
-  merged — this is a real, regular-user-facing change to a page some users already have open daily.
+- **The `TaskSplitSession` cross-feature follow-up is on hold.** Both `Schedule::deadlineItems()`
+  (Zeitplan-Sichtbarkeit) and `TaskSuggestor::plannerSuggestion()` (Fokus-Timer-Rückkopplung) were
+  deliberately scoped to `TaskDayPlan` only, since `TaskSplitSession` only exists on the rejected
+  `feature/planner-grid-view` branch. Nothing to do here unless/until some future version of the
+  board redesign (with splitting) actually merges — then extend both queries the same way, one more
+  `->get()->each()`/query each.
+- **No manual browser verification** on any of the three merged branches — same "avoid the known
+  dev-server-hang trap" discipline as the List-Konzepte sessions; verified via the full automated
+  suite (green after every commit and after each merge) plus `npm run build`/`artisan view:cache` to
+  catch Blade/Tailwind-purge issues. Niels reviewed and approved these three directly rather than a
+  browser walkthrough being done first.
+- **No `FeatureAnnouncement` draft was created** for the three merged features — same reasoning as
+  every other admin-authored-content gap already documented in this file: the editor needs its own
+  admin UI, and this was a fully autonomous overnight session with no safe browser access to use it.
+  Worth one once there's a natural pause — Rollover and the Zeitplan-Sichtbarkeit chip are both real,
+  regular-user-facing changes to pages some users already have open daily.
 
 ### MCP-Server — built; a FeatureAnnouncement draft and a live client check remain
 

@@ -14,6 +14,8 @@
         <a href="{{ route('agenda') }}" wire:navigate class="text-ink-soft hover:text-ink hover:underline">{{ $suggestion['subtitle'] }} · {{ $suggestion['title'] }}</a>
     @elseif ($suggestion['kind'] === 'agenda_generic' || $suggestion['kind'] === 'category_text')
         <span class="text-ink-soft">{{ $suggestion['title'] }}{{ isset($suggestion['subtitle']) ? ' · '.$suggestion['subtitle'] : '' }}</span>
+    @elseif ($suggestion['kind'] === 'planned')
+        <button type="button" wire:click="startEdit({{ $suggestion['task_id'] }})" class="text-ink-soft hover:text-ink hover:underline">{{ $suggestion['title'] }} · {{ $suggestion['subtitle'] }}</button>
     @else
         <button type="button" wire:click="startEdit({{ $suggestion['task_id'] }})" class="text-ink-soft hover:text-ink hover:underline">{{ $suggestion['title'] }}</button>
     @endif
