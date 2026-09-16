@@ -128,4 +128,30 @@ class PlannerPageTest extends TestCase
 
         $this->assertTrue(TaskDayPlan::where('task_id', $task->id)->exists());
     }
+
+    public function test_rollover_computed_reflects_a_stale_placement(): void
+    {
+        $user = $this->actingUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->subDays(2)->toDateString(), 'sort_order' => 0]);
+
+        $rollover = Livewire::test(Planner::class)->instance()->rollover;
+
+        $this->assertCount(1, $rollover);
+        $this->assertSame($task->id, $rollover->first()['id']);
+    }
+
+    public function test_moving_a_rollover_task_via_the_component_clears_it_from_rollover(): void
+    {
+        $user = $this->actingUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->subDays(2)->toDateString(), 'sort_order' => 0]);
+
+        $component = Livewire::test(Planner::class);
+        $this->assertCount(1, $component->instance()->rollover);
+
+        $component->call('moveToDay', "task:{$task->id}", now()->toDateString());
+
+        $this->assertCount(0, $component->instance()->rollover);
+    }
 }

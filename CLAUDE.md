@@ -1112,6 +1112,25 @@ plannable target.
   `skipBreak()` that existed only to carry it) came out cleanly; `PlannerPomodoroIntegrationTest`, which
   existed purely to confirm that hook fired, was deleted rather than adapted, since the behavior it tested
   no longer exists.
+- **Rollover ("Liegengeblieben")** — `DayPlanner::rollover(User $user): Collection` surfaces every
+  `TaskDayPlan` whose `planned_date` has already passed for a task that never actually reached the
+  board's own Today list (`is_today` still `false`). Deliberately **not** every past-dated row — a task
+  that *did* get promoted (normally via the `app:promote-day-plans-to-today` cron, the passive counterpart
+  of `promoteIfToday()` above) is already visible and actionable on the main board, and re-surfacing it
+  here too would just be noise. What it still catches: a Project-owned task (`promoteIfToday()`'s own
+  `onBoard()` guard excludes it from ever promoting) whose planned day quietly passed, or any task
+  manually un-todayed later without its Planer placement ever being touched. **Read-only by design** — the
+  feature's own product decision, made explicitly over "auto-move to today" or "auto-move + a button": a
+  rollover chip never rewrites its own `planned_date`, it just sits in a signal-tinted "Liegengeblieben"
+  strip (`planner.blade.php`, between the conflict banner and "Nicht eingeplant") until the user relocates
+  it themselves — same `data-backlog` + `window.plannerDaySortable()` wiring the real backlog rail already
+  uses (reused verbatim, not a new Sortable zone — a stray drop *into* the strip would just call the
+  existing `unassignTask()` branch, itself harmless), so a chip there drags onto any day column on desktop
+  and opens the existing mobile day-picker sheet on tap exactly like a normal backlog chip, with zero new
+  gesture code. `partials/planner-task-chip.blade.php` gained one new optional field, `$plannedDateLabel`
+  (`??`-guarded, so every other call site is unaffected) — a short "gestern"/weekday/`d.m.` tag
+  (`DayPlanner::pastDateLabel()`, hand-rolled like every other date label in this app, never
+  `diffForHumans()`) shown in `signal` alongside the chip's own deadline line.
 - **Later, deliberately not built**: a user-set flat daily capacity as a fallback for block-less days
   (capacity stays tied to real Pomodoro blocks only, an explicit choice — see above), splitting a task
   across multiple days, time-of-day precision within a day (that's what Zeitplan/the per-block link are
@@ -3317,6 +3336,19 @@ strict `assertSame(int, ...)` test fails with "900.0 is identical to 900" on dow
 **Fix:** cast to int at the call site: `(int) $today->diffInDays($date)` / `(int) $start->diffInSeconds($now,
 false)`. Check overdue separately with `lessThan()`. (See `Task::effectiveDateLabel`,
 `ScheduleEvent::pomodoroPhaseNow`.)
+
+### Carbon 3 `diffInDays()` (and presumably its siblings) can return a *signed* value with no second argument at all
+**Symptom:** `$today->diffInDays($yesterday)` returned `-1` in this codebase's actual Carbon 3 install, not
+`+1` — a day-bucket `match (true) { $daysAgo === 1 => 'gestern', $daysAgo >= 2 && $daysAgo <= 6 => ..., default
+=> ... }` silently skipped the `=== 1` arm and fell through to the `default` date-format arm instead, with no
+error anywhere (found via a failing assertion, not a crash: `DayPlanner::rollover()`'s "gestern" label came
+back as "14.9." instead). Confirmed empirically with a throwaway `fwrite(STDERR, ...)` debug line rather than
+assumed — Carbon's own docs describe `$absolute` as defaulting to `true` (unsigned), which this one call
+contradicted in practice.
+**Fix:** don't trust the documented default when a diff's *sign* matters for a `===`/range check — wrap the
+call in `abs()` explicitly: `abs((int) $today->diffInDays($date))`, regardless of which order the two Carbon
+instances are diffed in. Cheaper and more robust than chasing why the default disagreed with the docs. (See
+`DayPlanner::pastDateLabel()`.)
 
 ### An exact `where()` against a `'date'`-cast column can silently match nothing
 **Symptom:** a query like `->where('some_date_column', $carbon->toDateString())` returns zero rows even

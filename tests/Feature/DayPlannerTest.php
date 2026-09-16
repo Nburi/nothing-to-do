@@ -398,4 +398,69 @@ class DayPlannerTest extends TestCase
         // its today_date untouched, so a second cron tick can never "re-today" it.
         $this->assertSame(now()->subDay()->toDateString(), $task->fresh()->today_date->toDateString());
     }
+
+    // ── Rollover (liegengebliebene Planer-Tasks) ──
+
+    public function test_rollover_includes_a_past_planned_task_that_never_became_today(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+        DayPlanner::assignDay($user, now()->subDay()->toDateString(), ["task:{$task->id}"]);
+
+        $rollover = DayPlanner::rollover($user);
+
+        $this->assertCount(1, $rollover);
+        $this->assertSame($task->id, $rollover->first()['id']);
+        $this->assertSame('gestern', $rollover->first()['plannedDateLabel']);
+        $this->assertFalse($task->fresh()->is_today);
+    }
+
+    public function test_rollover_excludes_a_task_that_already_became_today(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->todayOn(now()->toDateString())->create();
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->subDays(3)->toDateString(), 'sort_order' => 0, 'source' => 'manual']);
+
+        $this->assertCount(0, DayPlanner::rollover($user));
+    }
+
+    public function test_rollover_excludes_a_completed_task(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create(['is_completed' => true]);
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->subDays(2)->toDateString(), 'sort_order' => 0, 'source' => 'manual']);
+
+        $this->assertCount(0, DayPlanner::rollover($user));
+    }
+
+    public function test_rollover_excludes_a_task_planned_for_today_or_later(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+        DayPlanner::assignDay($user, now()->toDateString(), ["task:{$task->id}"]);
+
+        $this->assertCount(0, DayPlanner::rollover($user));
+    }
+
+    public function test_rollover_is_empty_when_planner_is_disabled(): void
+    {
+        $user = User::factory()->create(['planner_enabled' => false]);
+        $task = Task::factory()->for($user)->tasks()->create();
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => now()->subDay()->toDateString(), 'sort_order' => 0, 'source' => 'manual']);
+
+        $this->assertCount(0, DayPlanner::rollover($user));
+    }
+
+    public function test_moving_a_rollover_task_onto_today_removes_it_from_rollover_and_flags_today(): void
+    {
+        $user = $this->plannerUser();
+        $task = Task::factory()->for($user)->tasks()->create();
+        DayPlanner::assignDay($user, now()->subDays(2)->toDateString(), ["task:{$task->id}"]);
+        $this->assertCount(1, DayPlanner::rollover($user));
+
+        DayPlanner::moveToDay($user, "task:{$task->id}", now()->toDateString());
+
+        $this->assertCount(0, DayPlanner::rollover($user));
+        $this->assertTrue($task->fresh()->is_today);
+    }
 }

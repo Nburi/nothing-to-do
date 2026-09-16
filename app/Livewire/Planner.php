@@ -47,6 +47,13 @@ class Planner extends Component
         return DayPlanner::conflicts(auth()->user());
     }
 
+    /** Day-plans whose date has passed without the task ever reaching Today — see DayPlanner::rollover(). */
+    #[Computed]
+    public function rollover(): Collection
+    {
+        return DayPlanner::rollover(auth()->user());
+    }
+
     /**
      * Persists one day's full order — the destination of a drag, the same
      * "send the whole ordered list" shape TaskBoard::reorder() uses. Each
@@ -97,7 +104,7 @@ class Planner extends Component
 
     private function refreshComputeds(): void
     {
-        unset($this->board, $this->backlog, $this->conflicts);
+        unset($this->board, $this->backlog, $this->conflicts, $this->rollover);
     }
 
     public function render()
