@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Schedule;
 use App\Models\AgendaEntry;
 use App\Models\Task;
+use App\Models\TaskDayPlan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -205,5 +206,66 @@ class ScheduleDeadlineItemsTest extends TestCase
         $this->expectException(ModelNotFoundException::class);
 
         Livewire::test(Schedule::class)->call('toggleDeadlineAgendaDone', $other->id);
+    }
+
+    // ── Planer placements ──
+
+    public function test_a_planner_placement_shows_on_its_planned_date(): void
+    {
+        $user = $this->actingUser();
+        $weekStart = $this->weekStartFor($user);
+        $date = $weekStart->copy()->addDays(3);
+        $task = Task::factory()->for($user)->tasks()->create(['title' => 'Zusammenfassung schreiben']);
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => $date->toDateString(), 'sort_order' => 0]);
+
+        $items = Livewire::test(Schedule::class)->instance()->deadlineItems;
+        $onDay = $items->get($date->toDateString(), collect());
+
+        $this->assertTrue($onDay->contains(
+            fn (array $i) => $i['id'] === $task->id && $i['subtype'] === 'planned' && ! $i['isPreview']
+        ));
+    }
+
+    public function test_a_planner_placement_never_gets_an_advance_preview(): void
+    {
+        $user = $this->actingUser(['deadline_preview_enabled' => true, 'deadline_preview_days' => 2]);
+        $weekStart = $this->weekStartFor($user);
+        $date = $weekStart->copy()->addDays(3);
+        $task = Task::factory()->for($user)->tasks()->create();
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => $date->toDateString(), 'sort_order' => 0]);
+
+        $items = Livewire::test(Schedule::class)->instance()->deadlineItems;
+        $previewDay = $items->get($date->copy()->subDays(2)->toDateString(), collect());
+
+        $this->assertFalse($previewDay->contains(fn (array $i) => $i['id'] === $task->id));
+    }
+
+    public function test_a_task_can_show_a_deadline_and_a_planner_placement_on_two_different_days(): void
+    {
+        $user = $this->actingUser();
+        $weekStart = $this->weekStartFor($user);
+        $deadlineDate = $weekStart->copy()->addDays(5);
+        $plannedDate = $weekStart->copy()->addDays(2);
+        $task = Task::factory()->for($user)->deadline($deadlineDate->toDateString())->create();
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => $plannedDate->toDateString(), 'sort_order' => 0]);
+
+        $items = Livewire::test(Schedule::class)->instance()->deadlineItems;
+
+        $onDeadlineDay = $items->get($deadlineDate->toDateString(), collect());
+        $onPlannedDay = $items->get($plannedDate->toDateString(), collect());
+
+        $this->assertTrue($onDeadlineDay->contains(fn (array $i) => $i['id'] === $task->id && $i['subtype'] === 'deadline'));
+        $this->assertTrue($onPlannedDay->contains(fn (array $i) => $i['id'] === $task->id && $i['subtype'] === 'planned'));
+    }
+
+    public function test_a_completed_tasks_planner_placement_is_hidden(): void
+    {
+        $user = $this->actingUser();
+        $weekStart = $this->weekStartFor($user);
+        $date = $weekStart->copy()->addDays(1);
+        $task = Task::factory()->for($user)->tasks()->completed()->create(['title' => 'Schon erledigt']);
+        TaskDayPlan::create(['task_id' => $task->id, 'planned_date' => $date->toDateString(), 'sort_order' => 0]);
+
+        Livewire::test(Schedule::class)->assertDontSee('Schon erledigt');
     }
 }
