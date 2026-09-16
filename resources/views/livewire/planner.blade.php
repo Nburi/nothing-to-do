@@ -16,16 +16,29 @@
             </div>
         </div>
 
-        @if ($this->backlog->isNotEmpty())
-            <button
-                type="button"
-                wire:click="autoFillBacklog"
-                class="inline-flex flex-none items-center gap-1.5 rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:text-ink active:scale-[0.98]"
-            >
-                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"/></svg>
-                Rest automatisch einplanen
-            </button>
-        @endif
+        <div class="flex flex-none flex-wrap items-center gap-2">
+            @foreach (\App\Services\PlannerStandardTasks::CATALOG as $key => $template)
+                <button
+                    type="button"
+                    wire:click="openStandardTask('{{ $key }}')"
+                    class="inline-flex items-center gap-1.5 rounded-card border border-dashed border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:border-forest/40 hover:text-ink active:scale-[0.98]"
+                >
+                    <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+                    {{ $template['label'] }}
+                </button>
+            @endforeach
+
+            @if ($this->backlog->isNotEmpty())
+                <button
+                    type="button"
+                    wire:click="autoFillBacklog"
+                    class="inline-flex items-center gap-1.5 rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:text-ink active:scale-[0.98]"
+                >
+                    <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"/></svg>
+                    Rest automatisch einplanen
+                </button>
+            @endif
+        </div>
     </div>
 
     {{-- Conflict banner — always visible when non-empty; this is the page's actual point. --}}
@@ -109,4 +122,5 @@
     </div>
 
     @include('livewire.partials.planner-day-picker-sheet')
+    @include('livewire.partials.planner-standard-task-sheet')
 </div>

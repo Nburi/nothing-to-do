@@ -39,6 +39,27 @@ split-across-days flow, the ghost cards, the category filter, or some combinatio
   Worth one once there's a natural pause — Rollover and the Zeitplan-Sichtbarkeit chip are both real,
   regular-user-facing changes to pages some users already have open daily.
 
+### Planer — Standardaufgaben (2026-09-16 Nachtsession) — built on a branch, unmerged
+
+Built overnight per direct request while Niels was asleep, on `feature/planner-standard-tasks` (branched
+off `main`, not merged — merging is Niels's call per CLAUDE.md §3.2). See CLAUDE.md's "Planer" section,
+"Standardaufgaben (built)" subsection, for the full design: two quick-add templates ("ToDos erledigen"
+with an adjustable-per-day length, "Lernen" with Allgemein/Fach/Prüfung modes) next to "Rest automatisch
+einplanen". Full automated suite green (1415 tests, `tests/Feature/PlannerStandardTasksTest.php` covers
+the new behavior directly), `npm run build`/`artisan view:cache` both clean.
+
+- **No manual browser verification** — same "avoid the known dev-server-hang trap" discipline as the
+  other overnight Planer sessions above; the sheet's actual look/feel (both breakpoints, the mode-switch
+  chips, the exam picker) has only been exercised through Livewire component tests, never a real render.
+  Worth a look together before merging.
+- **No `FeatureAnnouncement` draft was created** — same reasoning as every other admin-authored-content
+  gap in this file: the editor needs its own admin UI, and this was a fully autonomous session with no
+  safe browser access to use it. Worth one once this merges ("Neu im Planer: Standardaufgaben").
+- Deliberately out of scope: a duration field for "Lernen" (not asked for — DayPlanner's existing 25-min
+  fallback already covers its capacity math), more than two templates, and any provenance marker/badge
+  on a Standardaufgabe-created task (it's a plain Task afterward, indistinguishable from a hand-typed one
+  by design).
+
 ### MCP-Server — built; a FeatureAnnouncement draft and a live client check remain
 
 See CLAUDE.md's "MCP-Server — KI-Zugriff" section for the full design. Built on `main` directly (no
