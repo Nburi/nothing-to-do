@@ -24,6 +24,11 @@ return [
             "Auf geht's, :name.",
             'Morgen. Kaffee zuerst?',
             'Ein neuer Tag, :name.',
+            'Bereit für Grosses?',
+            'Ein wundervoller Tag liegt vor dir, :name.',
+            'Hey :name — dein Tag im Überblick.',
+            'Ready für den Tag, :name?',
+            ':name, was läuft heute?',
         ],
 
         'midday' => [
@@ -35,7 +40,9 @@ return [
         'evening' => [
             'Guten Abend, :name.',
             'Der Tag ist fast rum — hier steht noch was aus.',
-            'Später Einstieg heute, aber gut.',
+            'Später Einstieg heute, aber besser als nicht.',
+            'Wo warst du so lange, :name?',
+            'Eingestempelt für die Abendschicht.'
         ],
     ],
 
