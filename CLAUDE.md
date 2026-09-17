@@ -1159,16 +1159,31 @@ plannable target.
   table directly keeps this tier correct in both cases rather than depending on a flag that might lag or
   never flip for exactly the tasks this tier most wants to catch.
 - **Standardaufgaben (built)** — two fixed, recurring quick-add templates for the kind of task that comes up
-  again and again and isn't worth re-typing: "ToDos erledigen" and "Lernen". A click on either chip (next to
-  "Rest automatisch einplanen", above the backlog) opens a small sheet
+  again and again and isn't worth re-typing: "ToDos erledigen" and "Lernen". Either chip (next to "Rest
+  automatisch einplanen", above the backlog) opens a small sheet
   (`partials/planner-standard-task-sheet.blade.php`, `App\Livewire\Planner::openStandardTask()`/
-  `saveStandardTask()`) instead of a drag gesture — deliberately: unlike a plain backlog chip, a
-  Standardaufgabe always needs a short server round trip anyway (duration/subject/exam has to be picked
-  before there's a Task to place at all), so a modal form loses nothing a drag shortcut would otherwise have
-  saved, and it works identically on both breakpoints with no new Sortable/touch code. Saving builds one
-  ordinary `Task` and places it via the existing `DayPlanner::moveToDay()` — after that it is completely
-  indistinguishable from a hand-typed task everywhere else in the app (board, backlog, edit sheet, …); no new
-  column or provenance marker was added, since the title alone already says what it is.
+  `saveStandardTask()`) with a day picker + the template's own fields (duration, or Lernen's mode) — a modal
+  step is unavoidable regardless of entry gesture, since a Standardaufgabe always needs at least one more
+  piece of information (duration/subject/exam) before there's a Task to place at all. **Two ways to reach
+  it:** a plain click (works on every breakpoint, defaults the day to today), or — desktop only — dragging
+  the chip straight onto a day column, which opens the identical sheet with that day already pre-filled in
+  place of the dropdown's default. Saving builds one ordinary `Task` and places it via the existing
+  `DayPlanner::moveToDay()` — after that it is completely indistinguishable from a hand-typed task everywhere
+  else in the app (board, backlog, edit sheet, …); no new column or provenance marker was added, since the
+  title alone already says what it is.
+  - **`window.standardTaskDragSource`** (`resources/js/app.js`) — its own small Sortable instance
+    (`group: { name: 'standard-task', put: false }`, `sort: false`), mirroring `homeworkDragSource`'s own
+    "drag source, not real list content" shape but simpler: a chip here is a fixed, reusable trigger, never
+    something that moves and disappears, so `onEnd` just reparents it straight back into its own row with a
+    plain `el.appendChild(evt.item)` regardless of where the drag ended — no clone-pull mode needed, since
+    there is nothing to actually leave behind in the destination. Dropping onto a real day column (i.e.
+    `evt.to.dataset.date` is set) calls `wire.openStandardTask(template, date)`; landing anywhere else
+    (rejected, or the backlog/rollover zones, which share `plannerDaySortable`'s own always-accepting `put`
+    function and therefore happily receive this drag too) is a silent no-op, same as a rejected drop
+    anywhere else in this app. `Planner::openStandardTask()`'s `$date` parameter re-validates the dropped
+    string against the real horizon server-side before trusting it (same "never trust the client" rule as
+    every other write here) — an out-of-range or malformed value just falls back to today rather than
+    breaking the sheet.
   - **`App\Services\PlannerStandardTasks`** — a stateless catalog (`CATALOG`, same shape as
     `ListConcepts`/`AppModules`), plus `studyTitle(mode, subject)`, the one place the "Lernen" /
     "Lernen: Mathematik" / "Lernen für Prüfung: Mathematik" title shapes are built, so every caller (free

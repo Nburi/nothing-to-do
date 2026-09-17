@@ -153,16 +153,43 @@ class Planner extends Component
         return AgendaEntry::visibleTo($user)->ofType('exam')->openFor($user)->orderBy('date')->get();
     }
 
-    /** Opens the quick-add sheet for one Standardaufgabe, freshly reset — see PlannerStandardTasks::CATALOG. */
-    public function openStandardTask(string $key): void
+    /**
+     * Opens the quick-add sheet for one Standardaufgabe, freshly reset — see
+     * PlannerStandardTasks::CATALOG. `$date` is optional: the desktop drag
+     * source (standardTaskDragSource in app.js) passes the day column it was
+     * dropped on, pre-filling the sheet's date field instead of defaulting to
+     * today — a plain click (still the mobile/keyboard path) omits it. A
+     * given date is re-validated against the real horizon here regardless of
+     * where it came from, same "never trust the client" rule as every other
+     * write in this app; an invalid/out-of-range value just falls back to
+     * today rather than breaking the sheet.
+     */
+    public function openStandardTask(string $key, ?string $date = null): void
     {
         if (! PlannerStandardTasks::isValidKey($key)) {
             return;
         }
 
+        $user = auth()->user();
+        $today = $user->localToday();
+        $horizonEnd = $today->copy()->addDays(DayPlanner::HORIZON_DAYS - 1);
+        $resolvedDate = $today;
+
+        if ($date !== null) {
+            try {
+                $parsed = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $date)?->startOfDay();
+            } catch (\Throwable) {
+                $parsed = null;
+            }
+
+            if ($parsed !== null && $parsed->betweenIncluded($today, $horizonEnd)) {
+                $resolvedDate = $parsed;
+            }
+        }
+
         $this->resetValidation();
         $this->standardTemplate = $key;
-        $this->standardDate = auth()->user()->localToday()->toDateString();
+        $this->standardDate = $resolvedDate->toDateString();
         $this->standardDuration = $key === 'todos_clear' ? PlannerStandardTasks::DEFAULT_TODOS_DURATION : null;
         $this->standardStudyMode = 'general';
         $this->standardStudySubject = '';

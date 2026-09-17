@@ -387,6 +387,44 @@ window.homeworkDragSource = function (el, wire) {
 };
 
 /**
+ * Desktop drag for the Planer's two "Standardaufgabe" chips (see
+ * App\Livewire\Planner::openStandardTask()) — dragging "ToDos erledigen" or
+ * "Lernen" onto a day column opens the same quick-add sheet a click already
+ * does, just pre-filled with the day it was dropped on instead of defaulting
+ * to today. Unlike homeworkDragSource's cards, a chip here is a fixed,
+ * reusable trigger, not real list content that moves and disappears — so
+ * regardless of where a drag ends, the chip itself is always put straight
+ * back into its own row afterward; `sort: false` plus this manual
+ * `el.appendChild()` is simpler than a clone-pull mode for exactly that
+ * reason (nothing to actually keep in the destination, ever).
+ */
+window.standardTaskDragSource = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: { name: 'standard-task', put: false },
+        sort: false,
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const to = evt.to;
+            const template = evt.item.dataset.standardTemplate;
+            // Always reparent back to the origin row first — a Livewire
+            // re-render will redraw this row anyway once openStandardTask
+            // below runs, but a rejected/off-target drop needs this too.
+            el.appendChild(evt.item);
+            if (to !== el && to.dataset.date !== undefined && template) {
+                wire.openStandardTask(template, to.dataset.date);
+            }
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * A small label that follows the cursor while a card is armed for grouping
  * (see groupZone below). Deliberately NOT just a ring around the target
  * card: while dragging, the card being carried — or the browser's own

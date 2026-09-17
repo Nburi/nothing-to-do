@@ -34,6 +34,35 @@ class PlannerStandardTasksTest extends TestCase
         $this->assertSame(30, $component->get('standardDuration'));
     }
 
+    public function test_opening_via_drag_prefills_the_dropped_date(): void
+    {
+        $this->actingUser();
+        $dropped = now()->addDays(3)->toDateString();
+
+        $component = Livewire::test(Planner::class)->call('openStandardTask', 'todos_clear', $dropped);
+
+        $this->assertSame($dropped, $component->get('standardDate'));
+    }
+
+    public function test_opening_via_drag_with_an_out_of_range_date_falls_back_to_today(): void
+    {
+        $this->actingUser();
+
+        $component = Livewire::test(Planner::class)
+            ->call('openStandardTask', 'todos_clear', now()->addDays(30)->toDateString());
+
+        $this->assertSame(now()->toDateString(), $component->get('standardDate'));
+    }
+
+    public function test_opening_via_drag_with_a_malformed_date_falls_back_to_today(): void
+    {
+        $this->actingUser();
+
+        $component = Livewire::test(Planner::class)->call('openStandardTask', 'todos_clear', 'not-a-date');
+
+        $this->assertSame(now()->toDateString(), $component->get('standardDate'));
+    }
+
     public function test_opening_an_unknown_template_key_is_ignored(): void
     {
         $this->actingUser();
