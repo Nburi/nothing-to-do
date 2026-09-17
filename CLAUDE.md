@@ -1646,16 +1646,21 @@ its own page rather than an overlay/toast, per an explicit product decision made
   continuous cross-page morph — a real `wire:navigate` SPA jump can't reliably track one shared element
   through the swap — built from the same one-shot-CSS-animation technique the weekplan ripple and the
   header badge's own "proof of destination" wash already use.
-- **A once-a-day morning push** ("Dein Tag ist bereit", `App\Console\Commands\SendDayPreviewNotifications`,
-  every minute per the scheduler) for anyone with `users.notify_day_preview` on (Settings' Benachrichtigungen
-  card, immediate-save toggle, same shape as `notify_streak_risk`). The trigger time and title live in
-  `config/day_preview.php` too (`notification.time`/`notification.title` — editable without touching code);
-  dedup is `users.day_preview_notification_sent_on` (due-check, not an exact-minute match, so a delayed/
-  missed cron tick still fires on the next run). **The body is never a static config string** —
-  `DayPreviewData::notificationSummary()` builds a live one-line summary ("2 Aufgaben für heute, 1 Termin, 1
-  Aufgabe fällig.", correctly singular/plural per part, "Nichts Dringendes — ein ruhiger Tag." when
-  everything's empty) from the exact same reads the page itself renders from, so the push can never drift
-  from what opening the page shows.
+- **A once-a-day morning push** ("Dein Tag ist bereit" or another pool title, see below,
+  `App\Console\Commands\SendDayPreviewNotifications`, every minute per the scheduler) for anyone with
+  `users.notify_day_preview` on (Settings' Benachrichtigungen card, immediate-save toggle, same shape as
+  `notify_streak_risk`). **The trigger time is per-user** — `users.day_preview_notification_time` (HH:MM,
+  default `07:30`), a revealed field right under the toggle that autosaves on `wire:change`
+  (`saveDayPreviewNotificationTime()`), same shape as `daily_reminder_time` — deliberately moved out of
+  config after shipping it there first, once asked for per-person control rather than one app-wide time.
+  **The title is still picked at random per push** from `config('day_preview.notification.titles')` (a
+  plain list, editable without touching code, same pool mechanism the greetings use) — falls back to one
+  plain default if the list is ever emptied out. Dedup is `users.day_preview_notification_sent_on`
+  (due-check, not an exact-minute match, so a delayed/missed cron tick still fires on the next run).
+  **The body is never a static config string** — `DayPreviewData::notificationSummary()` builds a live
+  one-line summary ("2 Aufgaben für heute, 1 Termin, 1 Aufgabe fällig.", correctly singular/plural per
+  part, "Nichts Dringendes — ein ruhiger Tag." when everything's empty) from the exact same reads the page
+  itself renders from, so the push can never drift from what opening the page shows.
 - Deliberately out of scope for this pass: an `AppModules`/landing-page catalog entry for this page, a
   `FeatureAnnouncement` draft (admin-only editor, same reasoning several other features in this file already
   give for skipping it in-session), real schedule-capacity math for the Bastelidee trigger, and the fuller

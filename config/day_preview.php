@@ -71,21 +71,23 @@ return [
     | Morning notification
     |--------------------------------------------------------------------------
     |
-    | A once-a-day push ("Dein Tag ist bereit") for anyone who turned it on in
-    | Settings → Benachrichtigungen. "time" is HH:MM in the user's own local
-    | time — the push fires once that time has passed, same "due time, not an
-    | exact-minute match" shape every other reminder in this app already uses,
-    | so a delayed cron tick still fires on the next run instead of losing it.
-    | "title" is edited here freely; the message body is never a static line —
-    | it's always a live summary built from that day's real data (see
+    | A once-a-day push for anyone who turned it on in Settings →
+    | Benachrichtigungen — the trigger time is set per-person there (Settings'
+    | own "Dein Tag ist bereit" field), not here. One title is picked at
+    | random per push from the list below — add, remove, or reword freely,
+    | at least one entry. The message body is never a static line — it's
+    | always a live summary built from that day's real data (see
     | App\Services\DayPreviewData::notificationSummary()), since "how many
     | tasks/terms today" is the entire point of the nudge.
     |
     */
 
     'notification' => [
-        'time' => '07:30',
-        'title' => 'Dein Tag ist bereit',
+        'titles' => [
+            'Dein Tag ist bereit',
+            'Guten Morgen — dein Überblick wartet',
+            'Zeit für den Tagesüberblick',
+        ],
     ],
 
 ];

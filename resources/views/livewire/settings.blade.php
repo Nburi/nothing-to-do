@@ -855,6 +855,20 @@
                     ])></span>
                 </button>
             </div>
+
+            @if ($notifyDayPreview)
+                <div class="max-w-[10rem] pb-2">
+                    <label for="dayPreviewNotificationTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
+                    <input
+                        id="dayPreviewNotificationTime"
+                        type="time"
+                        wire:model="dayPreviewNotificationTime"
+                        wire:change="saveDayPreviewNotificationTime"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    />
+                    @error('dayPreviewNotificationTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            @endif
         </div>
         </div>
     </section>

@@ -73,6 +73,8 @@ class Settings extends Component
 
     public bool $notifyDayPreview = false;
 
+    public string $dayPreviewNotificationTime = '07:30';
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -123,6 +125,7 @@ class Settings extends Component
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
         $this->notifyDayPreview = (bool) $user->notify_day_preview;
+        $this->dayPreviewNotificationTime = $user->day_preview_notification_time ?? '07:30';
     }
 
     /** Autosaves on change — see the "Erledigte Aufgaben" card. */
@@ -252,17 +255,22 @@ class Settings extends Component
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
     }
 
-    /**
-     * Morning push ("Dein Tag ist bereit") once config('day_preview.notification.time')
-     * has passed — see App\Console\Commands\SendDayPreviewNotifications. The
-     * trigger time isn't user-configurable, same shape as notify_streak_risk's
-     * fixed time, just tunable in config/day_preview.php instead of a PHP constant.
-     */
+    /** Morning push ("Dein Tag ist bereit") once dayPreviewNotificationTime has passed — see App\Console\Commands\SendDayPreviewNotifications. */
     public function toggleNotifyDayPreview(): void
     {
         $user = auth()->user();
         $user->update(['notify_day_preview' => ! $user->notify_day_preview]);
         $this->notifyDayPreview = (bool) $user->notify_day_preview;
+    }
+
+    /** Only relevant while the reminder above is on — saves on change, no separate submit button (mirrors saveDailyReminderTime). */
+    public function saveDayPreviewNotificationTime(): void
+    {
+        $data = $this->validate([
+            'dayPreviewNotificationTime' => ['required', 'date_format:H:i'],
+        ]);
+
+        auth()->user()->update(['day_preview_notification_time' => $data['dayPreviewNotificationTime']]);
     }
 
     // ── Header badges ─────────────────────────────────────────────────

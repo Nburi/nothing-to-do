@@ -24,7 +24,7 @@ use Laravel\Sanctum\HasApiTokens;
     'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
     'day_preview_seen_on',
-    'notify_day_preview', 'day_preview_notification_sent_on',
+    'notify_day_preview', 'day_preview_notification_time', 'day_preview_notification_sent_on',
     'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',

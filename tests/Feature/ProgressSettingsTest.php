@@ -129,4 +129,30 @@ class ProgressSettingsTest extends TestCase
 
         $this->assertTrue((bool) $user->refresh()->notify_day_preview);
     }
+
+    public function test_it_saves_a_valid_day_preview_notification_time(): void
+    {
+        $user = User::factory()->create(['day_preview_notification_time' => '07:30']);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('dayPreviewNotificationTime', '06:45')
+            ->call('saveDayPreviewNotificationTime')
+            ->assertHasNoErrors();
+
+        $this->assertSame('06:45', $user->refresh()->day_preview_notification_time);
+    }
+
+    public function test_it_rejects_a_malformed_day_preview_notification_time(): void
+    {
+        $user = User::factory()->create(['day_preview_notification_time' => '07:30']);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('dayPreviewNotificationTime', 'nope')
+            ->call('saveDayPreviewNotificationTime')
+            ->assertHasErrors(['dayPreviewNotificationTime']);
+
+        $this->assertSame('07:30', $user->refresh()->day_preview_notification_time);
+    }
 }
