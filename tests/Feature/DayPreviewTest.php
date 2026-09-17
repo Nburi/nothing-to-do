@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\DayPreviewData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -220,5 +221,36 @@ class DayPreviewTest extends TestCase
         Livewire::test(DayPreview::class)
             ->assertDontSee('Fremde Aufgabe')
             ->assertDontSee('Fremder Termin');
+    }
+
+    public function test_notification_summary_names_tasks_terms_and_due_items(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        Task::factory()->for($user)->today()->count(2)->create();
+        Task::factory()->for($user)->create(['deadline' => '2026-09-17']);
+        ScheduleEvent::factory()->for($user)->on('2026-09-17')->create();
+
+        $this->assertSame(
+            '2 Aufgaben für heute, 1 Termin, 1 Aufgabe fällig.',
+            DayPreviewData::notificationSummary($user)
+        );
+    }
+
+    public function test_notification_summary_uses_singular_for_exactly_one(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        Task::factory()->for($user)->today()->create();
+
+        $this->assertSame('1 Aufgabe für heute.', DayPreviewData::notificationSummary($user));
+    }
+
+    public function test_notification_summary_falls_back_to_a_calm_line_when_the_day_is_empty(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+
+        $this->assertSame('Nichts Dringendes — ein ruhiger Tag.', DayPreviewData::notificationSummary($user));
     }
 }

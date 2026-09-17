@@ -66,4 +66,26 @@ return [
         100 => 'Tag 100 deiner Serie.',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Morning notification
+    |--------------------------------------------------------------------------
+    |
+    | A once-a-day push ("Dein Tag ist bereit") for anyone who turned it on in
+    | Settings → Benachrichtigungen. "time" is HH:MM in the user's own local
+    | time — the push fires once that time has passed, same "due time, not an
+    | exact-minute match" shape every other reminder in this app already uses,
+    | so a delayed cron tick still fires on the next run instead of losing it.
+    | "title" is edited here freely; the message body is never a static line —
+    | it's always a live summary built from that day's real data (see
+    | App\Services\DayPreviewData::notificationSummary()), since "how many
+    | tasks/terms today" is the entire point of the nudge.
+    |
+    */
+
+    'notification' => [
+        'time' => '07:30',
+        'title' => 'Dein Tag ist bereit',
+    ],
+
 ];

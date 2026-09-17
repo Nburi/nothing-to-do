@@ -137,7 +137,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (1011 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (1445 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -1594,6 +1594,73 @@ A small, deliberately narrow bridge between two systems this app otherwise keeps
 - Deliberately out of scope for this pass: exam entries (`type=exam`, the strip itself only ever shows
   homework); any promotion entry point on the Agenda page itself, QuickCapture, or the Zeitplan's deadline
   strip (only its *existing* `toggleDeadlineTaskDone` gained the completion echo, no new gesture there).
+
+### Tagesüberblick (built)
+
+A read-only "here's your day" page (`App\Livewire\DayPreview`, `/app/today`, `route('today')`) reached via a
+silent dot on its own header icon rather than a screen you have to remember to open — deliberately not in
+`AppModules::CATALOG` (same "always reachable" precedent as the Board/Settings themselves), and deliberately
+its own page rather than an overlay/toast, per an explicit product decision made while planning it.
+
+- **The seen-flag is time-of-day independent.** `users.day_preview_seen_on` (a local-calendar-date column,
+  same shape as `prepared_on`) is stamped the instant the page mounts — `User::hasSeenDayPreviewToday()`/
+  `markDayPreviewSeen()` — and the header dot (`layouts/app.blade.php`) reads it with no morning/evening
+  window at all, unlike Vorbereitung's own half-day concept: the first visit of the local day clears it,
+  whatever the hour. Revisiting later the same day shows fresh live data, not a frozen first-visit snapshot
+  — same convention Fortschritt's own numbers already follow.
+- **`App\Services\DayPreviewData`** is a deliberately new, standalone read service rather than reusing
+  `TaskBoard`'s/`Schedule`'s own computed properties — those hang off each component's own live state
+  (current week, current list, current list-concept board shape), while this reads "today" flat and once,
+  the same simplification `TaskSuggestor`/`DayPlanner`/the MCP server's `get_board` already make. Every read
+  is concept-agnostic (ignores `tasks.list`) and module-aware (`AppModules::isVisible()` gates the Zeitplan
+  card and the Agenda tile; a hidden module's tile disappears entirely, never a "0" or empty card).
+- **Content**: a full-width "Zeitplan heute" card (today's blocks, capped with "+N weitere"), a Fällig tile
+  (overdue/today/soon, merging Task deadlines and Agenda homework/exams — capped, real item rows with a
+  small colour-coded icon swatch each, not a bare pill+text line), a Für-heute tile listing flagged tasks —
+  replaced by a "Jetzt vorbereiten" link into Vorbereitung the moment nothing is flagged (the Fällig tile
+  stays real either way, including a genuine "0" — that's honest good news, not the same as an empty list),
+  an Agenda tile (upcoming homework, hidden entirely when empty or the module's off), a Bastelidee tile
+  (only when today has no flagged tasks — a deliberately simple trigger, not real schedule-capacity math),
+  and a Tagesziel ring. **Every tile is a real `wire:navigate` link** to its source page (Fällig/Für-heute →
+  Board, Agenda → Agenda, Bastelidee → Bastelideen, Tagesziel → Fortschritt) — found missing on this
+  feature's own Runde-0 requirements pass (only the Zeitplan card had a link at first) and fixed the same
+  session.
+- **Notfallmodus replaces all of the above** with a roadmap card: `DayPreviewData::emergency()` builds one
+  ordered node list from the project's real completed tasks (by `completed_at`, a genuine sequence, not an
+  anonymous count) followed by its real remaining active tasks, each tagged `done`/`current`/`upcoming`; a
+  project with more history than `ROADMAP_CAP` (8) collapses its oldest done nodes behind one leading
+  `overflow` node rather than fabricating or dropping data. The connecting line between nodes doubles as a
+  progress bar (filled up through the done nodes, grey after) — the "roadmap that's also a progress bar"
+  ask this shipped from.
+- **Greeting pools and streak-milestone messages live in `config/day_preview.php`, not as PHP class
+  constants** — a plain array file, editable without touching code, explicitly asked for so greetings could
+  be tweaked without opening the codebase. One line is picked at random per visit from whichever pool
+  matches the user's own local hour (morning/midday/evening); `:name` is replaced with the user's real name.
+  An exact streak-day match in the `milestones` sub-array always wins over the pool for that one visit —
+  deliberately just text, never the confetti/ring overlay `ProgressStats::celebrationFor()` drives
+  elsewhere, which stays reserved for a task completion actually crossing a threshold. An emptied-out pool
+  falls back to one plain line rather than crashing on `array_rand([])`.
+- **Signature moment — the dot becomes the flame.** Clicking the header entry point plays a launch-burst
+  animation (`.day-preview-launch`, `app.css`) on the icon itself; the destination page's streak pill plays
+  a matching pop-in (`.day-preview-arrive`). A deliberate two-part simplification of the originally-pitched
+  continuous cross-page morph — a real `wire:navigate` SPA jump can't reliably track one shared element
+  through the swap — built from the same one-shot-CSS-animation technique the weekplan ripple and the
+  header badge's own "proof of destination" wash already use.
+- **A once-a-day morning push** ("Dein Tag ist bereit", `App\Console\Commands\SendDayPreviewNotifications`,
+  every minute per the scheduler) for anyone with `users.notify_day_preview` on (Settings' Benachrichtigungen
+  card, immediate-save toggle, same shape as `notify_streak_risk`). The trigger time and title live in
+  `config/day_preview.php` too (`notification.time`/`notification.title` — editable without touching code);
+  dedup is `users.day_preview_notification_sent_on` (due-check, not an exact-minute match, so a delayed/
+  missed cron tick still fires on the next run). **The body is never a static config string** —
+  `DayPreviewData::notificationSummary()` builds a live one-line summary ("2 Aufgaben für heute, 1 Termin, 1
+  Aufgabe fällig.", correctly singular/plural per part, "Nichts Dringendes — ein ruhiger Tag." when
+  everything's empty) from the exact same reads the page itself renders from, so the push can never drift
+  from what opening the page shows.
+- Deliberately out of scope for this pass: an `AppModules`/landing-page catalog entry for this page, a
+  `FeatureAnnouncement` draft (admin-only editor, same reasoning several other features in this file already
+  give for skipping it in-session), real schedule-capacity math for the Bastelidee trigger, and the fuller
+  Runde 1–4 review ritual (empty/full/misused states, a user-simulation pass) — what shipped is a Runde-0
+  requirements pass plus real browser spot-checks against a live dev account, not the full review.
 
 ### Header-Badges (built)
 
@@ -3317,9 +3384,9 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 **Cron is required** as of the Web Push feature: `php artisan schedule:run` must run every minute (a
 single crontab line, see step 10 above) — it drives `app:advance-pomodoro-phases`,
 `app:send-event-start-notifications`, `app:send-event-upcoming-notifications`, `app:send-prepare-reminders`,
-and `app:send-progress-reminders`, the five commands that make Pomodoro/event-start/event-upcoming/
-Vorbereitung/Fortschritt push notifications fire even with no tab open. No separate queue worker is
-needed (notifications send synchronously inline).
+`app:send-progress-reminders`, and `app:send-day-preview-notifications`, the six commands that make
+Pomodoro/event-start/event-upcoming/Vorbereitung/Fortschritt/Tagesüberblick push notifications fire even
+with no tab open. No separate queue worker is needed (notifications send synchronously inline).
 
 **Every generated URL is forced to `https://` in production** (`App\Providers\AppServiceProvider::boot()`,
 `URL::forceScheme('https')`, gated on `APP_ENV=production` so local `http://` dev is untouched) — added

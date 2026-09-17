@@ -71,6 +71,8 @@ class Settings extends Component
 
     public bool $notifyStreakRisk = false;
 
+    public bool $notifyDayPreview = false;
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -120,6 +122,7 @@ class Settings extends Component
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+        $this->notifyDayPreview = (bool) $user->notify_day_preview;
     }
 
     /** Autosaves on change — see the "Erledigte Aufgaben" card. */
@@ -247,6 +250,19 @@ class Settings extends Component
         $user = auth()->user();
         $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+    }
+
+    /**
+     * Morning push ("Dein Tag ist bereit") once config('day_preview.notification.time')
+     * has passed — see App\Console\Commands\SendDayPreviewNotifications. The
+     * trigger time isn't user-configurable, same shape as notify_streak_risk's
+     * fixed time, just tunable in config/day_preview.php instead of a PHP constant.
+     */
+    public function toggleNotifyDayPreview(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_day_preview' => ! $user->notify_day_preview]);
+        $this->notifyDayPreview = (bool) $user->notify_day_preview;
     }
 
     // ── Header badges ─────────────────────────────────────────────────

@@ -116,4 +116,17 @@ class ProgressSettingsTest extends TestCase
 
         $this->assertTrue((bool) $user->refresh()->notify_streak_risk);
     }
+
+    public function test_it_toggles_the_day_preview_notification_immediately(): void
+    {
+        $user = User::factory()->create(['notify_day_preview' => false]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->assertSet('notifyDayPreview', false)
+            ->call('toggleNotifyDayPreview')
+            ->assertSet('notifyDayPreview', true);
+
+        $this->assertTrue((bool) $user->refresh()->notify_day_preview);
+    }
 }

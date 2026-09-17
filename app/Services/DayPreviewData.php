@@ -257,4 +257,42 @@ class DayPreviewData
             'goal' => $user->dailyTaskGoal(),
         ];
     }
+
+    /**
+     * A short, live summary for the morning push notification (see
+     * App\Console\Commands\SendDayPreviewNotifications) — never a static
+     * config string, since "how many tasks/terms today" is the entire point.
+     * Reuses the exact same reads the page itself renders from, so the
+     * notification body can never drift from what opening the page shows.
+     */
+    public static function notificationSummary(User $user): string
+    {
+        $today = self::todayTasks($user);
+        $schedule = self::schedule($user);
+        $due = self::due($user);
+
+        $parts = [];
+
+        if ($today['count'] > 0) {
+            $parts[] = $today['count'] === 1 ? '1 Aufgabe für heute' : "{$today['count']} Aufgaben für heute";
+        }
+
+        if ($schedule['visible']) {
+            $blockCount = count($schedule['blocks']) + $schedule['moreCount'];
+
+            if ($blockCount > 0) {
+                $parts[] = $blockCount === 1 ? '1 Termin' : "{$blockCount} Termine";
+            }
+        }
+
+        if ($due['count'] > 0) {
+            $parts[] = $due['count'] === 1 ? '1 Aufgabe fällig' : "{$due['count']} Aufgaben fällig";
+        }
+
+        if ($parts === []) {
+            return 'Nichts Dringendes — ein ruhiger Tag.';
+        }
+
+        return implode(', ', $parts).'.';
+    }
 }
