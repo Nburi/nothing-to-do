@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\ProgressStats;
 
 /**
  * Shared task-mutation logic used by both the REST API (Api\TaskController)
@@ -16,6 +17,13 @@ use App\Models\User;
  * (Task::syncLinkedAgendaEntry()), and leaving a group must prune it once
  * it's too small (TaskGroup::pruneIfTooSmall()). A second, parallel
  * implementation of this logic is exactly the trap that section warns about.
+ *
+ * Completing a task here also runs it through ProgressStats::celebrationFor()
+ * — its return value is discarded (there's no browser here to show a
+ * celebration to), but the call itself is what persists a newly-reached
+ * perfect day (see ProgressStats::recordOutcome()). The streak's data
+ * integrity can't depend on whether the completion happened to come from a
+ * surface with a UI to celebrate on.
  */
 class TaskMutator
 {
@@ -72,6 +80,12 @@ class TaskMutator
     {
         $previousGroup = $task->group;
         $updates = [];
+
+        // Captured before the write, only when actually completing (not
+        // un-completing) — ProgressStats::celebrationFor() needs to know
+        // where today's count stood a moment ago to detect the exact crossing.
+        $willComplete = array_key_exists('is_completed', $data) && $data['is_completed'] && ! $task->is_completed;
+        $beforeCount = $willComplete ? ProgressStats::todayCount($user) : null;
 
         if (array_key_exists('title', $data)) {
             $updates['title'] = trim($data['title']);
@@ -135,6 +149,10 @@ class TaskMutator
 
         if (array_key_exists('is_completed', $updates)) {
             $task->syncLinkedAgendaEntry($user, $updates['is_completed']);
+        }
+
+        if ($willComplete) {
+            ProgressStats::celebrationFor($user, $task, $beforeCount);
         }
 
         if ($previousGroup !== null && $previousGroup->id !== $task->group_id) {

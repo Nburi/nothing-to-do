@@ -5,6 +5,32 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
+### Streak rework (2026-09-17) — no `FeatureAnnouncement` draft yet
+
+Built on `feature/streak-rework-v3`: what counts as a "perfect" day now also covers a Planer plan
+(not just `today_date`), reaching the daily goal with no today-set at all, clearing the whole board
+("Alles erledigt!", a new celebration), and up to 2 "Ruhetage" (freezes) per rolling 7-day window for
+a genuinely empty day, decided retrospectively by the new `app:evaluate-streak-days` cron command. See
+CLAUDE.md's Fortschritt section for the full design.
+
+- **No `FeatureAnnouncement` draft was created** — same reasoning as every other admin-authored-content
+  gap already in this file: the editor needs its own admin UI, and this session had no safe browser
+  access. Worth writing **promptly** once there's a natural pause, more so than most entries in this
+  list: this changes what "keeping your streak alive" requires for every existing user who already has
+  one, not just what a new page does.
+- **Two judgment calls made without asking, flagged here for a look:**
+  - The freeze budget is a **rolling 7-day window**, not a Mon–Sun calendar week — deliberately, to
+    stop two freezes clustering right at a week boundary and two more right after it. If a calendar
+    week reads more intuitively once actually used, `ProgressStats::freezesUsedInTrailingWeek()` is
+    the one place to change.
+  - The today-set is a **union** of `today_date` and (Planner-enabled) `TaskDayPlan`, not a hard
+    either/or switch on `planner_enabled` — specifically so toggling Planner on/off never
+    retroactively changes what past days already counted as. A pure switch was the more literal
+    reading of the original ask.
+- **No manual browser verification** — same "avoid the known dev-server-hang trap" discipline as
+  several other sessions in this file; verified via the full automated suite (1491 tests, green),
+  `npm run build`, and `artisan view:cache`.
+
 ### Planer-Umbau (2026-09-15 Nachtsession) — 3 of 4 branches merged; Rasteransicht rejected, needs rework
 
 Built overnight per direct request (brainstorming session decided the direction, mockups approved

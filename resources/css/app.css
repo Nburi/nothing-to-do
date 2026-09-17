@@ -386,6 +386,14 @@
         animation-name: celebrate-ring-big;
         animation-duration: 1.6s;
     }
+    /* Full board clear (every active Inbox/To-Do/Task done) — same "big" size
+       as a perfect day, but forest-toned like goal/record: it's fundamentally
+       a volume/completeness win, not the today-set-shaped one perfect-day is. */
+    .celebrate-ring--full-clear {
+        border-color: rgb(var(--forest));
+        animation-name: celebrate-ring-big;
+        animation-duration: 1.6s;
+    }
     /* A streak record is a perfect day that also just beat every streak ever
        run before it — the rarest of the four kinds, so it escalates once
        more past perfect-day rather than introducing a new color: this app's
@@ -419,6 +427,10 @@
     }
     .celebrate-particle--perfect-day {
         background: rgb(var(--contour));
+        animation-duration: 1.3s;
+    }
+    .celebrate-particle--full-clear {
+        background: rgb(var(--forest));
         animation-duration: 1.3s;
     }
     .celebrate-particle--streak-record {

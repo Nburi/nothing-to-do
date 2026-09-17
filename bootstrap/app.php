@@ -50,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:send-progress-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-day-preview-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:promote-day-plans-to-today')->everyMinute()->withoutOverlapping();
+        $schedule->command('app:evaluate-streak-days')->everyMinute()->withoutOverlapping();
         $schedule->command('app:prune-error-occurrences')->daily()->withoutOverlapping();
     })
     ->create();

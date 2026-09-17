@@ -39,24 +39,31 @@ class GetProgressTool extends McpTool
     {
         $counts = ProgressStats::completedCountsByDay($user);
         $todayStats = ProgressStats::todayListStatsByDay($user);
-        $successMap = ProgressStats::dailySuccessMap($todayStats);
-        $streak = ProgressStats::currentStreak($user, $successMap);
+        $outcomeMap = ProgressStats::dailyOutcomeMap($user, $todayStats, $counts);
+        $streak = ProgressStats::currentStreak($user, $outcomeMap);
 
         // Last 2 weeks only, not the full 12-week heatmap — a compact,
         // conversational summary rather than a wall of 84 daily cells.
-        $recentHeatmap = array_slice(ProgressStats::heatmap($user, $counts, weeks: 2), -14);
+        $recentHeatmap = array_slice(ProgressStats::heatmap($user, $counts, weeks: 2, outcomeMap: $outcomeMap), -14);
 
         return [
             'today_count' => ProgressStats::todayCount($user, $counts),
             'daily_goal' => $user->dailyTaskGoal(),
             'current_streak' => $streak,
-            'best_streak' => ProgressStats::bestStreak($successMap),
+            'best_streak' => ProgressStats::bestStreak($outcomeMap),
             'streak_tier' => ProgressStats::streakTier($streak),
-            'perfect_days_count' => ProgressStats::perfectDaysCount($successMap),
-            'perfect_day_rate_percent' => ProgressStats::perfectDayRate($successMap),
+            'perfect_days_count' => ProgressStats::perfectDaysCount($outcomeMap),
+            'perfect_day_rate_percent' => ProgressStats::perfectDayRate($outcomeMap),
             'best_single_day_count' => ProgressStats::bestDailyCount($counts),
+            'freezes_used_this_week' => ProgressStats::freezesUsedInTrailingWeek($user, $user->localToday()->addDay()),
+            'max_freezes_per_week' => ProgressStats::MAX_FREEZES_PER_WEEK,
             'recent_days' => array_map(
-                fn (array $day) => ['date' => $day['date'], 'completed_count' => $day['count']],
+                fn (array $day) => [
+                    'date' => $day['date'],
+                    'completed_count' => $day['count'],
+                    'is_streak_day' => $day['isStreakDay'],
+                    'is_frozen' => $day['isFrozen'],
+                ],
                 $recentHeatmap,
             ),
         ];
