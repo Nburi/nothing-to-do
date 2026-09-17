@@ -1158,6 +1158,55 @@ plannable target.
   (see `promoteIfToday()`'s own `onBoard()` guard) yet can still sit on today's plan — reading the plan
   table directly keeps this tier correct in both cases rather than depending on a flag that might lag or
   never flip for exactly the tasks this tier most wants to catch.
+- **Standardaufgaben (built)** — two fixed, recurring quick-add templates for the kind of task that comes up
+  again and again and isn't worth re-typing: "ToDos erledigen" and "Lernen". Either chip (next to "Rest
+  automatisch einplanen", above the backlog) opens a small sheet
+  (`partials/planner-standard-task-sheet.blade.php`, `App\Livewire\Planner::openStandardTask()`/
+  `saveStandardTask()`) with a day picker + the template's own fields (duration, or Lernen's mode) — a modal
+  step is unavoidable regardless of entry gesture, since a Standardaufgabe always needs at least one more
+  piece of information (duration/subject/exam) before there's a Task to place at all. **Two ways to reach
+  it:** a plain click (works on every breakpoint, defaults the day to today), or — desktop only — dragging
+  the chip straight onto a day column, which opens the identical sheet with that day already pre-filled in
+  place of the dropdown's default. Saving builds one ordinary `Task` and places it via the existing
+  `DayPlanner::moveToDay()` — after that it is completely indistinguishable from a hand-typed task everywhere
+  else in the app (board, backlog, edit sheet, …); no new column or provenance marker was added, since the
+  title alone already says what it is.
+  - **`window.standardTaskDragSource`** (`resources/js/app.js`) — its own small Sortable instance
+    (`group: { name: 'standard-task', put: false }`, `sort: false`), mirroring `homeworkDragSource`'s own
+    "drag source, not real list content" shape but simpler: a chip here is a fixed, reusable trigger, never
+    something that moves and disappears, so `onEnd` just reparents it straight back into its own row with a
+    plain `el.appendChild(evt.item)` regardless of where the drag ended — no clone-pull mode needed, since
+    there is nothing to actually leave behind in the destination. Dropping onto a real day column (i.e.
+    `evt.to.dataset.date` is set) calls `wire.openStandardTask(template, date)`; landing anywhere else
+    (rejected, or the backlog/rollover zones, which share `plannerDaySortable`'s own always-accepting `put`
+    function and therefore happily receive this drag too) is a silent no-op, same as a rejected drop
+    anywhere else in this app. `Planner::openStandardTask()`'s `$date` parameter re-validates the dropped
+    string against the real horizon server-side before trusting it (same "never trust the client" rule as
+    every other write here) — an out-of-range or malformed value just falls back to today rather than
+    breaking the sheet.
+  - **`App\Services\PlannerStandardTasks`** — a stateless catalog (`CATALOG`, same shape as
+    `ListConcepts`/`AppModules`), plus `studyTitle(mode, subject)`, the one place the "Lernen" /
+    "Lernen: Mathematik" / "Lernen für Prüfung: Mathematik" title shapes are built, so every caller (free
+    text or a linked exam) stays consistent.
+  - **Both templates share one required field beyond the day: length in minutes**
+    (`PlannerStandardTasks::DEFAULT_DURATION = 25`, `MIN_DURATION`/`MAX_DURATION` bound it), freely
+    adjustable *per placement* — the same block on a busy day might get 20 minutes, on a quiet one 45.
+    Nothing else in this app lets you set a task's `duration_minutes` at creation time this directly; every
+    other duration is filled in afterward via the card's own quick-set ghost affordance.
+  - **"Lernen"** (`list='tasks'`) additionally picks one of three modes (`PlannerStandardTasks::STUDY_MODES`):
+    Allgemein (no further input), Ein Fach (free-text subject), or Für eine Prüfung — which additionally offers
+    every currently open `AgendaEntry` of type `exam` to pick from (`Planner::standardStudyExamOptions()`, empty
+    while the `agenda` module is hidden, mirroring every other Agenda-coupled read in this app) alongside a
+    free-text fallback for when there's no matching entry yet. Picking one pre-fills the free-text field too
+    (so the form still reads and saves correctly even if the entry turns out to be stale/deleted by submit
+    time) and stamps the created task's `deadline` with the exam's own date — a small bonus this template
+    gets for free, since `DayPlanner`'s existing deadline-aware rendering (the chip's "fällig …" line,
+    `conflicts()`) picks it up with zero extra code. Switching modes (`setStandardStudyMode()`) clears the
+    other modes' leftover input, so a stale subject/exam pick can never sneak into a save under a different
+    mode.
+  - Verification was test-suite-only (`tests/Feature/PlannerStandardTasksTest.php`) — no live browser check
+    of the sheet's actual look/feel yet, same disclosed limitation several other Planer sub-features already
+    carry.
 - **Later, deliberately not built**: a user-set flat daily capacity as a fallback for block-less days
   (capacity stays tied to real Pomodoro blocks only, an explicit choice — see above), splitting a task
   across multiple days, time-of-day precision within a day (that's what Zeitplan/the per-block link are
