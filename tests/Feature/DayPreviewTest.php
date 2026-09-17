@@ -132,6 +132,33 @@ class DayPreviewTest extends TestCase
         Livewire::test(DayPreview::class)->assertDontSee('Zeitplan heute');
     }
 
+    public function test_hides_the_agenda_tile_and_drops_homework_from_due_when_the_module_is_hidden(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'hidden_modules' => ['agenda']]);
+        AgendaEntry::factory()->for($user)->homework()->create(['title' => 'Verstecktes Hausaufgabe', 'date' => '2026-09-17']);
+        $this->actingAs($user);
+
+        $page = Livewire::test(DayPreview::class);
+
+        $this->assertNull($page->instance()->agenda());
+        $page->assertDontSee('Verstecktes Hausaufgabe');
+    }
+
+    public function test_every_tile_is_a_real_link_to_its_source_page(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        Task::factory()->for($user)->create(['deadline' => '2026-09-17']);
+        AgendaEntry::factory()->for($user)->homework()->create(['date' => '2026-09-17']);
+        $this->actingAs($user);
+
+        Livewire::test(DayPreview::class)
+            ->assertSeeHtml(route('app'))
+            ->assertSeeHtml(route('agenda'))
+            ->assertSeeHtml(route('progress'));
+    }
+
     public function test_shows_todays_schedule_blocks(): void
     {
         Carbon::setTestNow('2026-09-17 09:00:00');

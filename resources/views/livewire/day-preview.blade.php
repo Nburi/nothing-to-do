@@ -96,7 +96,7 @@
 
         <div class="mt-4 grid grid-cols-2 gap-3">
 
-            <div class="rounded-card border border-line bg-surface p-3.5 shadow-map">
+            <a href="{{ route('app') }}" wire:navigate class="block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50">
                 <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Fällig</p>
                 <p @class([
                     'tnum mt-0.5 text-[26px] font-semibold',
@@ -132,7 +132,7 @@
                         <p class="mt-1 text-[11px] text-ink-soft">+{{ $this->due['moreCount'] }} weitere</p>
                     @endif
                 @endif
-            </div>
+            </a>
 
             @if ($this->todayIsEmpty)
                 <a href="{{ route('prepare') }}" wire:navigate class="flex flex-col justify-center gap-1 rounded-card border border-dashed border-forest bg-forest-soft p-3.5 transition hover:opacity-90">
@@ -140,7 +140,7 @@
                     <span class="text-[11.5px] leading-snug text-ink-soft">Für heute ist noch nichts geplant.</span>
                 </a>
             @else
-                <div class="rounded-card border border-line bg-surface p-3.5 shadow-map">
+                <a href="{{ route('app') }}" wire:navigate class="block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50">
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Für heute</p>
                     <p class="tnum mt-0.5 text-[26px] font-semibold text-ink">{{ $this->today['count'] }}</p>
                     <div class="mt-1">
@@ -154,11 +154,11 @@
                     @if ($this->today['hasMore'])
                         <p class="mt-1 text-[11px] text-ink-soft">+{{ $this->today['moreCount'] }} weitere</p>
                     @endif
-                </div>
+                </a>
             @endif
 
             @if ($this->agenda)
-                <div class="rounded-card border border-line bg-surface p-3.5 shadow-map">
+                <a href="{{ route('agenda') }}" wire:navigate class="block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50">
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Agenda</p>
                     <div class="mt-1.5">
                         @foreach ($this->agenda['items'] as $item)
@@ -176,20 +176,20 @@
                     @if ($this->agenda['hasMore'])
                         <p class="mt-1 text-[11px] text-ink-soft">+{{ $this->agenda['moreCount'] }} weitere</p>
                     @endif
-                </div>
+                </a>
             @endif
 
             @if ($this->craftIdea)
-                <div class="rounded-card border border-line bg-surface p-3.5 shadow-map">
+                <a href="{{ route('crafts') }}" wire:navigate class="block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50">
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Bastelidee</p>
                     <p class="mt-1.5 text-[13px] font-semibold text-ink">{{ $this->craftIdea['title'] }}</p>
                     @if ($this->craftIdea['note'])
                         <p class="mt-1 text-[11px] leading-snug text-ink-soft">{{ $this->craftIdea['note'] }}</p>
                     @endif
-                </div>
+                </a>
             @endif
 
-            <div class="rounded-card border border-line bg-surface p-3.5 shadow-map">
+            <a href="{{ route('progress') }}" wire:navigate class="block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50">
                 <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Tagesziel</p>
                 @php
                     $goalDone = $this->goal['today'];
@@ -206,7 +206,7 @@
                     />
                 </svg>
                 <p class="mt-0.5 text-[11.5px] text-ink-soft">{{ $goalDone }} / {{ $this->goal['goal'] }} erledigt</p>
-            </div>
+            </a>
 
         </div>
     @endif
