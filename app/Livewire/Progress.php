@@ -8,10 +8,12 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Read-only "how did your day go" page — everything here is derived from
- * ProgressStats, which itself is derived from tasks.completed_at. No writes
- * happen on this page; the daily goal is edited in Settings, and completion
- * itself happens on the board/project page/Zeitplan strip.
+ * Mostly a read-only "how did your day go" page — everything here is derived
+ * from ProgressStats, which itself is derived from tasks.completed_at. The
+ * daily goal is edited in Settings, and completion normally happens on the
+ * board/project page/Zeitplan strip; the one write this page does have is
+ * toggleStreakTask() (see below), so "what do I need to do for my streak"
+ * doesn't force a trip elsewhere just to tick something off.
  */
 #[Layout('layouts.app')]
 class Progress extends Component
@@ -120,6 +122,46 @@ class Progress extends Component
         return $this->todayCount > 0
             && ! isset($this->todayListStats[$today])
             && ($this->outcomeMap[$today] ?? null) !== 'perfect';
+    }
+
+    /**
+     * The concrete "what's left for today's streak" answer — see
+     * ProgressStats::streakTasksNeeded() for the three possible shapes
+     * (already secured / specific open tasks / a plain count toward the goal).
+     *
+     * @return array{secured: bool, openTasks: \Illuminate\Support\Collection, remainingForGoal: ?int}
+     */
+    #[Computed]
+    public function streakTasksNeeded(): array
+    {
+        return ProgressStats::streakTasksNeeded(auth()->user());
+    }
+
+    /**
+     * Ticks a task off straight from the "für die Serie" list. Deliberately
+     * duplicates ManagesTasks::toggleComplete() rather than pulling in the
+     * whole trait (its edit-sheet state isn't needed here) — the same small
+     * duplication Schedule::toggleDeadlineTaskDone() already makes for the
+     * same reason.
+     */
+    public function toggleStreakTask(int $id): void
+    {
+        $task = auth()->user()->tasks()->findOrFail($id);
+        $done = ! $task->is_completed;
+        $user = auth()->user();
+
+        $before = $done ? ProgressStats::todayCount($user) : null;
+
+        $task->update([
+            'is_completed' => $done,
+            'completed_at' => $done ? now() : null,
+        ]);
+
+        $task->syncLinkedAgendaEntry($user, $done);
+
+        if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
+            $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
+        }
     }
 
     public function render()

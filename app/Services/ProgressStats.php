@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\TaskDayPlan;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Turns the app's one source of truth for "work happened" — tasks.completed_at
@@ -136,6 +137,79 @@ class ProgressStats
     public static function isBoardFullyClear(User $user): bool
     {
         return Task::query()->forUser($user)->active()->whereIn('list', Task::BOARD_LISTS)->doesntExist();
+    }
+
+    /**
+     * The today-set's task ids for ONE specific date — the same union rule
+     * as todayListStatsByDay() (today_date ∪, while planner_enabled,
+     * TaskDayPlan), but scoped to a single day instead of scanning a user's
+     * whole history. Deliberately a separate, smaller query rather than
+     * reusing todayListStatsByDay() for this: that method is built to
+     * compute a multi-day map in two total queries, which would be wasteful
+     * for asking about just one day, and it only ever returns counts, never
+     * the actual task ids — see streakTasksNeeded(), the one caller that
+     * needs the real rows.
+     *
+     * @return Collection<int, int>
+     */
+    public static function todaySetTaskIds(User $user, Carbon $date): Collection
+    {
+        $dateStr = $date->toDateString();
+
+        $ids = Task::query()->forUser($user)->whereDate('today_date', $dateStr)->pluck('id');
+
+        if ($user->planner_enabled) {
+            $plannerIds = TaskDayPlan::query()
+                ->whereHas('task', fn ($q) => $q->forUser($user))
+                ->whereDate('planned_date', $dateStr)
+                ->pluck('task_id');
+
+            $ids = $ids->merge($plannerIds);
+        }
+
+        return $ids->unique()->values();
+    }
+
+    /**
+     * The concrete answer to "what do I still need to do to keep my streak
+     * today" — for the Fortschritt page and the get_progress MCP tool.
+     * `secured` is true the moment today is already decided perfect (any of
+     * the four rules in the class docblock), in which case there is nothing
+     * left to show. Otherwise:
+     *   - if today has a today-set (today-list and/or Planer plan), the
+     *     SPECIFIC still-open tasks in it — completing all of them is what
+     *     satisfies rule 1;
+     *   - if it doesn't, how many MORE tasks (of any kind — rule 2 doesn't
+     *     care which ones) would still reach the daily goal. Never both at
+     *     once: a today-set, once it exists, is what rule 1 judges the day
+     *     by, regardless of the overall daily count.
+     *
+     * @return array{secured: bool, openTasks: Collection<int, Task>, remainingForGoal: ?int}
+     */
+    public static function streakTasksNeeded(User $user): array
+    {
+        $today = $user->localToday();
+        $todayKey = $today->toDateString();
+
+        if ((self::dailyOutcomeMap($user)[$todayKey] ?? null) === StreakDayOutcome::OUTCOME_PERFECT) {
+            return ['secured' => true, 'openTasks' => collect(), 'remainingForGoal' => null];
+        }
+
+        $ids = self::todaySetTaskIds($user, $today);
+
+        if ($ids->isNotEmpty()) {
+            $openTasks = Task::query()
+                ->whereIn('id', $ids)
+                ->where('is_completed', false)
+                ->boardOrdered()
+                ->get();
+
+            return ['secured' => false, 'openTasks' => $openTasks, 'remainingForGoal' => null];
+        }
+
+        $remaining = max(0, $user->dailyTaskGoal() - self::todayCount($user));
+
+        return ['secured' => false, 'openTasks' => collect(), 'remainingForGoal' => $remaining];
     }
 
     /**

@@ -208,4 +208,58 @@ class ProgressPageTest extends TestCase
 
         Livewire::test(Progress::class)->assertOk();
     }
+
+    // ── "Für die Serie heute" ──────────────────────────────────────────────
+
+    public function test_shows_the_specific_open_tasks_still_needed_for_todays_streak(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->todos()->todayOn('2026-08-16')->create(['title' => 'Noch offene Aufgabe']);
+
+        Livewire::test(Progress::class)
+            ->assertSee('Für die Serie heute')
+            ->assertSee('Noch offene Aufgabe');
+    }
+
+    public function test_hides_the_streak_task_section_once_today_is_already_secured(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->todos()->todayOn('2026-08-16')->completed()->create(['completed_at' => now()]);
+
+        Livewire::test(Progress::class)->assertDontSee('Für die Serie heute');
+    }
+
+    public function test_shows_a_plain_goal_count_with_no_today_set_at_all(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 3]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->inbox()->create(); // decoy: keeps the board non-empty
+        Task::factory()->for($user)->inbox()->completed()->create(['completed_at' => '2026-08-16 09:00:00']);
+
+        Livewire::test(Progress::class)
+            ->assertSee('Für die Serie heute')
+            ->assertSee('Noch 2')
+            ->assertSee('Aufgaben (egal welche)');
+    }
+
+    public function test_completing_a_streak_task_from_the_progress_page_marks_it_done(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-16')->create();
+
+        Livewire::test(Progress::class)->call('toggleStreakTask', $task->id);
+
+        $this->assertTrue($task->fresh()->is_completed);
+    }
 }

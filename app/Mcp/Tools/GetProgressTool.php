@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Http\Resources\TaskResource;
 use App\Mcp\McpTool;
 use App\Models\User;
 use App\Services\ProgressStats;
@@ -15,9 +16,10 @@ class GetProgressTool extends McpTool
 
     public function description(): string
     {
-        return 'This user\'s progress: current/best streak of "perfect" today-lists, lifetime perfect-day '
-            .'rate, today\'s completed count vs. their daily goal, best single-day count, and the last two '
-            .'weeks of the completion heatmap.';
+        return 'This user\'s progress: current/best streak of "perfect" days, lifetime perfect-day rate, '
+            .'today\'s completed count vs. their daily goal, best single-day count, the last two weeks of '
+            .'the completion heatmap, and — unless today is already secured — exactly what still needs to '
+            .'happen today to keep the streak alive (specific open tasks, or how many more of any kind).';
     }
 
     public function inputSchema(): array
@@ -45,6 +47,7 @@ class GetProgressTool extends McpTool
         // Last 2 weeks only, not the full 12-week heatmap — a compact,
         // conversational summary rather than a wall of 84 daily cells.
         $recentHeatmap = array_slice(ProgressStats::heatmap($user, $counts, weeks: 2, outcomeMap: $outcomeMap), -14);
+        $needed = ProgressStats::streakTasksNeeded($user);
 
         return [
             'today_count' => ProgressStats::todayCount($user, $counts),
@@ -57,6 +60,9 @@ class GetProgressTool extends McpTool
             'best_single_day_count' => ProgressStats::bestDailyCount($counts),
             'freezes_used_this_week' => ProgressStats::freezesUsedInTrailingWeek($user, $user->localToday()->addDay()),
             'max_freezes_per_week' => ProgressStats::MAX_FREEZES_PER_WEEK,
+            'today_streak_secured' => $needed['secured'],
+            'tasks_needed_for_streak' => $needed['secured'] ? [] : TaskResource::collection($needed['openTasks'])->resolve(),
+            'any_tasks_needed_for_streak' => $needed['secured'] ? null : $needed['remainingForGoal'],
             'recent_days' => array_map(
                 fn (array $day) => [
                     'date' => $day['date'],

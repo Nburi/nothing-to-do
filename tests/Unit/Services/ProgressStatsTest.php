@@ -161,6 +161,62 @@ class ProgressStatsTest extends TestCase
         $this->assertTrue(ProgressStats::isBoardFullyClear($user));
     }
 
+    // ── todaySetTaskIds / streakTasksNeeded ───────────────────────────────
+
+    public function test_today_set_task_ids_unions_today_date_and_the_planner_plan(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'planner_enabled' => true]);
+        $flagged = Task::factory()->for($user)->todos()->todayOn('2026-08-16')->create();
+        $planned = Task::factory()->for($user)->tasks()->create();
+        TaskDayPlan::create(['task_id' => $planned->id, 'planned_date' => '2026-08-16', 'sort_order' => 0, 'source' => 'manual']);
+        Task::factory()->for($user)->todos()->todayOn('2026-08-15')->create(); // a different day, must not appear
+
+        $ids = ProgressStats::todaySetTaskIds($user, $user->localToday());
+
+        $this->assertEqualsCanonicalizing([$flagged->id, $planned->id], $ids->all());
+    }
+
+    public function test_streak_tasks_needed_is_secured_once_today_is_already_perfect(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->todayListOn($user, '2026-08-16', total: 1, done: 1);
+
+        $needed = ProgressStats::streakTasksNeeded($user);
+
+        $this->assertTrue($needed['secured']);
+        $this->assertTrue($needed['openTasks']->isEmpty());
+    }
+
+    public function test_streak_tasks_needed_lists_the_specific_open_today_set_tasks(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $done = Task::factory()->for($user)->todos()->todayOn('2026-08-16')->completed()->create(['completed_at' => now()]);
+        $open = Task::factory()->for($user)->todos()->todayOn('2026-08-16')->create();
+
+        $needed = ProgressStats::streakTasksNeeded($user);
+
+        $this->assertFalse($needed['secured']);
+        $this->assertSame([$open->id], $needed['openTasks']->pluck('id')->all());
+        $this->assertNull($needed['remainingForGoal']);
+    }
+
+    public function test_streak_tasks_needed_falls_back_to_a_plain_goal_count_with_no_today_set(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 3]);
+        $this->decoyOpenTask($user); // keeps the board non-empty, isolating this from full-clear
+        $this->completedOn($user, '2026-08-16', 1);
+
+        $needed = ProgressStats::streakTasksNeeded($user);
+
+        $this->assertFalse($needed['secured']);
+        $this->assertTrue($needed['openTasks']->isEmpty());
+        $this->assertSame(2, $needed['remainingForGoal']);
+    }
+
     // ── dailyOutcomeMap ──────────────────────────────────────────────────
 
     public function test_outcome_map_marks_a_fully_cleared_today_list_as_perfect(): void
