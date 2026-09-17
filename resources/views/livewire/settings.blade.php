@@ -830,6 +830,45 @@
                     ])></span>
                 </button>
             </div>
+
+            <div class="flex items-center justify-between gap-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Dein Tag ist bereit</p>
+                    <p class="text-xs text-ink-soft">
+                        Morgens ein kurzer Überblick — wie viele Aufgaben, Termine und Fälligkeiten heute anstehen.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleNotifyDayPreview"
+                    @class([
+                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $notifyDayPreview,
+                        'bg-line' => ! $notifyDayPreview,
+                    ])
+                    aria-label="Tagesüberblick-Erinnerung {{ $notifyDayPreview ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $notifyDayPreview,
+                        'left-0.5' => ! $notifyDayPreview,
+                    ])></span>
+                </button>
+            </div>
+
+            @if ($notifyDayPreview)
+                <div class="max-w-[10rem] pb-2">
+                    <label for="dayPreviewNotificationTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
+                    <input
+                        id="dayPreviewNotificationTime"
+                        type="time"
+                        wire:model="dayPreviewNotificationTime"
+                        wire:change="saveDayPreviewNotificationTime"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    />
+                    @error('dayPreviewNotificationTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            @endif
         </div>
         </div>
     </section>

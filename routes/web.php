@@ -8,6 +8,7 @@ use App\Livewire\Admin\HelpEditor;
 use App\Livewire\Admin\SupportQueue;
 use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
+use App\Livewire\DayPreview;
 use App\Livewire\EmergencyMode;
 use App\Livewire\GroupPage;
 use App\Livewire\Help;
@@ -181,6 +182,13 @@ Route::get('/app/crafts', CraftIdeas::class)
 Route::get('/app/progress', Progress::class)
     ->middleware('auth')
     ->name('progress');
+
+// Tagesüberblick — deliberately not in AppModules::CATALOG (see the model docblocks
+// on DayPreview/User::hasSeenDayPreviewToday()): a silent header dot is the only
+// entry point, never a hideable nav link.
+Route::get('/app/today', DayPreview::class)
+    ->middleware('auth')
+    ->name('today');
 
 // Presence heartbeat — see PresenceController and the heartbeat block in app.js.
 Route::post('/app/heartbeat', PresenceController::class)

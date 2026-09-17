@@ -23,6 +23,8 @@ use Laravel\Sanctum\HasApiTokens;
     'timezone_offset', 'timezone_auto_dst',
     'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
+    'day_preview_seen_on',
+    'notify_day_preview', 'day_preview_notification_time', 'day_preview_notification_sent_on',
     'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
@@ -406,6 +408,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Whether the Tagesüberblick (App\Livewire\DayPreview) has already been opened
+     * today — deliberately time-of-day-independent (unlike Vorbereitung's own
+     * morning/evening window): the first visit of the local calendar day is what
+     * clears the header's silent dot, whether that happens at 08:00 or 14:00.
+     */
+    public function hasSeenDayPreviewToday(): bool
+    {
+        return $this->day_preview_seen_on?->toDateString() === $this->localToday()->toDateString();
+    }
+
+    public function markDayPreviewSeen(): void
+    {
+        $this->update(['day_preview_seen_on' => $this->localToday()]);
+    }
+
+    /**
      * True during the half of the day an "automatic" reminder is relevant:
      * before noon for "morning" mode, from noon on for "evening" mode. Drives
      * the in-app banner on the board — it's deliberately a loose half-day
@@ -512,6 +530,9 @@ class User extends Authenticatable
             'prepared_on' => 'date',
             'prepare_reminder_sent_on' => 'date',
             'prepare_prompt_dismissed_on' => 'date',
+            'day_preview_seen_on' => 'date',
+            'notify_day_preview' => 'boolean',
+            'day_preview_notification_sent_on' => 'date',
             'last_seen_at' => 'datetime',
             'show_presence' => 'boolean',
             'deadline_preview_enabled' => 'boolean',

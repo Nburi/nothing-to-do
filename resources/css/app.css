@@ -464,6 +464,31 @@
         animation: announcement-highlight 1400ms ease-out;
     }
 
+    /* Tagesüberblick entry — Signature Moment: the silent header dot doesn't
+       just vanish on click, it bursts outward from the icon (played via the
+       @click handler on the header link in layouts/app.blade.php) while the
+       destination page's streak pill pops in to match (day-preview.blade.php)
+       — a two-part stand-in for a continuous cross-page morph, since a real
+       Livewire wire:navigate SPA jump can't reliably track one shared element
+       through the swap. Respects prefers-reduced-motion via the global
+       animation-collapse rule below — nothing extra needed here. */
+    @keyframes day-preview-launch {
+        0% { box-shadow: 0 0 0 0 rgb(var(--overprint) / 0.55); }
+        100% { box-shadow: 0 0 0 14px rgb(var(--overprint) / 0); }
+    }
+    .day-preview-launch {
+        animation: day-preview-launch 450ms ease-out;
+    }
+
+    @keyframes day-preview-arrive {
+        0% { transform: scale(0.4); opacity: 0; }
+        60% { transform: scale(1.12); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .day-preview-arrive {
+        animation: day-preview-arrive 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
     /* "Eisenhower" concept's "Krisenring" signature moment (see
        TaskBoard::trackEisenhowerCrisisEntries(), the "eisenhower-crisis"
        Livewire listener in app.js) — a slow, calm wash across the "Wichtig &
