@@ -129,6 +129,36 @@
                             </div>
                         @endif
 
+                        {{-- Tagesüberblick entry point — deliberately not part of the
+                             configurable header-badges row above (that's opt-in/user-ordered;
+                             this is a fixed, always-reachable surface, same "core, never
+                             hideable" precedent as the Board/Settings themselves, see
+                             App\Services\AppModules's own docblock). A silent dot, not a
+                             count or a toast — it disappears the instant the page is opened
+                             (see User::hasSeenDayPreviewToday()), whatever time of day that is.
+                             The launch-burst class is the first half of the day-preview
+                             Signature Moment; the destination page's streak pill plays the
+                             matching arrival half (day-preview.blade.php's `day-preview-arrive`
+                             class) — two one-shot CSS animations standing in for a continuous
+                             cross-page morph, since a real wire:navigate SPA jump can't reliably
+                             track one shared element through the swap. --}}
+                        <a
+                            href="{{ route('today') }}"
+                            wire:navigate
+                            x-data
+                            @click="$el.classList.add('day-preview-launch')"
+                            aria-label="Tagesüberblick{{ auth()->user()->hasSeenDayPreviewToday() ? '' : ' — neu' }}"
+                            class="relative flex h-8 w-8 flex-none items-center justify-center rounded-full text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="4"/>
+                                <path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+                            </svg>
+                            @unless (auth()->user()->hasSeenDayPreviewToday())
+                                <span class="absolute right-0.5 top-0.5 h-2 w-2 rounded-full border-2 border-paper bg-overprint" aria-hidden="true"></span>
+                            @endunless
+                        </a>
+
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills
                              (Vorbereiten/Zeitplan/Agenda/Notfall), styled like the avatar
                              menu below so it reads as native to the app rather than a
