@@ -29,6 +29,28 @@ class DayPreviewTest extends TestCase
         $this->get('/app/today')->assertRedirect('/login');
     }
 
+    public function test_the_greeting_pool_is_read_from_the_config_file_not_hardcoded(): void
+    {
+        Carbon::setTestNow('2026-09-17 19:00:00'); // evening pool
+        config(['day_preview.greetings.evening' => ['Config-Begrüssung für :name.']]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'name' => 'Config Tester']);
+        $this->actingAs($user);
+
+        Livewire::test(DayPreview::class)->assertSee('Config-Begrüssung für Config Tester.');
+    }
+
+    public function test_a_streak_milestone_in_config_overrides_the_greeting_pool(): void
+    {
+        Carbon::setTestNow('2026-09-17 09:00:00');
+        // A fresh user's streak is 0 — using it as the milestone key keeps this
+        // test independent of fabricating a real multi-day streak.
+        config(['day_preview.milestones' => [0 => 'Test-Meilenstein-Zeile']]);
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Livewire::test(DayPreview::class)->assertSee('Test-Meilenstein-Zeile');
+    }
+
     public function test_the_page_renders_and_marks_it_seen(): void
     {
         Carbon::setTestNow('2026-09-17 09:00:00');

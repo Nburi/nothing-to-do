@@ -23,50 +23,44 @@ class DayPreview extends Component
     /** Pinned once at mount so a mid-page-life clock tick can't reshuffle the greeting pool underneath a click. */
     public ?string $greeting = null;
 
-    /**
-     * Milestones that override the plain greeting pool with a quiet callout —
-     * deliberately just text, never the confetti/ring overlay ProgressStats::
-     * celebrationFor() drives elsewhere: that stays reserved for the moment a
-     * task completion actually crosses a threshold, not for opening a page.
-     *
-     * @var array<int, string>
-     */
-    private const MILESTONE_MESSAGES = [
-        7 => 'Tag 7 deiner Serie — eine Woche am Stück.',
-        14 => 'Tag 14 deiner Serie — zwei Wochen ohne Lücke.',
-        30 => 'Tag 30 deiner Serie. Das ist kein Zufall mehr.',
-        50 => 'Tag 50 deiner Serie.',
-        100 => 'Tag 100 deiner Serie.',
-    ];
-
-    /** @var array<string, array<int, string>> */
-    private const GREETING_POOLS = [
-        'morning' => ["Guten Morgen, :name.", "Auf geht's, :name.", 'Morgen. Kaffee zuerst?', 'Ein neuer Tag, :name.'],
-        'midday' => ['Hey :name — dein Tag im Überblick.', 'Zweite Tageshälfte, gleiche Prioritäten.', "Auf geht's, :name."],
-        'evening' => ['Guten Abend, :name.', 'Der Tag ist fast rum — hier steht noch was aus.', 'Später Einstieg heute, aber gut.'],
-    ];
-
     public function mount(): void
     {
         auth()->user()->markDayPreviewSeen();
         $this->greeting = $this->buildGreeting();
     }
 
+    /**
+     * Greeting pools and streak milestones both live in config/day_preview.php,
+     * deliberately not as class constants — so the copy can be edited without
+     * touching code (a config file only). A milestone message (exact streak
+     * day match) always wins over the pool for that one visit — deliberately
+     * just text, never the confetti/ring overlay ProgressStats::celebrationFor()
+     * drives elsewhere: that stays reserved for a task completion actually
+     * crossing a threshold, not for opening a page. An emptied-out pool falls
+     * back to one plain line rather than crashing on array_rand([]).
+     */
     private function buildGreeting(): string
     {
         $user = auth()->user();
         $streak = $this->streakDays;
 
-        if (array_key_exists($streak, self::MILESTONE_MESSAGES)) {
-            return self::MILESTONE_MESSAGES[$streak];
+        $milestones = config('day_preview.milestones', []);
+        if (array_key_exists($streak, $milestones)) {
+            return str_replace(':name', $user->name, $milestones[$streak]);
         }
 
         $hour = (int) $user->localNow()->format('G');
-        $pool = match (true) {
-            $hour < 12 => self::GREETING_POOLS['morning'],
-            $hour < 18 => self::GREETING_POOLS['midday'],
-            default => self::GREETING_POOLS['evening'],
+        $poolKey = match (true) {
+            $hour < 12 => 'morning',
+            $hour < 18 => 'midday',
+            default => 'evening',
         };
+
+        $pool = config("day_preview.greetings.{$poolKey}", []);
+
+        if (empty($pool)) {
+            return "Guten Tag, {$user->name}.";
+        }
 
         return str_replace(':name', $user->name, $pool[array_rand($pool)]);
     }
