@@ -63,10 +63,12 @@ automated suite green (1418 tests, `tests/Feature/PlannerStandardTasksTest.php` 
 - **No `FeatureAnnouncement` draft was created** — same reasoning as every other admin-authored-content
   gap in this file: the editor needs its own admin UI, and this was a fully autonomous session with no
   safe browser access to use it. Worth one once this merges ("Neu im Planer: Standardaufgaben").
-- Deliberately out of scope: a duration field for "Lernen" (not asked for — DayPlanner's existing 25-min
-  fallback already covers its capacity math), more than two templates, and any provenance marker/badge
-  on a Standardaufgabe-created task (it's a plain Task afterward, indistinguishable from a hand-typed one
-  by design).
+- **Update:** "Lernen" gained the same adjustable-length field "ToDos erledigen" already had (per Niels's
+  follow-up request), with the shared default dropped from 30 to 25 minutes for both templates — no longer
+  out of scope, see CLAUDE.md's "Standardaufgaben" subsection for the current shape.
+- Deliberately out of scope: more than two templates, and any provenance marker/badge on a
+  Standardaufgabe-created task (it's a plain Task afterward, indistinguishable from a hand-typed one by
+  design).
 
 ### MCP-Server — built; a FeatureAnnouncement draft and a live client check remain
 

@@ -190,7 +190,7 @@ class Planner extends Component
         $this->resetValidation();
         $this->standardTemplate = $key;
         $this->standardDate = $resolvedDate->toDateString();
-        $this->standardDuration = $key === 'todos_clear' ? PlannerStandardTasks::DEFAULT_TODOS_DURATION : null;
+        $this->standardDuration = PlannerStandardTasks::DEFAULT_DURATION;
         $this->standardStudyMode = 'general';
         $this->standardStudySubject = '';
         $this->standardStudyAgendaEntryId = null;
@@ -245,11 +245,10 @@ class Planner extends Component
 
         $rules = [
             'standardDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$today->toDateString(), 'before_or_equal:'.$horizonEnd->toDateString()],
+            'standardDuration' => ['required', 'integer', 'min:'.PlannerStandardTasks::MIN_DURATION, 'max:'.PlannerStandardTasks::MAX_DURATION],
         ];
 
-        if ($this->standardTemplate === 'todos_clear') {
-            $rules['standardDuration'] = ['required', 'integer', 'min:'.PlannerStandardTasks::MIN_DURATION, 'max:'.PlannerStandardTasks::MAX_DURATION];
-        } else {
+        if ($this->standardTemplate === 'study') {
             $rules['standardStudyMode'] = ['required', Rule::in(array_keys(PlannerStandardTasks::STUDY_MODES))];
 
             if ($this->standardStudyMode !== 'general') {
@@ -258,16 +257,15 @@ class Planner extends Component
         }
 
         $validated = $this->validate($rules);
+        $duration = $validated['standardDuration'];
 
         if ($this->standardTemplate === 'todos_clear') {
             $title = PlannerStandardTasks::label('todos_clear');
-            $duration = $validated['standardDuration'];
             $deadline = null;
         } else {
             $mode = $this->standardStudyMode;
             $subject = $mode === 'general' ? null : $this->standardStudySubject;
             $title = PlannerStandardTasks::studyTitle($mode, $subject);
-            $duration = null;
 
             $examEntry = $mode === 'exam' && $this->standardStudyAgendaEntryId !== null
                 ? $this->standardStudyExamOptions->firstWhere('id', $this->standardStudyAgendaEntryId)

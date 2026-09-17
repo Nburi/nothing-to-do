@@ -35,21 +35,21 @@
                     @error('standardDate') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
-                @if ($standardTemplate === 'todos_clear')
-                    <div>
-                        <label for="standard-task-duration" class="mb-1.5 block px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Länge für diesen Tag (Minuten)</label>
-                        <input
-                            id="standard-task-duration"
-                            type="number"
-                            wire:model="standardDuration"
-                            min="{{ \App\Services\PlannerStandardTasks::MIN_DURATION }}"
-                            max="{{ \App\Services\PlannerStandardTasks::MAX_DURATION }}"
-                            step="5"
-                            class="w-full rounded-card border-line bg-paper text-sm tnum text-ink focus:border-overprint focus:ring-0"
-                        />
-                        @error('standardDuration') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
-                    </div>
-                @else
+                <div>
+                    <label for="standard-task-duration" class="mb-1.5 block px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Länge für diesen Tag (Minuten)</label>
+                    <input
+                        id="standard-task-duration"
+                        type="number"
+                        wire:model="standardDuration"
+                        min="{{ \App\Services\PlannerStandardTasks::MIN_DURATION }}"
+                        max="{{ \App\Services\PlannerStandardTasks::MAX_DURATION }}"
+                        step="5"
+                        class="w-full rounded-card border-line bg-paper text-sm tnum text-ink focus:border-overprint focus:ring-0"
+                    />
+                    @error('standardDuration') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+
+                @if ($standardTemplate === 'study')
                     <div>
                         <label class="mb-1.5 block px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Was lernen?</label>
                         <div class="flex flex-wrap gap-1.5">

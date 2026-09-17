@@ -31,7 +31,16 @@ class PlannerStandardTasksTest extends TestCase
 
         $this->assertSame('todos_clear', $component->get('standardTemplate'));
         $this->assertSame(now()->toDateString(), $component->get('standardDate'));
-        $this->assertSame(30, $component->get('standardDuration'));
+        $this->assertSame(25, $component->get('standardDuration'));
+    }
+
+    public function test_opening_study_also_defaults_to_the_shared_duration(): void
+    {
+        $this->actingUser();
+
+        $component = Livewire::test(Planner::class)->call('openStandardTask', 'study');
+
+        $this->assertSame(25, $component->get('standardDuration'));
     }
 
     public function test_opening_via_drag_prefills_the_dropped_date(): void
@@ -120,7 +129,29 @@ class PlannerStandardTasksTest extends TestCase
         $task = Task::sole();
         $this->assertSame('Lernen', $task->title);
         $this->assertSame('tasks', $task->list);
+        $this->assertSame(25, $task->duration_minutes);
         $this->assertNull($task->deadline);
+    }
+
+    public function test_study_duration_is_adjustable_and_must_stay_within_bounds(): void
+    {
+        $this->actingUser();
+
+        Livewire::test(Planner::class)
+            ->call('openStandardTask', 'study')
+            ->set('standardDuration', 45)
+            ->call('saveStandardTask')
+            ->assertHasNoErrors();
+
+        $this->assertSame(45, Task::sole()->duration_minutes);
+
+        Livewire::test(Planner::class)
+            ->call('openStandardTask', 'study')
+            ->set('standardDuration', 9999)
+            ->call('saveStandardTask')
+            ->assertHasErrors(['standardDuration']);
+
+        $this->assertSame(1, Task::count());
     }
 
     public function test_study_subject_mode_requires_a_subject(): void

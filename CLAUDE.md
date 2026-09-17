@@ -1188,13 +1188,14 @@ plannable target.
     `ListConcepts`/`AppModules`), plus `studyTitle(mode, subject)`, the one place the "Lernen" /
     "Lernen: Mathematik" / "Lernen für Prüfung: Mathematik" title shapes are built, so every caller (free
     text or a linked exam) stays consistent.
-  - **"ToDos erledigen"** (`list='todos'`) is the one template with a required field beyond the day: its
-    length, freely adjustable *per placement* — the same block on a busy day might get 20 minutes, on a
-    quiet one 45. Nothing else in this app lets you set a task's `duration_minutes` at creation time this
-    directly; every other duration is filled in afterward via the card's own quick-set ghost affordance.
-  - **"Lernen"** (`list='tasks'`) picks one of three modes (`PlannerStandardTasks::STUDY_MODES`): Allgemein
-    (no further input), Ein Fach (free-text subject), or Für eine Prüfung — which additionally offers every
-    currently open `AgendaEntry` of type `exam` to pick from (`Planner::standardStudyExamOptions()`, empty
+  - **Both templates share one required field beyond the day: length in minutes**
+    (`PlannerStandardTasks::DEFAULT_DURATION = 25`, `MIN_DURATION`/`MAX_DURATION` bound it), freely
+    adjustable *per placement* — the same block on a busy day might get 20 minutes, on a quiet one 45.
+    Nothing else in this app lets you set a task's `duration_minutes` at creation time this directly; every
+    other duration is filled in afterward via the card's own quick-set ghost affordance.
+  - **"Lernen"** (`list='tasks'`) additionally picks one of three modes (`PlannerStandardTasks::STUDY_MODES`):
+    Allgemein (no further input), Ein Fach (free-text subject), or Für eine Prüfung — which additionally offers
+    every currently open `AgendaEntry` of type `exam` to pick from (`Planner::standardStudyExamOptions()`, empty
     while the `agenda` module is hidden, mirroring every other Agenda-coupled read in this app) alongside a
     free-text fallback for when there's no matching entry yet. Picking one pre-fills the free-text field too
     (so the form still reads and saves correctly even if the entry turns out to be stale/deleted by submit

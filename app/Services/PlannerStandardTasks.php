@@ -31,8 +31,8 @@ class PlannerStandardTasks
         ],
     ];
 
-    /** Default block length (minutes) offered for "ToDos erledigen" — freely adjustable per placement. */
-    public const DEFAULT_TODOS_DURATION = 30;
+    /** Default block length (minutes) offered for either template — freely adjustable per placement. */
+    public const DEFAULT_DURATION = 25;
 
     public const MIN_DURATION = 5;
 
