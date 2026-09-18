@@ -47,7 +47,7 @@
                             type="button"
                             wire:click="$set('formType', '{{ $key }}')"
                             @class([
-                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                 $activeClasses => $active,
                                 'bg-paper text-ink-soft hover:text-ink' => ! $active,
                             ])
@@ -82,7 +82,7 @@
                             type="button"
                             wire:click="$set('formLinkType', '{{ $key }}')"
                             @class([
-                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                 'bg-ink text-white shadow-sm' => $formLinkType === $key,
                                 'bg-paper text-ink-soft hover:text-ink' => $formLinkType !== $key,
                             ])
@@ -118,7 +118,7 @@
                                         type="button"
                                         wire:click="$set('formOnlyForModuleUsers', false)"
                                         @class([
-                                            'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                            'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                             'bg-ink text-white shadow-sm' => ! $formOnlyForModuleUsers,
                                             'bg-paper text-ink-soft hover:text-ink' => $formOnlyForModuleUsers,
                                         ])
@@ -127,7 +127,7 @@
                                         type="button"
                                         wire:click="$set('formOnlyForModuleUsers', true)"
                                         @class([
-                                            'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                            'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                             'bg-ink text-white shadow-sm' => $formOnlyForModuleUsers,
                                             'bg-paper text-ink-soft hover:text-ink' => ! $formOnlyForModuleUsers,
                                         ])

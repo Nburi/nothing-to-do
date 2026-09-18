@@ -165,10 +165,10 @@
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
                 </a>
                 <div class="flex min-w-0 flex-1 items-center justify-between rounded-card border border-line bg-surface px-1.5 py-1.5">
-                    <button wire:click="prevDay" class="grid h-8 w-8 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Vorheriger Tag">
+                    <button wire:click="prevDay" class="grid h-10 w-10 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Vorheriger Tag">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
                     </button>
-                    <button wire:click="goToday" class="text-center leading-tight">
+                    <button wire:click="goToday" class="min-h-10 min-w-0 flex-1 self-stretch text-center leading-tight">
                         <div class="text-sm font-medium {{ $focused->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $relDay }}</div>
                         <div class="tnum text-[11px] text-ink-faint">
                             {{ $wd[$focused->dayOfWeekIso - 1] }} · {{ $focused->isoFormat('D.M.') }}
@@ -177,7 +177,7 @@
                             @endif
                         </div>
                     </button>
-                    <button wire:click="nextDay" class="grid h-8 w-8 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Nächster Tag">
+                    <button wire:click="nextDay" class="grid h-10 w-10 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Nächster Tag">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
                     </button>
                 </div>

@@ -23,7 +23,7 @@
         type="button"
         wire:click="toggleDone({{ $entry->id }})"
         @class([
-            'grid h-[18px] w-[18px] flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+            'hit-area grid h-[18px] w-[18px] flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
             'border-forest bg-forest text-white' => $done,
             'border-line text-transparent hover:border-forest hover:text-forest' => !$done,
         ])
@@ -146,7 +146,7 @@
         <button
             type="button"
             wire:click="startEdit({{ $entry->id }})"
-            class="grid h-7 w-7 place-items-center rounded-card text-ink-faint opacity-60 transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/entry:opacity-100"
+            class="grid h-9 w-9 place-items-center rounded-card sm:h-7 sm:w-7 text-ink-faint opacity-60 transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/entry:opacity-100"
             aria-label="Bearbeiten: {{ $entry->title }}"
         >
             <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -161,7 +161,7 @@
             @click.outside="armed = false; clearTimeout(_t)"
             @keydown.escape.window="armed = false; clearTimeout(_t)"
             :class="armed ? 'opacity-100 bg-signal text-white' : 'opacity-60 group-hover/entry:opacity-100 text-ink-faint hover:bg-signal-soft hover:text-signal'"
-            class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-signal"
+            class="grid h-9 w-9 place-items-center rounded-card sm:h-7 sm:w-7 transition focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-signal"
             aria-label="Löschen: {{ $entry->title }}"
         >
             <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">

@@ -7,7 +7,7 @@
 <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div class="flex items-center gap-3">
-            <a href="{{ url('/app') }}" wire:navigate class="grid h-8 w-8 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink" aria-label="Zurück zum Board">
+            <a href="{{ url('/app') }}" wire:navigate class="grid h-10 w-10 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink sm:h-8 sm:w-8" aria-label="Zurück zum Board">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
             </a>
             <div>
@@ -16,7 +16,9 @@
             </div>
         </div>
 
-        <div class="flex flex-none flex-wrap items-center gap-2">
+        {{-- max-w-full + no flex-none below sm: a flex-none wrapping group never wraps (it takes its
+             full single-line width), which made the whole page scroll sideways on a phone. --}}
+        <div class="flex max-w-full flex-wrap items-center gap-2 sm:flex-none">
             {{-- Draggable on desktop (drop onto a day column to pre-fill its date in the sheet below), still a
                  plain click target on every breakpoint — see standardTaskDragSource in app.js. --}}
             <div x-data x-init="window.standardTaskDragSource($el, $wire)" class="flex flex-wrap items-center gap-2">

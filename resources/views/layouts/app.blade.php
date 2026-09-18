@@ -80,7 +80,7 @@
                          header (avatar name, "Mehr" label) — the logo icon alone already
                          carries the brand, and the freed width matters more on a narrow
                          screen than the extra word does. --}}
-                    <a href="{{ url('/app') }}" class="flex items-center gap-2.5" wire:navigate>
+                    <a href="{{ url('/app') }}" class="-m-2 flex items-center gap-2.5 p-2" wire:navigate>
                         <x-logo class="h-6 w-6 text-forest" />
                         <span class="hidden text-[15px] font-medium tracking-tight sm:inline">nothing-to-do</span>
                     </a>
@@ -148,7 +148,7 @@
                             x-data
                             @click="$el.classList.add('day-preview-launch')"
                             aria-label="Tagesüberblick{{ auth()->user()->hasSeenDayPreviewToday() ? '' : ' — neu' }}"
-                            class="relative flex h-8 w-8 flex-none items-center justify-center rounded-full text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                            class="relative flex h-10 w-10 flex-none items-center justify-center rounded-full text-ink-soft sm:h-8 sm:w-8 transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                         >
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
                                 <circle cx="12" cy="12" r="4"/>
@@ -225,7 +225,7 @@
                             x-data
                             @click="$store.quickCapture.show($event.currentTarget)"
                             @class([
-                                'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
+                                'h-10 w-10 place-items-center rounded-card border border-line bg-surface text-ink-soft sm:h-8 sm:w-8 transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
                                 'hidden sm:grid' => $showCaptureFab,
                                 'grid' => !$showCaptureFab,
                             ])
@@ -239,7 +239,7 @@
                                 type="button"
                                 @click="open = !open"
                                 @keydown.escape.window="open = false"
-                                class="flex items-center gap-2 rounded-card px-2.5 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                                class="flex items-center gap-2 rounded-card px-2.5 py-2 text-sm text-ink-soft transition sm:py-1.5 hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                                 :aria-expanded="open"
                                 aria-haspopup="true"
                                 aria-label="Konto{{ $anyMehrNavVisible ? ' & weitere Funktionen' : '' }}"
@@ -294,14 +294,14 @@
                                     @include('partials.mehr-nav-links', ['stagger' => true])
                                 </div>
                                 @endif
-                                <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Profil
                                 </a>
-                                <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Einstellungen
                                 </a>
                                 @if ($showProgressNav)
-                                <a href="{{ route('progress') }}" wire:navigate class="flex items-center justify-between gap-2 px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('progress') }}" wire:navigate class="flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Fortschritt
                                     @if ($currentStreak > 0)
                                         <span @class([
@@ -314,20 +314,20 @@
                                     @endif
                                 </a>
                                 @endif
-                                <a href="{{ route('help') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('help') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Hilfe
                                 </a>
                                 @if (auth()->user()->is_admin)
-                                <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Ankündigungen verwalten
                                 </a>
-                                <a href="{{ route('admin.help') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.help') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Hilfe-Center verwalten
                                 </a>
-                                <a href="{{ route('admin.support') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.support') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Support-Anfragen
                                 </a>
-                                <a href="{{ route('admin.errors') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.errors') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Fehler-Statistiken
                                 </a>
                                 @endif

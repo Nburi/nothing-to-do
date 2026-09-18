@@ -69,11 +69,11 @@
                     @input="typed = $event.target.value"
                     @keydown.down.prevent="cycle(1)"
                     @keydown.up.prevent="cycle(-1)"
-                    class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0"
+                    class="min-w-0 flex-1 border-0 bg-transparent p-0 py-2 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0 sm:py-0"
                 />
                 <button
                     type="submit"
-                    class="flex-none rounded-card bg-forest px-3.5 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    class="flex-none rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white sm:px-3.5 sm:py-1.5 transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                     Erfassen
                 </button>
@@ -86,7 +86,7 @@
                         type="button"
                         wire:click="setTarget('{{ $t }}')"
                         @class([
-                            'rounded-full border px-2.5 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                            'rounded-full border px-3 py-2 text-xs transition focus:outline-none sm:px-2.5 sm:py-1 focus-visible:ring-2 focus-visible:ring-overprint',
                             'border-forest bg-forest text-white' => $target === $t,
                             'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $target !== $t,
                         ])
@@ -101,7 +101,7 @@
                     type="button"
                     x-show="$wire.target !== 'agenda' && $wire.target !== 'group'"
                     @click="forced = !showExtra"
-                    class="ml-auto flex items-center gap-1 rounded-card px-1.5 py-1 text-xs text-ink-faint transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="ml-auto flex items-center gap-1 rounded-card px-2 py-2 text-xs text-ink-faint sm:px-1.5 sm:py-1 transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
                 >
                     <span x-text="showExtra ? 'Weniger' : 'Mehr'">Mehr</span>

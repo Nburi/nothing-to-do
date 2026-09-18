@@ -61,16 +61,16 @@
                         class="absolute right-0 top-9 z-20 w-44 origin-top-right overflow-hidden rounded-card border border-line bg-surface p-1 shadow-map"
                         style="display: none;"
                     >
-                        <button type="button" wire:click="$set('renaming', true)" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                        <button type="button" wire:click="$set('renaming', true)" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             Umbenennen
                         </button>
-                        <button type="button" wire:click="editExternalLink" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                        <button type="button" wire:click="editExternalLink" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             {{ $this->project->external_url ? 'Link bearbeiten' : 'Link hinzufügen' }}
                         </button>
-                        <button type="button" wire:click="editDeadline" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                        <button type="button" wire:click="editDeadline" @click="open = false" class="block w-full rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
                             {{ $this->project->deadline ? 'Deadline bearbeiten' : 'Deadline setzen' }}
                         </button>
-                        <a href="{{ route('emergency', ['project' => $this->project->id]) }}" wire:navigate class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft">
+                        <a href="{{ route('emergency', ['project' => $this->project->id]) }}" wire:navigate class="block w-full rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm text-signal transition hover:bg-signal-soft">
                             {{ $this->project->id === auth()->user()->emergency_project_id ? 'Notfallmodus verwalten' : 'Notfallmodus starten' }}
                         </a>
                         <div class="my-1 h-px bg-line/60"></div>
@@ -81,7 +81,7 @@
                             @click.outside="armed = false; clearTimeout(_t)"
                             @keydown.escape.window="armed = false; clearTimeout(_t)"
                             :class="armed ? 'bg-signal text-white' : 'text-signal hover:bg-signal-soft'"
-                            class="block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                            class="block w-full rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                         >
                             <span x-text="armed ? 'Wirklich löschen?' : 'Projekt löschen'"></span>
                         </button>

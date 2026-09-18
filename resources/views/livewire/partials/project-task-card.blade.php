@@ -34,7 +34,7 @@
             type="button"
             wire:click="toggleComplete({{ $task->id }})"
             @class([
-                'mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                'hit-area mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                 'border-forest bg-forest text-white' => $task->is_completed,
                 'border-line text-transparent hover:border-forest hover:text-forest' => !$task->is_completed,
             ])
@@ -89,7 +89,7 @@
                 type="button"
                 wire:click="startEdit({{ $task->id }})"
                 @click.stop
-                class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
+                class="grid h-9 w-9 place-items-center rounded-card md:h-7 md:w-7 text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
                 aria-label="Bearbeiten: {{ $task->title }}"
             >
                 <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -104,7 +104,7 @@
                     @click.outside="armed = false; clearTimeout(_t)"
                     @keydown.escape.window="armed = false; clearTimeout(_t)"
                     :class="armed ? '!opacity-100 bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                    class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
+                    class="grid h-9 w-9 place-items-center rounded-card md:h-7 md:w-7 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal md:opacity-0 md:focus-visible:opacity-100 md:group-hover/card:opacity-100"
                     aria-label="Löschen: {{ $task->title }}"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">

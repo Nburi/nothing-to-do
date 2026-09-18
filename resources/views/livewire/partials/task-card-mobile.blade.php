@@ -83,7 +83,7 @@
             type="button"
             wire:click.stop="toggleComplete({{ $task->id }})"
             @class([
-                'mt-px grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
+                'hit-area mt-px grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
                 'border-forest bg-forest text-white' => $task->is_completed,
                 'border-line text-transparent hover:border-forest hover:text-forest' => !$task->is_completed,
             ])
@@ -144,7 +144,7 @@
                         <button
                             type="button"
                             @click.stop="dateOpen = !dateOpen"
-                            class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium
+                            class="tnum mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-1.5 text-[11px] font-medium
                             {{ $task->isOverdue() ? 'bg-signal-soft text-signal' : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}"
                             aria-label="Termin ändern: {{ $task->title }}"
                         >
@@ -157,7 +157,7 @@
                         <button
                             type="button"
                             @click.stop="dateOpen = !dateOpen"
-                            class="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                            class="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-1.5 text-[11px] font-medium text-ink-faint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                             aria-label="Termin setzen: {{ $task->title }}"
                         >
                             <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -170,7 +170,7 @@
                             <button
                                 type="button"
                                 @click.stop="dateOpen = false; durationOpen = !durationOpen"
-                                class="tnum ml-1 mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition"
+                                class="tnum ml-1 mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-1.5 text-[11px] font-medium text-ink-faint transition"
                                 aria-label="Dauer ändern: {{ $task->title }}"
                             >
                                 {{ $task->duration_minutes }} min
@@ -179,7 +179,7 @@
                             <button
                                 type="button"
                                 @click.stop="dateOpen = false; durationOpen = !durationOpen"
-                                class="ml-1 mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition"
+                                class="ml-1 mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-1.5 text-[11px] font-medium text-ink-faint transition"
                                 aria-label="Dauer schätzen: {{ $task->title }}"
                             >
                                 <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v3.8l2.5 1.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -193,7 +193,7 @@
                             type="button"
                             wire:click="startEdit({{ $task->id }})"
                             @click.stop
-                            class="mt-1 block max-w-full truncate rounded text-left text-[11px] text-ink-faint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                            class="mt-0.5 block max-w-full truncate rounded py-1.5 text-left text-[11px] text-ink-faint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                             aria-label="Notizen anzeigen: {{ $task->title }}"
                         >{{ $preview }}</button>
                     @endif
@@ -201,7 +201,7 @@
             </div>
 
             {{-- Inline drag handle + edit + delete actions (always visible on mobile) --}}
-            <div class="flex flex-none items-center gap-0.5">
+            <div class="-my-1 -mr-1 flex flex-none items-center">
                 @unless($task->is_completed || isset($orderNumber))
                     {{-- Reorder handle: dragging is scoped to this icon so it never fights
                          swipeCard's horizontal-swipe/long-press gestures on the rest of the card. --}}
@@ -209,7 +209,7 @@
                         type="button"
                         data-drag-handle
                         @click.stop
-                        class="grid h-7 w-7 flex-none touch-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink active:cursor-grabbing"
+                        class="grid h-9 w-9 flex-none touch-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink active:cursor-grabbing"
                         aria-label="Ziehen zum Sortieren: {{ $task->title }}"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -223,7 +223,7 @@
                     type="button"
                     wire:click="startEdit({{ $task->id }})"
                     @click.stop
-                    class="grid h-7 w-7 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="grid h-9 w-9 place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     aria-label="Bearbeiten: {{ $task->title }}"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -238,7 +238,7 @@
                     @click.outside="armed = false; clearTimeout(_t)"
                     @keydown.escape.window="armed = false; clearTimeout(_t)"
                     :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                    class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                    class="grid h-9 w-9 place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                     aria-label="Löschen: {{ $task->title }}"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -280,7 +280,7 @@
                 <label class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer</label>
                 <div class="flex flex-wrap gap-1.5">
                     @foreach ([10, 15, 25, 45, 60] as $mins)
-                        <button type="button" wire:click="quickSetDuration({{ $task->id }}, {{ $mins }})" @click="durationOpen = false" class="tnum rounded-card border border-line bg-paper px-2 py-1 text-xs text-ink-soft transition hover:border-overprint hover:text-ink">{{ $mins }} min</button>
+                        <button type="button" wire:click="quickSetDuration({{ $task->id }}, {{ $mins }})" @click="durationOpen = false" class="tnum rounded-card border border-line bg-paper px-3 py-2 text-xs text-ink-soft transition hover:border-overprint hover:text-ink">{{ $mins }} min</button>
                     @endforeach
                     <input
                         type="number" min="1" max="600" step="1"

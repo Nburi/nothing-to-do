@@ -43,7 +43,7 @@
     <button
         type="button"
         wire:click="{{ $toggleAction }}({{ $item['id'] }})"
-        class="grid h-3 w-3 flex-none place-items-center rounded-full border-[1.5px] {{ $styles['dot'] }} transition hover:scale-110"
+        class="hit-area grid h-3 w-3 flex-none place-items-center rounded-full border-[1.5px] {{ $styles['dot'] }} transition hover:scale-110"
         aria-label="Erledigt markieren: {{ $item['title'] }}"
     ></button>
 

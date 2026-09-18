@@ -60,7 +60,7 @@
                                 @click="list = opt.value; open = false"
                                 role="option"
                                 :aria-selected="list === opt.value"
-                                class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                                 :class="list === opt.value ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
                             >
                                 <span x-text="opt.label"></span>
@@ -123,7 +123,7 @@
                                     @click="projectId = ''; open = false"
                                     role="option"
                                     :aria-selected="!projectId"
-                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                                     :class="!projectId ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
                                 >
                                     <span>Kein Projekt</span>
@@ -137,7 +137,7 @@
                                         @click="projectId = p.id; open = false"
                                         role="option"
                                         :aria-selected="projectId == p.id"
-                                        class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                        class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                                         :class="projectId == p.id ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
                                     >
                                         <span x-text="p.name" class="min-w-0 flex-1 truncate"></span>
@@ -205,7 +205,7 @@
                                     @click="groupId = ''; open = false"
                                     role="option"
                                     :aria-selected="!groupId"
-                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                                     :class="!groupId ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
                                 >
                                     <span>Keine Gruppe</span>
@@ -219,7 +219,7 @@
                                         @click="groupId = g.id; open = false"
                                         role="option"
                                         :aria-selected="groupId == g.id"
-                                        class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                        class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                                         :class="groupId == g.id ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
                                     >
                                         <span x-text="g.name" class="min-w-0 flex-1 truncate"></span>

@@ -44,7 +44,7 @@
                             type="button"
                             wire:click="$set('eventKind', '{{ $val }}')"
                             @class([
-                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                 'bg-forest text-white shadow-sm' => $eventKind === $val,
                                 'text-ink-soft hover:text-ink' => $eventKind !== $val,
                             ])

@@ -22,7 +22,7 @@
         // (both px-2.5 py-1.5) — a badge used to sit shorter than its
         // header-row siblings, a small inconsistency in touch-target height
         // that got noticed while decluttering the row around it.
-        'flex flex-none items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium transition',
+        'flex min-h-10 flex-none items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium transition sm:min-h-0',
         'border border-line text-[rgb(var(--ember-glow))] hover:text-ink' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) <= 1,
         'bg-[rgb(var(--ember-warm-soft))] text-[rgb(var(--ember-warm))] hover:brightness-95' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 2,
         'bg-[rgb(var(--ember-hot-soft))] text-[rgb(var(--ember-hot))] hover:brightness-95' => $badge['key'] === 'streak' && ($badge['tier'] ?? 0) === 3,

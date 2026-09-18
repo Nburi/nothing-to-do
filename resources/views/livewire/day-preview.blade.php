@@ -65,7 +65,7 @@
             <div class="mt-6 rounded-card border border-line bg-surface p-4 shadow-map">
                 <div class="flex items-center justify-between">
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Zeitplan heute</p>
-                    <a href="{{ route('schedule') }}" wire:navigate class="text-[11px] font-medium text-ink-soft transition hover:text-ink">Öffnen →</a>
+                    <a href="{{ route('schedule') }}" wire:navigate class="hit-area text-[11px] font-medium text-ink-soft transition hover:text-ink">Öffnen →</a>
                 </div>
                 <div class="mt-2">
                     @foreach ($this->schedule['blocks'] as $block)
