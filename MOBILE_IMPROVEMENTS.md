@@ -7,7 +7,7 @@ Audit date: 2026-09-18, branch `feature/mobile-polish` (off `main` @ `4fee103`, 
 
 The Browser pane (375 × 812, dpr 2, a fresh throw-away account with seeded tasks/project/agenda/schedule) worked
 for navigation and DOM inspection, but **screenshots timed out or came back cropped** (the known flakiness, see
-memory). So the audit is DOM-driven instead of visual: a small script (`public/_audit.js`, git-excluded) walked each
+memory). So the audit is DOM-driven instead of visual: a small script (a throw-away script, since deleted) walked each
 page and reported (a) anything wider than the viewport, (b) every interactive element with a smallest side < 44px
 (< 32px = "tiny"), (c) inputs under 16px font size (iOS Safari zooms the page when such a field gets focus).
 
