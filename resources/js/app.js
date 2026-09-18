@@ -1243,10 +1243,12 @@ document.addEventListener('alpine:init', () => {
      * Auto-hides itself; there is nothing to confirm or dismiss, unlike a dialog.
      *
      * Three escalating tiers, indexed 0–2: goal/record is the baseline: a
-     * perfect day is bigger and slower — the rarest, most personally-defined
-     * win short of a streak record (see CLAUDE.md's Fortschritt section); a
-     * new streak record is bigger and slower still — it's a perfect day that
-     * *also* just beat every streak ever run before it.
+     * perfect day (or a full board clear, the same visual size in a
+     * different color — see the class bindings in layouts/app.blade.php) is
+     * bigger and slower — the rarest, most personally-defined win short of a
+     * streak record (see CLAUDE.md's Fortschritt section); a new streak
+     * record is bigger and slower still — it's a perfect day that *also*
+     * just beat every streak ever run before it.
      */
     window.Alpine.store('celebration', {
         visible: false,
@@ -1255,7 +1257,7 @@ document.addEventListener('alpine:init', () => {
         particles: [],
         _timer: null,
         fire(kind, label) {
-            const tier = kind === 'streak-record' ? 2 : kind === 'perfect-day' ? 1 : 0;
+            const tier = kind === 'streak-record' ? 2 : (kind === 'perfect-day' || kind === 'full-clear') ? 1 : 0;
             const count = [12, 18, 24][tier];
             const distanceBase = [46, 58, 72][tier];
             const distanceRange = [36, 46, 56][tier];

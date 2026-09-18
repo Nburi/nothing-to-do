@@ -57,6 +57,7 @@ class ProgressPageTest extends TestCase
         $user = User::factory()->create(['timezone_offset' => 0]);
         $this->actingAs($user);
 
+        Task::factory()->for($user)->todos()->create(); // decoy: keeps the board non-empty, isolating this from a full-clear
         // Completed today, but never flagged "Heute" (today_date stays null).
         Task::factory()->for($user)->completed()->create(['completed_at' => '2026-08-16 09:00:00']);
 
@@ -113,19 +114,46 @@ class ProgressPageTest extends TestCase
         $this->assertSame(4, $page->bestStreak());
     }
 
-    public function test_a_day_with_completions_but_no_today_list_does_not_count_toward_the_streak(): void
+    public function test_a_day_with_completions_but_no_today_list_does_not_count_toward_the_streak_below_the_goal(): void
     {
         Carbon::setTestNow('2026-08-16 18:00:00');
-        $user = User::factory()->create(['timezone_offset' => 0]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 5]);
         $this->actingAs($user);
 
-        // Plenty done today, but never flagged "today" — the new streak
-        // basis cares about the today-list specifically, not raw volume.
-        Task::factory()->for($user)->inbox()->completed()->count(5)->create(['completed_at' => '2026-08-16 09:00:00']);
+        Task::factory()->for($user)->inbox()->create(); // decoy: keeps the board non-empty, isolating this from full-clear
+        // Some done today, but never flagged "today" and still below the goal.
+        Task::factory()->for($user)->inbox()->completed()->count(3)->create(['completed_at' => '2026-08-16 09:00:00']);
 
         $page = Livewire::test(Progress::class)->instance();
 
         $this->assertSame(0, $page->currentStreak());
+    }
+
+    public function test_reaching_the_daily_goal_with_no_today_list_at_all_now_counts_toward_the_streak(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 3]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->inbox()->create(); // decoy: keeps the board non-empty, isolating this from full-clear
+        Task::factory()->for($user)->inbox()->completed()->count(3)->create(['completed_at' => '2026-08-16 09:00:00']);
+
+        $page = Livewire::test(Progress::class)->instance();
+
+        $this->assertSame(1, $page->currentStreak());
+    }
+
+    public function test_clearing_the_whole_board_counts_toward_the_streak_even_below_the_goal(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 20]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->inbox()->completed()->create(['completed_at' => '2026-08-16 09:00:00']); // the only task, now done
+
+        $page = Livewire::test(Progress::class)->instance();
+
+        $this->assertSame(1, $page->currentStreak());
     }
 
     public function test_perfect_days_count_and_rate_reflect_real_data(): void
@@ -179,5 +207,59 @@ class ProgressPageTest extends TestCase
         $this->actingAs(User::factory()->create());
 
         Livewire::test(Progress::class)->assertOk();
+    }
+
+    // ── "Für die Serie heute" ──────────────────────────────────────────────
+
+    public function test_shows_the_specific_open_tasks_still_needed_for_todays_streak(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->todos()->todayOn('2026-08-16')->create(['title' => 'Noch offene Aufgabe']);
+
+        Livewire::test(Progress::class)
+            ->assertSee('Für die Serie heute')
+            ->assertSee('Noch offene Aufgabe');
+    }
+
+    public function test_hides_the_streak_task_section_once_today_is_already_secured(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->todos()->todayOn('2026-08-16')->completed()->create(['completed_at' => now()]);
+
+        Livewire::test(Progress::class)->assertDontSee('Für die Serie heute');
+    }
+
+    public function test_shows_a_plain_goal_count_with_no_today_set_at_all(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 3]);
+        $this->actingAs($user);
+
+        Task::factory()->for($user)->inbox()->create(); // decoy: keeps the board non-empty
+        Task::factory()->for($user)->inbox()->completed()->create(['completed_at' => '2026-08-16 09:00:00']);
+
+        Livewire::test(Progress::class)
+            ->assertSee('Für die Serie heute')
+            ->assertSee('Noch 2')
+            ->assertSee('Aufgaben (egal welche)');
+    }
+
+    public function test_completing_a_streak_task_from_the_progress_page_marks_it_done(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0]);
+        $this->actingAs($user);
+
+        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-16')->create();
+
+        Livewire::test(Progress::class)->call('toggleStreakTask', $task->id);
+
+        $this->assertTrue($task->fresh()->is_completed);
     }
 }

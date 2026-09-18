@@ -59,6 +59,14 @@
                             {{ $this->perfectDayRate }}% Erfolgsquote
                         </p>
                     @endif
+                    {{-- Only shown once a freeze was actually spent this week — an
+                         unused budget needs no explanation, but a survived gap does. --}}
+                    @if ($this->freezesUsedThisWeek > 0)
+                        <p class="mt-0.5 text-xs text-ink-faint">
+                            {{ $this->freezesUsedThisWeek }}/{{ \App\Services\ProgressStats::MAX_FREEZES_PER_WEEK }}
+                            Ruhetage diese Woche genutzt
+                        </p>
+                    @endif
                     {{-- UX research finding: today can have real completions while the
                          streak still shows 0, because the streak specifically counts
                          days where every "Heute"-flagged task got done — a day with
@@ -81,6 +89,54 @@
         </div>
     </div>
 
+    {{-- "Für die Serie heute" — the concrete answer to "what do I still need
+         to do", not just the abstract streak number. Hidden entirely once
+         today is already secured, matching the app's "no sad/empty state
+         when there's nothing to show" convention. --}}
+    @unless ($this->streakTasksNeeded['secured'])
+        <div class="mt-4 rounded-card border border-line bg-surface p-5 shadow-map">
+            @if ($this->streakTasksNeeded['openTasks']->isNotEmpty())
+                <h2 class="text-sm font-medium text-ink">Für die Serie heute</h2>
+                <p class="mt-0.5 text-xs text-ink-soft">
+                    {{ $this->streakTasksNeeded['openTasks']->count() === 1
+                        ? 'Noch diese Aufgabe erledigen:'
+                        : 'Noch diese ' . $this->streakTasksNeeded['openTasks']->count() . ' Aufgaben erledigen:' }}
+                </p>
+                <ul class="mt-3 space-y-2">
+                    @foreach ($this->streakTasksNeeded['openTasks'] as $task)
+                        <li class="flex items-center gap-2.5" wire:key="streak-task-{{ $task->id }}">
+                            <button
+                                type="button"
+                                wire:click="toggleStreakTask({{ $task->id }})"
+                                class="grid h-5 w-5 flex-none place-items-center rounded-full border-2 border-line text-transparent transition hover:border-forest hover:text-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                                aria-label="Erledigt markieren: {{ $task->title }}"
+                            >
+                                <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                                    <path d="M2.5 6.4 4.8 8.7 9.5 3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </button>
+                            <a
+                                href="{{ url('/app') }}?task={{ $task->id }}"
+                                class="min-w-0 flex-1 truncate text-sm text-ink transition hover:text-forest"
+                                wire:navigate
+                            >{{ $task->title }}</a>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <h2 class="text-sm font-medium text-ink">Für die Serie heute</h2>
+                <p class="mt-1.5 text-xs leading-relaxed text-ink-soft">
+                    Noch {{ $this->streakTasksNeeded['remainingForGoal'] }}
+                    {{ $this->streakTasksNeeded['remainingForGoal'] === 1 ? 'Aufgabe (egal welche)' : 'Aufgaben (egal welche)' }}
+                    für heute — oder das ganze Board leeren.
+                </p>
+                <a href="{{ url('/app') }}" class="mt-2 inline-block text-xs font-medium text-forest hover:underline" wire:navigate>
+                    Zum Board →
+                </a>
+            @endif
+        </div>
+    @endunless
+
     {{-- Heatmap --}}
     <div class="mt-8">
         <h2 class="mb-3 text-sm font-medium text-ink">Letzte 12 Wochen</h2>
@@ -91,7 +147,7 @@
                         <div class="h-3 w-3 rounded-[3px]"></div>
                     @else
                         <div
-                            title="{{ \Illuminate\Support\Carbon::parse($day['date'])->format('d.m.Y') }} · {{ $day['count'] === 1 ? '1 Aufgabe' : $day['count'].' Aufgaben' }}"
+                            title="{{ \Illuminate\Support\Carbon::parse($day['date'])->format('d.m.Y') }} · {{ $day['count'] === 1 ? '1 Aufgabe' : $day['count'].' Aufgaben' }}{{ $day['isStreakDay'] ? ' · Serientag' : ($day['isFrozen'] ? ' · Ruhetag' : '') }}"
                             @class([
                                 'h-3 w-3 rounded-[3px]',
                                 'bg-line/60' => $day['level'] === 0,
@@ -103,20 +159,40 @@
                                 // palette color that also means something else on this
                                 // page (overprint = record, contour = perfect day, forest
                                 // = goal/volume), so it never reads as a success signal.
+                                // Takes priority over the streak-day ring below when both
+                                // apply, since "today" already has its own status pill.
                                 'ring-1 ring-inset ring-ink' => $day['isToday'],
+                                // A day that counted toward the streak — a different axis
+                                // than the fill color (volume): a low-volume day can still
+                                // be a perfect streak day, and a high-volume one might not
+                                // ever have been flagged "today" at all.
+                                'ring-1 ring-inset ring-contour' => $day['isStreakDay'] && ! $day['isToday'],
+                                // A "frozen" rest day (see Fortschritt's Ruhetage) — spent
+                                // one of the week's two freezes rather than breaking.
+                                'border border-dashed border-ink-faint' => $day['isFrozen'] && ! $day['isToday'],
                             ])
                         ></div>
                     @endif
                 @endforeach
             </div>
-            <div class="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-ink-faint">
-                <span>weniger</span>
-                <span class="h-3 w-3 rounded-[3px] bg-line/60"></span>
-                <span class="h-3 w-3 rounded-[3px] bg-forest/25"></span>
-                <span class="h-3 w-3 rounded-[3px] bg-forest/55"></span>
-                <span class="h-3 w-3 rounded-[3px] bg-forest/80"></span>
-                <span class="h-3 w-3 rounded-[3px] bg-forest"></span>
-                <span>mehr</span>
+            <div class="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 text-[11px] text-ink-faint">
+                <span class="flex items-center gap-1">
+                    <span class="h-3 w-3 rounded-[3px] ring-1 ring-inset ring-contour"></span>
+                    Serientag
+                </span>
+                <span class="flex items-center gap-1">
+                    <span class="h-3 w-3 rounded-[3px] border border-dashed border-ink-faint"></span>
+                    Ruhetag
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <span>weniger</span>
+                    <span class="h-3 w-3 rounded-[3px] bg-line/60"></span>
+                    <span class="h-3 w-3 rounded-[3px] bg-forest/25"></span>
+                    <span class="h-3 w-3 rounded-[3px] bg-forest/55"></span>
+                    <span class="h-3 w-3 rounded-[3px] bg-forest/80"></span>
+                    <span class="h-3 w-3 rounded-[3px] bg-forest"></span>
+                    <span>mehr</span>
+                </span>
             </div>
         </div>
     </div>

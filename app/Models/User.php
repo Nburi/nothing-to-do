@@ -31,7 +31,7 @@ use Laravel\Sanctum\HasApiTokens;
     'homework_preview_enabled',
     'daily_task_goal',
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
-    'notify_streak_risk', 'streak_risk_sent_on',
+    'notify_streak_risk', 'streak_risk_sent_on', 'streak_last_evaluated_date',
     'header_badges',
     'planner_enabled',
     'hidden_modules', 'default_page', 'onboarding_completed_at',
@@ -138,6 +138,12 @@ class User extends Authenticatable
     public function moduleVisits(): HasMany
     {
         return $this->hasMany(ModuleVisit::class);
+    }
+
+    /** Decided (perfect/frozen) streak days — see StreakDayOutcome, App\Services\ProgressStats. */
+    public function streakDayOutcomes(): HasMany
+    {
+        return $this->hasMany(StreakDayOutcome::class);
     }
 
     /** Help-Center articles this user has authored — only ever populated for an admin. */
@@ -543,6 +549,7 @@ class User extends Authenticatable
             'daily_reminder_sent_on' => 'date',
             'notify_streak_risk' => 'boolean',
             'streak_risk_sent_on' => 'date',
+            'streak_last_evaluated_date' => 'date',
             'header_badges' => 'array',
             'planner_enabled' => 'boolean',
             'hidden_modules' => 'array',

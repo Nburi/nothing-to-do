@@ -98,6 +98,25 @@ class TaskApiTest extends TestCase
         $this->assertNotNull($task->completed_at);
     }
 
+    /**
+     * There's no browser here to show a celebration to, but the streak's own
+     * data integrity can't depend on that — see App\Support\TaskMutator's
+     * class docblock and CLAUDE.md §10's "a second, parallel implementation"
+     * trap this guards against.
+     */
+    public function test_completing_the_only_board_task_via_the_api_persists_a_streak_outcome(): void
+    {
+        $user = User::factory()->create(['daily_task_goal' => 20]); // goal out of reach
+        $task = Task::factory()->for($user)->todos()->create();
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/tasks/{$task->id}", ['is_completed' => true])->assertOk();
+
+        $this->assertDatabaseHas('streak_day_outcomes', [
+            'user_id' => $user->id, 'outcome' => 'perfect', 'reason' => 'full_clear',
+        ]);
+    }
+
     public function test_completing_a_homework_derived_task_via_patch_also_completes_the_agenda_entry(): void
     {
         $user = User::factory()->create();

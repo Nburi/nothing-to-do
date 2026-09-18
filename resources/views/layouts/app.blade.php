@@ -399,6 +399,7 @@
                                     :class="{
                                         'celebrate-ring--record': $store.celebration.kind === 'record',
                                         'celebrate-ring--perfect-day': $store.celebration.kind === 'perfect-day',
+                                        'celebrate-ring--full-clear': $store.celebration.kind === 'full-clear',
                                         'celebrate-ring--streak-record': $store.celebration.kind === 'streak-record',
                                     }"
                                     :style="`animation-delay: ${(n - 1) * 140}ms`"
@@ -410,6 +411,7 @@
                                     :class="{
                                         'celebrate-particle--record': $store.celebration.kind === 'record',
                                         'celebrate-particle--perfect-day': $store.celebration.kind === 'perfect-day',
+                                        'celebrate-particle--full-clear': $store.celebration.kind === 'full-clear',
                                         'celebrate-particle--streak-record': $store.celebration.kind === 'streak-record',
                                     }"
                                     :style="`--dx: ${p.dx}px; --dy: ${p.dy}px; --rotate: ${p.rotate}deg; animation-delay: ${p.delay}ms`"
@@ -421,7 +423,7 @@
                             :class="{
                                 'bg-overprint text-white': $store.celebration.kind === 'record',
                                 'bg-contour text-white': $store.celebration.kind === 'perfect-day' || $store.celebration.kind === 'streak-record',
-                                'bg-forest text-white': $store.celebration.kind === 'goal',
+                                'bg-forest text-white': $store.celebration.kind === 'goal' || $store.celebration.kind === 'full-clear',
                             }"
                             x-text="$store.celebration.label"
                         ></p>

@@ -3009,10 +3009,9 @@ thing became a Project, which is exactly what made that column unreadable (see �
   both well-worn, calm patterns, not a scoring system.
 - **Two distinct bases, deliberately not unified.** "How much did you do" (today's ring, the
   heatmap, the lifetime total, the goal/record celebrations) is raw **completion count**. "Did you
-  succeed" (the streak, perfect-day stats, the perfect-day celebration) is **whether every task
-  flagged "today" got done** — a stricter, binary measure the user asked for explicitly after using
-  the count-based version for a day: "you completed a day for the streak if you've done every today
-  task". The two live side by side in `ProgressStats` rather than one replacing the other.
+  succeed" (the streak, perfect-day stats, the perfect-day celebration) is **whether the day counts
+  as "perfect"** — see the four rules just below (2026-09-17 rework). The two live side by side in
+  `ProgressStats` rather than one replacing the other.
 - **`tasks.today_date`** — a nullable date recording which local day a task was flagged "today"
   *for*, distinct from `is_today` itself (a live flag with no date attached, never auto-reset —
   confirmed by grepping every write site before building this: nothing clears it overnight). Without
@@ -3029,36 +3028,97 @@ thing became a Project, which is exactly what made that column unreadable (see �
   wrongly attribute them to the still-running today), `GroupPage` (`setToday`, `reorder`, `swipeIntent`
   — added 2026-08-21, see *Known Issues*: these three were missed when `today_date` was first wired up,
   since Task-Gruppen already existed by then and wasn't re-audited), and both API `TaskController`
-  endpoints. Purely additive — nothing reads it for board/API display logic, and pre-migration
-  `is_today=true` rows get no retroactive value (unreconstructable, so the streak effectively starts a
-  clean count from ship day).
+  endpoints (via `App\Support\TaskMutator`). Purely additive — nothing reads it for board/API display
+  logic, and pre-migration `is_today=true` rows get no retroactive value (unreconstructable, so the
+  streak effectively starts a clean count from ship day).
+
+**What counts as a "perfect" day (2026-09-17 rework)** — four rules, checked in this order by
+`ProgressStats::dailyOutcomeMap()`, any one of which is enough:
+  1. **The today-set is fully cleared.** The today-set is the **union** of `tasks.today_date` and,
+     **while `users.planner_enabled` is on**, `TaskDayPlan.planned_date` (deduped by task id) — a
+     deliberate union, not a hard either/or switch: `today_date` always still counts even with
+     Planner on, so flipping the setting never retroactively blanks out a history that only ever
+     used the plain "Heute" flag (a past day simply has no `TaskDayPlan` rows to add, so the union
+     degrades to exactly the old behavior for it). What Planner's half adds is real: a Project-owned
+     task is deliberately never promoted to `is_today` (`DayPlanner::promoteIfToday()`'s `onBoard()`
+     guard), yet can still sit on a day's plan — without the union it could never contribute to a
+     perfect day at all.
+  2. **The daily goal is reached with no today-set at all.** Being productive without ever touching
+     "Heute" (common in list concepts that don't foreground it, e.g. Simple/Kanban's Backlog) now
+     still earns the day.
+  3. **The whole board is cleared** — every active Inbox/To-Do/Task (`ProgressStats::
+     isBoardFullyClear()`, `Task::BOARD_LISTS`, project tasks excluded) — regardless of 1/2. This is
+     the "Alles erledigt!" celebration (see below), and always the biggest volume-shaped win short of
+     a streak record.
+  4. **A "Ruhetag" (freeze).** A day with **none** of the above and genuinely nothing flagged/planned
+     at all can "freeze" instead of breaking the streak — up to `ProgressStats::MAX_FREEZES_PER_WEEK`
+     (2) times in any trailing `FREEZE_WINDOW_DAYS` (7) window. A frozen day neither extends nor
+     breaks the streak ("can't improve, can't lose") — it's a pass-through, not a success.
+  Once a day's outcome is *decided* (perfect or frozen), it is written to **`StreakDayOutcome`**
+  (`user_id, date, outcome, reason`, unique per user+date) and **never revisited** — this is what
+  stops a today-task added *after* today was already fully cleared (e.g. jotting something down for
+  tomorrow while today's list is done) from silently un-perfecting the day: `dailyOutcomeMap()` only
+  ever *upgrades* a day to `'perfect'`, never downgrades a decided one. An attempted-but-incomplete
+  today-set that isn't (yet) decided gets an in-memory-only `'broken'` value in the map — never
+  persisted (`StreakDayOutcome::OUTCOME_BROKEN`) — purely so `perfectDaysCount()`/`perfectDayRate()`
+  can still tell "attempted and missed" apart from "never attempted", the denominator the original,
+  boolean-only design already used.
+  - **Rule 1 is written live**, the moment a completion actually clears the today-set (same call
+    site as the celebration check below).
+  - **Rules 2/3 (goal, full clear) are also written live** — but only ever for **today**: a past
+    day's "was the board empty" question isn't retroactively answerable (`active()` is a live
+    concept, not a historical snapshot), so this rule structurally only ever applies in the moment.
+  - **Rule 4 (freeze) is decided *retrospectively*, once a day is truly over** — a freeze can't be
+    granted while the day is still "today", since the user might still flag/plan something before
+    midnight. **`App\Console\Commands\EvaluateStreakDays`** (every minute) walks each user from their
+    own `streak_last_evaluated_date` (exclusive) through their own yesterday, calling
+    `ProgressStats::evaluatePastDay()` once per day: a no-op if already decided; perfect via the
+    today-set or the goal; otherwise a freeze if the trailing-week budget allows
+    (`ProgressStats::freezesUsedInTrailingWeek()`, a rolling 7-day window — deliberately not a
+    Mon–Sun calendar week, which would let two freezes cluster at a week boundary and two more right
+    after it); otherwise the day stays undecided, a genuine break. No retroactive backfill on
+    first run (only evaluates yesterday) — same "clean count from ship day" precedent as
+    `tasks.today_date` itself.
+  - **Gotcha caught before shipping:** `isBoardFullyClear()` is *vacuously* true for an account (or
+    day) with **zero tasks ever created** — `doesntExist()` of an empty set is trivially true. Rule 3
+    (and, by extension, rule 2's `>= goal` check, though the daily goal is always ≥ 1 so that one was
+    already safe) is therefore additionally guarded behind "at least one task was actually completed
+    today" in the *passive* read path (`dailyOutcomeMap()`); the *active* celebration path
+    (`celebrationFor()`) needs no such guard, since it's only ever called right after a real
+    completion just happened.
 - **`App\Services\ProgressStats`** (stateless, like `PomodoroCycle`/`TaskSuggestor`):
   - Volume side: `completedCountsByDay()` (one query, reused by everything below it — never call in a
     loop), `todayCount()`, `bestDailyCount()`, `heatmap()` (12 weeks × 7 days, level 0–4 relative to
-    the user's own daily goal, not a fixed absolute count), all keyed by **local calendar day**
-    (`User::localToday()`, deliberately *not* `completedWindowStart()`, a separate board-only "how
-    long do completed cards stay visible" concept). Each timestamp is shifted using the user's offset
-    **at that instant** (`User::utcOffsetMinutes($task->completed_at)`), not "now" — DST-auto users
-    have a different offset in July than in January, and this spans their whole history.
-  - Streak side: `todayListStatsByDay()` (one query, groups by `today_date` into `{total, done}` —
-    a day is simply **absent** as a key if no task was ever flagged today for it, not `{0,0}`),
-    `dailySuccessMap()` (derives `total > 0 && done === total` per day), `currentStreak()`/
-    `bestStreak()` (consecutive/longest runs of *successful* days — same shape as the old
-    count-based version, just fed the success map instead), `perfectDaysCount()`, `perfectDayRate()`
-    (null, not 0%, when no today-list has ever existed — "not applicable" reads differently from
-    "you always fail"). **Always a live read, never a nightly-frozen snapshot**: finishing an old,
-    left-over today-task days later can retroactively turn its original day into a success and heal
-    a streak gap — there's no "close the day" ritual to freeze anything against, and it's honestly
-    earned. A day with completions but **no** today-list at all does not count (same as the old
-    "nothing completed" break) — using the today mechanism is now what the streak measures.
+    the user's own daily goal, not a fixed absolute count; takes an optional `$outcomeMap` to also
+    flag `isStreakDay`/`isFrozen` per cell — a *different* axis than `level`, since a low-volume day
+    can still be a perfect streak day and a high-volume one might never have touched "Heute" at all),
+    all keyed by **local calendar day** (`User::localToday()`, deliberately *not*
+    `completedWindowStart()`, a separate board-only "how long do completed cards stay visible"
+    concept). Each timestamp is shifted using the user's offset **at that instant**
+    (`User::utcOffsetMinutes($task->completed_at)`), not "now" — DST-auto users have a different
+    offset in July than in January, and this spans their whole history.
+  - Streak side: `todayListStatsByDay()` (the union query above, `{total, done}` per day — a day is
+    simply **absent** as a key if neither source ever named it, not `{0,0}`), `dailyOutcomeMap()`
+    (the authoritative `{date => 'perfect'|'frozen'|'broken'}` map, see above), `currentStreak()`/
+    `bestStreak()` (consecutive/longest runs of **perfect** days — a `'frozen'` day is passed through
+    without incrementing the count, but doesn't break the run either), `perfectDaysCount()`,
+    `perfectDayRate()` (null, not 0%, when nothing has ever been decided/attempted — "not applicable"
+    reads differently from "you always fail"). **Always a live read, never a nightly-frozen
+    snapshot** for anything the today-set alone can answer: finishing an old, left-over today-task
+    days later can retroactively turn its original day into a success and heal a streak gap — there's
+    no "close the day" ritual to freeze anything against for *that* rule, and it's honestly earned
+    (a freeze, by contrast, genuinely can only be decided in hindsight — see above).
   - `streakTier()` (0–4, drives every streak color escalation, unaffected by the rework).
 - **`App\Livewire\Progress`** (`/app/progress`, `route('progress')`) — a read-only page (three stat
   tiles: today-vs-goal ring, streak + best streak — with a second subtitle line for lifetime
-  perfect-day count/rate once any today-list has ever existed — and lifetime total; then the
-  heatmap; then a best-single-day callout). Reachable from the **profile dropdown** (next to
-  Profil/Einstellungen — moved there from the "Mehr" menu: Fortschritt is about the account, not a
-  workflow tool like Zeitplan/Agenda/Bastelideen, and the move restores a permanent entry point for a
-  streak of 0, which the header badge alone doesn't provide).
+  perfect-day count/rate once anything has ever been decided, and a third for freezes spent this
+  trailing week (only shown once one actually was, so an untouched budget needs no explanation) —
+  and lifetime total; then the heatmap, now with a small legend and a `contour` ring / dashed border
+  marking a streak/frozen day on top of its existing volume-color fill; then a best-single-day
+  callout). Reachable from the **profile dropdown** (next to Profil/Einstellungen — moved there from
+  the "Mehr" menu: Fortschritt is about the account, not a workflow tool like Zeitplan/Agenda/
+  Bastelideen, and the move restores a permanent entry point for a streak of 0, which the header
+  badge alone doesn't provide).
 - **The header streak badge** (hand-drawn `<x-flame-icon>`, no emoji) sits next to "Mehr" — rendered
   **only once `currentStreak() >= 1`**, so a fresh account's header looks exactly like it always did
   (no sad "0" state). Color escalates with `streakTier()` but is **capped at `forest`**: this app
@@ -3068,51 +3128,70 @@ thing became a Project, which is exactly what made that column unreadable (see �
   line-mark particles, `resources/js/app.js`'s `celebration` Alpine store, mounted **once** in
   `layouts/app.blade.php` rather than inside any one Livewire component, so it fires no matter which
   page a task gets completed from) triggered by a `celebrate` browser event carrying `{kind, label}`.
-  Fires for exactly four milestones, computed by **`ProgressStats::celebrationFor(User $user, Task
-  $task, int $beforeCount): ?array`** — called from both real "mark a task done" sites
-  (`ManagesTasks::toggleComplete()`, used by the board and `ProjectPage`; and the duplicated
-  `Schedule::toggleDeadlineTaskDone()` on the Zeitplan's deadline strip), which each capture
-  `$beforeCount = ProgressStats::todayCount($user)` **before** the `$task->update(...)` so goal/record
-  crossings can be detected precisely instead of re-comparing aggregates after the fact. Checked in
-  priority order, never more than one at once:
-  1. **Neue Bestserie** (added 2026-08-21) — same "today just hit zero open today-tasks" trigger as
-     Perfekter Tag below, but the resulting `currentStreak()` *also* just moved past `bestStreak()` as it
-     stood before today (`unset($successMap[$today])` before calling `bestStreak()`, mirroring
-     `bestDailyCount(..., excluding: $today)` for Neuer Bestwert below). Same "broken, never set from
-     nothing" guard as Neuer Bestwert — day one of a first-ever streak doesn't celebrate "Bestserie: 1
-     Tag". The rarest of the four (a perfect day that *also* beats every streak ever run), so it wins
-     over a plain Perfekter Tag on the same completion, and escalates the overlay a size further still
-     (24 particles, 2.7s) — see the `celebration` store's tiered `fire()` in `app.js`. Reuses `contour`
-     rather than a new color: the four-tone Topografie palette has no fifth tone to spare, and `forest`/
-     `overprint` are already Tagesziel/Neuer-Bestwert's own colors.
-  2. **Perfekter Tag** — `$task->today_date` is today, and completing it just brought today's open
-     today-tasks to zero (checked live post-update via `whereDate('today_date', ...)` — a plain
-     `where()` against a *value*, not `whereDate()`, silently matches nothing here: a bare `'date'`
-     cast still stores full datetime precision with a zeroed time-of-day, so an exact string
-     comparison fails; see §10). Wins over a simultaneous goal/record on the same completion, and gets
-     its own warmer/bigger overlay variant (18 particles vs. 12, `contour`-tinted not `forest`/
-     `overprint`, 2.2s vs. 1.7s) rather than just a recolor.
-  3. **Neuer Bestwert** — today's count just exceeded the all-time daily record. Can only be
+  Fires for exactly five milestones, computed by **`ProgressStats::celebrationFor(User $user, Task
+  $task, int $beforeCount): ?array`** — called from every real "mark a task done" site
+  (`ManagesTasks::toggleComplete()`, used by the board and `ProjectPage`; the duplicated
+  `Schedule::toggleDeadlineTaskDone()` on the Zeitplan's deadline strip; and, since 2026-09-17,
+  `App\Support\TaskMutator::applyUpdate()` too — the API/MCP completion path, whose return value is
+  discarded there since there's no browser to celebrate to, but whose call is what persists a newly-
+  reached perfect day: the streak's data integrity can't depend on which surface completed the task).
+  Every call site captures `$beforeCount = ProgressStats::todayCount($user)` **before** the
+  `$task->update(...)` so goal/record crossings can be detected precisely instead of re-comparing
+  aggregates after the fact. Checked in priority order, never more than one at once:
+  1. **Neue Bestserie** (added 2026-08-21) — today just became perfect (by *any* of the four rules
+     above), AND the resulting `currentStreak()` *also* just moved past `bestStreak()` as it stood
+     before today. Same "broken, never set from nothing" guard as Neuer Bestwert — day one of a
+     first-ever streak doesn't celebrate "Bestserie: 1 Tag". The rarest of the five, so it wins over
+     everything else on the same completion, and escalates the overlay a size further still (24
+     particles, 2.7s) — see the `celebration` store's tiered `fire()` in `app.js`. Reuses `contour`
+     rather than a new color: the four-tone Topografie palette has no fifth tone to spare, and
+     `forest`/`overprint` are already Tagesziel/Neuer-Bestwert's own colors.
+  2. **Alles erledigt!** (`kind: 'full-clear'`, added 2026-09-17) — today became perfect specifically
+     because the whole board just emptied out (rule 3 above). The same "big" ring/particle size as
+     Perfekter Tag, but `forest`-toned like Tagesziel/Neuer-Bestwert rather than `contour` — it's
+     fundamentally a volume/completeness win, not the today-set-shaped one Perfekter Tag is.
+  3. **Perfekter Tag** — today became perfect via the today-set or the goal-with-no-today-set rule,
+     without a new streak record or a full clear. Since 2026-09-17 this can also fire for a
+     Project-owned task completed purely via its Planer plan (rule 1's union) — previously such a
+     task could never reach this celebration at all, `today_date` alone had no way to see it.
+  4. **Neuer Bestwert** — today's count just exceeded the all-time daily record. Can only be
      *broken*, never *set from nothing* — the first tasks ever completed don't celebrate "record: 1".
-  4. **Tagesziel erreicht** — today's count just reached `daily_task_goal`.
-  Deliberately **not** wired into the API controllers — there is no browser there to show anything to.
+     Since 2026-09-17 this is narrower than it looks: whenever there's *no* today-set at all, crossing
+     the record almost always also crosses into rule 2 above (goal-with-no-today-set), which already
+     outranks this tier — Neuer Bestwert on its own now mainly fires when a today-set exists but isn't
+     finished yet (see `ProgressStatsTest`'s dedicated coverage for this exact distinction).
+  5. **Tagesziel erreicht** — today's count just reached `daily_task_goal`. Same narrowing as Neuer
+     Bestwert above: with no today-set at all, reaching the goal *is* rule 2 (Perfekter Tag) now: this
+     tier only still fires on its own when a today-set exists but the overall daily count — including
+     work outside that set — crosses the goal anyway.
   No sound in this pass (autoplay-policy risk, hard to verify headless — see `TODO.md`).
 - **Settings** has a **Fortschritt** tab: `daily_task_goal` (1–30, default 5, autosaves via
   `saveDailyGoal()` on `wire:change`) and two independent immediate-save reminder
-  toggles, mirroring the `notify_*` rows and the Vorbereitung reminder-time field.
+  toggles, mirroring the `notify_*` rows and the Vorbereitung reminder-time field. No new setting for
+  the freeze budget/window (`MAX_FREEZES_PER_WEEK`/`FREEZE_WINDOW_DAYS`) — plain class constants,
+  same "not another field to tune" precedent as `User::STREAK_RISK_DUE_TIME`.
 - **Reminders** — the scheduled command **`app:send-progress-reminders`** (every minute, registered
-  in `bootstrap/app.php` alongside the other four — same cron requirement, no new deployment step):
+  in `bootstrap/app.php` alongside the others — same cron requirement, no new deployment step):
   - **Offene Aufgaben am Abend** (`notify_daily_reminder` / `daily_reminder_time`, default 19:00) —
     once that time has passed, if today still has open "Heute"-flagged board tasks. Dedup:
     `daily_reminder_sent_on`.
   - **Serie in Gefahr** (`notify_streak_risk`, fixed `User::STREAK_RISK_DUE_TIME` = 21:00, **not**
-    user-configurable) — once that time has passed, if today isn't already a perfect day but a real
-    trailing streak exists (`currentStreak()` counts through yesterday whenever today isn't a success
+    user-configurable) — once that time has passed, if today isn't already perfect but a real
+    trailing streak exists (`currentStreak()` counts through yesterday whenever today isn't decided
     yet — see above). The message is built from the same `todayListStatsByDay()` data the streak
     itself uses, so it names exactly how many today-tasks are still open (or nudges to set a list at
     all, if there is none) instead of a generic warning. Dedup: `streak_risk_sent_on`.
   Both dedup columns are "already sent today", not an exact-minute match, matching every other
   reminder command in this app.
+- **A separate scheduled command, `app:evaluate-streak-days`** (every minute), is what actually
+  *decides* the freeze mechanic (rule 4 above) — see its own bullet earlier in this section. Unlike
+  the reminder commands, it has no per-user opt-in: every account gets its past days evaluated,
+  since the freeze is a property of the streak calculation itself, not a notification.
+- **No `FeatureAnnouncement` draft was created for this rework** — same reasoning as every other
+  admin-authored-content gap already documented in this file: the editor needs its own admin UI, and
+  this session had no safe browser access to exercise it. Flagged in `TODO.md` — this one is worth
+  writing promptly, since it changes what "keeping your streak alive" actually requires for every
+  existing user with one.
 
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
@@ -3314,7 +3393,7 @@ exception message — CLAUDE.md §3), plus an admin-only view of how often each 
   plausibly the reason the original request failed at all, and a second, unhandled exception while *logging*
   the first would defeat the entire point of a calm error page, right when it matters most. Verified directly
   (`ErrorStatsTest`) by dropping the table and asserting `record()` still returns normally.
-- **`app:prune-error-occurrences`** (daily, registered like the other six scheduled commands, §9) deletes
+- **`app:prune-error-occurrences`** (daily, registered like the other scheduled commands, §9) deletes
   anything older than 60 days — this app has no queue worker, so every occurrence is written synchronously
   inside the request that already failed, and a single misbehaving page repeating thousands of times a day
   shouldn't grow this table forever.
@@ -3391,7 +3470,11 @@ single crontab line, see step 10 above) — it drives `app:advance-pomodoro-phas
 `app:send-event-start-notifications`, `app:send-event-upcoming-notifications`, `app:send-prepare-reminders`,
 `app:send-progress-reminders`, and `app:send-day-preview-notifications`, the six commands that make
 Pomodoro/event-start/event-upcoming/Vorbereitung/Fortschritt/Tagesüberblick push notifications fire even
-with no tab open. No separate queue worker is needed (notifications send synchronously inline).
+with no tab open. No separate queue worker is needed (notifications send synchronously inline). Cron
+also drives `app:promote-day-plans-to-today` (Planer) and, since the 2026-09-17 streak rework,
+`app:evaluate-streak-days` — without it, a genuinely idle day never gets its "Ruhetag" freeze decided
+and just silently breaks the streak the next time it's checked, the same "nothing runs the scheduler
+locally" trap already documented above for Pomodoro/event-start notifications.
 
 **Every generated URL is forced to `https://` in production** (`App\Providers\AppServiceProvider::boot()`,
 `URL::forceScheme('https')`, gated on `APP_ENV=production` so local `http://` dev is untouched) — added
