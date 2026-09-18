@@ -105,7 +105,7 @@
                         type="button"
                         @click="activeColumn = '{{ $key }}'"
                         :class="activeColumn === '{{ $key }}' ? 'border-contour bg-contour-soft text-contour' : 'border-line text-ink-faint'"
-                        class="rounded-card border px-2 py-2 text-center text-[11px] font-medium leading-tight transition"
+                        class="rounded-card border px-2 py-3 text-center text-[11px] font-medium leading-tight transition"
                     >
                         {{ $meta['label'] }}
                         <span class="tnum ml-1 text-ink-faint">{{ $this->kanbanColumns[$key]->count() }}</span>

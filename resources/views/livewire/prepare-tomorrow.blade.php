@@ -13,7 +13,7 @@
     :class="$store.prepare.phase === 'schedule' ? 'mx-auto max-w-2xl px-4 pb-10 pt-5' : 'mx-auto max-w-md px-4 pb-10 pt-5'"
 >
     <div class="mb-6 flex items-center justify-between">
-        <a href="{{ route('app') }}" wire:navigate class="inline-flex items-center gap-1.5 text-sm text-ink-soft transition hover:text-ink">
+        <a href="{{ route('app') }}" wire:navigate class="hit-area inline-flex items-center gap-1.5 text-sm text-ink-soft transition hover:text-ink">
             <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3 2 8l4 5M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Schliessen
         </a>

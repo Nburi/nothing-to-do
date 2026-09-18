@@ -61,7 +61,7 @@
             type="button"
             wire:click.stop="toggleImportant({{ $task->id }})"
             @class([
-                'absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full transition',
+                'absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full transition sm:right-4 sm:top-4 sm:h-8 sm:w-8',
                 'text-overprint' => $task->is_important,
                 'text-ink-faint hover:text-overprint' => !$task->is_important,
             ])

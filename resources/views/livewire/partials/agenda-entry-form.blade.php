@@ -38,7 +38,7 @@
                             type="button"
                             wire:click="$set('formType', '{{ $val }}')"
                             @class([
-                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                 'bg-forest text-white shadow-sm' => $formType === $val,
                                 'text-ink-soft hover:text-ink' => $formType !== $val,
                             ])
@@ -141,7 +141,7 @@
                             <button
                                 type="button"
                                 @click="$wire.set('formSubject', s); open = false"
-                                class="flex w-full items-center justify-between gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink"
+                                class="flex w-full items-center justify-between gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink"
                             >
                                 <span class="truncate" x-text="s"></span>
                                 <span

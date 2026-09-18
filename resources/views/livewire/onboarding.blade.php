@@ -131,7 +131,7 @@
                                 type="button"
                                 wire:click="setListConcept('{{ $row['key'] }}')"
                                 wire:key="onboarding-concept-tab-{{ $row['key'] }}"
-                                class="flex-1 rounded-[0.45rem] px-2 py-1.5 text-xs font-medium transition"
+                                class="flex-1 rounded-[0.45rem] px-2 py-2.5 sm:py-1.5 text-xs font-medium transition"
                                 @class([
                                     'bg-forest text-white shadow-sm' => $row['current'],
                                     'text-ink-soft hover:text-ink' => ! $row['current'],
@@ -178,7 +178,7 @@
                                 type="button"
                                 wire:click="toggleModule('{{ $row['key'] }}')"
                                 @class([
-                                    'relative h-6 w-10 flex-none rounded-full transition',
+                                    'relative hit-area h-6 w-10 flex-none rounded-full transition',
                                     'bg-forest' => ! $row['hidden'],
                                     'bg-line' => $row['hidden'],
                                 ])
@@ -202,7 +202,7 @@
                                 type="button"
                                 wire:click="setDefaultPage('{{ $option['key'] }}')"
                                 @class([
-                                    'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                    'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                     'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
                                     'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                                 ])

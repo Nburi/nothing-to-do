@@ -48,7 +48,7 @@
                 type="button"
                 wire:click="setFilter('{{ $val }}')"
                 @class([
-                    'rounded-[0.4rem] px-3 py-1.5 text-sm transition',
+                    'rounded-[0.4rem] px-3 py-2.5 sm:py-1.5 text-sm transition',
                     'bg-forest text-white' => $filterType === $val,
                     'text-ink-soft hover:text-ink' => $filterType !== $val,
                 ])
@@ -88,7 +88,7 @@
                     @click="open = false"
                     wire:click="setSubjectFilter('all')"
                     @class([
-                        'block w-full rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition',
+                        'block w-full rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition',
                         'bg-contour-soft font-medium text-contour' => $filterSubject === 'all',
                         'text-ink-soft hover:bg-paper hover:text-ink' => $filterSubject !== 'all',
                     ])
@@ -100,7 +100,7 @@
                         @click="open = false"
                         wire:click="setSubjectFilter('{{ $subject }}')"
                         @class([
-                            'block w-full truncate rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition',
+                            'block w-full truncate rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition',
                             'bg-contour-soft font-medium text-contour' => $filterSubject === $subject,
                             'text-ink-soft hover:bg-paper hover:text-ink' => $filterSubject !== $subject,
                         ])

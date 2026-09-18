@@ -130,7 +130,7 @@
                     {{ $this->streakTasksNeeded['remainingForGoal'] === 1 ? 'Aufgabe (egal welche)' : 'Aufgaben (egal welche)' }}
                     für heute — oder das ganze Board leeren.
                 </p>
-                <a href="{{ url('/app') }}" class="mt-2 inline-block text-xs font-medium text-forest hover:underline" wire:navigate>
+                <a href="{{ url('/app') }}" class="hit-area mt-2 inline-block text-xs font-medium text-forest hover:underline" wire:navigate>
                     Zum Board →
                 </a>
             @endif
