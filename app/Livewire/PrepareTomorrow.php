@@ -2,10 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesDeadlineItems;
 use App\Livewire\Concerns\ManagesSchedule;
 use App\Livewire\Concerns\ManagesTasks;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\DeadlineItems;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -28,6 +30,7 @@ use Livewire\Component;
 class PrepareTomorrow extends Component
 {
     use ManagesTasks;
+    use ManagesDeadlineItems;
     use ManagesSchedule;
 
     /** The visible window of the mini timeline (minutes from midnight) — same span as Zeitplan. */
@@ -92,6 +95,18 @@ class PrepareTomorrow extends Component
             ->ordered()
             ->with('category')
             ->get();
+    }
+
+    /**
+     * The target day's all-day chips — deadlines, Wunschtermine, homework/exams, Planer placements and
+     * advance previews of later deadlines — the same strip the Zeitplan shows above its hour grid, so
+     * planning the day's blocks happens with everything that's due in view.
+     */
+    #[Computed]
+    public function targetDeadlineItems(): Collection
+    {
+        return DeadlineItems::forRange(auth()->user(), $this->targetDate, $this->targetDate)
+            ->get($this->targetDate->toDateString(), collect());
     }
 
     /** Inbox triage: file a task into To-Dos or Tasks. */
