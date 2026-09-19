@@ -5,141 +5,30 @@ done; this file is only for what is still outstanding.
 
 ## Follow-ups
 
-### Streak rework (2026-09-17) — no `FeatureAnnouncement` draft yet
+### Streak rework — a judgment call to revisit
 
-Built on `feature/streak-rework-v3`: what counts as a "perfect" day now also covers a Planer plan
-(not just `today_date`), reaching the daily goal with no today-set at all, clearing the whole board
-("Alles erledigt!", a new celebration), and up to 2 "Ruhetage" (freezes) per rolling 7-day window for
-a genuinely empty day, decided retrospectively by the new `app:evaluate-streak-days` cron command. See
-CLAUDE.md's Fortschritt section for the full design.
+The freeze budget ("Ruhetag") is a **rolling 7-day window**, not a Mon–Sun calendar week — deliberately,
+to stop two freezes clustering right at a week boundary. Kept as is (decision 2026-09-19). If a calendar
+week ever reads more intuitively, `ProgressStats::freezesUsedInTrailingWeek()` is the one place to change.
 
-- **No `FeatureAnnouncement` draft was created** — same reasoning as every other admin-authored-content
-  gap already in this file: the editor needs its own admin UI, and this session had no safe browser
-  access. Worth writing **promptly** once there's a natural pause, more so than most entries in this
-  list: this changes what "keeping your streak alive" requires for every existing user who already has
-  one, not just what a new page does.
-- **Two judgment calls made without asking, flagged here for a look:**
-  - The freeze budget is a **rolling 7-day window**, not a Mon–Sun calendar week — deliberately, to
-    stop two freezes clustering right at a week boundary and two more right after it. If a calendar
-    week reads more intuitively once actually used, `ProgressStats::freezesUsedInTrailingWeek()` is
-    the one place to change.
-  - The today-set is a **union** of `today_date` and (Planner-enabled) `TaskDayPlan`, not a hard
-    either/or switch on `planner_enabled` — specifically so toggling Planner on/off never
-    retroactively changes what past days already counted as. A pure switch was the more literal
-    reading of the original ask.
-- **No manual browser verification** — same "avoid the known dev-server-hang trap" discipline as
-  several other sessions in this file; verified via the full automated suite (1491 tests, green),
-  `npm run build`, and `artisan view:cache`.
+### Planer Rasteransicht — rejected, needs rework (Niels will say what was wrong)
 
-### Planer-Umbau (2026-09-15 Nachtsession) — 3 of 4 branches merged; Rasteransicht rejected, needs rework
+`feature/planner-grid-view` (board redesign + Fälligkeits-Geister + Aufteilen-auf-mehrere-Tage +
+Kategorie-Filter) was explicitly **not** approved ("grid view is not ok") and is **not merged** — the
+branch still exists locally. Don't rework it by guessing; wait for Niels's feedback on what specifically
+didn't work.
 
-Built overnight per direct request (brainstorming session decided the direction, mockups approved
-before each build): Rollover, Rasteransicht + Fälligkeits-Geister + Aufteilen-auf-mehrere-Tage,
-Kategorie-Filter, Zeitplan-Sichtbarkeit, Fokus-Timer-Rückkopplung. See each feature's own section in
-CLAUDE.md's "Planer" write-up for the full design (the Rasteransicht section describes what was
-*built*, not what's live — see below).
+- **The `TaskSplitSession` cross-feature follow-up is on hold.** Both `Schedule::deadlineItems()` and
+  `TaskSuggestor::plannerSuggestion()` are scoped to `TaskDayPlan` only, since `TaskSplitSession` only
+  exists on the rejected branch. Once (if) the board redesign with splitting merges, extend both queries
+  the same way.
 
-**Reviewed 2026-09-16: Rollover, Zeitplan-Sichtbarkeit, and Fokus-Timer-Rückkopplung are merged into
-`main`.** `feature/planner-grid-view` (the board-redesign + Fälligkeits-Geister + Aufteilen-auf-
-mehrere-Tage + Kategorie-Filter) was explicitly **not** approved ("grid view is not ok") and is
-**not merged** — the branch still exists locally with all of that work, but the board on `main`
-today is still the original single-row 14-day strip, not the responsive grid described in CLAUDE.md.
-Needs a fresh look with Niels before any of it ships: what specifically didn't work (layout, the
-split-across-days flow, the ghost cards, the category filter, or some combination) is still unknown
-— ask before reworking rather than guessing at a fix.
+### MCP-Server — live client check does not work yet
 
-- **The `TaskSplitSession` cross-feature follow-up is on hold.** Both `Schedule::deadlineItems()`
-  (Zeitplan-Sichtbarkeit) and `TaskSuggestor::plannerSuggestion()` (Fokus-Timer-Rückkopplung) were
-  deliberately scoped to `TaskDayPlan` only, since `TaskSplitSession` only exists on the rejected
-  `feature/planner-grid-view` branch. Nothing to do here unless/until some future version of the
-  board redesign (with splitting) actually merges — then extend both queries the same way, one more
-  `->get()->each()`/query each.
-- **No manual browser verification** on any of the three merged branches — same "avoid the known
-  dev-server-hang trap" discipline as the List-Konzepte sessions; verified via the full automated
-  suite (green after every commit and after each merge) plus `npm run build`/`artisan view:cache` to
-  catch Blade/Tailwind-purge issues. Niels reviewed and approved these three directly rather than a
-  browser walkthrough being done first.
-- **No `FeatureAnnouncement` draft was created** for the three merged features — same reasoning as
-  every other admin-authored-content gap already documented in this file: the editor needs its own
-  admin UI, and this was a fully autonomous overnight session with no safe browser access to use it.
-  Worth one once there's a natural pause — Rollover and the Zeitplan-Sichtbarkeit chip are both real,
-  regular-user-facing changes to pages some users already have open daily.
-
-### Planer — Standardaufgaben (2026-09-16 Nachtsession) — built on a branch, unmerged
-
-Built overnight per direct request while Niels was asleep, on `feature/planner-standard-tasks` (branched
-off `main`, not merged — merging is Niels's call per CLAUDE.md §3.2). See CLAUDE.md's "Planer" section,
-"Standardaufgaben (built)" subsection, for the full design: two quick-add templates ("ToDos erledigen"
-with an adjustable-per-day length, "Lernen" with Allgemein/Fach/Prüfung modes) next to "Rest automatisch
-einplanen", reachable by click (any breakpoint) or — added in a same-branch follow-up, per Niels's own
-"I want to drag and drop it on desktop" — by dragging the chip onto a day column on desktop. Full
-automated suite green (1418 tests, `tests/Feature/PlannerStandardTasksTest.php` covers both entry paths),
-`npm run build`/`artisan view:cache` both clean.
-
-- **No manual browser verification** — same "avoid the known dev-server-hang trap" discipline as the
-  other overnight Planer sessions above; the sheet's actual look/feel (both breakpoints, the mode-switch
-  chips, the exam picker) *and* the new desktop drag gesture itself have only been exercised through
-  Livewire component tests and reading the SortableJS source directly (`toFn`'s group-matching logic,
-  confirmed line-by-line in `node_modules/sortablejs/modular/sortable.esm.js` to make sure the drag
-  source's own group name doesn't need to be allow-listed on the receiving day columns), never a real
-  drag in a real browser. Given how many of this file's own *Known Issues* entries are exactly
-  "a Sortable drag looked correct in code and still silently failed live" (the touch/mouse group-matching
-  bug, the `invertSwap` gesture, the `onMove` timing trap — all in the Planer/Task-Gruppen sections), this
-  one specifically deserves a real click-and-drag test before merging, not just a read of the suite.
-- **No `FeatureAnnouncement` draft was created** — same reasoning as every other admin-authored-content
-  gap in this file: the editor needs its own admin UI, and this was a fully autonomous session with no
-  safe browser access to use it. Worth one once this merges ("Neu im Planer: Standardaufgaben").
-- **Update:** "Lernen" gained the same adjustable-length field "ToDos erledigen" already had (per Niels's
-  follow-up request), with the shared default dropped from 30 to 25 minutes for both templates — no longer
-  out of scope, see CLAUDE.md's "Standardaufgaben" subsection for the current shape.
-- Deliberately out of scope: more than two templates, and any provenance marker/badge on a
-  Standardaufgabe-created task (it's a plain Task afterward, indistinguishable from a hand-typed one by
-  design).
-
-### MCP-Server — built; a FeatureAnnouncement draft and a live client check remain
-
-See CLAUDE.md's "MCP-Server — KI-Zugriff" section for the full design. Built on `main` directly (no
-branch), full automated suite green (1322 tests). Still outstanding:
-
-- A draft, unpublished `App\Models\FeatureAnnouncement` (CLAUDE.md §3.11) — skipped for the same reason
-  every other admin-authored-content gap in this file was: `AnnouncementEditor` needs its own admin UI,
-  and this session had no safe browser access to use it. Create one (title e.g. "Neu: MCP-Server für
-  KI-Assistenten", unpublished) via the admin panel once ready, linking to `/docs/mcp`.
-- **No live MCP client was ever connected** to `/api/mcp` — verification was automated-tests-only
-  (`tests/Feature/Mcp/`), deliberately, matching this project's "don't wait forever on a live
-  connection" discipline (CLAUDE.md §10). Worth a real check with an actual client (Claude Desktop's
-  custom connector config, or `npx @modelcontextprotocol/inspector`) once there's time to babysit it:
-  point it at `{{ url }}/api/mcp` with a Bearer token from Settings, confirm `initialize`/`tools/list`/
-  `tools/call` round-trip as expected against a real client's own JSON-RPC implementation, not just this
-  project's own tests of it.
-- Deliberately out of scope for the first version (see CLAUDE.md for the full list): MCP CRUD for
-  projects/groups/schedule events/categories/templates, Pomodoro session control via MCP, posting into a
-  shared Agenda space, and OAuth-based MCP authorization.
-
-### To-Do-Listen-Konzepte — merged; a manual browser pass and a FeatureAnnouncement draft remain
-
-All four branches (infra, `simple`, `eisenhower`, `kanban`) are merged into `main`, in that order,
-resolving the expected small conflicts by hand per the plan's own coordination note (§8) — see
-CLAUDE.md's "To-Do-Listen-Konzepte" section and its three per-concept subsections for the full
-design, and `PLAN_LIST_CONCEPTS.md` for the plan itself. Full automated suite green after each
-merge step; the merge itself found and fixed a handful of test fixtures that used another
-concept's key as their own "not yet available" example, now stale since every real catalog key is
-available.
-
-Still outstanding:
-- **A manual browser pass** (never done on any of the four branches, each verified automated-
-  tests-only to avoid a known dev-server-hang trap) — desktop drag on all three concept-specific
-  boards, the Eisenhower lock badge and "der Krisenring" visual timing, both Simple's and
-  Eisenhower's mobile swipe intents specifically (their board partials pass `rightIntent`/
-  `leftIntent`/`wireMethod` overrides into `partials/task-card-mobile.blade.php` that were
-  silently dead code until Kanban's own session fixed the shared partial — worth confirming they
-  now actually take effect), and the Kanban board's drag/checkbox-driven Erledigt transitions.
-- A draft, unpublished `App\Models\FeatureAnnouncement` for this feature (CLAUDE.md §3.11 would
-  normally call for one on any user-facing feature) — skipped on every one of the four sessions
-  because it's admin-authored content normally created through `AnnouncementEditor`'s own UI, and
-  every session's verification was automated-tests-only with no dev-server/browser access.
-  Create one (title "Neu: Listen-Konzepte", unpublished) via the admin panel, mentioning the
-  Settings card and all three newly-available concepts; publish once ready.
+Automated tests are green (`tests/Feature/Mcp/`), but a real MCP client connection to `/api/mcp` (Claude
+Desktop's custom connector, or `npx @modelcontextprotocol/inspector`, Bearer token from Settings) was tried
+and is **not working** (2026-09-19). Needs debugging with the actual client's error output — check the
+`initialize`/`tools/list` round trip, the `https://` endpoint URL (see CLAUDE.md §9) and the token abilities.
 
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 
@@ -162,16 +51,12 @@ old column still holds the pre-migration state.
 ### Drop `schedule_event_task_links.source` (blocked on living with the day-planner rework for a while)
 
 The Planer moved from block-granularity to day-granularity placement (branch `feature/day-planner`,
-2026-08-29): tasks are now planned onto a day (`task_day_plans`, `App\Services\DayPlanner`), not linked to
-one specific calendar block instance any more. `schedule_event_task_links` — the *separate*
-"Zeitplan-Eintrag-Aufgaben-Verknüpfung" feature that binds specific tasks to one occurrence for the
-Pomodoro focus-timer suggestion — is untouched and still fully live, but its `source` column
-(`'manual'`/`'auto'`) is now vestigial: nothing writes `'auto'` to it any more (that was always the old
-block-filling planner's own doing), so every row here will only ever read `'manual'` from now on.
+2026-08-29). `schedule_event_task_links` — the *separate* "Zeitplan-Eintrag-Aufgaben-Verknüpfung" feature —
+is untouched and still fully live, but its `source` column (`'manual'`/`'auto'`) is now vestigial: nothing
+writes `'auto'` to it any more, so every row will only ever read `'manual'`.
 
-Left in place rather than dropped outright — same two-step precedent as `agenda_entries.is_done` above
-(CLAUDE.md §8: data-losing changes ship in two steps). Once this has been lived with for a while and it's
-clear nothing still depends on distinguishing `source` here:
+Left in place rather than dropped outright — same two-step precedent as `agenda_entries.is_done` above.
+Once this has been lived with for a while and nothing depends on distinguishing `source`:
 
 1. New migration dropping `schedule_event_task_links.source`.
 2. Remove the docblock note on `ScheduleEvent::linkedTasks()` that points here.
@@ -182,37 +67,8 @@ clear nothing still depends on distinguishing `source` here:
 Left over from the deleted first task-groups attempt (2026-07-31). Its migration file is gone with the
 branch, so `migrate:rollback` cannot remove it, and SQLite refuses `ALTER TABLE … DROP COLUMN` for a column
 that appears in a foreign-key definition — dropping it needs a full table rebuild, which is not worth
-risking on a database with real tasks in it. The orphaned `task_groups` table, the `start_hint` column and
-both stale `migrations` rows were removed; nothing in the code reads `task_group_id`.
-
-**Production never had any of it** (those branches were never merged or pushed), so there is nothing to
-deploy. Clean it up whenever the local database is next rebuilt from scratch.
-
-### `main` is merged locally but not yet pushed — needs a deploy checklist run
-
-The module-settings → onboarding-tutorial → feature-announcements → announcement-types chain (four
-branches) was merged into `main` on 2026-08-26 (`b761db0`, one merge commit — `main` had
-independently moved on in the meantime via `feature/planner` plus two more direct commits, so this
-was a real three-way merge, not a fast-forward; conflicts in `routes/web.php`, `app/Models/User.php`,
-and `layouts/app.blade.php` were resolved by hand and verified with the full test suite). `main` is
-now **10 commits ahead of `origin/main`, not pushed** — pushing is deliberately left to Niels
-(CLAUDE.md §3.1: "Never push — the user does that").
-
-**Before/when pushing and deploying to production, run the full checklist in CLAUDE.md §9** — this
-merge added six new migrations (`hidden_modules`/`default_page`/`onboarding_completed_at`/`is_admin`
-columns, `feature_announcements` + `feature_announcement_dismissals` tables, and the announcement
-`type` column) on top of the four already-pending from the `feature/planner` merge (`duration_minutes`
-on tasks/agenda_entries, `planner_enabled`, `schedule_event_task_links.source`) — none of which have
-ever been deployed. `php artisan migrate --force` on the production box picks up all ten in one run;
-no new `.env` variable or dependency was introduced by either line of work.
-
-**One pre-existing, unrelated test failure surfaced while verifying this merge:**
-`Tests\Feature\Auth\PasswordResetTest::test_reset_password_link_screen_can_be_rendered` now fails
-(expects 200, gets 405) — caused by commit `0215365` ("removed route 'password.request' because mail
-servers aren't set up yet"), which commented out the `GET forgot-password` route but left the test
-asserting the old behavior. Not caused by the merge above; flagged here since it was found in the
-same test run. Needs a decision: update the test to match the intentional route removal, or restore
-the route once mail is actually configured.
+risking on a database with real tasks in it. Nothing in the code reads `task_group_id`. **Production never
+had any of it.** Clean it up whenever the local database is next rebuilt from scratch.
 
 ## Ideas, not committed
 

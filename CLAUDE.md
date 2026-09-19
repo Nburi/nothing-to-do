@@ -87,12 +87,6 @@ I say so, with reasoning.
    resets on outside-click/Escape — click again within that window to actually delete). See *Known
    Issues* for the exact Alpine snippet.
 10. Call me by my name, every time I ask something or give you a task.
-11. **New user-facing feature → draft an announcement.** Whenever a feature ships that a regular user would
-    actually notice (a new page, a new gesture, a new setting worth knowing about — not an internal
-    refactor or a bugfix), also create a draft `App\Models\FeatureAnnouncement` for it (title + one-sentence
-    description, `related_module` set if it maps to an `AppModules::CATALOG` key), or if that's out of scope
-    for the current task, at least flag in the summary that one should be written. Leave it unpublished —
-    publishing is the user's call. See CLAUDE.md §7, "Feature-Ankündigungen".
 
 ---
 
@@ -1931,11 +1925,6 @@ independent siblings — see their own subsections below, right after this one.
   not a live picker inside the tutorial itself (see plan §7's "later" list) — growing the "3
   Dinge" slide into an interactive concept-switcher is a reasonable follow-up once concepts are
   proven, not required for this pass.
-- **No `FeatureAnnouncement` draft was created this session** (CLAUDE.md §3.11 would normally call
-  for one) — it's admin-authored content, normally created through `AnnouncementEditor`'s UI, and
-  this session's verification was test-suite-only with no browser/dev-server access to use that
-  UI safely. Flagged here and in `TODO.md` instead, per that rule's own escape valve ("or … flag
-  in the summary that one should be written").
 - Deliberately out of scope for this infra session (all tracked in `PLAN_LIST_CONCEPTS.md` §7 and
   `TODO.md`): the three concepts themselves (Simple/Eisenhower/Kanban — no board partial, no
   `TaskBoard` computed properties, `available: false` in the catalog — Eisenhower and Kanban have
@@ -2083,10 +2072,6 @@ SAME two signals every other concept already reads: `is_important` and `Task::is
   preview renders a small 2×2 mini-grid (up to two real task titles per quadrant, a quiet "—" for
   an empty one), reading the same shared `listConceptPreviewTasks` every other concept's thumbnail
   already reads, bucketed the identical way `eisenhowerQuadrants()` buckets the real board.
-- **No `FeatureAnnouncement` draft was created this session either** — same reasoning as infra's
-  own and `simple`'s own: admin-authored content needs the admin UI, and this session's
-  verification was explicitly test-suite-only (avoiding a known dev-server-hang trap), with no
-  browser access to use that UI safely. Flagged here and in `TODO.md`.
 - Deliberately out of scope for this session (tracked in `PLAN_LIST_CONCEPTS.md` §7/§8 and
   `TODO.md`): Simple/Kanban themselves (built independently on their own sibling branches),
   dragging a homework-preview card straight onto a quadrant on desktop (the strip's own mobile
@@ -2305,10 +2290,6 @@ other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_c
   concept's own thumbnail uses, including Eisenhower's four quadrants, which for the identical
   reason also has no "done" bucket), so a completed task never appears in this preview at all — a
   third, permanently-empty "Erledigt" mini-column would read as broken, not accurate.
-- **No `FeatureAnnouncement` draft was created this session either** — same reasoning as every
-  other session in this batch: admin-authored content needs the admin UI, and this session's
-  verification was explicitly test-suite-only, with no browser access to use that UI safely.
-  Flagged here and in `TODO.md`.
 - **`QuickCapture`'s chip-collapse, added in a later bugfix pass:** `availableTargets()` drops
   `'inbox'`/`'todos'` from the chip row under `kanban` (kept: `'tasks'`, plus group/project/craft/
   agenda per the existing module-visibility filter), `labelFor('tasks')` reads "Aufgabe" instead of
@@ -3199,11 +3180,6 @@ thing became a Project, which is exactly what made that column unreadable (see �
   *decides* the freeze mechanic (rule 4 above) — see its own bullet earlier in this section. Unlike
   the reminder commands, it has no per-user opt-in: every account gets its past days evaluated,
   since the freeze is a property of the streak calculation itself, not a notification.
-- **No `FeatureAnnouncement` draft was created for this rework** — same reasoning as every other
-  admin-authored-content gap already documented in this file: the editor needs its own admin UI, and
-  this session had no safe browser access to exercise it. Flagged in `TODO.md` — this one is worth
-  writing promptly, since it changes what "keeping your streak alive" actually requires for every
-  existing user with one.
 
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
@@ -3333,11 +3309,6 @@ reusing its authentication story rather than inventing a second one.
   Verification was test-suite-only, deliberately — no live MCP client connection was attempted, matching this
   project's existing "don't wait forever on the dev server/browser preview" discipline (§10) applied to a new
   kind of long-running connection this project hasn't needed to verify live before.
-- **No `FeatureAnnouncement` draft was created** for this feature, matching the established pattern for
-  every other admin-authored-content gap in this file (module settings, list concepts, …): the editor is an
-  admin-only Livewire UI, and this session had no safe way to exercise it. Flagged here and in `TODO.md` —
-  worth writing once merged, since a new "Shreiben/Löschen"-checkbox pair in an existing Settings card is
-  exactly the kind of change a returning user could otherwise miss entirely.
 - Deliberately out of scope for this pass: full CRUD over MCP for projects/groups/schedule
   events/categories/templates (read-only for now), Pomodoro session control (start/stop/continue/skip) via
   MCP, per-list-concept reorder semantics (see `set_task_order` above), posting into a shared Agenda space,
@@ -3416,10 +3387,6 @@ exception message — CLAUDE.md §3), plus an admin-only view of how often each 
   codes have actually occurred (no fixed catalog — unlike `SupportRequest::STATUSES`, there's no closed set
   of "possible" error codes), and the 50 most recent occurrences. Nav entry in the profile dropdown, right
   after "Support-Anfragen", admin-only.
-- **No `FeatureAnnouncement` draft was created this session** — same reasoning as every other admin-authored-
-  content gap in this file: the editor is an admin-only Livewire UI, and this session had no safe way to
-  exercise it. The 404 page itself *is* a visible, regular-user-facing change though (CLAUDE.md §3.11), so
-  this is worth writing once merged, more than most of the admin-only entries in this list.
 - Deliberately out of scope for this pass: rate-limiting/deduping the write itself (a repeated identical
   error is counted every time, not just once), email/push alerting on an error spike, special 419-specific
   recovery behavior (e.g. auto-resubmitting a form — it gets the same generic 4xx page as everything else),
