@@ -69,6 +69,7 @@ class TaskController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'list' => ['sometimes', Rule::in(Task::BOARD_LISTS)],
             'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
+            'group_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_groups', 'id')->where('user_id', $request->user()->id)],
             'deadline' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -99,6 +100,7 @@ class TaskController extends Controller
             'is_today' => ['sometimes', 'boolean'],
             'list' => ['sometimes', Rule::in(Task::LISTS)],
             'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
+            'group_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_groups', 'id')->where('user_id', $request->user()->id)],
         ]);
 
         $task = TaskMutator::applyUpdate($task, $request->user(), $data);

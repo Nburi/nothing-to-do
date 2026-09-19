@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\AgendaEntryController;
+use App\Http\Controllers\Api\AgendaSpaceController;
 use App\Http\Controllers\Api\EventCategoryController;
 use App\Http\Controllers\Api\EventTemplateController;
 use App\Http\Controllers\Api\McpController;
@@ -7,6 +9,7 @@ use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ScheduleEventController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\TaskGroupController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,6 +47,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/projects/{project}', [ProjectController::class, 'update']);
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
 
+    Route::get('/task-groups', [TaskGroupController::class, 'index']);
+    Route::post('/task-groups', [TaskGroupController::class, 'store']);
+    Route::get('/task-groups/{group}', [TaskGroupController::class, 'show']);
+    Route::patch('/task-groups/{group}', [TaskGroupController::class, 'update']);
+    Route::delete('/task-groups/{group}', [TaskGroupController::class, 'destroy']);
+
+    Route::get('/agenda-entries', [AgendaEntryController::class, 'index']);
+    Route::post('/agenda-entries', [AgendaEntryController::class, 'store']);
+    Route::get('/agenda-entries/{entry}', [AgendaEntryController::class, 'show']);
+    Route::patch('/agenda-entries/{entry}', [AgendaEntryController::class, 'update']);
+    Route::delete('/agenda-entries/{entry}', [AgendaEntryController::class, 'destroy']);
+    Route::get('/agenda-spaces', [AgendaSpaceController::class, 'index']);
+
     Route::get('/schedule-events/focus', [ScheduleEventController::class, 'focus']);
     Route::get('/schedule-events', [ScheduleEventController::class, 'index']);
     Route::post('/schedule-events', [ScheduleEventController::class, 'store']);
@@ -59,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/event-categories', [EventCategoryController::class, 'store']);
     Route::patch('/event-categories/{category}', [EventCategoryController::class, 'update']);
     Route::delete('/event-categories/{category}', [EventCategoryController::class, 'destroy']);
+    Route::put('/event-categories/{category}/task-link', [EventCategoryController::class, 'setTaskLink']);
+    Route::delete('/event-categories/{category}/task-link', [EventCategoryController::class, 'clearTaskLink']);
 
     Route::get('/event-templates', [EventTemplateController::class, 'index']);
     Route::post('/event-templates/{template}/apply', [EventTemplateController::class, 'apply']);

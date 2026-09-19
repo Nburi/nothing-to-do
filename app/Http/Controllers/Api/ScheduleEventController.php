@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleEventController extends Controller
 {
@@ -49,7 +50,7 @@ class ScheduleEventController extends Controller
             ->visible()
             ->forRange($start, $end)
             ->ordered()
-            ->with('category')
+            ->with(['category', 'linkedTasks'])
             ->get();
 
         return ScheduleEventResource::collection($events)->response();
@@ -57,7 +58,7 @@ class ScheduleEventController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        return (new ScheduleEventResource($this->userEvent($request, $id)->load('category')))->response();
+        return (new ScheduleEventResource($this->userEvent($request, $id)->load(['category', 'linkedTasks'])))->response();
     }
 
     public function store(Request $request): JsonResponse
@@ -71,6 +72,8 @@ class ScheduleEventController extends Controller
             'days' => ['sometimes', 'array'],
             'days.*' => ['integer', 'between:1,7'],
             'save_as_template' => ['sometimes', 'boolean'],
+            'linked_task_ids' => ['sometimes', 'array'],
+            'linked_task_ids.*' => ['integer', 'distinct', Rule::exists('tasks', 'id')->where('user_id', $request->user()->id)],
         ];
 
         if ($request->input('kind') === 'category') {
@@ -82,6 +85,14 @@ class ScheduleEventController extends Controller
 
         $data = $request->validate($rules);
         $user = $request->user();
+
+        // Bound tasks belong to one concrete occurrence, never to a recurring series' template —
+        // what's due this week isn't due next week too (same rule as the event form).
+        if (($data['recurring'] ?? false) && ! empty($data['linked_task_ids'])) {
+            throw ValidationException::withMessages([
+                'linked_task_ids' => 'Tasks can only be linked to a single occurrence, not a recurring series.',
+            ]);
+        }
 
         if ($data['kind'] === 'category') {
             $category = $user->eventCategories()->findOrFail($data['category_id']);
@@ -141,7 +152,11 @@ class ScheduleEventController extends Controller
             'end_time' => $data['end_time'],
         ]);
 
-        return (new ScheduleEventResource($event->fresh()))->response()->setStatusCode(201);
+        if (array_key_exists('linked_task_ids', $data)) {
+            $event->syncLinkedTaskIds($data['linked_task_ids']);
+        }
+
+        return (new ScheduleEventResource($event->fresh(['category', 'linkedTasks'])))->response()->setStatusCode(201);
     }
 
     /**
@@ -163,6 +178,8 @@ class ScheduleEventController extends Controller
             'date' => ['sometimes', 'date'],
             'start_time' => ['sometimes', 'date_format:H:i'],
             'end_time' => ['sometimes', 'date_format:H:i'],
+            'linked_task_ids' => ['sometimes', 'array'],
+            'linked_task_ids.*' => ['integer', 'distinct', Rule::exists('tasks', 'id')->where('user_id', $user->id)],
         ]);
 
         $updates = [];
@@ -209,6 +226,10 @@ class ScheduleEventController extends Controller
 
         $event->update($event->withNotifiedReset($updates));
 
+        if (array_key_exists('linked_task_ids', $data)) {
+            $event->syncLinkedTaskIds($data['linked_task_ids']);
+        }
+
         if ($movedFromSeries) {
             $user->scheduleEvents()->create([
                 'template_id' => $origTemplate,
@@ -219,7 +240,7 @@ class ScheduleEventController extends Controller
             ]);
         }
 
-        return (new ScheduleEventResource($event->fresh('category')))->response();
+        return (new ScheduleEventResource($event->fresh(['category', 'linkedTasks'])))->response();
     }
 
     /** Delete a one-off; cancel (tombstone) a recurring occurrence so it can't regenerate. */

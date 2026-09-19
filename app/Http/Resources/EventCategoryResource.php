@@ -17,6 +17,15 @@ class EventCategoryResource extends JsonResource
             'color' => $this->color,
             'pomodoro_enabled' => $this->pomodoro_enabled,
             'sort_order' => $this->sort_order,
+            // What the category's Pomodoro focus sessions suggest (Kategorie-Aufgaben-Verknüpfung).
+            // task_source is null (no link) or one of tasks|project|group|agenda_entry|agenda_generic|text.
+            'task_source' => $this->task_source,
+            'task_source_label' => $this->taskSourceLabel(),
+            'linked_project_id' => $this->linked_project_id,
+            'linked_group_id' => $this->linked_group_id,
+            'linked_agenda_entry_id' => $this->linked_agenda_entry_id,
+            'linked_text' => $this->linked_text,
+            'pinned_task_ids' => $this->whenLoaded('pinnedTasks', fn () => $this->pinnedTasks->pluck('id')->all()),
         ];
     }
 }
