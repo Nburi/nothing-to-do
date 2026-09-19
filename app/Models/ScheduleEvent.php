@@ -91,6 +91,22 @@ class ScheduleEvent extends Model
             ->orderBy('schedule_event_task_links.sort_order');
     }
 
+    /**
+     * Replaces this occurrence's bound tasks with $taskIds, in that order (the order becomes the
+     * pivot's sort_order, i.e. suggestion order). Duplicates collapse to their first position.
+     * Callers verify ownership of every id first.
+     *
+     * @param  list<int>  $taskIds
+     */
+    public function syncLinkedTaskIds(array $taskIds): void
+    {
+        $this->linkedTasks()->sync(
+            collect($taskIds)->unique()->values()
+                ->mapWithKeys(fn (int $id, int $order) => [$id => ['sort_order' => $order]])
+                ->all()
+        );
+    }
+
     /** The next open bound task, in pivot order — what TaskSuggestor prefers, skipping completed ones without unpinning them. */
     public function nextLinkedTask(): ?Task
     {

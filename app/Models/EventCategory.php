@@ -95,6 +95,33 @@ class EventCategory extends Model
             ->orderBy('category_task_links.sort_order');
     }
 
+    /**
+     * Moves one pinned task a step earlier ('up') or later ('down') in suggestion order — a no-op
+     * at either end or for a task that isn't pinned. Rewrites the whole pivot order so sort_order
+     * stays a clean 0..n-1 sequence, whatever gaps earlier detaches left behind.
+     */
+    public function movePinnedTask(int $taskId, string $direction): void
+    {
+        $ids = $this->pinnedTasks()->pluck('tasks.id')->all();
+        $index = array_search($taskId, $ids, true);
+
+        if ($index === false) {
+            return;
+        }
+
+        $target = $direction === 'up' ? $index - 1 : $index + 1;
+
+        if (! isset($ids[$target])) {
+            return;
+        }
+
+        [$ids[$index], $ids[$target]] = [$ids[$target], $ids[$index]];
+
+        $this->pinnedTasks()->sync(
+            collect($ids)->mapWithKeys(fn (int $id, int $order) => [$id => ['sort_order' => $order]])->all()
+        );
+    }
+
     /** Short display label for the current link, shown next to a category in Settings. Null when nothing is linked. */
     public function taskSourceLabel(): ?string
     {

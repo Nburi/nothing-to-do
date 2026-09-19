@@ -6,6 +6,8 @@
             'me' => 'Account',
             'tasks' => 'Tasks',
             'projects' => 'Projects',
+            'groups' => 'Task-Gruppen',
+            'agenda' => 'Agenda',
             'schedule' => 'Zeitplan',
             'categories' => 'Kategorien',
             'templates' => 'Vorlagen',
@@ -136,7 +138,8 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_today</code> (Today-Fokus, nur für To-Dos/Tasks ausserhalb eines Projekts),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> zum Entfernen),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Spalte wechseln),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code> (einem Projekt zuweisen; <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> gibt den Task zurück in die Inbox).
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code> (einem Projekt zuweisen; <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> gibt den Task zurück in die Inbox),
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">group_id</code> (in eine Task-Gruppe legen; <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> löst den Task aus der Gruppe — eine Gruppe mit nur noch einem Task löst sich auf, wie in der App). <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">group_id</code> wird auch bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">POST /tasks</code> akzeptiert.
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X PATCH {{ $apiBase }}/tasks/42 \
   -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
@@ -190,6 +193,81 @@
             </div>
         </section>
 
+        {{-- Task-Gruppen --}}
+        <section id="groups" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Task-Gruppen</h2>
+            <p class="mb-4 text-sm text-ink-soft">Mehrere zusammengehörende Tasks, zu klein für ein Projekt. Eine Gruppe entsteht immer zusammen mit ihren Tasks.</p>
+
+            <div class="space-y-4 text-sm">
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /task-groups</p>
+                    <p class="mt-1 text-ink-soft">Mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">active_count</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">done_count</code> je Gruppe.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /task-groups/{id}</p>
+                    <p class="mt-1 text-ink-soft">Mit der vollständigen <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>-Liste.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /task-groups</p>
+                    <p class="mt-1 text-ink-soft"><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_ids</code> (mindestens ein Task, der dir gehört und in keinem Projekt liegt). Die Liste (Inbox/To-Dos/Tasks) der Tasks ändert sich dadurch nicht.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PATCH /task-groups/{id}</p>
+                    <p class="mt-1 text-ink-soft">Nur <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>. Mitglieder änderst du über <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">PATCH /tasks/{id}</code> mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">group_id</code>.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /task-groups/{id}</p>
+                    <p class="mt-1 text-ink-soft">Löst die Gruppe auf — ihre Tasks bleiben unverändert erhalten und sind danach wieder lose.</p>
+                </div>
+            </div>
+        </section>
+
+        {{-- Agenda --}}
+        <section id="agenda" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Agenda</h2>
+            <p class="mb-4 text-sm text-ink-soft">
+                Hausaufgaben und Prüfungen — deine privaten Einträge plus die deiner Klassen. Es gelten dieselben Regeln wie in der App:
+                fremde private Einträge und Klassen, in denen du nicht bist, sind unsichtbar (404), jedes Klassenmitglied darf Klasseneinträge bearbeiten und löschen,
+                und „erledigt" gilt immer nur für dich.
+            </p>
+
+            <div class="space-y-4 text-sm">
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /agenda-entries</p>
+                    <p class="mt-1 text-ink-soft">
+                        Filter: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">type</code> (homework/exam), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">agenda_space_id</code> (eine deiner Klassen),
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">private=1</code> (nur nicht geteilte), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">status</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">open</code> Standard, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">done</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">all</code>).
+                        Nach Datum sortiert. Jeder Eintrag trägt <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_done</code> (für dich), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">completed_count</code> (bei Klasseneinträgen) und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_mine</code>.
+                    </p>
+                </div>
+                <div><p class="font-mono text-xs text-overprint">GET /agenda-entries/{id}</p></div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /agenda-entries</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">type</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">subject</code> (Fach, Freitext), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">date</code>;
+                        optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">duration_minutes</code> (nur Hausaufgaben) und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">agenda_space_id</code>
+                        (nur eine Klasse, in der du Mitglied bist — ohne den Parameter bleibt der Eintrag privat).
+                    </p>
+                    <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X POST {{ $apiBase }}/agenda-entries \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
+  -d '{"type": "homework", "subject": "Mathematik", "title": "Aufgaben 4-6",
+       "date": "2026-09-24", "agenda_space_id": 3}'</code></pre>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PATCH /agenda-entries/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Teil-Update aller Felder von oben. <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_done: true/false</code> hakt den Eintrag <span class="font-medium text-ink">für dich</span> ab
+                        (oder wieder auf) — nie für andere.
+                    </p>
+                </div>
+                <div><p class="font-mono text-xs text-overprint">DELETE /agenda-entries/{id}</p></div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /agenda-spaces</p>
+                    <p class="mt-1 text-ink-soft">Deine Klassen/Lerngruppen (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">id</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">members_count</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_owner</code>) — damit du eine <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">agenda_space_id</code> auswählen kannst. Beitreten und Verwalten bleibt in der App; der Einladungscode wird hier nie ausgegeben.</p>
+                </div>
+            </div>
+        </section>
+
         {{-- Zeitplan --}}
         <section id="schedule" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-1 text-base font-medium text-ink">Zeitplan</h2>
@@ -225,6 +303,7 @@
                     <p class="font-mono text-xs text-overprint">PATCH /schedule-events/{id}</p>
                     <p class="mt-1 text-ink-soft">
                         Teil-Update — deckt auch Verschieben/Grösse ändern ab (einfach <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>/<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">end_time</code> setzen).
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">linked_task_ids</code> bindet Tasks an genau dieses eine Vorkommen (geordnete Liste; die Reihenfolge ist die Vorschlags-Reihenfolge im Fokus-Timer, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">[]</code> löst alle). Wird auch bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">POST</code> akzeptiert, aber nicht für eine wiederkehrende Serie — gelesen kommt es als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">linked_task_ids</code> zurück.
                         Ein wiederkehrendes Vorkommen auf ein anderes Datum verschieben löst es aus der Serie und hinterlässt einen Tombstone, damit es nicht neu entsteht.
                     </p>
                 </div>
@@ -280,6 +359,20 @@
                     <p class="mt-1 text-ink-soft">Umbenennen/umfärben wirkt live auf alle vergangenen und zukünftigen Blöcke dieser Kategorie.</p>
                 </div>
                 <div><p class="font-mono text-xs text-overprint">DELETE /event-categories/{id}</p></div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PUT /event-categories/{id}/task-link</p>
+                    <p class="mt-1 text-ink-soft">
+                        Was die Fokus-Sessions dieser Kategorie vorschlagen (nur mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_enabled</code>). <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">source</code> ist genau eines von:
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">tasks</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_ids</code> (geordnet), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">group</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">group_id</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">agenda_entry</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">agenda_entry_id</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">agenda_generic</code> („Hausaufgaben erledigen"), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">text</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">text</code>.
+                        Ersetzt eine bestehende Verknüpfung komplett; die Kategorie zeigt sie als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_source</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">linked_*</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pinned_task_ids</code>.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /event-categories/{id}/task-link</p>
+                    <p class="mt-1 text-ink-soft">Entfernt die Verknüpfung.</p>
+                </div>
             </div>
         </section>
 

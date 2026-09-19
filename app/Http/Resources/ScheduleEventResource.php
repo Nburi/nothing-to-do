@@ -28,6 +28,8 @@ class ScheduleEventResource extends JsonResource
             'pomodoro_phase' => $this->pomodoro_phase,
             'pomodoro_cycle' => $this->pomodoro_cycle,
             'pomodoro_started_at' => $this->pomodoro_started_at?->toIso8601String(),
+            // Tasks bound to this one occurrence, in suggestion order (Zeitplan-Eintrag-Aufgaben-Verknüpfung).
+            'linked_task_ids' => $this->whenLoaded('linkedTasks', fn () => $this->linkedTasks->pluck('id')->all()),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
         ];

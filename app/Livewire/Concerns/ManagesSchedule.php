@@ -199,6 +199,45 @@ trait ManagesSchedule
     }
 
     /**
+     * Moves one picked task a step earlier ('up') or later ('down') — pick order is suggestion
+     * order, so this fixes "I picked these in the wrong order" without unpinning and re-picking.
+     * A plain array edit on form state, persisted (like the rest of the form) on save.
+     */
+    public function moveEventLinkedTask(int $taskId, string $direction): void
+    {
+        $index = collect($this->eventLinkedTasks)->search(fn (array $t) => $t['id'] === $taskId);
+
+        if ($index === false || ! in_array($direction, ['up', 'down'], true)) {
+            return;
+        }
+
+        $target = $direction === 'up' ? $index - 1 : $index + 1;
+
+        if (! isset($this->eventLinkedTasks[$target])) {
+            return;
+        }
+
+        [$this->eventLinkedTasks[$index], $this->eventLinkedTasks[$target]] = [$this->eventLinkedTasks[$target], $this->eventLinkedTasks[$index]];
+    }
+
+    /**
+     * The label of the chosen category's own task link, if it has one that feeds the focus
+     * timer — the event form uses it to say a per-entry link is only needed as an override.
+     * Null for a Termin, an unlinked category, or a non-Pomodoro category (its link is inert).
+     */
+    #[Computed]
+    public function eventCategoryLinkLabel(): ?string
+    {
+        if ($this->eventKind !== 'category' || $this->eventCategoryId === null) {
+            return null;
+        }
+
+        $category = auth()->user()->eventCategories()->find($this->eventCategoryId);
+
+        return $category?->pomodoro_enabled ? $category->taskSourceLabel() : null;
+    }
+
+    /**
      * Picks (or, tapped again, clears) a 'select' attribute's value by option
      * index rather than by its label directly — the label is free user text
      * and could contain a quote, unsafe to interpolate into an inline

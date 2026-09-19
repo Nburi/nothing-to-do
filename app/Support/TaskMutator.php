@@ -31,7 +31,7 @@ class TaskMutator
      * Build the create-time attribute array for a new task from already
      * validated input. Mirrors the REST API's own store() resolution: an
      * explicit project_id always wins and forces list=projects; a group_id
-     * (MCP-only — the REST API has no group support) wins next and forces
+     * wins next and forces
      * group_id set with project_id cleared; otherwise the given/default list.
      *
      * @param  array{title:string, list?:?string, project_id?:?int, group_id?:?int, deadline?:?string, due_date?:?string, notes?:?string, is_important?:?bool}  $data
@@ -69,7 +69,7 @@ class TaskMutator
      * Apply a partial update to $task, honoring the same invariants the REST
      * API's own update() already enforced: today_date follows is_today,
      * an explicit project_id forces list=projects and clears today/group,
-     * a group_id (MCP-only) clears project_id, a completed toggle syncs the
+     * a group_id clears project_id, a completed toggle syncs the
      * linked Agenda entry, and leaving a group prunes it if it's now too
      * small. Only keys present in $data are touched — same "sparse update"
      * contract as the REST API.
@@ -125,6 +125,13 @@ class TaskMutator
             $updates['group_id'] = $data['group_id'];
             if ($data['group_id'] !== null) {
                 $updates['project_id'] = null;
+
+                // A project task carries list=projects, which no board list shows — filing it into
+                // a group has to put it back on a real list, or it would vanish from the group's
+                // own Inbox/To-Dos/Tasks columns.
+                if ($task->list === 'projects') {
+                    $updates['list'] = $data['list'] ?? 'inbox';
+                }
             }
         } elseif (array_key_exists('list', $data)) {
             $updates['list'] = $data['list'];

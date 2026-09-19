@@ -64,6 +64,12 @@
             </button>
         </div>
 
+        @if ($this->targetDeadlineItems->isNotEmpty())
+            <div class="mb-3 rounded-card border border-line bg-surface p-2" wire:key="prep-dl-strip-{{ $this->targetDate->toDateString() }}">
+                @include('livewire.partials.schedule-deadline-strip', ['items' => $this->targetDeadlineItems])
+            </div>
+        @endif
+
         @if ($this->targetFlagged->isNotEmpty())
             <div class="mb-3 flex items-center gap-2 overflow-x-auto">
                 <span class="flex-none text-[11px] text-ink-faint">Für {{ $targetWord }}:</span>

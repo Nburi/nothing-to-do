@@ -87,12 +87,6 @@ I say so, with reasoning.
    resets on outside-click/Escape — click again within that window to actually delete). See *Known
    Issues* for the exact Alpine snippet.
 10. Call me by my name, every time I ask something or give you a task.
-11. **New user-facing feature → draft an announcement.** Whenever a feature ships that a regular user would
-    actually notice (a new page, a new gesture, a new setting worth knowing about — not an internal
-    refactor or a bugfix), also create a draft `App\Models\FeatureAnnouncement` for it (title + one-sentence
-    description, `related_module` set if it maps to an `AppModules::CATALOG` key), or if that's out of scope
-    for the current task, at least flag in the summary that one should be written. Leave it unpublished —
-    publishing is the user's call. See CLAUDE.md §7, "Feature-Ankündigungen".
 
 ---
 
@@ -137,7 +131,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (1445 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (1563 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -375,7 +369,12 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   flavoured Markdown via `Str::markdown` (`html_input=strip`, `allow_unsafe_links=false` — XSS-safe,
   no new dependency), and an edit view with a small formatting toolbar + auto-growing textarea.
   Notes autosave on Livewire sync (`updatedBrainstorm`); rendered output is styled by `.prose-topo`
-  in `app.css`. Empty projects open straight into the editor for fast capture.
+  in `app.css`. Empty projects open straight into the editor for fast capture. The editor mechanics are
+  shared with the group page's note cards: **`Alpine.data('markdownEditor', { minHeight })`**
+  (`resources/js/app.js` — autosize, wrap/prefix-lines toolbar helpers, the "Gespeichert" flash; spread it into
+  a larger `x-data` when a page needs more state, as the project page does for its tab) plus
+  **`partials/markdown-toolbar.blade.php`** (the toolbar buttons; needs the textarea to carry `x-ref="ta"`).
+  The help editor's and the task-notes editor's own toolbars are separate, deliberately not folded in.
 - Shared task mutations + the edit sheet live in the **`App\Livewire\Concerns\ManagesTasks`** trait
   (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
@@ -448,6 +447,14 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   `partials/schedule-event-form.blade.php`) as the standalone Zeitplan page, `@include`d verbatim and just
   pointed at `$this->tomorrow` instead of `localToday()` — draw-to-create, drag-to-move/resize, templates,
   and the "+ Termin" precision form all work identically with zero duplicated gesture code.
+- **Step 3 also shows the all-day deadline strip** (`PrepareTomorrow::targetDeadlineItems()`, above the
+  timeline) — everything due on the target day: task deadlines/Wunschtermine, Agenda homework/exams, Planer
+  placements and advance previews of later hard deadlines. The data comes from **`App\Services\DeadlineItems::
+  forRange(User, start, end)`** (extracted out of `Schedule::deadlineItems()` so both pages share one
+  implementation — see the Zeitplan "All-day strip" notes for what it contains), and the tick-off actions
+  (`toggleDeadlineTaskDone`/`toggleDeadlineAgendaDone`) moved into the shared trait
+  **`App\Livewire\Concerns\ManagesDeadlineItems`**, used by `Schedule` and `PrepareTomorrow`; the strip
+  markup is the same `partials/schedule-deadline-strip.blade.php`. Renders nothing when the day has no items.
 - Gesture map — right/left always commit-and-advance, down always defers, up (review only) opens a
   popover without advancing; step 3 has no queue to swipe, it's the open-ended timeline:
 
@@ -791,6 +798,22 @@ ownership-scoped through `auth()->user()->eventCategories()->findOrFail()` and s
 one place the "genau eine Verknüpfungsart" rule is enforced, so switching from "Bestimmte Aufgaben" to
 "Projekt" can never leave a stale pin or FK behind.
 
+**Reordering pinned tasks** — with two or more pins, each row in the sheet's "Ausgewählt" list gets earlier/
+later buttons (`Settings::movePinnedTask(id, taskId, 'up'|'down')` → `EventCategory::movePinnedTask()`, which
+rewrites the pivot's `sort_order` as a clean 0..n-1 sequence). The order is the suggestion order.
+
+**Deleting a link target resets the link.** The FKs are `nullOnDelete`, but that only nulled the FK and left
+`task_source` saying "project" with nothing behind it (the sheet showed an active chip over an empty
+picker). `AppServiceProvider::boot()` now registers `deleting` hooks on `Project`/`TaskGroup`/`AgendaEntry`
+that set `task_source = null` for every category pointing at the record — in `deleting`, not `deleted`,
+because by `deleted` the DB has already nulled the FK and the affected categories can no longer be found. A
+data migration repaired rows that already dangled. (A bulk query-builder delete would bypass the hooks; none
+exists today.)
+
+**API** — `PUT /api/event-categories/{id}/task-link` (`source` + the matching target, replaces the old link via
+`clearTaskLink()`; only for Pomodoro-enabled categories, 422 otherwise) and `DELETE …/task-link`; the
+category resource carries `task_source`, `task_source_label`, `linked_*` and `pinned_task_ids`.
+
 **Signature moment — the list-just-finished notice.** Completing the last active item in a category's
 linked source while its session is running (or frozen awaiting a continue — anything past "Bereit, never
 started") shows a quiet, self-dismissing line in the focus card where the suggestion normally sits:
@@ -851,6 +874,15 @@ same shape as `category_task_links` for a category's own "Bestimmte Aufgaben" so
   simulation, and had to be fixed after the fact (see that section above). Verified here by reading the
   same accessibility tree that caught the earlier miss, both for the single-task and the revised
   multi-task version.
+- **Reordering and the category hint.** With two or more picked tasks each chip in the event form gets
+  earlier/later arrows (`ManagesSchedule::moveEventLinkedTask()` — a plain array swap on form state, persisted
+  on Save like everything else on the form). When the chosen category is Pomodoro-enabled *and* already has its
+  own task link, a one-line note under "Aufgaben" says so (`eventCategoryLinkLabel()`), so the per-entry link
+  reads as an override rather than something to fill in by default.
+- **API** — `linked_task_ids` (ordered array of the user's own task ids) on `POST`/`PATCH /api/schedule-events`
+  and on every event read; `[]` clears, omitting the key leaves the binding alone, duplicates are rejected,
+  and it is refused for a recurring series (422) — the binding belongs to one occurrence.
+  `ScheduleEvent::syncLinkedTaskIds()` is the shared write.
 - **Signature moment — tap once to peek, tap again to go.** A linked block's icon
   (`schedule-event.blade.php`) sits in the title row next to the (unrelated, purely decorative) Pomodoro
   clock icon. A tap swaps the block's own title for the **next open** linked task's title for **2 seconds**
@@ -1931,11 +1963,6 @@ independent siblings — see their own subsections below, right after this one.
   not a live picker inside the tutorial itself (see plan §7's "later" list) — growing the "3
   Dinge" slide into an interactive concept-switcher is a reasonable follow-up once concepts are
   proven, not required for this pass.
-- **No `FeatureAnnouncement` draft was created this session** (CLAUDE.md §3.11 would normally call
-  for one) — it's admin-authored content, normally created through `AnnouncementEditor`'s UI, and
-  this session's verification was test-suite-only with no browser/dev-server access to use that
-  UI safely. Flagged here and in `TODO.md` instead, per that rule's own escape valve ("or … flag
-  in the summary that one should be written").
 - Deliberately out of scope for this infra session (all tracked in `PLAN_LIST_CONCEPTS.md` §7 and
   `TODO.md`): the three concepts themselves (Simple/Eisenhower/Kanban — no board partial, no
   `TaskBoard` computed properties, `available: false` in the catalog — Eisenhower and Kanban have
@@ -2083,10 +2110,6 @@ SAME two signals every other concept already reads: `is_important` and `Task::is
   preview renders a small 2×2 mini-grid (up to two real task titles per quadrant, a quiet "—" for
   an empty one), reading the same shared `listConceptPreviewTasks` every other concept's thumbnail
   already reads, bucketed the identical way `eisenhowerQuadrants()` buckets the real board.
-- **No `FeatureAnnouncement` draft was created this session either** — same reasoning as infra's
-  own and `simple`'s own: admin-authored content needs the admin UI, and this session's
-  verification was explicitly test-suite-only (avoiding a known dev-server-hang trap), with no
-  browser access to use that UI safely. Flagged here and in `TODO.md`.
 - Deliberately out of scope for this session (tracked in `PLAN_LIST_CONCEPTS.md` §7/§8 and
   `TODO.md`): Simple/Kanban themselves (built independently on their own sibling branches),
   dragging a homework-preview card straight onto a quadrant on desktop (the strip's own mobile
@@ -2305,10 +2328,6 @@ other concept already reads: `is_today` (active + flagged = In Arbeit) and `is_c
   concept's own thumbnail uses, including Eisenhower's four quadrants, which for the identical
   reason also has no "done" bucket), so a completed task never appears in this preview at all — a
   third, permanently-empty "Erledigt" mini-column would read as broken, not accurate.
-- **No `FeatureAnnouncement` draft was created this session either** — same reasoning as every
-  other session in this batch: admin-authored content needs the admin UI, and this session's
-  verification was explicitly test-suite-only, with no browser access to use that UI safely.
-  Flagged here and in `TODO.md`.
 - **`QuickCapture`'s chip-collapse, added in a later bugfix pass:** `availableTargets()` drops
   `'inbox'`/`'todos'` from the chip row under `kanban` (kept: `'tasks'`, plus group/project/craft/
   agenda per the existing module-visibility filter), `labelFor('tasks')` reads "Aufgabe" instead of
@@ -2802,6 +2821,18 @@ in the first place.
     crawlable link, not just a sitemap entry), and `/sitemap.xml` now loops every `HelpArticle::published()`
     row with a slug into its own `<url>` entry (plus `/hilfe` itself) alongside the existing `/` entry —
     `robots.txt` needed no change, since `/hilfe` was never under its `Disallow: /app` in the first place.
+- **Push for the support channel** — `App\Services\SupportNotifier`, fired from `SupportRequest`'s own
+  `created`/`updated` model events (so the Support page, the Hilfe "War das hilfreich?" feedback and any
+  future creation path are all covered without each remembering to call it): every **admin with a push
+  subscription** gets "Neue Support-Anfrage"/"Neues Feedback" (name + subject, links to
+  `/app/admin/support`) when a request is created, and the **submitter** gets "Antwort auf deine Anfrage"
+  (links to `/app/help/support`) whenever the admin `response` is saved with new non-empty text — a pure
+  status change or a cleared answer sends nothing. **Deliberately not toggleable in Settings** (product
+  decision): it only ever reaches devices that already subscribed to push at all. An admin submitting or
+  answering their own request isn't pushed about it. Best-effort: recipients are looked up via
+  `whereHas('pushSubscriptions')` first (so `PushNotifier`/`WebPush` isn't even resolved when nobody has a
+  device) and any failure is logged and swallowed — a broken push must never break saving a request or an
+  answer.
 - **Nav** — one unconditional "Hilfe" link in the profile dropdown (next to Profil/Einstellungen, not the
   "Mehr" menu — this is account-level infrastructure, not a workflow tool), and, for an admin, two further
   links ("Hilfe-Center verwalten", "Support-Anfragen") mirroring "Ankündigungen verwalten"'s placement.
@@ -2940,7 +2971,14 @@ thing became a Project, which is exactly what made that column unreadable (see �
   for today and then appears in the board's Heute tab. `dissolveGroup()` is non-destructive: the tasks stay
   exactly where they are and simply become loose again (armed double-click all the same — it is an
   irreversible structural change, even if nothing is lost).
-- Not touched by this feature: the API/Shortcuts (see `TODO.md`), Notfallmodus, Vorbereitung.
+- **API** (`Api\TaskGroupController`): `GET/POST /task-groups`, `GET/PATCH/DELETE /task-groups/{id}`. A group is
+  only created *together with* its tasks (`task_ids`, at least one, board tasks only — same "an empty group has
+  no reason to exist" rule as QuickCapture's group target); membership afterwards changes through the task
+  (`group_id` on `POST`/`PATCH /tasks`, `null` releases). Every write funnels through `TaskMutator::applyUpdate()`,
+  so the invariants hold: a task is in a project or a group, never both (filing a project task into a group
+  also puts it back on a board list — `list=projects` shows in no group column), and a group left with one task
+  or none dissolves. `DELETE` dissolves non-destructively. Group *notes* have no API.
+- Not touched by this feature: Notfallmodus, Vorbereitung.
 
 ### Bastelideen (built)
 - A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
@@ -3187,11 +3225,6 @@ thing became a Project, which is exactly what made that column unreadable (see �
   *decides* the freeze mechanic (rule 4 above) — see its own bullet earlier in this section. Unlike
   the reminder commands, it has no per-user opt-in: every account gets its past days evaluated,
   since the freeze is a property of the streak calculation itself, not a notification.
-- **No `FeatureAnnouncement` draft was created for this rework** — same reasoning as every other
-  admin-authored-content gap already documented in this file: the editor needs its own admin UI, and
-  this session had no safe browser access to exercise it. Flagged in `TODO.md` — this one is worth
-  writing promptly, since it changes what "keeping your streak alive" actually requires for every
-  existing user with one.
 
 ### API (Apple Shortcuts) (built)
 - A token-authenticated JSON API (`routes/api.php`, `auth:sanctum`) covers every mutation the native app
@@ -3211,6 +3244,13 @@ thing became a Project, which is exactly what made that column unreadable (see �
   Sanctum **abilities** (`mcp:read` always, `mcp:write`/`mcp:delete` opt-in checkboxes) — this REST API
   itself still never calls `tokenCan()` on any of them, so an old or new token works against it identically
   regardless of which boxes were checked; only the MCP endpoint enforces them.
+- **Also covered** (added 2026-09-19): task groups (`/task-groups`, plus `group_id` on tasks), the Agenda
+  (`Api\AgendaEntryController` — `/agenda-entries` CRUD with the app's exact visibility rules: every entry is
+  resolved through `AgendaEntry::visibleTo()`, a stranger's private entry or a foreign class is a 404, any class
+  member may edit/delete class entries, `is_done` on `PATCH` is per person, `agenda_space_id` is validated against
+  the user's own classes; plus read-only `GET /agenda-spaces`, which never exposes the invite code), a category's
+  task link (`PUT/DELETE /event-categories/{id}/task-link`) and a schedule event's bound tasks
+  (`linked_task_ids`). Not covered: private Agenda notes, group notes, joining/leaving classes.
 - **Docs:** `/docs/api` (`resources/views/docs/api.blade.php`, auth-gated, linked from Settings) — full
   endpoint reference plus a walkthrough for building Apple Shortcuts against it (the "Get Contents of URL"
   action's config, and five worked example Shortcuts).
@@ -3321,11 +3361,6 @@ reusing its authentication story rather than inventing a second one.
   Verification was test-suite-only, deliberately — no live MCP client connection was attempted, matching this
   project's existing "don't wait forever on the dev server/browser preview" discipline (§10) applied to a new
   kind of long-running connection this project hasn't needed to verify live before.
-- **No `FeatureAnnouncement` draft was created** for this feature, matching the established pattern for
-  every other admin-authored-content gap in this file (module settings, list concepts, …): the editor is an
-  admin-only Livewire UI, and this session had no safe way to exercise it. Flagged here and in `TODO.md` —
-  worth writing once merged, since a new "Shreiben/Löschen"-checkbox pair in an existing Settings card is
-  exactly the kind of change a returning user could otherwise miss entirely.
 - Deliberately out of scope for this pass: full CRUD over MCP for projects/groups/schedule
   events/categories/templates (read-only for now), Pomodoro session control (start/stop/continue/skip) via
   MCP, per-list-concept reorder semantics (see `set_task_order` above), posting into a shared Agenda space,
@@ -3404,10 +3439,6 @@ exception message — CLAUDE.md §3), plus an admin-only view of how often each 
   codes have actually occurred (no fixed catalog — unlike `SupportRequest::STATUSES`, there's no closed set
   of "possible" error codes), and the 50 most recent occurrences. Nav entry in the profile dropdown, right
   after "Support-Anfragen", admin-only.
-- **No `FeatureAnnouncement` draft was created this session** — same reasoning as every other admin-authored-
-  content gap in this file: the editor is an admin-only Livewire UI, and this session had no safe way to
-  exercise it. The 404 page itself *is* a visible, regular-user-facing change though (CLAUDE.md §3.11), so
-  this is worth writing once merged, more than most of the admin-only entries in this list.
 - Deliberately out of scope for this pass: rate-limiting/deduping the write itself (a repeated identical
   error is counted every time, not just once), email/push alerting on an error spike, special 419-specific
   recovery behavior (e.g. auto-resubmitting a form — it gets the same generic 4xx page as everything else),
