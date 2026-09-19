@@ -131,7 +131,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (1445 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (1563 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -369,7 +369,12 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   flavoured Markdown via `Str::markdown` (`html_input=strip`, `allow_unsafe_links=false` — XSS-safe,
   no new dependency), and an edit view with a small formatting toolbar + auto-growing textarea.
   Notes autosave on Livewire sync (`updatedBrainstorm`); rendered output is styled by `.prose-topo`
-  in `app.css`. Empty projects open straight into the editor for fast capture.
+  in `app.css`. Empty projects open straight into the editor for fast capture. The editor mechanics are
+  shared with the group page's note cards: **`Alpine.data('markdownEditor', { minHeight })`**
+  (`resources/js/app.js` — autosize, wrap/prefix-lines toolbar helpers, the "Gespeichert" flash; spread it into
+  a larger `x-data` when a page needs more state, as the project page does for its tab) plus
+  **`partials/markdown-toolbar.blade.php`** (the toolbar buttons; needs the textarea to carry `x-ref="ta"`).
+  The help editor's and the task-notes editor's own toolbars are separate, deliberately not folded in.
 - Shared task mutations + the edit sheet live in the **`App\Livewire\Concerns\ManagesTasks`** trait
   (used by both `TaskBoard` and `ProjectPage`); the edit sheet markup is `partials/edit-sheet.blade.php`.
 - Project tasks never appear on the main board or in Today (the `onBoard` scope filters them out, and
@@ -442,6 +447,14 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   `partials/schedule-event-form.blade.php`) as the standalone Zeitplan page, `@include`d verbatim and just
   pointed at `$this->tomorrow` instead of `localToday()` — draw-to-create, drag-to-move/resize, templates,
   and the "+ Termin" precision form all work identically with zero duplicated gesture code.
+- **Step 3 also shows the all-day deadline strip** (`PrepareTomorrow::targetDeadlineItems()`, above the
+  timeline) — everything due on the target day: task deadlines/Wunschtermine, Agenda homework/exams, Planer
+  placements and advance previews of later hard deadlines. The data comes from **`App\Services\DeadlineItems::
+  forRange(User, start, end)`** (extracted out of `Schedule::deadlineItems()` so both pages share one
+  implementation — see the Zeitplan "All-day strip" notes for what it contains), and the tick-off actions
+  (`toggleDeadlineTaskDone`/`toggleDeadlineAgendaDone`) moved into the shared trait
+  **`App\Livewire\Concerns\ManagesDeadlineItems`**, used by `Schedule` and `PrepareTomorrow`; the strip
+  markup is the same `partials/schedule-deadline-strip.blade.php`. Renders nothing when the day has no items.
 - Gesture map — right/left always commit-and-advance, down always defers, up (review only) opens a
   popover without advancing; step 3 has no queue to swipe, it's the open-ended timeline:
 
@@ -785,6 +798,22 @@ ownership-scoped through `auth()->user()->eventCategories()->findOrFail()` and s
 one place the "genau eine Verknüpfungsart" rule is enforced, so switching from "Bestimmte Aufgaben" to
 "Projekt" can never leave a stale pin or FK behind.
 
+**Reordering pinned tasks** — with two or more pins, each row in the sheet's "Ausgewählt" list gets earlier/
+later buttons (`Settings::movePinnedTask(id, taskId, 'up'|'down')` → `EventCategory::movePinnedTask()`, which
+rewrites the pivot's `sort_order` as a clean 0..n-1 sequence). The order is the suggestion order.
+
+**Deleting a link target resets the link.** The FKs are `nullOnDelete`, but that only nulled the FK and left
+`task_source` saying "project" with nothing behind it (the sheet showed an active chip over an empty
+picker). `AppServiceProvider::boot()` now registers `deleting` hooks on `Project`/`TaskGroup`/`AgendaEntry`
+that set `task_source = null` for every category pointing at the record — in `deleting`, not `deleted`,
+because by `deleted` the DB has already nulled the FK and the affected categories can no longer be found. A
+data migration repaired rows that already dangled. (A bulk query-builder delete would bypass the hooks; none
+exists today.)
+
+**API** — `PUT /api/event-categories/{id}/task-link` (`source` + the matching target, replaces the old link via
+`clearTaskLink()`; only for Pomodoro-enabled categories, 422 otherwise) and `DELETE …/task-link`; the
+category resource carries `task_source`, `task_source_label`, `linked_*` and `pinned_task_ids`.
+
 **Signature moment — the list-just-finished notice.** Completing the last active item in a category's
 linked source while its session is running (or frozen awaiting a continue — anything past "Bereit, never
 started") shows a quiet, self-dismissing line in the focus card where the suggestion normally sits:
@@ -845,6 +874,15 @@ same shape as `category_task_links` for a category's own "Bestimmte Aufgaben" so
   simulation, and had to be fixed after the fact (see that section above). Verified here by reading the
   same accessibility tree that caught the earlier miss, both for the single-task and the revised
   multi-task version.
+- **Reordering and the category hint.** With two or more picked tasks each chip in the event form gets
+  earlier/later arrows (`ManagesSchedule::moveEventLinkedTask()` — a plain array swap on form state, persisted
+  on Save like everything else on the form). When the chosen category is Pomodoro-enabled *and* already has its
+  own task link, a one-line note under "Aufgaben" says so (`eventCategoryLinkLabel()`), so the per-entry link
+  reads as an override rather than something to fill in by default.
+- **API** — `linked_task_ids` (ordered array of the user's own task ids) on `POST`/`PATCH /api/schedule-events`
+  and on every event read; `[]` clears, omitting the key leaves the binding alone, duplicates are rejected,
+  and it is refused for a recurring series (422) — the binding belongs to one occurrence.
+  `ScheduleEvent::syncLinkedTaskIds()` is the shared write.
 - **Signature moment — tap once to peek, tap again to go.** A linked block's icon
   (`schedule-event.blade.php`) sits in the title row next to the (unrelated, purely decorative) Pomodoro
   clock icon. A tap swaps the block's own title for the **next open** linked task's title for **2 seconds**
@@ -2933,7 +2971,14 @@ thing became a Project, which is exactly what made that column unreadable (see �
   for today and then appears in the board's Heute tab. `dissolveGroup()` is non-destructive: the tasks stay
   exactly where they are and simply become loose again (armed double-click all the same — it is an
   irreversible structural change, even if nothing is lost).
-- Not touched by this feature: the API/Shortcuts (see `TODO.md`), Notfallmodus, Vorbereitung.
+- **API** (`Api\TaskGroupController`): `GET/POST /task-groups`, `GET/PATCH/DELETE /task-groups/{id}`. A group is
+  only created *together with* its tasks (`task_ids`, at least one, board tasks only — same "an empty group has
+  no reason to exist" rule as QuickCapture's group target); membership afterwards changes through the task
+  (`group_id` on `POST`/`PATCH /tasks`, `null` releases). Every write funnels through `TaskMutator::applyUpdate()`,
+  so the invariants hold: a task is in a project or a group, never both (filing a project task into a group
+  also puts it back on a board list — `list=projects` shows in no group column), and a group left with one task
+  or none dissolves. `DELETE` dissolves non-destructively. Group *notes* have no API.
+- Not touched by this feature: Notfallmodus, Vorbereitung.
 
 ### Bastelideen (built)
 - A deliberately low-pressure "what to do when bored" list, kept standalone like Agenda — no FK/relation
@@ -3199,6 +3244,13 @@ thing became a Project, which is exactly what made that column unreadable (see �
   Sanctum **abilities** (`mcp:read` always, `mcp:write`/`mcp:delete` opt-in checkboxes) — this REST API
   itself still never calls `tokenCan()` on any of them, so an old or new token works against it identically
   regardless of which boxes were checked; only the MCP endpoint enforces them.
+- **Also covered** (added 2026-09-19): task groups (`/task-groups`, plus `group_id` on tasks), the Agenda
+  (`Api\AgendaEntryController` — `/agenda-entries` CRUD with the app's exact visibility rules: every entry is
+  resolved through `AgendaEntry::visibleTo()`, a stranger's private entry or a foreign class is a 404, any class
+  member may edit/delete class entries, `is_done` on `PATCH` is per person, `agenda_space_id` is validated against
+  the user's own classes; plus read-only `GET /agenda-spaces`, which never exposes the invite code), a category's
+  task link (`PUT/DELETE /event-categories/{id}/task-link`) and a schedule event's bound tasks
+  (`linked_task_ids`). Not covered: private Agenda notes, group notes, joining/leaving classes.
 - **Docs:** `/docs/api` (`resources/views/docs/api.blade.php`, auth-gated, linked from Settings) — full
   endpoint reference plus a walkthrough for building Apple Shortcuts against it (the "Get Contents of URL"
   action's config, and five worked example Shortcuts).
