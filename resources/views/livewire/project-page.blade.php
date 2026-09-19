@@ -188,28 +188,9 @@
         {{-- Aufgaben ⇄ Brainstorming: two views of one project, switched client-side. --}}
         <div
             x-data="{
+                ...markdownEditor({ minHeight: 288 }),
                 tab: 'tasks',
-                saved: false,
-                _t: null,
                 openBrainstorm() { this.tab = 'brainstorm'; this.$nextTick(() => { if (this.$refs.ta) { this.$refs.ta.focus(); this.autosize(); } }); },
-                autosize() { const ta = this.$refs.ta; if (! ta) return; ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight, 288) + 'px'; },
-                wrap(before, after) {
-                    const ta = this.$refs.ta; if (! ta) return;
-                    const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value, sel = v.slice(s, e);
-                    ta.value = v.slice(0, s) + before + sel + after + v.slice(e);
-                    ta.focus(); ta.setSelectionRange(s + before.length, s + before.length + sel.length);
-                    ta.dispatchEvent(new Event('input')); this.autosize();
-                },
-                prefixLines(prefix) {
-                    const ta = this.$refs.ta; if (! ta) return;
-                    const v = ta.value, ls = v.lastIndexOf('\n', ta.selectionStart - 1) + 1;
-                    let le = v.indexOf('\n', ta.selectionEnd); if (le === -1) le = v.length;
-                    const block = v.slice(ls, le).split('\n').map(l => prefix + l).join('\n');
-                    ta.value = v.slice(0, ls) + block + v.slice(le);
-                    ta.focus(); ta.setSelectionRange(ls, ls + block.length);
-                    ta.dispatchEvent(new Event('input')); this.autosize();
-                },
-                flashSaved() { this.saved = true; clearTimeout(this._t); this._t = setTimeout(() => this.saved = false, 1600); },
             }"
             @brainstorm-saved.window="flashSaved()"
             @brainstorm-focus.window="$nextTick(() => document.getElementById('brainstorm-editor')?.focus())"
@@ -357,30 +338,7 @@
                 <div wire:key="brainstorm-edit">
                     <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map focus-within:border-ink-faint/60">
                         {{-- Formatting toolbar (buttons keep focus in the textarea) --}}
-                        <div class="flex flex-wrap items-center gap-0.5 border-b border-line px-1.5 py-1.5">
-                            <button type="button" @mousedown.prevent="prefixLines('## ')" title="Überschrift" aria-label="Überschrift" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <span class="text-[13px] font-bold">H</span>
-                            </button>
-                            <button type="button" @mousedown.prevent="wrap('**', '**')" title="Fett" aria-label="Fett" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <span class="text-[13px] font-bold">B</span>
-                            </button>
-                            <button type="button" @mousedown.prevent="wrap('*', '*')" title="Kursiv" aria-label="Kursiv" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <span class="font-serif text-[13px] italic">i</span>
-                            </button>
-                            <button type="button" @mousedown.prevent="wrap('++', '++')" title="Unterstrichen" aria-label="Unterstrichen" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <span class="text-[13px] underline">U</span>
-                            </button>
-                            <span class="mx-1 h-4 w-px bg-line" aria-hidden="true"></span>
-                            <button type="button" @mousedown.prevent="prefixLines('- ')" title="Liste" aria-label="Liste" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="4.5" r="1" fill="currentColor"/><circle cx="3" cy="11.5" r="1" fill="currentColor"/><path d="M6.5 4.5h7M6.5 11.5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                            </button>
-                            <button type="button" @mousedown.prevent="prefixLines('- [ ] ')" title="Aufgabe" aria-label="Aufgabe" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="m5.5 8 1.8 1.8L11 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                            <button type="button" @mousedown.prevent="wrap('[', '](url)')" title="Link" aria-label="Link" class="grid h-7 w-7 place-items-center rounded-[0.4rem] text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint">
-                                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5 9.5 6.5M7 4.6l.9-.9a2.4 2.4 0 0 1 3.4 3.4l-.9.9M9 11.4l-.9.9a2.4 2.4 0 0 1-3.4-3.4l.9-.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                        </div>
+                        @include('livewire.partials.markdown-toolbar')
 
                         <textarea
                             id="brainstorm-editor"

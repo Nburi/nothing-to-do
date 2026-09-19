@@ -1353,6 +1353,52 @@ document.addEventListener('alpine:init', () => {
         },
     });
     /**
+     * Shared behaviour for the small Markdown editors on the project page (brainstorm) and the
+     * group page (note cards): an auto-growing textarea (x-ref="ta"), toolbar helpers that wrap or
+     * prefix the current selection, and a short-lived "Gespeichert" flash. The toolbar markup itself
+     * is partials/markdown-toolbar.blade.php. Spread it into a larger x-data when a page needs more
+     * state of its own: x-data="{ ...markdownEditor({ minHeight: 288 }), tab: 'tasks' }".
+     */
+    window.Alpine.data('markdownEditor', (cfg = {}) => ({
+        saved: false,
+        _t: null,
+        autosize() {
+            const ta = this.$refs.ta;
+            if (! ta) return;
+            ta.style.height = 'auto';
+            ta.style.height = Math.max(ta.scrollHeight, cfg.minHeight ?? 96) + 'px';
+        },
+        wrap(before, after) {
+            const ta = this.$refs.ta;
+            if (! ta) return;
+            const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value, sel = v.slice(s, e);
+            ta.value = v.slice(0, s) + before + sel + after + v.slice(e);
+            ta.focus();
+            ta.setSelectionRange(s + before.length, s + before.length + sel.length);
+            ta.dispatchEvent(new Event('input'));
+            this.autosize();
+        },
+        prefixLines(prefix) {
+            const ta = this.$refs.ta;
+            if (! ta) return;
+            const v = ta.value, ls = v.lastIndexOf('\n', ta.selectionStart - 1) + 1;
+            let le = v.indexOf('\n', ta.selectionEnd);
+            if (le === -1) le = v.length;
+            const block = v.slice(ls, le).split('\n').map((l) => prefix + l).join('\n');
+            ta.value = v.slice(0, ls) + block + v.slice(le);
+            ta.focus();
+            ta.setSelectionRange(ls, ls + block.length);
+            ta.dispatchEvent(new Event('input'));
+            this.autosize();
+        },
+        flashSaved() {
+            this.saved = true;
+            clearTimeout(this._t);
+            this._t = setTimeout(() => (this.saved = false), 1600);
+        },
+    }));
+
+    /**
      * swipeCard — native-feeling horizontal swipe for mobile task cards.
      * Tracks the finger 1:1, locks to the horizontal axis (vertical scroll still
      * works), resists past the threshold, springs back if abandoned. Visual action
