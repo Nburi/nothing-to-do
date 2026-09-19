@@ -202,11 +202,27 @@
                     <div x-data="{ taskPickerOpen: false }">
                         <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Aufgaben</label>
 
+                        @if ($this->eventCategoryLinkLabel !== null)
+                            <p class="mb-2 text-xs text-ink-faint">
+                                Diese Kategorie ist bereits mit „{{ $this->eventCategoryLinkLabel }}“ verknüpft — hier nur etwas wählen, wenn dieser Termin etwas anderes braucht.
+                            </p>
+                        @endif
+
                         @if (count($eventLinkedTasks) > 0)
                             <div class="mb-2 flex flex-wrap gap-1.5">
                                 @foreach ($eventLinkedTasks as $picked)
-                                    <span wire:key="picked-{{ $picked['id'] }}" class="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper/70 py-1 pl-2.5 pr-1.5 text-xs text-ink">
+                                    <span wire:key="picked-{{ $picked['id'] }}" class="inline-flex items-center gap-1 rounded-full border border-line bg-paper/70 py-1 pl-2 pr-1.5 text-xs text-ink">
+                                        @if (count($eventLinkedTasks) > 1)
+                                            <button type="button" wire:click="moveEventLinkedTask({{ $picked['id'] }}, 'up')" @disabled($loop->first) aria-label="„{{ $picked['title'] }}“ früher vorschlagen" class="grid h-4 w-4 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-line/60 hover:text-ink disabled:pointer-events-none disabled:opacity-30">
+                                                <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                                            </button>
+                                        @endif
                                         <span class="max-w-[11rem] truncate">{{ $picked['title'] }}</span>
+                                        @if (count($eventLinkedTasks) > 1)
+                                            <button type="button" wire:click="moveEventLinkedTask({{ $picked['id'] }}, 'down')" @disabled($loop->last) aria-label="„{{ $picked['title'] }}“ später vorschlagen" class="grid h-4 w-4 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-line/60 hover:text-ink disabled:pointer-events-none disabled:opacity-30">
+                                                <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                                            </button>
+                                        @endif
                                         <button
                                             type="button"
                                             wire:click="toggleEventLinkedTask({{ $picked['id'] }})"

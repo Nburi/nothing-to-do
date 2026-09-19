@@ -854,6 +854,24 @@ class Settings extends Component
         unset($this->linkingCategory);
     }
 
+    /** Moves one pinned task earlier/later in the category's suggestion order ('up'|'down'). */
+    public function movePinnedTask(int $id, int $taskId, string $direction): void
+    {
+        if (! in_array($direction, ['up', 'down'], true)) {
+            return;
+        }
+
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+
+        if ($category->task_source !== 'tasks') {
+            return;
+        }
+
+        $category->movePinnedTask($taskId, $direction);
+
+        unset($this->linkingCategory);
+    }
+
     // ── Shortcuts, API & MCP tokens ──────────────────────────────────────
 
     public string $newTokenName = '';

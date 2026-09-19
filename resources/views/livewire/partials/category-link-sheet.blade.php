@@ -49,11 +49,21 @@
                 <p class="mb-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Ausgewählt</p>
                 <div class="mb-3 space-y-1">
                     @forelse ($linking->pinnedTasks as $pinned)
-                        <button type="button" wire:key="pinned-{{ $pinned->id }}" wire:click="togglePinnedTask({{ $linking->id }}, {{ $pinned->id }})" class="flex w-full items-center gap-2 rounded-card border {{ $rowClasses(true) }} px-3 py-2 text-left text-sm transition">
-                            <svg class="h-3.5 w-3.5 flex-none text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                            <span class="min-w-0 flex-1 truncate">{{ $pinned->title }}</span>
-                            <svg class="h-3.5 w-3.5 flex-none text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                        </button>
+                        <div wire:key="pinned-{{ $pinned->id }}" class="flex items-center gap-1 rounded-card border {{ $rowClasses(true) }} pr-1.5 text-sm transition">
+                            <button type="button" wire:click="togglePinnedTask({{ $linking->id }}, {{ $pinned->id }})" aria-label="„{{ $pinned->title }}“ nicht mehr verknüpfen" class="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left">
+                                <svg class="h-3.5 w-3.5 flex-none text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                                <span class="min-w-0 flex-1 truncate">{{ $pinned->title }}</span>
+                                <svg class="h-3.5 w-3.5 flex-none text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                            @if ($linking->pinnedTasks->count() > 1)
+                                <button type="button" wire:click="movePinnedTask({{ $linking->id }}, {{ $pinned->id }}, 'up')" @disabled($loop->first) aria-label="„{{ $pinned->title }}“ früher vorschlagen" class="grid h-7 w-7 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink disabled:pointer-events-none disabled:opacity-30">
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+                                </button>
+                                <button type="button" wire:click="movePinnedTask({{ $linking->id }}, {{ $pinned->id }}, 'down')" @disabled($loop->last) aria-label="„{{ $pinned->title }}“ später vorschlagen" class="grid h-7 w-7 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink disabled:pointer-events-none disabled:opacity-30">
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                            @endif
+                        </div>
                     @empty
                         <p class="rounded-card border border-dashed border-line px-3 py-2 text-sm text-ink-faint">Noch keine Aufgabe ausgewählt.</p>
                     @endforelse
