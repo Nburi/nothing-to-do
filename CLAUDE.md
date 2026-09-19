@@ -2802,6 +2802,18 @@ in the first place.
     crawlable link, not just a sitemap entry), and `/sitemap.xml` now loops every `HelpArticle::published()`
     row with a slug into its own `<url>` entry (plus `/hilfe` itself) alongside the existing `/` entry —
     `robots.txt` needed no change, since `/hilfe` was never under its `Disallow: /app` in the first place.
+- **Push for the support channel** — `App\Services\SupportNotifier`, fired from `SupportRequest`'s own
+  `created`/`updated` model events (so the Support page, the Hilfe "War das hilfreich?" feedback and any
+  future creation path are all covered without each remembering to call it): every **admin with a push
+  subscription** gets "Neue Support-Anfrage"/"Neues Feedback" (name + subject, links to
+  `/app/admin/support`) when a request is created, and the **submitter** gets "Antwort auf deine Anfrage"
+  (links to `/app/help/support`) whenever the admin `response` is saved with new non-empty text — a pure
+  status change or a cleared answer sends nothing. **Deliberately not toggleable in Settings** (product
+  decision): it only ever reaches devices that already subscribed to push at all. An admin submitting or
+  answering their own request isn't pushed about it. Best-effort: recipients are looked up via
+  `whereHas('pushSubscriptions')` first (so `PushNotifier`/`WebPush` isn't even resolved when nobody has a
+  device) and any failure is logged and swallowed — a broken push must never break saving a request or an
+  answer.
 - **Nav** — one unconditional "Hilfe" link in the profile dropdown (next to Profil/Einstellungen, not the
   "Mehr" menu — this is account-level infrastructure, not a workflow tool), and, for an admin, two further
   links ("Hilfe-Center verwalten", "Support-Anfragen") mirroring "Ankündigungen verwalten"'s placement.
