@@ -8,6 +8,7 @@ use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Attributes\Version;
+use Laravel\Mcp\Server\Contracts\Transport;
 
 /**
  * The MCP server AI clients connect to over OAuth at POST /mcp
@@ -26,7 +27,7 @@ MARKDOWN)]
 class NothingToDoServer extends Server
 {
     public function __construct(
-        \Laravel\Mcp\Server\Contracts\Transport $transport,
+        Transport $transport,
         protected McpServer $registry,
     ) {
         parent::__construct($transport);

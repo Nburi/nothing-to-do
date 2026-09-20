@@ -5,6 +5,7 @@ namespace Tests\Feature\Mcp;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -104,9 +105,9 @@ class McpOAuthFlowTest extends TestCase
 
     /**
      * @param  array<string, mixed>  $tokens
-     * @return \Illuminate\Support\Collection<int, string>
+     * @return Collection<int, string>
      */
-    private function toolNames(array $tokens): \Illuminate\Support\Collection
+    private function toolNames(array $tokens): Collection
     {
         return collect($this->rpc($tokens['access_token'], 'tools/list')['result']['tools'])->pluck('name');
     }
