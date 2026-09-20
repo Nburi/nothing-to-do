@@ -66,11 +66,20 @@ final class DayWindow
     /**
      * Below this height a block cannot hold its own title row plus the edit
      * pencil, and the Signature Moment lifts it to exactly this. Kept in sync
-     * by hand with the @container thresholds in resources/css/app.css and the
-     * LIFT_MIN_PX constant in resources/js/app.js — three places, one number,
-     * because each of them is the only mechanism available where it lives.
+     * by hand with LIFT_MIN_PX in resources/js/app.js, which is where it is
+     * actually applied — this constant exists so the relationship is
+     * documented and testable somewhere in PHP.
+     *
+     * It is 4px above the `@container (min-height: 46px)` threshold in
+     * resources/css/app.css on purpose: a container query sizes against the
+     * container's content box, this is a border box, and the body's 1px border
+     * top and bottom would otherwise leave a lifted block two pixels short of
+     * the very tier it was lifted for.
      */
-    public const LIFT_MIN_PX = 46;
+    public const LIFT_MIN_PX = 50;
+
+    /** The @container threshold the lift has to clear (content box). */
+    public const TIER_FULL_PX = 46;
 
     // ── Reading the setting ──────────────────────────────────────────
 

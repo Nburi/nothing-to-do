@@ -2058,13 +2058,18 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
-     * The height at which a timeline block can finally hold its own title row
-     * plus the edit pencil, and therefore the height the lift raises it to.
-     * Must stay in step with the `@container (min-height: 46px)` thresholds in
-     * resources/css/app.css and with DayWindow::LIFT_MIN_PX — three
-     * mechanisms, one number, none of which can read the others.
+     * The height the lift raises a block to, and below which it lifts at all.
+     *
+     * NOT the same number as the `@container (min-height: 46px)` threshold in
+     * resources/css/app.css, and deliberately so: a container query sizes
+     * against the container's CONTENT box, while this is a min-height on the
+     * wrapper, a border box. The body's 1px border top and bottom makes a 46px
+     * wrapper a 44px container — two pixels short of its own threshold, so the
+     * pencil the lift exists to reveal would never appear. 46 for the
+     * threshold, 2 for the border, 2 of slack. Kept in step by hand with
+     * DayWindow::LIFT_MIN_PX; neither can read the other.
      */
-    const LIFT_MIN_PX = 46;
+    const LIFT_MIN_PX = 50;
 
     /** How long a tap-lifted block stays up before lying back down. */
     const LIFT_HOLD_MS = 2600;
@@ -2097,6 +2102,7 @@ document.addEventListener('alpine:init', () => {
         moved: false,
         lastTap: 0,
         lifted: false,
+        pointerType: 'mouse',
         _liftT: null,
 
         init() {
@@ -2163,6 +2169,9 @@ document.addEventListener('alpine:init', () => {
 
         begin(kind, e) {
             if (e.button != null && e.button !== 0) return;
+            // Remembered for tap(): only a touch needs the lift to time itself
+            // out, because only a mouse will ever fire a pointerleave.
+            this.pointerType = e.pointerType || 'mouse';
             const grid = this.$el.closest('[data-grid]');
             if (grid) this.ppm = grid.getBoundingClientRect().height / this.span;
             this.kind = kind;
@@ -2230,7 +2239,9 @@ document.addEventListener('alpine:init', () => {
                 this.lastTap = 0;
             } else {
                 this.lastTap = now;
-                this.lift(true);
+                // A mouse click on a hovered block must NOT arm the auto-settle:
+                // the block would drop back down under a cursor that never left.
+                this.lift(this.pointerType !== 'mouse');
             }
         },
     }));

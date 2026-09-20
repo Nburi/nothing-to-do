@@ -149,16 +149,22 @@ class ScheduleShortBlockTest extends TestCase
      * that keeps them from drifting apart silently (CLAUDE.md §10 documents the
      * same hazard for classes that only exist in JS).
      */
-    public function test_the_lift_height_is_the_same_number_in_php_css_and_js(): void
+    public function test_the_lift_clears_the_tier_threshold_it_exists_to_reach(): void
     {
-        $this->assertSame(46, DayWindow::LIFT_MIN_PX);
+        // Found in a browser, not by a test: a container query sizes against the
+        // container's content box, the lift sets a min-height on a border box,
+        // and the body's 1px border top and bottom left a lifted block two
+        // pixels short of the tier it was lifted for.
+        $this->assertGreaterThan(DayWindow::TIER_FULL_PX, DayWindow::LIFT_MIN_PX);
+        $this->assertSame(46, DayWindow::TIER_FULL_PX);
+        $this->assertSame(50, DayWindow::LIFT_MIN_PX);
 
         $css = file_get_contents(resource_path('css/app.css'));
-        $this->assertStringContainsString('@container (min-height: 46px)', $css);
+        $this->assertStringContainsString('@container (min-height: '.DayWindow::TIER_FULL_PX.'px)', $css);
         $this->assertStringContainsString('.tl-block-lifted', $css);
 
         $js = file_get_contents(resource_path('js/app.js'));
-        $this->assertStringContainsString('const LIFT_MIN_PX = 46;', $js);
+        $this->assertStringContainsString('const LIFT_MIN_PX = '.DayWindow::LIFT_MIN_PX.';', $js);
         $this->assertStringContainsString('min-height:${LIFT_MIN_PX}px', $js);
     }
 

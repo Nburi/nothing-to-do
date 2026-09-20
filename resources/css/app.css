@@ -913,7 +913,9 @@
 
 .tl-buf {
     position: absolute;
-    left: 0.25rem;
+    /* Exactly as wide as the block itself — the band is an extension of it,
+       not a second object, so any inset of its own reads as a misalignment. */
+    left: 0;
     right: 0;
     pointer-events: none;
     border: 1px dashed;

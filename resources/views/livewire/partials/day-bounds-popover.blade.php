@@ -68,8 +68,8 @@
                     <button
                         type="button"
                         wire:click="resetDayBounds"
-                        class="ml-auto text-xs text-ink-faint underline transition hover:text-ink"
-                    >{{ $boundsScope === 'weekday' ? 'Standard verwenden' : 'Wochentag verwenden' }}</button>
+                        class="tnum ml-auto text-xs text-ink-faint underline transition hover:text-ink"
+                    >Zurücksetzen auf {{ $this->boundsFallbackLabel() }}</button>
                 @endif
             </div>
         </div>

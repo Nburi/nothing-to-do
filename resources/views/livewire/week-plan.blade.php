@@ -34,6 +34,12 @@
                 </button>
             </div>
 
+            @if ($frame['expanded'])
+                <div class="mb-3 flex items-center gap-1.5 text-xs text-ink-faint">
+                    <span class="tnum">Die Achse reicht bis {{ \App\Services\DayWindow::label($frame['start'], $frame['end']) }} — ein Block liegt ausserhalb deines Tagesrahmens.</span>
+                </div>
+            @endif
+
             <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
                 {{-- Weekday headers — no dates, this is the template, not a calendar. --}}
                 <div class="flex border-b border-line">
@@ -44,11 +50,13 @@
                              button and cannot be nested inside one. --}}
                         <div
                             @class([
-                                'group flex-1 border-l border-line px-2 py-2 text-center transition hover:bg-paper',
+                                'group flex-1 border-l border-line pb-2 text-center transition hover:bg-paper',
                                 'bg-forest-soft/40' => $day === $todayIso,
                             ])
                         >
-                            <button wire:click="openEventForm({{ $day }})" class="block w-full" aria-label="Block am {{ $wdFull[$day - 1] }} hinzufuegen">
+                            {{-- The button carries the cell's padding, not the cell — see the
+                                 same note in schedule.blade.php. --}}
+                            <button wire:click="openEventForm({{ $day }})" class="block w-full px-2 pb-1 pt-2.5" aria-label="Block am {{ $wdFull[$day - 1] }} hinzufuegen">
                                 <div class="text-[11px] uppercase tracking-wide {{ $day === $todayIso ? 'text-forest' : 'text-ink-faint' }}">{{ $wd[$day - 1] }}</div>
                             </button>
                             <button
@@ -56,7 +64,7 @@
                                 @class([
                                     'tnum mt-0.5 inline-flex rounded-full border px-1.5 text-[9px] leading-[14px] transition',
                                     'border-contour/45 bg-contour-soft text-contour' => $weekdaySetting['source'] === 'weekday',
-                                    'border-line bg-surface text-ink-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100' => $weekdaySetting['source'] !== 'weekday',
+                                    'border-line bg-surface text-ink-faint opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:opacity-100' => $weekdaySetting['source'] !== 'weekday',
                                 ])
                                 aria-label="Tagesrahmen fuer {{ $wdFull[$day - 1] }} aendern - zurzeit {{ $this->dayBoundsLabel($weekdaySetting['start'], $weekdaySetting['end']) }}"
                             >{{ $this->dayBoundsLabel($weekdaySetting['start'], $weekdaySetting['end']) }}</button>
@@ -73,7 +81,7 @@
                         </div>
                     @endif
                     <div class="relative w-12 flex-none">
-                        @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                        @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                             <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px">{{ sprintf('%02d', $h) }}</span>
                         @endfor
                     </div>
@@ -103,7 +111,7 @@
                                 <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $weekdaySetting['end']) * $ppmWeek }}px"></div>
                             @endif
 
-                            @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                            @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                                 <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px"></div>
                             @endfor
 
@@ -178,25 +186,32 @@
                 @endfor
             </div>
 
+            {{-- One gutter per weekday, not one shared with all seven: only one is
+                 ever on screen here, so each can — and must — carry its own
+                 Tagesrahmen and therefore its own scale. The desktop grid above
+                 cannot do this; seven columns share one gutter there. --}}
             <div class="min-h-0 flex-1 rounded-card border border-line bg-surface p-2">
-                <div class="flex h-full">
-                {{-- Time gutter — same hour marks as the desktop week view. --}}
-                <div class="relative w-8 flex-none" aria-hidden="true">
-                    @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
-                        <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%">{{ sprintf('%02d', $h) }}</span>
-                    @endfor
-                </div>
-
-                <div class="relative flex-1">
+                <div class="relative h-full">
                     @for ($day = 1; $day <= 7; $day++)
-                        <div x-show="focused === {{ $day }}" style="display:none" class="absolute inset-0">
+                        @php
+                            $mFrame = $this->weekdayFrames[$day];
+                            $mStart = $mFrame['start'];
+                            $mEnd = $mFrame['end'];
+                            $mSpan = $mEnd - $mStart;
+                        @endphp
+                        <div x-show="focused === {{ $day }}" style="display:none" class="absolute inset-0 flex">
+                            <div class="relative w-8 flex-none" aria-hidden="true">
+                                @for ($h = (int) ceil($mStart / 60); $h <= intval($mEnd / 60); $h++)
+                                    <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $mStart) / $mSpan * 100 }}%">{{ sprintf('%02d', $h) }}</span>
+                                @endfor
+                            </div>
                             <div
                                 wire:key="wp-grid-m-{{ $day }}"
-                                class="relative h-full border-l border-line/60"
+                                class="relative flex-1 border-l border-line/60"
                                 data-grid
                                 data-weekday="{{ $day }}"
-                                data-span="{{ $span }}"
-                                data-day-start="{{ $dayStart }}"
+                                data-span="{{ $mSpan }}"
+                                data-day-start="{{ $mStart }}"
                                 x-data="scheduleDraw({ date: '{{ $day }}' })"
                                 @pointerdown.self="beginDraw"
                                 @pointermove="moveDraw"
@@ -204,16 +219,15 @@
                                 :class="$store.draw.active ? 'cursor-crosshair' : ''"
                                 style="touch-action: none"
                             >
-                                @php $weekdaySetting = $this->weekdaySettings[$day]; @endphp
-                                @if ($weekdaySetting['start'] > $dayStart)
-                                    <div class="tl-night tl-night-top" style="height: {{ ($weekdaySetting['start'] - $dayStart) / $span * 100 }}%"></div>
+                                @if ($mFrame['settingStart'] > $mStart)
+                                    <div class="tl-night tl-night-top" style="height: {{ ($mFrame['settingStart'] - $mStart) / $mSpan * 100 }}%"></div>
                                 @endif
-                                @if ($weekdaySetting['end'] < $dayEnd)
-                                    <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $weekdaySetting['end']) / $span * 100 }}%"></div>
+                                @if ($mFrame['settingEnd'] < $mEnd)
+                                    <div class="tl-night tl-night-bottom" style="height: {{ ($mEnd - $mFrame['settingEnd']) / $mSpan * 100 }}%"></div>
                                 @endif
 
-                                @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
-                                    <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
+                                @for ($h = (int) ceil($mStart / 60); $h <= intval($mEnd / 60); $h++)
+                                    <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $mStart) / $mSpan * 100 }}%"></div>
                                 @endfor
 
                                 @forelse ($this->templatesByWeekday[$day] as $template)
@@ -235,7 +249,6 @@
                             </div>
                         </div>
                     @endfor
-                </div>
                 </div>
             </div>
 

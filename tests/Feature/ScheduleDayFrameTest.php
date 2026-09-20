@@ -225,6 +225,142 @@ class ScheduleDayFrameTest extends TestCase
             ->assertSee('data-day-start="'.(10 * 60 - DayWindow::NIGHT_MARGIN).'"', false);
     }
 
+    /**
+     * Review round 1: the hour loops floored the frame's start to a whole hour.
+     * The frame now routinely starts on a half hour (the night margin), so the
+     * first label and grid line were placed at a negative offset — drawn over
+     * the day-header row above the grid.
+     */
+    public function test_no_hour_label_is_placed_above_the_grid(): void
+    {
+        $this->actingUser(['day_start_time' => '06:00', 'day_end_time' => '23:00']);
+
+        foreach (['/app/schedule', '/app/weekplan', '/app/prepare'] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/style="top: -\d/',
+                $html,
+                $url.' places something above the top of its own grid',
+            );
+        }
+    }
+
+    /**
+     * Review round 3: the chip names the setting, the axis can be wider than
+     * it. Without a line saying so the chip reads as broken.
+     */
+    public function test_the_grid_says_when_it_widened_past_the_setting(): void
+    {
+        $user = $this->actingUser(['day_start_time' => '09:00', 'day_end_time' => '18:00']);
+        ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
+            ->at('06:30', '07:15')->create(['title' => 'Frühtraining']);
+
+        $this->get('/app/schedule')
+            ->assertOk()
+            ->assertSee('liegt ausserhalb deines Tagesrahmens', false);
+    }
+
+    public function test_a_grid_that_fits_says_nothing_about_widening(): void
+    {
+        $user = $this->actingUser(['day_start_time' => '06:00', 'day_end_time' => '23:00']);
+        ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
+            ->at('09:00', '10:00')->create(['title' => 'Schule']);
+
+        $this->get('/app/schedule')
+            ->assertOk()
+            ->assertDontSee('liegt ausserhalb deines Tagesrahmens', false);
+    }
+
+    /**
+     * Review round 3: "Wochentag verwenden" is only true when that weekday has
+     * an override of its own. The link names the frame it actually returns to.
+     */
+    public function test_the_reset_link_names_the_frame_it_returns_to(): void
+    {
+        $user = $this->actingUser(['weekday_day_bounds' => ['1' => ['start' => '07:00', 'end' => '22:00']]]);
+        DayWindow::setDate($user, '2026-09-21', '10:00', '20:00');
+
+        Livewire::test(Schedule::class)
+            ->call('openDateBounds', '2026-09-21')
+            ->assertSee('Zurücksetzen auf 07:00–22:00');
+    }
+
+    public function test_a_weekday_reset_link_names_the_default(): void
+    {
+        $this->actingUser(['day_start_time' => '06:30', 'day_end_time' => '22:30']);
+
+        Livewire::test(WeekPlan::class)
+            ->call('openWeekdayBounds', 6)
+            ->assertDontSee('Zurücksetzen auf');
+
+        Livewire::test(WeekPlan::class)
+            ->call('openWeekdayBounds', 6)
+            ->set('boundsStart', '09:00')
+            ->set('boundsEnd', '23:30')
+            ->call('saveDayBounds')
+            ->call('openWeekdayBounds', 6)
+            ->assertSee('Zurücksetzen auf 06:30–22:30');
+    }
+
+    /**
+     * Review round 0 (HALB): the mobile Wochenplan shows one weekday at a time
+     * but rendered every one of them with the shared Mon–Sun frame — so
+     * shortening Saturday on that very page changed nothing about the size of
+     * Saturday's blocks. The shared frame is only forced where seven columns
+     * stand next to one hour gutter, which is the desktop grid, not this one.
+     */
+    public function test_the_mobile_weekplan_scales_each_weekday_to_its_own_frame(): void
+    {
+        $user = $this->actingUser();
+        DayWindow::setWeekday($user, 6, '09:00', '14:00');
+
+        $html = $this->get('/app/weekplan')->assertOk()->getContent();
+
+        // Saturday: 09:00–14:00 plus the two night margins.
+        $this->assertStringContainsString('data-weekday="6"', $html);
+        $this->assertMatchesRegularExpression(
+            '/data-weekday="6"[^>]*data-span="360"[^>]*data-day-start="510"/s',
+            preg_replace('/\s+/', ' ', $html),
+            'Saturday does not carry its own span on the mobile Wochenplan',
+        );
+        // Monday still follows the default.
+        $this->assertMatchesRegularExpression(
+            '/data-weekday="1"[^>]*data-span="1080"[^>]*data-day-start="330"/s',
+            preg_replace('/\s+/', ' ', $html),
+            'Monday should be unaffected by a Saturday override',
+        );
+    }
+
+    public function test_the_desktop_weekplan_still_shares_one_scale(): void
+    {
+        $user = $this->actingUser();
+        DayWindow::setWeekday($user, 6, '09:00', '14:00');
+
+        // Seven columns next to a single hour gutter cannot have seven scales;
+        // the widest setting in the week wins, and each column's own frame is
+        // shown by how far its dimmed night band reaches instead.
+        $frame = Livewire::test(WeekPlan::class)->instance();
+
+        $this->assertSame(9 * 60, $frame->weekdayFrames[6]['settingStart']);
+        $this->assertSame(6 * 60, $frame->weekdaySettings[1]['start']);
+    }
+
+    /**
+     * Review round 0 (HALB): step 3 embeds the Zeitplan's timeline verbatim, so
+     * it has the lift — and was the only grid that never said so. On touch that
+     * is the difference between finding it and not: the tap it needs was a
+     * gesture that did nothing at all before this feature.
+     */
+    public function test_the_prepare_ritual_says_how_to_reach_a_short_blocks_editor(): void
+    {
+        $this->actingUser();
+
+        $this->get('/app/prepare')
+            ->assertOk()
+            ->assertSee('Kurze Blöcke antippen, um sie aufzurichten', false);
+    }
+
     public function test_another_users_day_bound_is_invisible(): void
     {
         $stranger = User::factory()->create();

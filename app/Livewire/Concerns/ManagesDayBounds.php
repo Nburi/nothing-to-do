@@ -155,6 +155,28 @@ trait ManagesDayBounds
         return $options;
     }
 
+    /**
+     * The frame a reset would actually land on — this row's own override
+     * removed, everything below it left alone. Null when there is nothing to
+     * reset. Named on the reset link itself, because "Wochentag verwenden" is
+     * only true when that weekday has an override of its own; otherwise the
+     * date falls all the way through to the default.
+     */
+    public function boundsFallbackLabel(): ?string
+    {
+        if (! $this->boundsHasOverride || $this->boundsKey === null) {
+            return null;
+        }
+
+        $user = auth()->user();
+
+        $setting = $this->boundsScope === 'weekday'
+            ? DayWindow::defaultSetting($user)
+            : DayWindow::settingForWeekday($user, Carbon::parse($this->boundsKey)->dayOfWeekIso);
+
+        return DayWindow::label($setting['start'], $setting['end']);
+    }
+
     /** A short "06:00–23:00" for the chip under a column header. */
     public function dayBoundsLabel(int $start, int $end): string
     {

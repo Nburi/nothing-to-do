@@ -111,10 +111,36 @@ class WeekPlan extends Component
         return $settings;
     }
 
+    /**
+     * One frame per weekday, for the mobile view — it shows a single weekday at
+     * a time, so it is not bound by the shared scale the desktop grid needs
+     * (seven columns, one hour gutter). Without this, setting one weekday
+     * shorter changed nothing about the size of its blocks on the very page
+     * where the setting was made.
+     *
+     * @return array<int, array{start: int, end: int, settingStart: int, settingEnd: int, expanded: bool}>
+     */
+    #[Computed]
+    public function weekdayFrames(): array
+    {
+        $buckets = $this->templatesByWeekday;
+        $frames = [];
+
+        foreach ($this->weekdaySettings as $weekday => $setting) {
+            $frames[$weekday] = DayWindow::frame(
+                $setting['start'],
+                $setting['end'],
+                DayWindow::rangesFrom($buckets[$weekday] ?? collect()),
+            );
+        }
+
+        return $frames;
+    }
+
     /** Recomputed after a Tagesrahmen write, so the same request renders the new frame. */
     protected function afterDayBoundsChanged(): void
     {
-        unset($this->weekdaySettings);
+        unset($this->weekdaySettings, $this->weekdayFrames);
     }
 
     /** The user's configured categories, for the block form's chip picker. */

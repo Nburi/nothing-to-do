@@ -86,7 +86,10 @@
         <button
             type="button"
             wire:click="startEditEvent({{ $template->id }})"
-            @pointerdown.stop
+            {{-- Re-arms the lift window: on touch the block would otherwise be
+                 free to lie back down between pressing the pencil and the click
+                 landing, taking the pencil with it. --}}
+            @pointerdown.stop="lift(true)"
             class="tl-opt tl-opt-pencil absolute right-1 top-1 z-20 h-6 w-6 place-items-center rounded-md border border-line bg-paper/90 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:text-ink"
             :class="lifted && 'opacity-100'"
             aria-label="Block bearbeiten"

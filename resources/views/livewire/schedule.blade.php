@@ -80,6 +80,15 @@
                 </div>
             @endif
 
+            {{-- The chips above name the *setting*; the axis can be wider than that,
+                 because a block outside it must never disappear. Say so, or the chip
+                 reads as broken. --}}
+            @if ($weekFrame['expanded'])
+                <div class="mb-3 flex items-center gap-1.5 text-xs text-ink-faint">
+                    <span class="tnum">Die Achse reicht bis {{ \App\Services\DayWindow::label($weekFrame['start'], $weekFrame['end']) }} — diese Woche liegt etwas ausserhalb deines Tagesrahmens.</span>
+                </div>
+            @endif
+
             <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
                 {{-- Day headers --}}
                 <div class="flex border-b border-line">
@@ -94,11 +103,14 @@
                              button and cannot be nested inside one. --}}
                         <div
                             @class([
-                                'group flex-1 border-l border-line px-2 py-2 text-center transition hover:bg-paper',
+                                'group flex-1 border-l border-line pb-2 text-center transition hover:bg-paper',
                                 'bg-forest-soft/40' => $day->isSameDay($today),
                             ])
                         >
-                            <button wire:click="openEventForm('{{ $dayKey }}')" class="block w-full" aria-label="Termin am {{ $day->format('j.n.') }} hinzufuegen">
+                            {{-- The button carries the cell's padding, not the cell: the whole
+                                 header used to be one big "add an event here" target and has to
+                                 stay one, now that the chip below needs its own button. --}}
+                            <button wire:click="openEventForm('{{ $dayKey }}')" class="block w-full px-2 pb-1 pt-2.5" aria-label="Termin am {{ $day->format('j.n.') }} hinzufuegen">
                                 <div class="text-[11px] uppercase tracking-wide text-ink-faint">{{ $wd[$day->dayOfWeekIso - 1] }}</div>
                                 <div class="tnum text-sm font-medium {{ $day->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $day->day }}</div>
                             </button>
@@ -114,7 +126,7 @@
                                     @class([
                                         'tnum mt-0.5 inline-flex rounded-full border px-1.5 text-[9px] leading-[14px] transition',
                                         'border-contour/45 bg-contour-soft text-contour' => $daySetting['source'] === 'date',
-                                        'border-line bg-surface text-ink-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100' => $daySetting['source'] !== 'date',
+                                        'border-line bg-surface text-ink-faint opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:opacity-100' => $daySetting['source'] !== 'date',
                                     ])
                                     aria-label="Tagesrahmen aendern - zurzeit {{ $this->dayBoundsLabel($daySetting['start'], $daySetting['end']) }}"
                                 >{{ $this->dayBoundsLabel($daySetting['start'], $daySetting['end']) }}</button>
@@ -139,7 +151,7 @@
                 {{-- Time gutter + 7 day columns --}}
                 <div class="flex" style="height: {{ $span * $ppmWeek }}px">
                     <div class="relative w-12 flex-none">
-                        @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                        @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                             <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px">{{ sprintf('%02d', $h) }}</span>
                         @endfor
                     </div>
@@ -173,7 +185,7 @@
                                 <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $daySetting['end']) * $ppmWeek }}px"></div>
                             @endif
 
-                            @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                            @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                                 <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px"></div>
                             @endfor
 
@@ -227,21 +239,6 @@
                             @endif
                         </div>
                     </button>
-                    {{-- Always visible here, unlike the hover-revealed desktop chip: there is
-                         no hover on a phone, and this is the only way in to the Tagesrahmen
-                         for this day. --}}
-                    @php $focusedSetting = $this->daySettings[$focusedDate] ?? null; @endphp
-                    @if ($focusedSetting !== null)
-                        <button
-                            wire:click="openDateBounds('{{ $focusedDate }}')"
-                            @class([
-                                'tnum mr-1 flex-none self-center rounded-full border px-2 py-1 text-[10px] leading-none transition active:scale-95',
-                                'border-contour/45 bg-contour-soft text-contour' => $focusedSetting['source'] === 'date',
-                                'border-line bg-surface text-ink-faint' => $focusedSetting['source'] !== 'date',
-                            ])
-                            aria-label="Tagesrahmen aendern - zurzeit {{ $this->dayBoundsLabel($focusedSetting['start'], $focusedSetting['end']) }}"
-                        >{{ $this->dayBoundsLabel($focusedSetting['start'], $focusedSetting['end']) }}</button>
-                    @endif
                     <button wire:click="nextDay" class="grid h-10 w-10 place-items-center rounded-card text-ink-soft transition hover:bg-paper active:scale-95" aria-label="Nächster Tag">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
                     </button>
@@ -250,6 +247,31 @@
                     <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </button>
             </div>
+
+            {{-- Always visible here, unlike the hover-revealed desktop chip: there is no
+                 hover on a phone, so this is the only way in to this day's Tagesrahmen. On
+                 its own line rather than inside the pager above — squeezed in there it cost
+                 the date roughly a fifth of a 375px screen and read as part of the pager. --}}
+            @php $focusedSetting = $this->daySettings[$focusedDate] ?? null; @endphp
+            @if ($focusedSetting !== null)
+                <div class="mb-2 flex flex-none justify-center">
+                    <button
+                        wire:click="openDateBounds('{{ $focusedDate }}')"
+                        @class([
+                            'tnum rounded-full border px-2.5 py-1 text-[11px] leading-none transition active:scale-95',
+                            'border-contour/45 bg-contour-soft text-contour' => $focusedSetting['source'] === 'date',
+                            'border-line bg-surface text-ink-faint' => $focusedSetting['source'] !== 'date',
+                        ])
+                        aria-label="Tagesrahmen fuer diesen Tag aendern - zurzeit {{ $this->dayBoundsLabel($focusedSetting['start'], $focusedSetting['end']) }}"
+                    >{{ $this->dayBoundsLabel($focusedSetting['start'], $focusedSetting['end']) }}</button>
+                </div>
+            @endif
+
+            @if ($dayFrame['expanded'])
+                <p class="mb-2 flex-none text-center text-[10px] leading-tight text-ink-faint">
+                    <span class="tnum">Achse bis {{ \App\Services\DayWindow::label($dayFrame['start'], $dayFrame['end']) }} — etwas liegt ausserhalb deines Tagesrahmens.</span>
+                </p>
+            @endif
 
             @if ($this->templates->isNotEmpty())
                 <div class="mb-3 flex flex-none gap-2 overflow-x-auto">
@@ -272,7 +294,7 @@
                 <div class="flex h-full">
                 {{-- Time gutter — same hour marks as the desktop week view. --}}
                 <div class="relative w-8 flex-none" aria-hidden="true">
-                    @for ($h = intval($mStart / 60); $h <= intval($mEnd / 60); $h++)
+                    @for ($h = (int) ceil($mStart / 60); $h <= intval($mEnd / 60); $h++)
                         <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $mStart) / $mSpan * 100 }}%">{{ sprintf('%02d', $h) }}</span>
                     @endfor
                 </div>
@@ -296,7 +318,7 @@
                         <div class="tl-night tl-night-bottom" style="height: {{ ($mEnd - $focusedSetting['end']) / $mSpan * 100 }}%"></div>
                     @endif
 
-                    @for ($h = intval($mStart / 60); $h <= intval($mEnd / 60); $h++)
+                    @for ($h = (int) ceil($mStart / 60); $h <= intval($mEnd / 60); $h++)
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $mStart) / $mSpan * 100 }}%"></div>
                     @endfor
 
