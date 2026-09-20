@@ -489,6 +489,73 @@
         animation: badge-jump-highlight 1400ms ease-out;
     }
 
+    /* Live header badges — Signature Moment "die Zahl rollt" (see
+       App\Livewire\HeaderBadgeRow, partials/header-badge.blade.php and the
+       live-badge block in app.js). A changed value slides up into place while
+       the old one slides out, and the pill takes one soft inset wash in its
+       tone (inset, like the ripples above: the row scrolls, so an outward
+       ring would be clipped). A badge that just gained something to show
+       grows in; one that lost it is rendered once more by the server and
+       collapses away (HeaderBadgeRow), lingering invisible until the next refresh.
+       Respects prefers-reduced-motion via the global animation-collapse rule
+       below — nothing extra needed here. */
+    @keyframes badge-value-in {
+        0% { transform: translateY(0.75em); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+    .badge-value-in {
+        animation: badge-value-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes badge-value-out {
+        0% { transform: translateY(-50%); opacity: 1; }
+        100% { transform: translateY(calc(-50% - 0.75em)); opacity: 0; }
+    }
+    /* The replaced value, rendered once more by the server (see the header-badge
+       partial) and pinned over where the new one sits — right-aligned, since the
+       value is the pill's last item. Lingers invisible until the next refresh. */
+    .badge-value-out {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        pointer-events: none;
+        animation: badge-value-out 260ms ease-in forwards;
+    }
+    @keyframes badge-wash {
+        0% { box-shadow: inset 0 0 0 9999px rgb(var(--forest) / 0.3); }
+        100% { box-shadow: inset 0 0 0 9999px rgb(var(--forest) / 0); }
+    }
+    @keyframes badge-wash-signal {
+        0% { box-shadow: inset 0 0 0 9999px rgb(var(--signal) / 0.3); }
+        100% { box-shadow: inset 0 0 0 9999px rgb(var(--signal) / 0); }
+    }
+    .badge-wash {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        pointer-events: none;
+        animation: badge-wash 900ms ease-out;
+    }
+    .badge-wash--signal {
+        animation-name: badge-wash-signal;
+    }
+    @keyframes badge-grow-in {
+        0% { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
+        99% { overflow: hidden; }
+        100% { max-width: 12rem; opacity: 1; }
+    }
+    .badge-grow-in {
+        animation: badge-grow-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes badge-collapse-out {
+        0% { max-width: 12rem; opacity: 1; margin-right: 0; }
+        100% { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; margin-right: -0.375rem; overflow: hidden; }
+    }
+    .badge-collapse-out {
+        overflow: hidden;
+        pointer-events: none;
+        animation: badge-collapse-out 280ms ease-in forwards;
+    }
+
     /* Feature-announcement "highlight_selector" (see FeatureAnnouncement::linkHref()
        and the `highlight` query-param handler in app.js) — an admin-picked CSS
        selector gets the same "arriving at a page" wash as the header badge above,
