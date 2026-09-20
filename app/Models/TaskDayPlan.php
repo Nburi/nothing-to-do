@@ -32,6 +32,7 @@ class TaskDayPlan extends Model
             // hit by tasks.today_date), which would make an exact-match read
             // against a row seeded any other way silently miss it.
             'planned_date' => 'date:Y-m-d',
+            'promoted_for_date' => 'date:Y-m-d',
             'sort_order' => 'integer',
         ];
     }
