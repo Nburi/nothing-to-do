@@ -3436,6 +3436,12 @@ two clients by design. This adds the OAuth server that is.
   `WWW-Authenticate: Bearer realm="mcp", resource_metadata="…/.well-known/oauth-protected-resource/mcp"`,
   Claude follows it, reads `authorization_servers`, fetches the auth-server metadata, registers itself as
   a public client, and runs authorization-code + PKCE (S256). No client ID or secret is ever typed in.
+- **`POST /oauth/register` is re-registered in `routes/ai.php` to add `throttle:10,1`.** The package
+  registers it without a rate limit, and it is necessarily unauthenticated (dynamic client registration
+  happens before any token exists) while writing a row to `oauth_clients` per call. Re-registering the
+  same method+URI replaces the package's route in the collection — the only seam it offers — so
+  `McpOAuthDiscoveryTest` asserts both that exactly one such route exists and that the throttle is
+  attached: a package change that moved the route would otherwise leave two and silently drop the limit.
 - **`App\Mcp\Servers\NothingToDoServer`** holds no tool logic. Its `boot()` wraps every `McpTool` from the
   registry in **`App\Mcp\Servers\BridgedTool`**, a single adapter onto `Laravel\Mcp\Server\Tool`:
   - `toArray()` is overridden to emit the tool's own literal JSON Schema and annotations, instead of

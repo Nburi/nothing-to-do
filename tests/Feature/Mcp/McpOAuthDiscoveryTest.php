@@ -96,6 +96,28 @@ class McpOAuthDiscoveryTest extends TestCase
         ])->assertStatus(400)->assertJsonPath('error', 'invalid_redirect_uri');
     }
 
+    public function test_dynamic_client_registration_is_rate_limited(): void
+    {
+        // The package registers this route without a limit; routes/ai.php
+        // re-registers it with one. If a package change ever moves the route,
+        // there would be two of them and the limit could silently stop
+        // applying — hence asserting both the count and the middleware.
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route): bool => $route->uri() === 'oauth/register');
+
+        $this->assertCount(1, $routes, 'Exactly one /oauth/register route should be registered.');
+
+        $middleware = app('router')->gatherRouteMiddleware($routes->first());
+
+        // gatherRouteMiddleware() resolves the alias, so this is the class
+        // name (Illuminate\Routing\Middleware\ThrottleRequests:10,1), not
+        // the 'throttle:10,1' string written in routes/ai.php.
+        $this->assertTrue(
+            collect($middleware)->contains(fn ($m): bool => is_string($m) && str_contains($m, 'ThrottleRequests')),
+            'Dynamic client registration must stay rate limited.',
+        );
+    }
+
     public function test_the_device_grant_and_passports_client_management_api_are_not_exposed(): void
     {
         foreach (['oauth/device', 'oauth/device/code', 'oauth/clients', 'oauth/scopes', 'oauth/personal-access-tokens'] as $uri) {
