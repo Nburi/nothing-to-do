@@ -18,9 +18,11 @@ use Illuminate\Console\Command;
  * Inbox/Project filtering and write.
  *
  * `<=`, not `=` — the same "a missed tick catches up on the next run" shape
- * every other command in this app uses (see SendProgressReminders), except
- * here there is no separate dedup column at all: promoteIfToday()'s own
- * is_today=false filter is already the idempotency guard.
+ * every other command in this app uses (see SendProgressReminders). Dedup is
+ * task_day_plans.promoted_for_date: once a plan has been promoted for its
+ * planned_date it is never touched again by this command, so a task the user
+ * deliberately removed from Heute is not flagged a second time. (is_today=false
+ * alone cannot be the guard — it also describes a task the user just unflagged.)
  */
 class PromoteDayPlansToToday extends Command
 {
@@ -38,8 +40,13 @@ class PromoteDayPlansToToday extends Command
                 foreach ($users as $user) {
                     $today = $user->localToday()->toDateString();
 
+                    // Only plans not yet promoted for their current planned_date:
+                    // a task the user later removed from Heute must stay removed.
                     $taskIds = TaskDayPlan::query()
                         ->whereDate('planned_date', '<=', $today)
+                        ->where(fn ($q) => $q
+                            ->whereNull('promoted_for_date')
+                            ->orWhereColumn('promoted_for_date', '!=', 'planned_date'))
                         ->whereHas('task', fn ($q) => $q->forUser($user))
                         ->pluck('task_id');
 

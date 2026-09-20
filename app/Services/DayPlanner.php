@@ -9,6 +9,7 @@ use App\Models\TaskDayPlan;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Lets a user drag open Tasks/Todos/Agenda-homework onto a specific day —
@@ -405,10 +406,12 @@ class DayPlanner
      * silently flagging one here would inflate ProgressStats' streak with a
      * task nobody can see or complete (see CLAUDE.md §7 Task-Gruppen).
      *
-     * No dedup column needed the way the push-notification commands need
-     * one: is_today=false IS the idempotency guard, since nothing in this
-     * app auto-clears is_today overnight — once promoted, a task never
-     * matches this query again.
+     * Idempotency lives in task_day_plans.promoted_for_date, stamped below
+     * for every eligible task (already Heute or just flagged) and read by
+     * PromoteDayPlansToToday — NOT in is_today=false, which would also match
+     * a task the user deliberately removed from Heute and bounce it back.
+     * This helper itself always promotes: reaching it via a drag/autofill
+     * onto today is an explicit user decision, only the cron tick isn't.
      *
      * @param  iterable<int>  $taskIds
      */
@@ -426,18 +429,23 @@ class DayPlanner
             return;
         }
 
-        Task::query()
+        $eligible = Task::query()
             ->forUser($user)
             ->active()
             ->onBoard()
             ->where('list', '!=', 'inbox')
             ->whereIn('id', $ids)
-            ->where('is_today', false)
-            ->get()
-            ->each(fn (Task $task) => $task->update([
-                'is_today' => true,
-                'today_date' => $task->todayDateFor(true, $today),
-            ]));
+            ->get();
+
+        $eligible->where('is_today', false)->each(fn (Task $task) => $task->update([
+            'is_today' => true,
+            'today_date' => $task->todayDateFor(true, $today),
+        ]));
+
+        // Mark these plans as handled for their current date (see docblock).
+        TaskDayPlan::query()
+            ->whereIn('task_id', $eligible->modelKeys())
+            ->update(['promoted_for_date' => DB::raw('planned_date')]);
     }
 
     // ── Internals ─────────────────────────────────────────────────────
