@@ -34,6 +34,18 @@ class NothingToDoServer extends Server
     }
 
     /**
+     * Tools only. Laravel MCP's default advertises `resources` and `prompts`
+     * as well, but this server registers neither, so declaring them would
+     * invite a client to ask for something that is always empty — and would
+     * disagree with what the Sanctum endpoint's own initialize response says.
+     *
+     * @var array<string, array<string, bool>|\stdClass|string>
+     */
+    protected array $capabilities = [
+        self::CAPABILITY_TOOLS => ['listChanged' => false],
+    ];
+
+    /**
      * Laravel MCP paginates tools/list at 15 per page by default — one page
      * short of this server's 19 tools, which quietly pushed the last few
      * (delete_task among them) onto a second page behind a nextCursor. A

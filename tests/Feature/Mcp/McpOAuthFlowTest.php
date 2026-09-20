@@ -112,6 +112,25 @@ class McpOAuthFlowTest extends TestCase
         return collect($this->rpc($tokens['access_token'], 'tools/list')['result']['tools'])->pluck('name');
     }
 
+    public function test_the_initialize_handshake_declares_tools_and_nothing_else(): void
+    {
+        // The first thing any client sends. Laravel MCP's default also
+        // advertises `resources` and `prompts`, which this server does not
+        // register — declaring them would point a client at something always
+        // empty, and would contradict the Sanctum endpoint's own answer.
+        $tokens = $this->connect(User::factory()->create());
+
+        $result = $this->rpc($tokens['access_token'], 'initialize', [
+            'protocolVersion' => '2025-06-18',
+            'capabilities' => [],
+            'clientInfo' => ['name' => 'claude-ai', 'version' => '1.0'],
+        ])['result'];
+
+        $this->assertSame('2025-06-18', $result['protocolVersion']);
+        $this->assertSame('nothing-to-do', $result['serverInfo']['name']);
+        $this->assertSame(['tools' => ['listChanged' => false]], $result['capabilities']);
+    }
+
     public function test_every_tool_arrives_in_a_single_tools_list_page(): void
     {
         // Laravel MCP's default page size is 15 and this server has more tools
