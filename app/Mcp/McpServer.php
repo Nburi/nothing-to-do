@@ -83,6 +83,27 @@ class McpServer
         ));
     }
 
+    /**
+     * Every registered tool instance, in registration order — the shared
+     * source both transports build their tool list from (the Sanctum
+     * endpoint via availableTools() below, the OAuth server by wrapping each
+     * one in App\Mcp\Servers\BridgedTool).
+     *
+     * @return list<McpTool>
+     */
+    public function tools(): array
+    {
+        return $this->tools;
+    }
+
+    /**
+     * @param  callable(string): bool  $tokenCan
+     */
+    public function isAvailableTo(McpTool $tool, User $user, callable $tokenCan): bool
+    {
+        return $this->isAvailable($tool, $user, $tokenCan);
+    }
+
     protected function isAvailable(McpTool $tool, User $user, callable $tokenCan): bool
     {
         if ($tool->requiredAbility() !== null && ! $tokenCan($tool->requiredAbility())) {

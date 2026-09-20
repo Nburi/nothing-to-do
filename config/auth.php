@@ -42,6 +42,19 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        /*
+         * The OAuth 2.1 guard behind the MCP server (routes/ai.php). It exists
+         * only for AI clients that cannot send a static bearer token — most
+         * importantly claude.ai and Claude Desktop, whose "add custom
+         * connector" dialog offers a URL and OAuth client credentials but no
+         * header field. The Shortcuts/REST API and /api/mcp keep using
+         * Sanctum; the two never overlap on a route.
+         */
+        'api' => [
+            'driver' => 'passport',
+            'provider' => 'users',
+        ],
     ],
 
     /*
