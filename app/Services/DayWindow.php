@@ -150,6 +150,16 @@ final class DayWindow
     // ── Turning a setting into a render frame ────────────────────────
 
     /**
+     * Turn one resolved setting into a render frame.
+     *
+     * A grid that shows several days at once passes the *widest* setting among
+     * them — a week grid has one hour gutter, so its columns cannot each have
+     * their own scale. The callers assemble that union themselves, from the
+     * same `daySettings`/`weekdaySettings` they already compute for the header
+     * chips and the per-column night bands. A grid showing a single day (the
+     * mobile Zeitplan, the mobile Wochenplan, Vorbereitung Schritt 3) passes
+     * that day's own setting instead.
+     *
      * @param  iterable<array{0: int, 1: int}>  $ranges  occupied [startMin, endMin] pairs that must stay visible
      * @return array{start: int, end: int, settingStart: int, settingEnd: int, expanded: bool}
      */
@@ -180,56 +190,6 @@ final class DayWindow
             'settingEnd' => $settingEnd,
             'expanded' => $expanded,
         ];
-    }
-
-    /**
-     * One shared frame for a set of dates — a week grid has a single hour
-     * gutter, so all its columns must agree on one scale even when the days
-     * themselves are set differently. The widest setting in the set wins.
-     *
-     * @param  iterable<Carbon|string>  $dates
-     * @param  iterable<ScheduleEvent>  $events
-     * @param  iterable<ScheduleDayBound>  $overrides  already-loaded rows, keyed by Y-m-d
-     * @return array{start: int, end: int, settingStart: int, settingEnd: int, expanded: bool}
-     */
-    public static function frameForDates(User $user, iterable $dates, iterable $events = [], array $overrides = []): array
-    {
-        $starts = [];
-        $ends = [];
-
-        foreach ($dates as $date) {
-            $key = $date instanceof Carbon ? $date->toDateString() : (string) $date;
-            $setting = self::settingForDate($user, $date, $overrides[$key] ?? false);
-            $starts[] = $setting['start'];
-            $ends[] = $setting['end'];
-        }
-
-        return self::frame(
-            $starts === [] ? self::defaultSetting($user)['start'] : min($starts),
-            $ends === [] ? self::defaultSetting($user)['end'] : max($ends),
-            self::rangesFrom($events),
-        );
-    }
-
-    /**
-     * One shared frame for the whole Mon–Sun Wochenplan canvas, for the same
-     * reason frameForDates() shares one: seven columns, one hour gutter.
-     *
-     * @param  iterable<EventTemplate>  $templates
-     * @return array{start: int, end: int, settingStart: int, settingEnd: int, expanded: bool}
-     */
-    public static function frameForWeekdays(User $user, iterable $templates = []): array
-    {
-        $starts = [];
-        $ends = [];
-
-        for ($weekday = 1; $weekday <= 7; $weekday++) {
-            $setting = self::settingForWeekday($user, $weekday);
-            $starts[] = $setting['start'];
-            $ends[] = $setting['end'];
-        }
-
-        return self::frame(min($starts), max($ends), self::rangesFrom($templates));
     }
 
     /**

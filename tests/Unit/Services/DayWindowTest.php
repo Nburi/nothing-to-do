@@ -7,7 +7,6 @@ use App\Models\ScheduleEvent;
 use App\Models\User;
 use App\Services\DayWindow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class DayWindowTest extends TestCase
@@ -131,27 +130,6 @@ class DayWindowTest extends TestCase
         // half of it would be cut off with nothing saying so.
         $frame = DayWindow::frame(8 * 60, 21 * 60, DayWindow::rangesFrom([$event]));
         $this->assertSame(7 * 60, $frame['start']);
-    }
-
-    public function test_a_frame_for_several_dates_takes_the_widest_setting_in_the_set(): void
-    {
-        $user = User::factory()->create([
-            'weekday_day_bounds' => [
-                '1' => ['start' => '07:00', 'end' => '20:00'],
-                '2' => ['start' => '08:00', 'end' => '21:00'],
-                '3' => ['start' => '09:00', 'end' => '23:00'],
-            ],
-        ]);
-
-        // Monday 2026-09-21 through Wednesday 2026-09-23.
-        $frame = DayWindow::frameForDates($user, [
-            Carbon::parse('2026-09-21'),
-            Carbon::parse('2026-09-22'),
-            Carbon::parse('2026-09-23'),
-        ]);
-
-        $this->assertSame(7 * 60, $frame['settingStart']);   // Monday's
-        $this->assertSame(23 * 60, $frame['settingEnd']);    // Wednesday's
     }
 
     // ── Scale ────────────────────────────────────────────────────────

@@ -332,6 +332,26 @@ class ScheduleDayFrameTest extends TestCase
         );
     }
 
+    /**
+     * The week grid's own frame is the union of its seven days' settings — one
+     * hour gutter cannot serve seven scales. Asserted on the rendered grid
+     * rather than on a helper, because the components assemble the union
+     * themselves from the settings they already compute for the chips.
+     */
+    public function test_the_week_grid_takes_the_widest_setting_of_its_seven_days(): void
+    {
+        $user = $this->actingUser(['day_start_time' => '08:00', 'day_end_time' => '18:00']);
+        // Saturday alone runs longer at both ends.
+        DayWindow::setWeekday($user, 6, '06:30', '22:00');
+
+        $span = (22 * 60 + DayWindow::NIGHT_MARGIN) - (6 * 60 + 30 - DayWindow::NIGHT_MARGIN);
+
+        Livewire::test(Schedule::class)
+            ->set('weekStart', '2026-09-21')
+            ->assertSee('data-span="'.$span.'"', false)
+            ->assertSee('data-day-start="'.(6 * 60).'"', false);
+    }
+
     public function test_the_desktop_weekplan_still_shares_one_scale(): void
     {
         $user = $this->actingUser();
