@@ -108,26 +108,11 @@
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
-                             shortcuts (Settings' "Header-Badges" card). Each one only takes up
-                             space once it actually has something to show — no sad 0/empty state
-                             — and disappears entirely otherwise. overflow-x-auto is the safety
-                             net for a wide selection on a narrow phone (same pattern as the
-                             homework preview strip). See App\Services\HeaderBadges. --}}
-                        @php $headerBadges = \App\Services\HeaderBadges::visibleFor(auth()->user()); @endphp
-                        @if (count($headerBadges) > 0)
-                            {{-- max-w-[45vw]: bumped up from the original 38vw now that the
-                                 wordmark hides and "Mehr" folds into the avatar menu on
-                                 mobile (see both below) — there's more real width to spare
-                                 before this needs to fall back to its own horizontal scroll,
-                                 without risking the header itself overflowing on a narrow
-                                 (~320px) phone. Still capped, still scrollable — the safety
-                                 net for a wide badge selection stays exactly as before. --}}
-                            <div class="flex max-w-[45vw] items-center gap-1.5 overflow-x-auto sm:max-w-none">
-                                @foreach ($headerBadges as $badge)
-                                    @include('partials.header-badge', ['badge' => $badge])
-                                @endforeach
-                            </div>
-                        @endif
+                             shortcuts (Settings' "Header-Badges" card). A Livewire component of
+                             its own so it can refresh live after any action on the page (see
+                             App\Livewire\HeaderBadgeRow and the live-badge block in app.js);
+                             each badge only takes up space once it has something to show. --}}
+                        <livewire:header-badge-row />
 
                         {{-- Tagesüberblick entry point — deliberately not part of the
                              configurable header-badges row above (that's opt-in/user-ordered;

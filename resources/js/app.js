@@ -1109,6 +1109,125 @@ function flyStreakSpark(origin, badgeEl, onArrive) {
 }
 
 /**
+ * Live header badges (see App\Livewire\HeaderBadgeRow, partials/header-badge
+ * .blade.php and the .badge-* keyframes in app.css). The badge row is a
+ * Livewire component of its own, and nothing on a page knows about it — so
+ * one global hook keeps it honest instead of every action having to say so:
+ *
+ *  - after any message that carried a real action (not a poll, a live-model
+ *    sync or a $refresh) succeeds, the row is refreshed; bursts (a drag, a
+ *    run of quick ticks) coalesce into one refresh via a short debounce;
+ *  - every 60s while the tab is visible, and the moment it becomes visible
+ *    again — the Zeitplan badge goes stale with the clock alone, and a
+ *    classmate can add homework to a shared Agenda;
+ *  - a refresh that fails (offline, expired session) is silent: the badges
+ *    keep their last values, and Livewire's own error modal / native
+ *    "page expired" confirm never fire for a background refresh.
+ *
+ * headerBadgesSettled() lets the streak's 'celebrate' handler below wait for
+ * a pending refresh — otherwise the flame could ignite on a badge that is
+ * about to be replaced, or that doesn't exist yet (streak 0 → 1).
+ *
+ * The leaving halves of the signature moment (a badge that vanished, a value
+ * that was replaced) are rendered by the server as short-lived ghost nodes —
+ * see HeaderBadgeRow — because Livewire's morph removes keyed nodes without
+ * calling any removal hook, so nothing here could animate them out.
+ */
+const HEADER_ROW = 'header-badge-row';
+const HEADER_REFRESH_DEBOUNCE_MS = 120;
+const HEADER_REFRESH_INTERVAL_MS = 60000;
+const HEADER_IGNORED_ACTIONS = ['$refresh', '$commit', '__dispatch'];
+let headerExpecting = 0;
+let headerTimer = null;
+let headerInFlight = false;
+let headerDirty = false;
+let headerWaiters = [];
+
+const headerIsIdle = () => headerExpecting === 0 && headerTimer === null && !headerInFlight;
+
+function headerNotifyIdle() {
+    if (!headerIsIdle()) return;
+    const waiters = headerWaiters;
+    headerWaiters = [];
+    waiters.forEach((resolve) => resolve());
+}
+
+window.headerBadgesSettled = () => new Promise((resolve) => {
+    if (headerIsIdle()) resolve();
+    else headerWaiters.push(resolve);
+});
+
+function refreshHeaderBadges() {
+    const row = window.Livewire?.getByName(HEADER_ROW)[0];
+    if (!row) return headerNotifyIdle();
+    if (headerInFlight) {
+        headerDirty = true;
+        return;
+    }
+    headerInFlight = true;
+    // Safety net: never let a lost message keep the row "in flight" forever.
+    setTimeout(() => { headerInFlight = false; headerNotifyIdle(); }, 10000);
+    Promise.resolve(row.$refresh()).catch(() => {});
+}
+
+function scheduleHeaderRefresh() {
+    clearTimeout(headerTimer);
+    headerTimer = setTimeout(() => {
+        headerTimer = null;
+        refreshHeaderBadges();
+    }, HEADER_REFRESH_DEBOUNCE_MS);
+}
+
+document.addEventListener('livewire:init', () => {
+    Livewire.interceptMessage(({ message, onSuccess, onFinish }) => {
+        if (message.component.name === HEADER_ROW) {
+            headerInFlight = true;
+            onFinish(() => {
+                headerInFlight = false;
+                if (headerDirty) {
+                    headerDirty = false;
+                    scheduleHeaderRefresh();
+                }
+                headerNotifyIdle();
+            });
+            return;
+        }
+
+        const isRealAction = [...message.actions].some(
+            (action) => !HEADER_IGNORED_ACTIONS.includes(action.name) && action.metadata?.type !== 'poll'
+        );
+        if (!isRealAction) return;
+
+        headerExpecting++;
+        onSuccess(() => scheduleHeaderRefresh());
+        onFinish(() => {
+            headerExpecting = Math.max(0, headerExpecting - 1);
+            headerNotifyIdle();
+        });
+    });
+
+    Livewire.interceptRequest(({ request, onError }) => {
+        const headerOnly = [...request.messages].every((message) => message.component.name === HEADER_ROW);
+        if (headerOnly) onError(({ preventDefault }) => preventDefault());
+    });
+
+    let headerInterval = null;
+    const syncHeaderInterval = () => {
+        if (document.visibilityState === 'visible') {
+            scheduleHeaderRefresh();
+            headerInterval ??= setInterval(scheduleHeaderRefresh, HEADER_REFRESH_INTERVAL_MS);
+        } else {
+            clearInterval(headerInterval);
+            headerInterval = null;
+        }
+    };
+    document.addEventListener('visibilitychange', syncHeaderInterval);
+    if (document.visibilityState === 'visible') {
+        headerInterval = setInterval(scheduleHeaderRefresh, HEADER_REFRESH_INTERVAL_MS);
+    }
+});
+
+/**
  * Week plan ripple (see WeekPlan::saveEventForm and the .weekplan-ripple
  * keyframes in app.css) — after a block is saved spanning more than one
  * weekday, briefly flashes each affected day column in sequence, so "this
@@ -1195,12 +1314,20 @@ document.addEventListener('livewire:init', () => {
         const isFresh = !reducedMotion && origin && Date.now() - origin.at < 5000;
         lastCompletionOrigin = null;
 
-        document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
-            if (isFresh) {
-                flyStreakSpark(origin, el, () => ignite(el));
-            } else {
-                ignite(el);
-            }
+        // The header badge row refreshes live now (see the live-badge block
+        // above): wait for that refresh to land, so the spark flies to — and
+        // the flame ignites on — the badge as it is after this completion,
+        // including one that only exists because of it (streak 0 -> 1) and
+        // one that a later morph would otherwise wipe the ignite class from.
+        // Capped, so a slow or failed refresh only ever delays the flourish.
+        Promise.race([window.headerBadgesSettled(), new Promise((resolve) => setTimeout(resolve, 1500))]).then(() => {
+            document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
+                if (isFresh) {
+                    flyStreakSpark(origin, el, () => ignite(el));
+                } else {
+                    ignite(el);
+                }
+            });
         });
     });
 });

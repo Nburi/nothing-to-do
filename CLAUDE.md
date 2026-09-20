@@ -1734,13 +1734,41 @@ showed one hardcoded indicator (the streak), always in the same spot.
     generalised to all six. `schedule`'s resolver is deliberately scoped to **today only** (current event,
     else the next one still to come today, else hidden) — a header badge answers "what's next", reaching
     into tomorrow is what the Zeitplan page itself is for.
-  - `layouts/app.blade.php` computes `HeaderBadges::visibleFor(auth()->user())` once per page load (it's
-    plain Blade in the shared layout, not a Livewire component, so it does **not** live-update on an
-    in-page Livewire action — same limitation the old hardcoded streak badge already had; a badge's count
-    catches up on the next full navigation) and loops over `partials/header-badge.blade.php`, one `<a
-    wire:navigate>` per badge. The row sits in a `overflow-x-auto` wrapper (`max-w-[45vw]` on mobile, see
-    the Mobile Header Redesign section below for why it isn't the original 38vw) — the safety net for
-    more than a couple of enabled badges on a narrow phone, same pattern as the homework preview strip.
+  - `layouts/app.blade.php` mounts `<livewire:header-badge-row />` (`App\Livewire\HeaderBadgeRow`), which
+    calls `HeaderBadges::visibleFor()` and loops over `partials/header-badge.blade.php`, one `<a
+    wire:navigate>` per badge. The component root is `display: contents`, so the row's own `overflow-x-auto`
+    wrapper (`max-w-[45vw]` on mobile, see the Mobile Header Redesign section below for why it isn't the
+    original 38vw) is still the direct flex child — the safety net for more than a couple of enabled badges
+    on a narrow phone, same pattern as the homework preview strip. An empty row leaves no footprint.
+- **Live updates (built).** The row used to be plain Blade in the layout and only caught up on the next
+  full page load (completing a task left "Tagesziel" on its old count). Now a global hook in
+  `resources/js/app.js` (the "Live header badges" block) refreshes the component: after any Livewire
+  message that carried a *real* action succeeds (`Livewire.interceptMessage`; polls, `$refresh`, `$commit`
+  live-model syncs and `__dispatch` are ignored), debounced 120ms so a drag or a run of quick ticks is one
+  refresh; every 60s while the tab is visible and on `visibilitychange` (the Zeitplan badge goes stale with
+  the clock alone, and a class agenda can change under you). A refresh that fails is silent — a
+  header-only request gets `preventDefault()` on its error, so neither Livewire's error modal nor the
+  native "page expired" `confirm()` ever fire for a background refresh. No page component needs to know
+  the row exists; that's the point of the global hook (the "audit every write site" lesson, §10, would
+  otherwise apply to every action in the app). The `streak` badge's `celebrate` handler waits for a pending
+  refresh (`window.headerBadgesSettled()`, capped at 1.5s) so the flying spark / ignite happens on the badge
+  as it is *after* the completion — including one that only exists because of it (streak 0 → 1) — and is
+  never wiped by a later morph. The avatar menu's own streak number and the emergency/day-preview dots are
+  still per-page-load.
+- **Signature moment — "die Zahl rollt".** `HeaderBadgeRow::$seen` (a `#[Locked]` map of the previous
+  render's badges; `null` on the first render, which deliberately flags nothing — arriving on a page is not
+  an event) lets the view tell `changed`/`appeared` from *there all along*. A changed value is a genuinely
+  new node (`wire:key` includes the text) that slides up (`badge-value-in`) plus one inset wash in the pill's
+  tone (`badge-wash`; skipped on the streak, whose `flame-ignite` owns that pill's colour moment); the
+  replaced value is rendered once more as an absolutely-positioned ghost that slides out
+  (`badge-value-out`); a badge that just gained content grows in (`badge-grow-in`); one that just lost it is
+  rendered once more as an inert `leaving` ghost (no href/tooltip, `aria-hidden`) that collapses away
+  (`badge-collapse-out`). The ghosts are **server-rendered on purpose**: Livewire's morph removes *keyed*
+  nodes via raw `.remove()`/`replaceWith()` in `patchChildren` without calling its `morph.removing` hook, so
+  a client-side "animate it out first" hook never fires for them (found live; only the unkeyed-removal path
+  calls it). A ghost lingers, invisible, until the next refresh drops it. The wash is `inset` because the
+  row scrolls (`overflow-x-auto` clips an outward ring). Reduced motion is handled by the global
+  animation-collapse rule.
 - **Settings' "Header-Badges" card** (Allgemein tab) — one draggable list of **every** catalog badge
   (enabled and disabled alike), each row a drag handle + label + the same immediate-save toggle switch
   used elsewhere in Settings. `Settings::toggleHeaderBadge()`/`reorderHeaderBadges()` both round-trip
@@ -1765,10 +1793,8 @@ showed one hardcoded indicator (the streak), always in the same spot.
   the component previously had none) reads it and seeds `$mobileTab` directly. Desktop has no separate
   Today view to jump to (Heute-flagged tasks already surface pinned inside their own board column), so the
   param is simply inert there — not worth a bespoke desktop treatment for one query string.
-- Deliberately out of scope for this pass: a hover/long-press preview popover for any badge, a live
-  in-page header update the instant a badge's underlying count changes (it updates on the next navigation,
-  same as the pre-existing streak badge always did), and API/Shortcuts support for reading or writing
-  `header_badges`.
+- Deliberately out of scope for this pass: a hover/long-press preview popover for any badge, and
+  API/Shortcuts support for reading or writing `header_badges`.
 
 ### Mobile Header Redesign (built)
 
@@ -4217,6 +4243,20 @@ one it's holding. `McpServer`/`McpController` take a `callable(string): bool` bu
 rather than a raw abilities array, for exactly this reason — the general lesson being that `tokenCan()`
 (or any library-provided ability check) should always be preferred over re-deriving "does this token allow
 X" from the token's own structure, however obvious the structure looks from the outside.
+
+### Livewire's `morph.removing` hook is not called for keyed nodes that are swapped out
+**Symptom:** an "animate it out before it's removed" hook (`Livewire.hook('morph.removing', ({ el, skip }) =>
+…)`, calling `skip()` and removing the node itself after an animation) never fires for a `wire:key`ed
+element — the node just disappears instantly. Board cards and other unkeyed nodes *do* trigger it, which
+makes the hook look reliable until it's needed on a keyed list (found building the live header badges).
+**Cause:** Livewire's morph (`context.patchChildren` in `livewire.js`) handles a key mismatch by
+holding the old node in `fromKeyHoldovers` and calling a raw `.remove()` / `.replaceWith()`, bypassing
+`context.removing` entirely; only the unkeyed/leftover-removal path runs `shouldSkip(context.removing, …)`.
+**Fix:** don't animate an exit from the client. Render the leaving element once more from the server (a
+"ghost": inert, `aria-hidden`, the exit animation class, dropped again by the next render) — see
+`HeaderBadgeRow::withLeavingBadges()`. It's morph-agnostic and testable in PHPUnit. (Also: a hidden Browser
+pane doesn't advance CSS animations — verify end states with `document.getAnimations().forEach(a =>
+a.finish())`, not by waiting.)
 
 ### `php artisan down`/`up` inside a test leaks maintenance mode into every other test running in parallel
 **Symptom:** a single new test calling `$this->artisan('down')`, doing one assertion, then
