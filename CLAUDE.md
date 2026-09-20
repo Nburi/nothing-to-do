@@ -1052,6 +1052,15 @@ plannable target.
     `moveToDay()` appends to the end of a day's existing order without the caller needing to already know
     that order (the mobile day-picker sheet's own action, see below); `unassignTask()` is the chip's small
     "×" and the desktop backlog drop zone.
+  - **`promoteIfToday(User, ids, date)`** + the cron **`app:promote-day-plans-to-today`** — a task planned
+    for today becomes "Heute" (`is_today` + `today_date`, board tasks only, never Inbox/Project-owned).
+    `assignDay`/`moveToDay`/`autoFillBacklog` call it immediately when the target day is today (an explicit
+    user decision, so it **always** promotes); the cron does the same passively once a planned day arrives
+    (`planned_date <= today`, so a missed tick catches up). **Idempotency is `task_day_plans.promoted_for_date`,
+    not `is_today = false`**: the cron only considers plans whose `promoted_for_date` is null or differs from
+    their current `planned_date`, and `promoteIfToday()` stamps it (`= planned_date`) for every eligible
+    task. Moving a plan to another day therefore makes it eligible again on that day with no reset code.
+    See *Known Issues* — the earlier `is_today = false` guard silently undid a user's own removal from Heute.
   - **`autoFillBacklog(User)`** — "Rest automatisch einplanen", the one algorithmic action, and **purely
     additive**: it only ever reads/writes tasks with no day yet, so a placement made by hand can never be
     touched by it. This is *why* it needs no armed-double-click confirmation the way the old `regenerate()`
@@ -3647,6 +3656,24 @@ strict `assertSame(int, ...)` test fails with "900.0 is identical to 900" on dow
 **Fix:** cast to int at the call site: `(int) $today->diffInDays($date)` / `(int) $start->diffInSeconds($now,
 false)`. Check overdue separately with `lessThan()`. (See `Task::effectiveDateLabel`,
 `ScheduleEvent::pomodoroPhaseNow`.)
+
+### A task removed from "Heute" jumped back into it on its own (a state flag used as an idempotency guard)
+**Symptom:** a To-Do/Task was flagged Heute, not finished, and later removed from Heute by the user. After
+anything from a minute to a few days it reappeared in Heute by itself. No error, nothing logged.
+**Cause:** `app:promote-day-plans-to-today` (every minute) flagged every Planer plan with `planned_date <=
+today` whose task had `is_today = false`, on the assumption that `is_today = false` only ever means "not
+promoted yet" ("nothing auto-clears is_today, so once promoted it never matches again"). But `is_today = false`
+equally describes a task the user just unflagged, so the plan (which still exists, dated today or earlier)
+matched again on the next tick. The cron writes the shared column, so every list concept (3 Things, Simple,
+Eisenhower, Kanban), both To-Dos and Tasks, with or without a deadline/Wunschtermin, were affected — but only
+accounts with `planner_enabled` and a Planer plan for the task.
+**Fix:** `task_day_plans.promoted_for_date` records which `planned_date` was already promoted; the cron skips
+plans where it equals `planned_date`. The migration backfills it for every plan that has already arrived, so
+the first tick after deploy doesn't re-promote everything users had removed. Tests:
+`PromoteDayPlansToTodayTest` ("removed from today" cases, incl. a clock advancing over days).
+**General lesson:** a scheduled job must not use a user-editable state flag as its "already handled" marker —
+give it a dedicated marker. If the state can go back to its initial value by a user action, the job will undo
+that action.
 
 ### Carbon 3 `diffInDays()` (and presumably its siblings) can return a *signed* value with no second argument at all
 **Symptom:** `$today->diffInDays($yesterday)` returned `-1` in this codebase's actual Carbon 3 install, not
