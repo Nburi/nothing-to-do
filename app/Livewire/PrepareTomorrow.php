@@ -7,6 +7,7 @@ use App\Livewire\Concerns\ManagesSchedule;
 use App\Livewire\Concerns\ManagesTasks;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\DayWindow;
 use App\Services\DeadlineItems;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -32,11 +33,6 @@ class PrepareTomorrow extends Component
     use ManagesTasks;
     use ManagesDeadlineItems;
     use ManagesSchedule;
-
-    /** The visible window of the mini timeline (minutes from midnight) — same span as Zeitplan. */
-    public const DAY_START = 6 * 60;
-
-    public const DAY_END = 23 * 60;
 
     #[Computed]
     public function targetDate(): Carbon
@@ -150,9 +146,17 @@ class PrepareTomorrow extends Component
     {
         ScheduleEvent::materializeRange(auth()->user(), $this->targetDate, $this->targetDate->copy());
 
+        $setting = DayWindow::settingForDate(auth()->user(), $this->targetDate);
+
         return view('livewire.prepare-tomorrow', [
-            'dayStart' => self::DAY_START,
-            'dayEnd' => self::DAY_END,
+            // The target day's own Tagesrahmen, expanded around whatever is
+            // already on it — step 3 is the Zeitplan's timeline verbatim, so it
+            // has to agree with the Zeitplan about how long that day is.
+            'frame' => DayWindow::frame(
+                $setting['start'],
+                $setting['end'],
+                DayWindow::rangesFrom($this->targetEvents),
+            ),
         ]);
     }
 }

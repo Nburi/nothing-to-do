@@ -203,6 +203,12 @@ return [
     'attributes' => [
         'eventCategoryId' => 'Kategorie',
         'newTokenName' => 'Name',
+        'boundsStart' => 'Aufstehzeit',
+        'boundsEnd' => 'Schlafenszeit',
+        'dayStartTime' => 'Aufstehzeit',
+        'dayEndTime' => 'Schlafenszeit',
+        'eventBufferBefore' => 'Wegzeit davor',
+        'eventBufferAfter' => 'Wegzeit danach',
     ],
 
 ];

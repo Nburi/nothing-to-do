@@ -127,6 +127,30 @@
                 </div>
                 @error('eventEnd') <p class="-mt-2 text-xs text-signal">{{ $message }}</p> @enderror
 
+                {{-- Weg-/Pufferzeit on the template itself, so every occurrence it
+                     materialises brings it along — see ScheduleEvent::materializeRange(). --}}
+                <div>
+                    <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Weg- und Pufferzeit</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input id="wpBufferBefore" type="number" min="0" max="240" step="5" wire:model="eventBufferBefore" class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="wpBufferBefore" class="mt-1 block text-[11px] text-ink-faint">davor — Hinweg</label>
+                            @error('eventBufferBefore') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input id="wpBufferAfter" type="number" min="0" max="240" step="5" wire:model="eventBufferAfter" class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="wpBufferAfter" class="mt-1 block text-[11px] text-ink-faint">danach — Rückweg</label>
+                            @error('eventBufferAfter') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+
                 @if ($eventKind === 'appointment')
                     <div>
                         <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Farbe</label>

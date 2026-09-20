@@ -39,6 +39,16 @@ trait ManagesSchedule
 
     public string $eventColor = 'contour';
 
+    /**
+     * Weg-/Pufferzeit in minutes: how long you're travelling before this
+     * entry starts, and how long you're still not available after it ends.
+     * Zero means no travel time at all and leaves the entry behaving exactly
+     * as it did before the feature existed.
+     */
+    public int $eventBufferBefore = 0;
+
+    public int $eventBufferAfter = 0;
+
     public ?int $eventCategoryId = null;
 
     public bool $eventRecurring = false;
@@ -115,6 +125,7 @@ trait ManagesSchedule
             'editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
             'eventLinkedTasks', 'eventTaskSearch', 'eventAttributeValues',
+            'eventBufferBefore', 'eventBufferAfter',
         ]);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
@@ -135,6 +146,8 @@ trait ManagesSchedule
         $this->eventDate = $event->date->toDateString();
         $this->eventStart = $event->start_time;
         $this->eventEnd = $event->end_time;
+        $this->eventBufferBefore = (int) $event->buffer_before;
+        $this->eventBufferAfter = (int) $event->buffer_after;
         $this->eventColor = $event->colorToken();
         // Recurrence is set at creation; editing touches this occurrence only.
         $this->eventRecurring = false;
@@ -262,6 +275,8 @@ trait ManagesSchedule
             'eventDate' => ['required', 'date'],
             'eventStart' => ['required', 'date_format:H:i'],
             'eventEnd' => ['required', 'date_format:H:i', 'after:eventStart'],
+            'eventBufferBefore' => ['integer', 'min:0', 'max:240'],
+            'eventBufferAfter' => ['integer', 'min:0', 'max:240'],
             'eventRecurring' => ['boolean'],
             'eventDays' => ['array'],
             'eventDays.*' => ['integer', 'between:1,7'],
@@ -324,6 +339,8 @@ trait ManagesSchedule
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
                 'color' => $color,
                 'template_id' => $movedFromSeries ? null : $event->template_id,
             ]));
@@ -357,6 +374,8 @@ trait ManagesSchedule
                 'name' => $title,
                 'color' => $color,
                 'duration' => $duration,
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
                 'default_start' => $data['eventStart'],
                 'is_recurring' => true,
                 'recurrence' => implode(',', $days),
@@ -380,6 +399,8 @@ trait ManagesSchedule
                     'name' => $title,
                     'color' => $color,
                     'duration' => $duration,
+                    'buffer_before' => $data['eventBufferBefore'],
+                    'buffer_after' => $data['eventBufferAfter'],
                     'default_start' => $data['eventStart'],
                     'is_recurring' => false,
                 ]);
@@ -392,6 +413,8 @@ trait ManagesSchedule
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
             ]);
             $event->linkedTasks()->sync($linkedTasksSync);
             $event->attributeValues()->sync($attributeSync);
@@ -406,6 +429,7 @@ trait ManagesSchedule
             'showEventForm', 'editingEventId', 'eventTitle',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
             'eventLinkedTasks', 'eventTaskSearch', 'eventAttributeValues',
+            'eventBufferBefore', 'eventBufferAfter',
         ]);
     }
 
@@ -500,6 +524,10 @@ trait ManagesSchedule
             'date' => $date,
             'start_time' => $startTime,
             'end_time' => ScheduleEvent::fromMinutes(ScheduleEvent::toMinutes($startTime) + $template->duration),
+            // A template's Weg-/Pufferzeit travels with it, exactly as it does
+            // through materializeRange() for a recurring series.
+            'buffer_before' => (int) $template->buffer_before,
+            'buffer_after' => (int) $template->buffer_after,
         ]);
     }
 

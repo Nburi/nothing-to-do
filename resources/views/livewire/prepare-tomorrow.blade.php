@@ -1,6 +1,12 @@
 @php
     $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+    // The target day's own Tagesrahmen (see DayWindow) — step 3 is the Zeitplan's
+    // timeline verbatim, so it renders the same day at the same length.
+    $dayStart = $frame['start'];
+    $dayEnd = $frame['end'];
     $span = $dayEnd - $dayStart;
+    $daySetting = $frame;
     $targetWord = $this->targetWord; // 'heute' | 'morgen'
 @endphp
 
@@ -110,6 +116,13 @@
                     :class="$store.draw.active ? 'cursor-crosshair' : ''"
                     style="touch-action: none"
                 >
+                    @if ($daySetting['settingStart'] > $dayStart)
+                        <div class="tl-night tl-night-top" style="height: {{ ($daySetting['settingStart'] - $dayStart) / $span * 100 }}%"></div>
+                    @endif
+                    @if ($daySetting['settingEnd'] < $dayEnd)
+                        <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $daySetting['settingEnd']) / $span * 100 }}%"></div>
+                    @endif
+
                     @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
                     @endfor

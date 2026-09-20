@@ -2058,6 +2058,18 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
+     * The height at which a timeline block can finally hold its own title row
+     * plus the edit pencil, and therefore the height the lift raises it to.
+     * Must stay in step with the `@container (min-height: 46px)` thresholds in
+     * resources/css/app.css and with DayWindow::LIFT_MIN_PX — three
+     * mechanisms, one number, none of which can read the others.
+     */
+    const LIFT_MIN_PX = 46;
+
+    /** How long a tap-lifted block stays up before lying back down. */
+    const LIFT_HOLD_MS = 2600;
+
+    /**
      * scheduleEvent — drag an event on the timeline grid. Body drag moves it
      * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
      * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.
@@ -2071,6 +2083,8 @@ document.addEventListener('alpine:init', () => {
         id: cfg.id,
         start: cfg.start ?? 0,
         end: cfg.end ?? 0,
+        bufBefore: cfg.bufBefore ?? 0,
+        bufAfter: cfg.bufAfter ?? 0,
         ppm: 1,
         dayStart: 360,
         span: 1020,
@@ -2082,6 +2096,8 @@ document.addEventListener('alpine:init', () => {
         origEnd: 0,
         moved: false,
         lastTap: 0,
+        lifted: false,
+        _liftT: null,
 
         init() {
             const grid = this.$el.closest('[data-grid]');
@@ -2096,6 +2112,53 @@ document.addEventListener('alpine:init', () => {
         },
         get height() {
             return ((this.end - this.start) / this.span) * 100;
+        },
+
+        /**
+         * Position, plus the lift. `min-height` rather than a height override:
+         * a block already tall enough cannot move, and the top edge — which
+         * is the start time — stays put either way.
+         */
+        get blockStyle() {
+            return `top:${this.top}%; height:${this.height}%;` + (this.lifted ? ` min-height:${LIFT_MIN_PX}px;` : '');
+        },
+
+        /**
+         * Weg-/Pufferzeit bands, in percent of the *block*, not of the grid —
+         * so they follow a drag-move and a drag-resize for free, without a
+         * second set of geometry to keep in sync.
+         */
+        get bufBeforeStyle() {
+            const pct = (this.bufBefore / Math.max(1, this.end - this.start)) * 100;
+            return `top:${-pct}%; height:${pct}%;`;
+        },
+        get bufAfterStyle() {
+            const pct = (this.bufAfter / Math.max(1, this.end - this.start)) * 100;
+            return `top:100%; height:${pct}%;`;
+        },
+
+        /**
+         * Raise a block that is too short to carry its own content. Measured,
+         * not derived from its duration: the same 30 minutes is a different
+         * number of pixels on the phone, in the desktop week, and at any
+         * other Tagesrahmen (see DayWindow::ppm).
+         *
+         * `auto` is the touch path — nothing will ever fire a "pointerleave"
+         * there, so the lift settles itself.
+         */
+        lift(auto) {
+            if (!this.lifted && this.$el.getBoundingClientRect().height >= LIFT_MIN_PX) return;
+            // Only ever one block lifted at a time. Dispatched before the flag
+            // is set, so the listener below settling *this* block is a no-op.
+            if (!this.lifted) window.dispatchEvent(new CustomEvent('schedule-block-settle'));
+            this.lifted = true;
+            clearTimeout(this._liftT);
+            if (auto) this._liftT = setTimeout(() => { this.lifted = false; }, LIFT_HOLD_MS);
+        },
+
+        settle() {
+            clearTimeout(this._liftT);
+            this.lifted = false;
         },
 
         begin(kind, e) {
@@ -2141,6 +2204,10 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            // A block that was actually dragged lies back down: its new
+            // neighbourhood is what the user wants to look at now.
+            this.settle();
+
             const hhmm = (m) =>
                 `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
@@ -2148,13 +2215,22 @@ document.addEventListener('alpine:init', () => {
             else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
         },
 
+        /**
+         * A single tap used to do nothing at all — it only armed the 320ms
+         * double-tap window below. It now also lifts the block, which is how
+         * touch reaches the edit pencil: `group-hover` never fires there, so
+         * on a phone the pencil simply did not exist. The double-tap stays
+         * exactly as it was, as the shortcut for anyone who knows it.
+         */
         tap() {
             const now = Date.now();
             if (now - this.lastTap < 320) {
+                this.settle();
                 this.$wire.startEditEvent(this.id);
                 this.lastTap = 0;
             } else {
                 this.lastTap = now;
+                this.lift(true);
             }
         },
     }));
@@ -2448,3 +2524,20 @@ document.addEventListener('DOMContentLoaded', highlightFromQueryParam);
 // own 'livewire:navigated' dispatch, which would otherwise win a same-tick
 // race against our own scrollIntoView and strand it back at 0.
 document.addEventListener('livewire:navigated', () => setTimeout(highlightFromQueryParam, 0));
+
+/**
+ * A lifted timeline block (see the `lift()` in the scheduleEvent component)
+ * lies back down as soon as the next pointer lands anywhere that is not a
+ * block. Touches that start *on* a block are deliberately skipped: that tap
+ * is on its way to lifting one, and its own lift() settles every other block
+ * itself, so handling it here too would drop a block mid-hover on desktop.
+ *
+ * Bubble phase, not capture, on purpose — the edit pencil's own
+ * `@pointerdown.stop` has to be able to keep this from firing while it is
+ * being clicked, or the pencil would be hidden again before the click lands.
+ */
+document.addEventListener('pointerdown', (e) => {
+    if (e.target instanceof Element && e.target.closest('[data-schedule-block]')) return;
+
+    window.dispatchEvent(new CustomEvent('schedule-block-settle'));
+});

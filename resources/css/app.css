@@ -825,3 +825,140 @@
         font-size: 16px;
     }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Timeline blocks (Zeitplan, Wochenplan, Vorbereitung Schritt 3)
+
+   A block is exactly as tall as its duration; its content never was. One
+   title row needs ~28px, and so does the hover pencil — which at the old
+   fixed 0.6 px/min meant every block under ~47 minutes rendered its content
+   *outside* its own bounds, over the next block. Two halves to the fix:
+
+   1. The block is split into a wrapper (`.tl-block`: position, gestures,
+      never clipped — the day view's start-time label deliberately hangs
+      outside it) and a clipped body (`.tl-body`).
+   2. How much the body shows is decided by the body's own height, via
+      container queries — NOT by a duration in minutes. Minutes stopped being
+      a usable proxy the moment DayWindow made the scale depend on the day's
+      length, and they were never one across desktop / phone / week view.
+
+   Unlayered on purpose: Tailwind tree-shakes `@layer components` rules by
+   class name, and a nested `@container` at-rule is exactly the shape that is
+   risky to hand to that scanner (see CLAUDE.md §10 on JS-only classes being
+   silently purged). Everything here is plain CSS, so it passes through
+   untouched.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.tl-body {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+}
+
+@supports (container-type: size) {
+    .tl-body { container-type: size; }
+
+    /* Optional rows start hidden and are switched on once there is room. */
+    .tl-opt { display: none; }
+
+    /* The compact stand-in: a 'select' attribute's colour dots ride in the
+       title row when there is no room for the full attribute line. Shown by
+       default and hidden once the full line appears, rather than gated by a
+       second `max-height` query — two complementary queries would leave a
+       sub-pixel gap in which neither matched. */
+    .tl-opt-dots { display: flex; }
+
+    @container (min-height: 30px) {
+        .tl-opt-time { display: block; }
+    }
+
+    @container (min-height: 46px) {
+        .tl-opt-attrs { display: flex; }
+        .tl-opt-pencil { display: grid; }
+        .tl-opt-dots { display: none; }
+    }
+
+    @container (max-height: 29px) {
+        .tl-title { font-size: 11px; line-height: 14px; }
+        .tl-pad { padding-top: 0; padding-bottom: 0; }
+    }
+}
+
+/* Signature moment: a block too short to carry its own content lifts to
+   exactly the height it needs — hover on a mouse, a single tap on touch
+   (where the pencil never existed at all before). `min-height` rather than a
+   height override so a block that is already tall enough cannot move, and so
+   the top edge — the start time — stays exactly where it is. 46px is the
+   same number as the `min-height: 46px` container query above and as
+   LIFT_MIN_PX in resources/js/app.js; the three cannot share a constant, so
+   they are kept in step by hand (DayWindow::LIFT_MIN_PX documents it). */
+.tl-block {
+    transition:
+        min-height 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.22s ease;
+}
+
+.tl-block-lifted {
+    z-index: 40;
+    box-shadow:
+        0 1px 2px rgb(var(--ink) / 0.12),
+        0 8px 20px rgb(var(--ink) / 0.16);
+}
+
+/* ── Weg-/Pufferzeit ─────────────────────────────────────────────────────
+   A hatched extension of the block, in the block's own colour: it occupies
+   visible time without being a second entry — no title, no gestures of its
+   own, and it moves and resizes with the block because it is positioned in
+   percent of the block itself. */
+
+.tl-buf {
+    position: absolute;
+    left: 0.25rem;
+    right: 0;
+    pointer-events: none;
+    border: 1px dashed;
+    z-index: 0;
+}
+
+.tl-buf-before { border-bottom: 0; border-radius: 7px 7px 0 0; }
+.tl-buf-after { border-top: 0; border-radius: 0 0 7px 7px; }
+
+.tl-buf-forest {
+    border-color: rgb(var(--forest) / 0.45);
+    background: repeating-linear-gradient(135deg, rgb(var(--forest) / 0.17) 0 3px, transparent 3px 7px);
+}
+.tl-buf-overprint {
+    border-color: rgb(var(--overprint) / 0.45);
+    background: repeating-linear-gradient(135deg, rgb(var(--overprint) / 0.17) 0 3px, transparent 3px 7px);
+}
+.tl-buf-signal {
+    border-color: rgb(var(--signal) / 0.45);
+    background: repeating-linear-gradient(135deg, rgb(var(--signal) / 0.17) 0 3px, transparent 3px 7px);
+}
+.tl-buf-ink {
+    border-color: rgb(var(--ink-faint) / 0.45);
+    background: repeating-linear-gradient(135deg, rgb(var(--ink-faint) / 0.17) 0 3px, transparent 3px 7px);
+}
+.tl-buf-contour {
+    border-color: rgb(var(--contour) / 0.45);
+    background: repeating-linear-gradient(135deg, rgb(var(--contour) / 0.17) 0 3px, transparent 3px 7px);
+}
+
+/* The dimmed margin above the first and below the last hour of the day
+   frame: a horizon, so an empty edge reads as "outside my day" rather than
+   as a grid that was cut off. */
+.tl-night {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: rgb(var(--ink) / 0.055);
+    pointer-events: none;
+    /* No z-index on purpose: it sits before the blocks in DOM order, and a
+       positive z-index here would paint it *over* them. */
+}
+.tl-night-top { top: 0; border-bottom: 1px dashed rgb(var(--ink-faint) / 0.4); }
+.tl-night-bottom { bottom: 0; border-top: 1px dashed rgb(var(--ink-faint) / 0.4); }
+
+@media (prefers-color-scheme: dark) {
+    .tl-night { background: rgb(0 0 0 / 0.28); }
+}

@@ -1,8 +1,15 @@
 @php
+    use App\Services\DayWindow;
+
     $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     $wdFull = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-    $span = $dayEnd - $dayStart;          // total visible minutes
-    $ppmWeek = 0.6;                       // px per minute, desktop week (mobile day flexes to the viewport)
+
+    // One frame for all seven columns (one hour gutter), scale derived from the
+    // span so the grid's own height stays roughly constant — see DayWindow.
+    $dayStart = $frame['start'];
+    $dayEnd = $frame['end'];
+    $span = $dayEnd - $dayStart;
+    $ppmWeek = DayWindow::ppm($span);
     $todayIso = auth()->user()->localToday()->dayOfWeekIso;
     $isEmpty = collect($this->templatesByWeekday)->every(fn ($day) => $day->isEmpty());
 @endphp
@@ -32,15 +39,28 @@
                 <div class="flex border-b border-line">
                     <div class="w-12 flex-none"></div>
                     @for ($day = 1; $day <= 7; $day++)
-                        <button
-                            wire:click="openEventForm({{ $day }})"
+                        @php $weekdaySetting = $this->weekdaySettings[$day]; @endphp
+                        {{-- A div, not a button: the Tagesrahmen chip below is its own
+                             button and cannot be nested inside one. --}}
+                        <div
                             @class([
-                                'group flex-1 border-l border-line px-2 py-2.5 text-center transition hover:bg-paper',
+                                'group flex-1 border-l border-line px-2 py-2 text-center transition hover:bg-paper',
                                 'bg-forest-soft/40' => $day === $todayIso,
                             ])
                         >
-                            <div class="text-[11px] uppercase tracking-wide {{ $day === $todayIso ? 'text-forest' : 'text-ink-faint' }}">{{ $wd[$day - 1] }}</div>
-                        </button>
+                            <button wire:click="openEventForm({{ $day }})" class="block w-full" aria-label="Block am {{ $wdFull[$day - 1] }} hinzufuegen">
+                                <div class="text-[11px] uppercase tracking-wide {{ $day === $todayIso ? 'text-forest' : 'text-ink-faint' }}">{{ $wd[$day - 1] }}</div>
+                            </button>
+                            <button
+                                wire:click="openWeekdayBounds({{ $day }})"
+                                @class([
+                                    'tnum mt-0.5 inline-flex rounded-full border px-1.5 text-[9px] leading-[14px] transition',
+                                    'border-contour/45 bg-contour-soft text-contour' => $weekdaySetting['source'] === 'weekday',
+                                    'border-line bg-surface text-ink-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100' => $weekdaySetting['source'] !== 'weekday',
+                                ])
+                                aria-label="Tagesrahmen fuer {{ $wdFull[$day - 1] }} aendern - zurzeit {{ $this->dayBoundsLabel($weekdaySetting['start'], $weekdaySetting['end']) }}"
+                            >{{ $this->dayBoundsLabel($weekdaySetting['start'], $weekdaySetting['end']) }}</button>
+                        </div>
                     @endfor
                 </div>
 
@@ -59,6 +79,7 @@
                     </div>
 
                     @for ($day = 1; $day <= 7; $day++)
+                        @php $weekdaySetting = $this->weekdaySettings[$day]; @endphp
                         <div
                             wire:key="wp-grid-{{ $day }}"
                             class="relative flex-1 border-l border-line"
@@ -73,6 +94,15 @@
                             :class="$store.draw.active ? 'cursor-crosshair' : ''"
                             style="touch-action: none"
                         >
+                            {{-- Dimmed outside this weekday's own Tagesrahmen: a Saturday that
+                                 starts later says so at a glance, without reading the chip. --}}
+                            @if ($weekdaySetting['start'] > $dayStart)
+                                <div class="tl-night tl-night-top" style="height: {{ ($weekdaySetting['start'] - $dayStart) * $ppmWeek }}px"></div>
+                            @endif
+                            @if ($weekdaySetting['end'] < $dayEnd)
+                                <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $weekdaySetting['end']) * $ppmWeek }}px"></div>
+                            @endif
+
                             @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                                 <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px"></div>
                             @endfor
@@ -95,7 +125,7 @@
                     @include('livewire.partials.schedule-category-footer')
                 @endif
             </div>
-            <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · Stift bearbeitet</p>
+            <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · kurze Blöcke richten sich beim Draufzeigen auf · Doppelklick bearbeitet</p>
         </div>
     </div>
 
@@ -127,7 +157,26 @@
                     <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </button>
             </div>
-            <p class="mb-3 flex-none text-center text-xs text-ink-faint">So sieht dein normaler <span x-text="@js($wdFull)[focused - 1]"></span> aus.</p>
+            <p class="mb-2 flex-none text-center text-xs text-ink-faint">So sieht dein normaler <span x-text="@js($wdFull)[focused - 1]"></span> aus.</p>
+            {{-- One button per weekday, only the focused one shown: the chip has to
+                 name the frame of the day actually on screen, and paging here is
+                 client-side only (no round trip, see the x-data above). --}}
+            <div class="mb-2 flex flex-none justify-center">
+                @for ($day = 1; $day <= 7; $day++)
+                    @php $weekdaySetting = $this->weekdaySettings[$day]; @endphp
+                    <button
+                        x-show="focused === {{ $day }}"
+                        style="display:none"
+                        wire:click="openWeekdayBounds({{ $day }})"
+                        @class([
+                            'tnum rounded-full border px-2.5 py-1 text-[11px] leading-none transition active:scale-95',
+                            'border-contour/45 bg-contour-soft text-contour' => $weekdaySetting['source'] === 'weekday',
+                            'border-line bg-surface text-ink-faint' => $weekdaySetting['source'] !== 'weekday',
+                        ])
+                        aria-label="Tagesrahmen fuer {{ $wdFull[$day - 1] }} aendern"
+                    >{{ $this->dayBoundsLabel($weekdaySetting['start'], $weekdaySetting['end']) }}</button>
+                @endfor
+            </div>
 
             <div class="min-h-0 flex-1 rounded-card border border-line bg-surface p-2">
                 <div class="flex h-full">
@@ -155,6 +204,14 @@
                                 :class="$store.draw.active ? 'cursor-crosshair' : ''"
                                 style="touch-action: none"
                             >
+                                @php $weekdaySetting = $this->weekdaySettings[$day]; @endphp
+                                @if ($weekdaySetting['start'] > $dayStart)
+                                    <div class="tl-night tl-night-top" style="height: {{ ($weekdaySetting['start'] - $dayStart) / $span * 100 }}%"></div>
+                                @endif
+                                @if ($weekdaySetting['end'] < $dayEnd)
+                                    <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $weekdaySetting['end']) / $span * 100 }}%"></div>
+                                @endif
+
                                 @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                                     <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
                                 @endfor
@@ -182,6 +239,10 @@
                 </div>
             </div>
 
+            <p class="mt-1 flex-none text-center text-[10px] leading-tight text-ink-faint">
+                Kurze Blöcke antippen, um sie aufzurichten · nochmal tippen bearbeitet
+            </p>
+
             @if ($this->categories->isNotEmpty())
                 <div class="mt-2 flex-none rounded-card border border-line bg-surface">
                     @include('livewire.partials.schedule-category-footer')
@@ -198,4 +259,7 @@
 
     {{-- ════════════════ BLOCK FORM (create / edit) ════════════════ --}}
     @include('livewire.partials.week-plan-event-form')
+
+    {{-- ════════════════ TAGESRAHMEN ════════════════ --}}
+    @include('livewire.partials.day-bounds-popover')
 </div>

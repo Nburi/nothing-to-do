@@ -2,9 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesDayBounds;
 use App\Models\EventTemplate;
 use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
+use App\Services\DayWindow;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -23,13 +25,10 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class WeekPlan extends Component
 {
+    use ManagesDayBounds;
+
     /** Smallest block the grid will allow (minutes) — mirrors ManagesSchedule::MIN_EVENT. */
     public const MIN_EVENT = 10;
-
-    /** The visible window of a day on the grid (minutes from midnight) — same as Schedule. */
-    public const DAY_START = 6 * 60;   // 06:00
-
-    public const DAY_END = 23 * 60;    // 23:00
 
     /** Inline block form (shared between create and edit), keyed by weekday instead of date. */
     public bool $showEventForm = false;
@@ -46,6 +45,11 @@ class WeekPlan extends Component
     public string $eventEnd = '09:00';
 
     public string $eventColor = 'contour';
+
+    /** Weg-/Pufferzeit in minutes, carried onto every occurrence this template materialises. */
+    public int $eventBufferBefore = 0;
+
+    public int $eventBufferAfter = 0;
 
     public ?int $eventCategoryId = null;
 
@@ -87,6 +91,32 @@ class WeekPlan extends Component
         return $buckets;
     }
 
+    /**
+     * Each weekday's own Tagesrahmen (its override, else the default), keyed
+     * by ISO weekday. This is the page where "so sieht mein normaler Samstag
+     * aus" is answered, so it is also where a weekday's frame is edited.
+     *
+     * @return array<int, array{start: int, end: int, source: string}>
+     */
+    #[Computed]
+    public function weekdaySettings(): array
+    {
+        $user = auth()->user();
+        $settings = [];
+
+        for ($weekday = 1; $weekday <= 7; $weekday++) {
+            $settings[$weekday] = DayWindow::settingForWeekday($user, $weekday);
+        }
+
+        return $settings;
+    }
+
+    /** Recomputed after a Tagesrahmen write, so the same request renders the new frame. */
+    protected function afterDayBoundsChanged(): void
+    {
+        unset($this->weekdaySettings);
+    }
+
     /** The user's configured categories, for the block form's chip picker. */
     #[Computed]
     public function categories(): Collection
@@ -112,7 +142,10 @@ class WeekPlan extends Component
 
     public function openEventForm(?int $weekday = null): void
     {
-        $this->reset(['editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId', 'eventDays']);
+        $this->reset([
+            'editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId', 'eventDays',
+            'eventBufferBefore', 'eventBufferAfter',
+        ]);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
         $this->eventStart = '08:00';
@@ -131,6 +164,8 @@ class WeekPlan extends Component
         $this->eventTitle = (string) $template->name;
         $this->eventStart = $template->default_start ?: '08:00';
         $this->eventEnd = ScheduleEvent::fromMinutes(ScheduleEvent::toMinutes($this->eventStart) + $template->duration);
+        $this->eventBufferBefore = (int) $template->buffer_before;
+        $this->eventBufferAfter = (int) $template->buffer_after;
         $this->eventColor = $template->colorToken();
         $this->eventDays = $template->recurrenceDays();
         $this->showEventForm = true;
@@ -142,6 +177,8 @@ class WeekPlan extends Component
             'eventKind' => ['required', 'in:appointment,category'],
             'eventStart' => ['required', 'date_format:H:i'],
             'eventEnd' => ['required', 'date_format:H:i', 'after:eventStart'],
+            'eventBufferBefore' => ['integer', 'min:0', 'max:240'],
+            'eventBufferAfter' => ['integer', 'min:0', 'max:240'],
             'eventDays' => ['required', 'array', 'min:1'],
             'eventDays.*' => ['integer', 'between:1,7'],
         ];
@@ -177,6 +214,8 @@ class WeekPlan extends Component
                 'name' => $title,
                 'color' => $color,
                 'duration' => $duration,
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
                 'default_start' => $data['eventStart'],
                 'recurrence' => $recurrence,
             ]);
@@ -186,6 +225,8 @@ class WeekPlan extends Component
                 'name' => $title,
                 'color' => $color,
                 'duration' => $duration,
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
                 'default_start' => $data['eventStart'],
                 'is_recurring' => true,
                 'recurrence' => $recurrence,
@@ -205,7 +246,7 @@ class WeekPlan extends Component
 
     public function cancelEventForm(): void
     {
-        $this->reset(['showEventForm', 'editingEventId', 'eventTitle', 'eventDays']);
+        $this->reset(['showEventForm', 'editingEventId', 'eventTitle', 'eventDays', 'eventBufferBefore', 'eventBufferAfter']);
     }
 
     /** Deletes the whole series — cascadeOnDelete retracts every materialised occurrence with it. */
@@ -352,6 +393,8 @@ class WeekPlan extends Component
                     'category_id' => $template->category_id,
                     'title' => $template->displayName(),
                     'color' => $template->colorToken(),
+                    'buffer_before' => (int) $template->buffer_before,
+                    'buffer_after' => (int) $template->buffer_after,
                     'start_time' => $template->default_start,
                     'end_time' => ScheduleEvent::fromMinutes(
                         ScheduleEvent::toMinutes($template->default_start) + $template->duration
@@ -426,9 +469,18 @@ class WeekPlan extends Component
 
     public function render()
     {
+        $settings = $this->weekdaySettings;
+
         return view('livewire.week-plan', [
-            'dayStart' => self::DAY_START,
-            'dayEnd' => self::DAY_END,
+            // One frame for the whole Mon-Sun canvas, for the same reason the
+            // Zeitplan's week grid shares one: seven columns, one hour gutter.
+            'frame' => DayWindow::frame(
+                min(array_column($settings, 'start')),
+                max(array_column($settings, 'end')),
+                DayWindow::rangesFrom(
+                    collect($this->templatesByWeekday)->flatten()->unique('id')
+                ),
+            ),
         ]);
     }
 }
