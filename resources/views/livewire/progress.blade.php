@@ -137,6 +137,18 @@
         </div>
     @endunless
 
+    <a
+        href="{{ route('review') }}"
+        wire:navigate
+        class="mt-4 flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-5 py-3.5 text-sm text-ink shadow-map transition hover:border-ink-faint focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+    >
+        <span>
+            <span class="font-medium">Wochenrückblick</span>
+            <span class="ml-1 text-ink-soft">— was diese Woche geschafft wurde und was liegen blieb</span>
+        </span>
+        <svg class="h-4 w-4 flex-none text-ink-faint" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+
     {{-- Heatmap --}}
     <div class="mt-8">
         <h2 class="mb-3 text-sm font-medium text-ink">Letzte 12 Wochen</h2>
