@@ -6,6 +6,7 @@ use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\TaskGroup;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Minishlink\WebPush\WebPush;
@@ -31,6 +32,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every id in a URL is a database id. Without this, "/api/tasks/abc" reached
+        // controllers whose action takes `int $id` and died with a TypeError - a 500
+        // (and an error-level log line) for what is simply "no such task". A
+        // non-numeric segment now fails route matching itself: a plain 404.
+        foreach (['task', 'project', 'group', 'entry', 'event', 'category', 'template'] as $param) {
+            Route::pattern($param, '[0-9]+');
+        }
+
         // Production sits behind a reverse proxy that terminates TLS — `trustProxies(at: '*')`
         // in bootstrap/app.php already makes Laravel trust its X-Forwarded-Proto header, so
         // url()/route() generation *should* already come out https without this. Forcing the
