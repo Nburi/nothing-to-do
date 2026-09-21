@@ -1432,6 +1432,22 @@ fires there, so on a phone the pencil simply did not exist. The double-tap short
   *border* box. The body's 1px border top and bottom left a lifted block two pixels short of the
   one tier it was lifted for — the pencil never appeared. Found in a real browser, by nothing
   else; `DayWindow::LIFT_MIN_PX`/`TIER_FULL_PX` document the relationship and a test pins it.
+- **The length is changed on the lifted block.** The first version broke the resize gesture:
+  the lift moved the bottom handle off the event's real end and held the block at >= 50px for
+  the whole drag, so a short block could not be seen getting shorter (reported by Niels in
+  use). Now both edges carry visible grip pills (on hover, and always while lifted) and a
+  bottom-resize grows/shrinks the lifted height by exactly the dragged amount
+  (`blockStyle`: `LIFT_MIN_PX + (end − origEnd) × ppm`), so the grip stays under the pointer
+  1:1; `.tl-block-dragging` turns the lift's easing off during a drag, and `begin()` cancels a
+  tap-lift's 2.6s auto-settle so a touch drag cannot lose its block halfway. Blocks **under 30
+  minutes** — which never had handles at all, because two 6px strips would have covered their
+  whole body — now get them too, inert (`pointer-events: none`) until lifted.
+- **While dragging, a time bubble** sits on the wrapper next to the moving edge (below for a
+  bottom-resize, above otherwise), outside the clipped body, so the live time stays readable
+  even when the drag makes the block too short for its own time line. The resting time line is
+  deliberately **server-rendered**, with the live `x-text` copy shown only while dragging and
+  until the save returns (`pending`): a pure `x-text` label went stale after the Livewire
+  re-render in a real browser — state and DB right, text wrong.
 
 **Weg-/Pufferzeit.** `buffer_before`/`buffer_after` in minutes on `schedule_events` **and**
 `event_templates` — a recurring block has to carry its travel time onto every occurrence

@@ -4,7 +4,8 @@
     $token = $event->colorToken();
     $compact = $compact ?? false;
     // Short events would have their whole body covered by resize handles, blocking
-    // the move gesture — only offer resize handles when there's room.
+    // the move gesture — so below 30 minutes the grips only go live once the block
+    // is lifted (see the grips further down).
     $resizable = $event->durationMinutes() >= 30;
 
     $bufferBefore = (int) $event->buffer_before;
@@ -70,7 +71,7 @@
         'inset-x-1' => $compact,
         'left-[3.75rem] right-2' => ! $compact,
     ])
-    :class="(kind ? 'z-20 cursor-grabbing' : 'cursor-grab') + (lifted ? ' tl-block-lifted' : '')"
+    :class="(kind ? 'z-20 cursor-grabbing tl-block-dragging' : 'cursor-grab') + (lifted ? ' tl-block-lifted' : '')"
 >
     {{-- Weg-/Pufferzeit: a hatched extension of the block, no title and no gestures
          of its own. Positioned in percent of the block, so a drag-move or a
@@ -99,11 +100,22 @@
          when to leave is the whole point of having entered one, and it would
          otherwise only be readable by opening the form. --}}
     @unless($compact)
-        <span class="tnum absolute -left-[3.6rem] top-0 w-[3.2rem] text-right text-[11px] font-medium text-ink">{{ $event->start_time }}</span>
+        <span class="tnum absolute -left-[3.6rem] top-0 w-[3.2rem] text-right text-[11px] font-medium text-ink"><span x-show="!kind && !pending">{{ $event->start_time }}</span><span x-show="kind || pending" x-text="startLabel" style="display: none"></span></span>
         @if ($bufferBefore > 0)
-            <span class="tnum absolute -left-[3.6rem] -top-[0.95rem] w-[3.2rem] text-right text-[10px] {{ $styles['tx'] }} opacity-80">{{ $event->departureTime() }}</span>
+            <span class="tnum absolute -left-[3.6rem] -top-[0.95rem] w-[3.2rem] text-right text-[10px] {{ $styles['tx'] }} opacity-80"><span x-show="!kind && !pending">{{ $event->departureTime() }}</span><span x-show="kind || pending" x-text="departureLabel" style="display: none"></span></span>
         @endif
     @endunless
+
+    {{-- While dragging: the time, next to the edge that is moving. Lives on the wrapper,
+         outside the clipped body, so it stays readable even when the drag makes the block
+         itself too short for its own time line — the moment it matters most. --}}
+    <span
+        x-show="kind && moved"
+        x-text="timeLabel"
+        :class="kind === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'"
+        class="tnum pointer-events-none absolute left-1 z-40 whitespace-nowrap rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-medium text-paper shadow-map"
+        style="display: none"
+    ></span>
 
     <div
         @class([
@@ -119,10 +131,19 @@
         {{-- The coloured "Strich" down the left edge. --}}
         <span class="absolute inset-y-0 left-0 w-1 rounded-l-[7px] {{ $styles['bar'] }}"></span>
 
-        {{-- Resize handles (top / bottom of the strich) — only when there's room. --}}
-        @if ($resizable)
-            <div @pointerdown.stop="begin('top', $event)" class="absolute inset-x-0 top-0 z-10 h-1.5 cursor-ns-resize" aria-hidden="true"></div>
-        @endif
+        {{-- Resize grips. A block under 30 minutes used to get none — two 6px strips would
+             have covered its whole body and left nothing to grab for a move. Once it is
+             lifted there is room, so its grips switch on then (pointer-events otherwise
+             off), and every block shows them as visible pills on hover or when lifted:
+             an invisible 6px strip was never discoverable, least of all on touch. --}}
+        <div
+            @pointerdown.stop="begin('top', $event)"
+            class="absolute inset-x-0 top-0 z-10 flex cursor-ns-resize justify-center"
+            :class="lifted ? 'h-2.5' : 'h-1.5 {{ $resizable ? '' : 'pointer-events-none' }}'"
+            aria-hidden="true"
+        >
+            <span class="mt-[3px] h-[3px] w-5 rounded-full bg-ink/25 opacity-0 transition group-hover:opacity-100" :class="lifted && 'opacity-100'"></span>
+        </div>
 
         <div class="tl-pad py-1 pl-3.5 {{ $compact ? 'pr-2' : 'pr-6' }}">
             <p class="tl-title flex items-center gap-1 truncate text-[12px] leading-[18px] font-medium text-ink" x-data="{ revealed: false, _t: null }">
@@ -163,7 +184,7 @@
                 @endif
             </p>
 
-            <p class="tl-time tl-opt tl-opt-time tnum truncate text-[11px] leading-[15px] {{ $styles['tx'] }}">{{ $event->start_time }}–{{ $event->end_time }}</p>
+            <p class="tl-time tl-opt tl-opt-time tnum truncate text-[11px] leading-[15px] {{ $styles['tx'] }}"><span x-show="!kind && !pending">{{ $event->start_time }}–{{ $event->end_time }}</span><span x-show="kind || pending" x-text="timeLabel" style="display: none"></span></p>
 
             {{-- Kategorie-Attribute: the full summary, only when the block has room for
                  another row. A 'select' value's own colour shows as a small dot — glance at
@@ -200,8 +221,13 @@
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
 
-        @if ($resizable)
-            <div @pointerdown.stop="begin('bottom', $event)" class="absolute inset-x-0 bottom-0 z-10 h-1.5 cursor-ns-resize" aria-hidden="true"></div>
-        @endif
+        <div
+            @pointerdown.stop="begin('bottom', $event)"
+            class="absolute inset-x-0 bottom-0 z-10 flex cursor-ns-resize items-end justify-center"
+            :class="lifted ? 'h-2.5' : 'h-1.5 {{ $resizable ? '' : 'pointer-events-none' }}'"
+            aria-hidden="true"
+        >
+            <span class="mb-[3px] h-[3px] w-5 rounded-full bg-ink/25 opacity-0 transition group-hover:opacity-100" :class="lifted && 'opacity-100'"></span>
+        </div>
     </div>
 </div>

@@ -165,7 +165,7 @@ class ScheduleShortBlockTest extends TestCase
 
         $js = file_get_contents(resource_path('js/app.js'));
         $this->assertStringContainsString('const LIFT_MIN_PX = '.DayWindow::LIFT_MIN_PX.';', $js);
-        $this->assertStringContainsString('min-height:${LIFT_MIN_PX}px', $js);
+        $this->assertStringContainsString('min-height:${Math.max(16, LIFT_MIN_PX + grow)}px', $js);
     }
 
     /**
@@ -190,6 +190,67 @@ class ScheduleShortBlockTest extends TestCase
             $css,
             'the pencil no longer widens its own hit area',
         );
+    }
+
+    /**
+     * The lift used to break the length gesture: it moved the bottom handle off
+     * the event's real end and held the block at >= 50px while dragging, so a
+     * short block could not be seen getting shorter. Now the length is changed
+     * on the lifted block itself. Found by Niels in use, not by a test.
+     */
+    public function test_a_short_block_gets_grips_that_only_go_live_once_lifted(): void
+    {
+        $user = $this->actingUser();
+        // 20 minutes: below the 30-minute line that used to mean "no handles at all".
+        ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
+            ->at('12:15', '12:35')->create(['title' => 'Besprechung']);
+
+        $html = $this->get('/app/schedule')->assertOk()->getContent();
+
+        $this->assertStringContainsString("begin('top', \$event)", $html);
+        $this->assertStringContainsString("begin('bottom', \$event)", $html);
+        // Inert until lifted, so a 16px block keeps its whole body for a move.
+        $this->assertStringContainsString(":class=\"lifted ? 'h-2.5' : 'h-1.5 pointer-events-none'\"", $html);
+    }
+
+    public function test_a_long_block_keeps_live_grips_without_a_lift(): void
+    {
+        $user = $this->actingUser();
+        ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
+            ->at('08:00', '11:00')->create(['title' => 'Schule']);
+
+        $this->get('/app/schedule')
+            ->assertOk()
+            ->assertSee(":class=\"lifted ? 'h-2.5' : 'h-1.5 '\"", false);
+    }
+
+    public function test_the_time_is_readable_while_dragging_at_any_block_size(): void
+    {
+        $user = $this->actingUser();
+        ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
+            ->at('12:15', '12:35')->create(['title' => 'Besprechung']);
+
+        $html = $this->get('/app/schedule')->assertOk()->getContent();
+
+        // A bubble on the wrapper, outside the clipped body.
+        $this->assertStringContainsString('x-show="kind && moved"', $html);
+        // At rest the server's time shows — always right after a Livewire
+        // re-render. A pure x-text label went stale there (found live).
+        $this->assertStringContainsString('<span x-show="!kind && !pending">12:15', $html);
+    }
+
+    public function test_the_lift_follows_a_bottom_resize_and_survives_its_own_timer(): void
+    {
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        // The lifted height grows/shrinks by the dragged amount (1:1 grip).
+        $this->assertStringContainsString("this.kind === 'bottom' ? (this.end - this.origEnd) * this.ppm : 0", $js);
+        // A drag on a tap-lifted block cancels the 2.6s auto-settle.
+        $this->assertMatchesRegularExpression('/begin\(kind, e\) \{.*?clearTimeout\(this\._liftT\);/s', $js);
+
+        // And the lift's own easing is off while dragging, or the grip lags.
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertMatchesRegularExpression('/\.tl-block-dragging\s*\{\s*transition:\s*none;/', $css);
     }
 
     public function test_the_density_tiers_are_guarded_for_browsers_without_container_queries(): void

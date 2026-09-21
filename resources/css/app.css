@@ -909,6 +909,12 @@
     inset: -10px;
 }
 
+/* While dragging, min-height changes on every pointermove (see blockStyle);
+   the lift's own easing would make the grip trail behind the pointer. */
+.tl-block-dragging {
+    transition: none;
+}
+
 .tl-block-lifted {
     z-index: 40;
     box-shadow:

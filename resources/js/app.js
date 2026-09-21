@@ -2074,6 +2074,9 @@ document.addEventListener('alpine:init', () => {
     /** How long a tap-lifted block stays up before lying back down. */
     const LIFT_HOLD_MS = 2600;
 
+    /** "HH:MM" from minutes since midnight, for the live labels below. */
+    const fmtHM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
     /**
      * scheduleEvent — drag an event on the timeline grid. Body drag moves it
      * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
@@ -2102,6 +2105,10 @@ document.addEventListener('alpine:init', () => {
         moved: false,
         lastTap: 0,
         lifted: false,
+        // True from the end of a drag until its save has come back: the live
+        // labels stay up until then, so the old time never flashes back in
+        // between releasing and the server's re-render.
+        pending: false,
         pointerType: 'mouse',
         _liftT: null,
 
@@ -2126,7 +2133,29 @@ document.addEventListener('alpine:init', () => {
          * is the start time — stays put either way.
          */
         get blockStyle() {
-            return `top:${this.top}%; height:${this.height}%;` + (this.lifted ? ` min-height:${LIFT_MIN_PX}px;` : '');
+            let style = `top:${this.top}%; height:${this.height}%;`;
+            if (this.lifted) {
+                // Resizing a lifted block from its bottom grip: the lifted
+                // height itself grows/shrinks by exactly the dragged amount,
+                // so the grip stays under the pointer 1:1. Without this the
+                // block sat at >= LIFT_MIN_PX for the whole drag and the user
+                // never saw it get shorter. (Top-resize and move need nothing:
+                // the top edge is true geometry and already follows.)
+                const grow = this.kind === 'bottom' ? (this.end - this.origEnd) * this.ppm : 0;
+                style += ` min-height:${Math.max(16, LIFT_MIN_PX + grow)}px;`;
+            }
+            return style;
+        },
+
+        /** Live labels — they follow a drag instead of showing the time it started at. */
+        get timeLabel() {
+            return `${fmtHM(this.start)}\u2013${fmtHM(this.end)}`;
+        },
+        get startLabel() {
+            return fmtHM(this.start);
+        },
+        get departureLabel() {
+            return fmtHM(Math.max(0, this.start - this.bufBefore));
         },
 
         /**
@@ -2172,6 +2201,9 @@ document.addEventListener('alpine:init', () => {
             // Remembered for tap(): only a touch needs the lift to time itself
             // out, because only a mouse will ever fire a pointerleave.
             this.pointerType = e.pointerType || 'mouse';
+            // A drag on a tap-lifted block must not have the lift time out from
+            // under it halfway through — the grip would jump away mid-gesture.
+            clearTimeout(this._liftT);
             const grid = this.$el.closest('[data-grid]');
             if (grid) this.ppm = grid.getBoundingClientRect().height / this.span;
             this.kind = kind;
@@ -2220,8 +2252,11 @@ document.addEventListener('alpine:init', () => {
             const hhmm = (m) =>
                 `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-            if (kind === 'move') this.$wire.moveEvent(this.id, hhmm(this.start));
-            else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+            this.pending = true;
+            const saved = kind === 'move'
+                ? this.$wire.moveEvent(this.id, hhmm(this.start))
+                : this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+            Promise.resolve(saved).finally(() => { this.pending = false; });
         },
 
         /**
