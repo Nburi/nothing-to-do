@@ -3778,6 +3778,22 @@ process. Also fixed defensively in code: `PushNotifier` now logs (`Log::warning`
 a success and isn't a simple expiry, so a persistent delivery failure like this one is visible in
 `storage/logs/laravel.log` even without manually testing.
 
+### A stale `public/hot` makes every locally served page render completely unstyled
+**Symptom:** `php artisan serve` works, the page loads, the HTML is correct — and the whole
+app renders as unstyled Times New Roman with no JavaScript. The page source shows
+`<script type="module" src="http://[::1]:5173/@vite/client">` even though `public/build/` is
+freshly built and `manifest.json` is right there.
+**Cause:** `public/hot` is left behind whenever a `npm run dev` session ends without cleaning up
+(it is gitignored, so it survives branch switches and never shows in `git status`). While it
+exists, Laravel's Vite helper ignores the built manifest entirely and points every asset at the
+dev server the file names — which is not running.
+**Fix:** start Vite (`npm run dev`) alongside the PHP server rather than deleting the file, so
+the local setup stays exactly as the user left it. **Two things worth knowing when checking
+whether it came up:** the file points at the IPv6 loopback, so `curl http://127.0.0.1:5173/...`
+fails while `curl "http://[::1]:5173/..."` succeeds — don't conclude Vite is down from the IPv4
+check alone; and `npm run dev` never exits, so it has to be backgrounded. If a one-shot static
+check is all that is needed, `npm run build` is the command that exits on its own.
+
 ### Laravel Pail / `composer run dev` fails on Windows (pcntl)
 **Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag
 then tears down the whole dev environment.
