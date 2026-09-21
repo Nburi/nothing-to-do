@@ -424,4 +424,31 @@ class WeekPlanTest extends TestCase
 
         $this->assertSame(0, SchedulePause::forUser($user)->count());
     }
+
+    public function test_unpausing_an_impossible_date_is_ignored_not_a_server_error(): void
+    {
+        $user = $this->actingUser();
+        SchedulePause::pauseRange($user, Carbon::parse('2026-07-20'), Carbon::parse('2026-07-22'), null);
+
+        // Well-formed to the eye, not a calendar date: used to reach Carbon::parse() and throw.
+        foreach (['2026-13-45', '2026-02-30', '0000-00-00', 'garbage'] as $bad) {
+            Livewire::test(WeekPlan::class)->call('unpauseDate', $bad)->assertHasNoErrors();
+            Livewire::test(WeekPlan::class)->call('unpauseRange', $bad, '2026-07-22')->assertHasNoErrors();
+        }
+
+        $this->assertSame(3, SchedulePause::forUser($user)->count());
+    }
+
+    public function test_unpausing_a_range_longer_than_a_year_or_backwards_does_nothing(): void
+    {
+        $user = $this->actingUser();
+        SchedulePause::pauseRange($user, Carbon::parse('2026-07-20'), Carbon::parse('2026-07-22'), null);
+
+        // A pause can never be created longer than a year (savePauseRange), so a longer
+        // unpause can only be hand-made — and would materialise every day of it.
+        Livewire::test(WeekPlan::class)->call('unpauseRange', '1900-01-01', '2999-12-31');
+        Livewire::test(WeekPlan::class)->call('unpauseRange', '2026-07-22', '2026-07-20');
+
+        $this->assertSame(3, SchedulePause::forUser($user)->count());
+    }
 }
