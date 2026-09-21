@@ -1346,7 +1346,24 @@ document.addEventListener('alpine:init', () => {
         clear() { this.cat = null; this.title = null; this.color = null; },
     });
     /** Which task id (if any) the mobile long-press project-picker sheet is open for. */
-    window.Alpine.store('projectPicker', { taskId: null });
+    window.Alpine.store('projectPicker', {
+        taskId: null,
+        openedAt: 0,
+        open(id) {
+            this.openedAt = Date.now();
+            this.taskId = id;
+        },
+        /**
+         * Backdrop tap. The sheet opens *during* a long-press, and lifting the finger
+         * then fires a click on whatever is under it — by now that is this very backdrop,
+         * which would close the sheet the instant it appeared. A backdrop tap that
+         * arrives right after opening is that release, not a dismissal.
+         */
+        dismissBackdrop() {
+            if (Date.now() - this.openedAt < 450) return;
+            this.taskId = null;
+        },
+    });
     /** The Planer's mobile tap-to-assign day-picker sheet — see plannerTap in this file. */
     window.Alpine.store('plannerDayPicker', {
         open: false,
@@ -1595,7 +1612,7 @@ document.addEventListener('alpine:init', () => {
                 this.longPressFired = true;
                 this.dragging = false;
                 this.dx = 0;
-                this.$store.projectPicker.taskId = this.id;
+                this.$store.projectPicker.open(this.id);
             }, this.longPressMs);
         },
 
