@@ -1848,8 +1848,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         get remainingLabel() {
-            if (this.phase === 'inbox') return `${this.inboxOrder.length} von ${this.inboxTotal}`;
-            if (this.phase === 'review') return `${this.reviewOrder.length} von ${this.reviewTotal}`;
+            // "noch N von M", not a bare "N von M": with the counter counting *down*, the
+            // first of two cards read "2 von 2" and the second "1 von 2" - the opposite of
+            // what "card X of Y" means everywhere else.
+            if (this.phase === 'inbox') return `noch ${this.inboxOrder.length} von ${this.inboxTotal}`;
+            if (this.phase === 'review') return `noch ${this.reviewOrder.length} von ${this.reviewTotal}`;
             return '';
         },
     });
