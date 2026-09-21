@@ -3809,6 +3809,11 @@ whether it came up:** the file points at the IPv6 loopback, so `curl http://127.
 fails while `curl "http://[::1]:5173/..."` succeeds — don't conclude Vite is down from the IPv4
 check alone; and `npm run dev` never exits, so it has to be backgrounded. If a one-shot static
 check is all that is needed, `npm run build` is the command that exits on its own.
+**Related crash:** Vite's file watcher dies with `EBUSY … .playwright-mcp\…crx` when a browser-
+automation session keeps a file locked in the project root's `.playwright-mcp/` scratch folder —
+on Windows a locked file makes the watch call throw, and that takes the whole dev server down.
+`vite.config.js` now ignores `**/.playwright-mcp/**`; don't delete that folder instead, the
+browser holding it may be the user's own with other tabs open.
 
 ### Laravel Pail / `composer run dev` fails on Windows (pcntl)
 **Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag
