@@ -151,7 +151,11 @@
                     @include('livewire.partials.schedule-category-footer')
                 @endif
             </div>
-            <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · Stift bearbeitet</p>
+            @if ($this->categories->isEmpty() && $this->events->isEmpty())
+                @include('livewire.partials.schedule-first-visit-hint')
+            @else
+                <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · Stift bearbeitet</p>
+            @endif
         </div>
     </div>
 
@@ -258,6 +262,8 @@
                 <div class="mt-2 flex-none rounded-card border border-line bg-surface">
                     @include('livewire.partials.schedule-category-footer')
                 </div>
+            @elseif ($this->events->isEmpty())
+                @include('livewire.partials.schedule-first-visit-hint', ['compact' => true])
             @endif
         </div>
     </div>
