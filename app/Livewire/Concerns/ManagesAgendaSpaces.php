@@ -5,6 +5,7 @@ namespace App\Livewire\Concerns;
 use App\Models\AgendaSpace;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 
@@ -101,9 +102,40 @@ trait ManagesAgendaSpaces
      * `joinCode` if no space carries that code. Joining twice is a no-op
      * (syncWithoutDetaching), so a re-clicked invite link is harmless.
      */
-    protected function joinByCode(string $code): AgendaSpace
+    /** Misses per minute after which invite-code lookups are refused — codes must not be guessable by brute force. */
+    private const INVITE_MISSES_PER_MINUTE = 10;
+
+    private function inviteThrottleKey(): string
+    {
+        return 'agenda-invite-lookup:'.auth()->id();
+    }
+
+    protected function inviteLookupsExhausted(): bool
+    {
+        return RateLimiter::tooManyAttempts($this->inviteThrottleKey(), self::INVITE_MISSES_PER_MINUTE);
+    }
+
+    /** Looks a code up, counting every miss against the user's throttle. Callers check inviteLookupsExhausted() first. */
+    protected function lookUpInviteCode(string $code): ?AgendaSpace
     {
         $space = AgendaSpace::findByInviteCode($code);
+
+        if ($space === null) {
+            RateLimiter::hit($this->inviteThrottleKey(), 60);
+        }
+
+        return $space;
+    }
+
+    protected function joinByCode(string $code): AgendaSpace
+    {
+        if ($this->inviteLookupsExhausted()) {
+            throw ValidationException::withMessages([
+                'joinCode' => 'Zu viele Versuche. Warte kurz und probier es dann nochmal.',
+            ]);
+        }
+
+        $space = $this->lookUpInviteCode($code);
 
         if ($space === null) {
             throw ValidationException::withMessages([
