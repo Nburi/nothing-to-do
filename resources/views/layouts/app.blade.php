@@ -127,6 +127,21 @@
                              class) — two one-shot CSS animations standing in for a continuous
                              cross-page morph, since a real wire:navigate SPA jump can't reliably
                              track one shared element through the swap. --}}
+                        {{-- Command palette (Strg/⌘+K, or "/"). Header icon from sm up;
+                             below sm the same action lives at the top of the avatar menu,
+                             where a phone user already looks for "the rest" — the mobile
+                             header row has no width to spare for another round button. --}}
+                        <button
+                            type="button"
+                            x-data
+                            @click="$store.commandPalette.show($el)"
+                            aria-label="Suche und Befehle öffnen (Strg+K)"
+                            title="Suche — Strg+K"
+                            class="hidden h-8 w-8 flex-none items-center justify-center rounded-full text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint sm:flex"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg>
+                        </button>
+
                         <a
                             href="{{ route('today') }}"
                             wire:navigate
@@ -268,6 +283,14 @@
                                     <p class="truncate text-sm font-medium text-ink">{{ auth()->user()->name }}</p>
                                     <p class="truncate text-xs text-ink-faint">{{ auth()->user()->email }}</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    @click="open = false; $store.commandPalette.show()"
+                                    class="flex w-full items-center gap-2 border-b border-line px-4 py-2.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden"
+                                >
+                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg>
+                                    Suchen &amp; springen
+                                </button>
                                 {{-- Mobile only: the "Mehr" feature links, folded in here
                                      since the standalone desktop trigger is hidden below sm.
                                      Same partial the desktop panel uses (see above), so the
@@ -358,6 +381,7 @@
             @endif
 
             <livewire:quick-capture />
+            <livewire:command-palette />
 
             {{-- "Here's what's new" toast — see App\Livewire\FeatureAnnouncementToast.
                  Mounted once here, same reasoning as the celebration overlay below:
