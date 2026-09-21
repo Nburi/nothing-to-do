@@ -898,6 +898,17 @@
         box-shadow 0.22s ease;
 }
 
+/* The pencil draws at 24px, which is a poor touch target — and touch is the
+   one path where it is the *only* way in, since group-hover never fires there.
+   A transparent ::after widens the tappable area without touching the look.
+   It stops at the body's own edges (overflow: hidden clips hit-testing too),
+   so this buys the sides and the bottom, not the top. */
+.tl-opt-pencil::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+}
+
 .tl-block-lifted {
     z-index: 40;
     box-shadow:

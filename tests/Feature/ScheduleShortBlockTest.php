@@ -174,6 +174,24 @@ class ScheduleShortBlockTest extends TestCase
      * nested `@container` at-rule is exactly the shape that is risky to hand to
      * that scanner.
      */
+    /**
+     * The pencil draws at 24px, and touch is the one path where it is the only
+     * way in — group-hover never fires there. A transparent ::after widens the
+     * tappable area to ~37px without changing the look; the body's own
+     * overflow:hidden clips the rest, which is why it is not the full 44.
+     */
+    public function test_the_pencil_has_a_wider_touch_target_than_it_draws(): void
+    {
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertStringContainsString('.tl-opt-pencil::after', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.tl-opt-pencil::after\s*\{[^}]*inset:\s*-\d+px/s',
+            $css,
+            'the pencil no longer widens its own hit area',
+        );
+    }
+
     public function test_the_density_tiers_are_guarded_for_browsers_without_container_queries(): void
     {
         $css = file_get_contents(resource_path('css/app.css'));
