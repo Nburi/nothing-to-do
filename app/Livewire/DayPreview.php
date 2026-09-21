@@ -6,6 +6,7 @@ use App\Services\DayPreviewData;
 use App\Services\ProgressStats;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -18,6 +19,7 @@ use Livewire\Component;
  * shows whatever is true right now, not what was true on the first visit.
  */
 #[Layout('layouts.app')]
+#[Title('Dein Tag')]
 class DayPreview extends Component
 {
     /** Pinned once at mount so a mid-page-life clock tick can't reshuffle the greeting pool underneath a click. */

@@ -13,7 +13,7 @@
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
         @include('partials.pwa-head')
 
-        <title>{{ config('app.name', 'nothing-to-do') }}</title>
+        <title>{{ filled($title ?? null) ? $title.' · ' : '' }}{{ config('app.name', 'nothing-to-do') }}</title>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles

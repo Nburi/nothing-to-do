@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -27,6 +28,7 @@ use Livewire\Component;
  * parameter), just pointed at `targetDate` instead of always tomorrow.
  */
 #[Layout('layouts.app')]
+#[Title('Vorbereiten')]
 class PrepareTomorrow extends Component
 {
     use ManagesTasks;

@@ -9,10 +9,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
+#[Title('Agenda')]
 class Agenda extends Component
 {
     use ManagesAgendaSpaces;
