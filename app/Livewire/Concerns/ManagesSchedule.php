@@ -8,6 +8,7 @@ use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
@@ -444,21 +445,86 @@ trait ManagesSchedule
         }
     }
 
-    /** Drag-to-move: keep the duration, shift the start (times snapped client-side). */
-    public function moveEvent(int $id, string $start): void
+    /**
+     * Drag-to-move: keep the duration, shift the start (times snapped client-side).
+     * With `$date` (the week view's cross-column drag) the block also lands on that day.
+     */
+    public function moveEvent(int $id, string $start, ?string $date = null): void
     {
         if (! preg_match('/^\d{2}:\d{2}$/', $start)) {
             return;
+        }
+
+        $targetDate = null;
+
+        if ($date !== null) {
+            $targetDate = $this->parseDropDate($date);
+
+            if ($targetDate === null) {
+                return;
+            }
         }
 
         $event = $this->userEvent($id);
         $duration = $event->durationMinutes();
         $startMin = max(0, min(24 * 60 - $duration, ScheduleEvent::toMinutes($start)));
 
-        $event->update($event->withNotifiedReset([
+        $updates = [
             'start_time' => ScheduleEvent::fromMinutes($startMin),
             'end_time' => ScheduleEvent::fromMinutes($startMin + $duration),
-        ]));
+        ];
+
+        if ($targetDate === null || $targetDate === $event->date->toDateString()) {
+            $event->update($event->withNotifiedReset($updates));
+
+            return;
+        }
+
+        $updates['date'] = $targetDate;
+
+        DB::transaction(function () use ($event, $updates) {
+            $tombstone = null;
+
+            if ($event->template_id !== null) {
+                // One occurrence leaves its series: it becomes a plain one-off on the new
+                // day, and a cancelled marker stays on the old one — materializeRange()
+                // would otherwise see the old day empty and generate the block again.
+                $tombstone = $event->replicate([
+                    'notified_at', 'notified_upcoming_at', 'pomodoro_started_at', 'pomodoro_phase',
+                ]);
+                $tombstone->is_cancelled = true;
+                $tombstone->pomodoro_cycle = 1;
+                $tombstone->pomodoro_linked_notified = false;
+                $updates['template_id'] = null;
+            }
+
+            // A running focus session belongs to the day it was started on.
+            $updates += [
+                'pomodoro_started_at' => null,
+                'pomodoro_phase' => null,
+                'pomodoro_cycle' => 1,
+                'pomodoro_linked_notified' => false,
+            ];
+
+            $event->update($event->withNotifiedReset($updates));
+            $tombstone?->save();
+        });
+    }
+
+    /** A drop target date from the client: strict Y-m-d, within a sane window around today. */
+    private function parseDropDate(string $date): ?string
+    {
+        try {
+            $parsed = Carbon::createFromFormat('!Y-m-d', $date);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($parsed === false || $parsed->toDateString() !== $date) {
+            return null;
+        }
+
+        return abs($parsed->diffInDays(auth()->user()->localToday())) <= 800 ? $date : null;
     }
 
     /** Drag-to-resize: set both ends, guarding a minimum length. */
