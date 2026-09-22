@@ -428,6 +428,27 @@ class EisenhowerBoardTest extends TestCase
             ->assertSee(route('project.show', $project), false);
     }
 
+    public function test_a_grouped_tasks_own_group_is_reachable_even_though_it_has_no_important_or_today_flag(): void
+    {
+        $user = $this->eisenhowerUser();
+        $group = TaskGroup::factory()->for($user)->create(['name' => 'Umzug planen']);
+        Task::factory()->for($user)->tasks()->create(['group_id' => $group->id, 'title' => 'Umzugswagen mieten']);
+        Task::factory()->for($user)->tasks()->create(['group_id' => $group->id, 'title' => 'Kartons besorgen']);
+
+        Livewire::actingAs($user)->test(TaskBoard::class)
+            ->assertSee('Umzug planen')
+            ->assertSee(route('group.show', $group), false)
+            ->assertDontSee('Umzugswagen mieten') // hidden from the board itself, same as a grouped task always is
+            ->assertDontSee('Kartons besorgen');
+    }
+
+    public function test_renders_cleanly_with_no_groups_at_all(): void
+    {
+        $user = $this->eisenhowerUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
+    }
+
     public function test_renders_cleanly_with_no_projects_at_all(): void
     {
         $user = $this->eisenhowerUser();
