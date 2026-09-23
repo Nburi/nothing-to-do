@@ -96,7 +96,12 @@ class ScheduleShortBlockTest extends TestCase
 
     public function test_both_breakpoints_say_how_to_reach_a_short_blocks_editor(): void
     {
-        $this->actingUser();
+        $user = $this->actingUser();
+        // A block has to exist: on a schedule with nothing at all the desktop
+        // footer is replaced by the first-visit hint (see schedule.blade.php),
+        // and a hint about reaching a block's editor has nothing to point at.
+        ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
+            ->at('13:00', '13:20')->create(['title' => 'Arbeiten']);
 
         $response = $this->get('/app/schedule');
 

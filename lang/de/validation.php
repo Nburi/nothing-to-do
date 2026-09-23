@@ -226,6 +226,7 @@ return [
         'editList' => 'Liste',
         'editNotes' => 'Notizen',
         'editProjectId' => 'Projekt',
+        'editRepeat' => 'Wiederholen',
         'editTitle' => 'Titel',
         'eventDate' => 'Datum',
         'eventDays' => 'Wochentage',
