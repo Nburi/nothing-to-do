@@ -1476,6 +1476,81 @@ document.addEventListener('alpine:init', () => {
         },
     });
     /**
+     * The command palette (Strg/⌘+K) — see App\Livewire\CommandPalette. Open/closed
+     * and the keyboard cursor are ephemeral UI state, so they live here rather than
+     * on the Livewire component: opening costs no round trip, and moving the cursor
+     * never touches the server. The cursor is simply "which [data-palette-item]
+     * currently carries aria-selected" — no index mirrored into Alpine reactive
+     * state, because Livewire re-renders the result list underneath it and a
+     * mirrored index would point at a row that no longer exists.
+     */
+    window.Alpine.store('commandPalette', {
+        open: false,
+        index: 0,
+        returnFocusTo: null,
+        items() {
+            return [...document.querySelectorAll('#command-palette-list [data-palette-item]')];
+        },
+        show(trigger = null) {
+            if (this.open) return;
+            this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
+            this.open = true;
+            window.Livewire?.dispatch('command-palette-opened');
+            window.Alpine.nextTick(() => {
+                document.getElementById('command-palette-input')?.focus();
+                this.reset();
+            });
+        },
+        hide() {
+            if (!this.open) return;
+            this.open = false;
+            const el = this.returnFocusTo;
+            this.returnFocusTo = null;
+            if (el && document.body.contains(el)) el.focus();
+        },
+        toggle(trigger = null) {
+            this.open ? this.hide() : this.show(trigger);
+        },
+        /** Back to the first row — called whenever the result list was replaced. */
+        reset() {
+            this.select(0);
+        },
+        select(i) {
+            const items = this.items();
+            items.forEach((el) => el.setAttribute('aria-selected', 'false'));
+            if (items.length === 0) {
+                this.index = 0;
+                return;
+            }
+            this.index = Math.max(0, Math.min(i, items.length - 1));
+            const el = items[this.index];
+            el.setAttribute('aria-selected', 'true');
+            el.scrollIntoView({ block: 'nearest' });
+        },
+        move(_root, delta) {
+            const n = this.items().length;
+            if (n === 0) return;
+            this.select((this.index + delta + n) % n);
+        },
+        /** Mouse hover moves the cursor too, so ↵ always opens what is highlighted. */
+        point(_root, el) {
+            const i = this.items().indexOf(el);
+            if (i !== -1 && i !== this.index) this.select(i);
+        },
+        activate() {
+            this.items()[this.index]?.click();
+        },
+        /** "Erfassen": hand the typed sentence to the capture panel, pre-filled. */
+        capture(text) {
+            const title = String(text ?? '').trim();
+            this.hide();
+            window.Alpine.nextTick(() => window.Alpine.store('quickCapture').show(null, null, null, { title }));
+        },
+    });
+    // A navigation replaces the page but not this store — close the palette so it
+    // never greets the next page already open.
+    document.addEventListener('livewire:navigate', () => window.Alpine.store('commandPalette').hide());
+    /**
      * onboarding — step position for the new-user tutorial (App\Livewire\Onboarding).
      * The slides themselves are static content, not server data, so unlike
      * `prepare` this needs no seeded-order bookkeeping: init() only ever sets
@@ -2563,6 +2638,38 @@ document.addEventListener('alpine:init', () => {
 
     if (document.visibilityState === 'visible') start();
 })();
+
+/**
+ * "Strg/⌘+K" (or a bare "/") opens the command palette from anywhere. The modifier
+ * form fires even while typing — a modified K is never text — and intentionally
+ * takes over the browser's own Strg+K (focus search bar); the bare "/" gets the same
+ * typing guards as "N" below, since it is a real character.
+ */
+document.addEventListener('keydown', (event) => {
+    const store = window.Alpine?.store('commandPalette');
+    if (!store) return;
+
+    const isModK = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && (event.key === 'k' || event.key === 'K');
+    if (isModK) {
+        event.preventDefault();
+        // The capture panel sits at the same z-index — never stack the two.
+        if (window.Alpine.store('quickCapture')?.open) return;
+        store.toggle(event.target instanceof HTMLElement ? event.target : null);
+        return;
+    }
+
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+
+    const el = event.target;
+    if (el instanceof HTMLElement) {
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) return;
+    }
+    if (store.open || window.Alpine.store('quickCapture')?.open) return;
+
+    event.preventDefault();
+    store.show(el instanceof HTMLElement ? el : null);
+});
 
 /**
  * "N" opens the capture panel from anywhere in the app. Deliberately a bare key
