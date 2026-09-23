@@ -48,7 +48,7 @@
 <div
     wire:key="ev-{{ $event->id }}"
     x-data="scheduleEvent({ id: {{ $event->id }}, start: {{ $startMin }}, end: {{ $endMin }} })"
-    x-bind:style="`top:${top}%; height:${height}%`"
+    x-bind:style="`top:${top}%; height:${height}%${dx ? `; transform:translateX(${dx}px)` : ''}`"
     @pointerdown="begin('move', $event)"
     @pointermove="drag($event)"
     @pointerup="finish()"

@@ -2098,6 +2098,14 @@ document.addEventListener('alpine:init', () => {
         minLen: 10,
         kind: null,
         sy: 0,
+        sx: 0,
+        // Week view only: the day columns a body drag can land in (each carries
+        // data-drop-date), the one the block started in, and the one it is over now.
+        // dx is the px offset that snaps the block into the hovered column.
+        dropCols: [],
+        homeDate: null,
+        targetDate: null,
+        dx: 0,
         origStart: 0,
         origEnd: 0,
         moved: false,
@@ -2124,6 +2132,16 @@ document.addEventListener('alpine:init', () => {
             if (grid) this.ppm = grid.getBoundingClientRect().height / this.span;
             this.kind = kind;
             this.sy = e.clientY;
+            this.sx = e.clientX;
+            this.dx = 0;
+            this.dropCols = [];
+            this.homeDate = this.targetDate = grid?.dataset.dropDate ?? null;
+            if (kind === 'move' && this.homeDate) {
+                this.dropCols = [...document.querySelectorAll('[data-grid][data-drop-date]')].map((el) => {
+                    const r = el.getBoundingClientRect();
+                    return { date: el.dataset.dropDate, left: r.left, right: r.right };
+                });
+            }
             this.origStart = this.start;
             this.origEnd = this.end;
             this.moved = false;
@@ -2134,7 +2152,7 @@ document.addEventListener('alpine:init', () => {
         drag(e) {
             if (!this.kind) return;
             const dy = e.clientY - this.sy;
-            if (Math.abs(dy) > 3) this.moved = true;
+            if (Math.abs(dy) > 3 || (this.kind === 'move' && Math.abs(e.clientX - this.sx) > 3)) this.moved = true;
             const dMin = Math.round(dy / this.ppm / this.snap) * this.snap;
             const dur = this.origEnd - this.origStart;
 
@@ -2142,6 +2160,16 @@ document.addEventListener('alpine:init', () => {
                 const ns = Math.max(0, Math.min(1440 - dur, this.origStart + dMin));
                 this.start = ns;
                 this.end = ns + dur;
+
+                if (this.dropCols.length > 1) {
+                    const home = this.dropCols.find((c) => c.date === this.homeDate);
+                    // The column under the pointer; past either edge, the nearest one.
+                    const over =
+                        this.dropCols.find((c) => e.clientX >= c.left && e.clientX < c.right) ??
+                        (e.clientX < this.dropCols[0].left ? this.dropCols[0] : this.dropCols[this.dropCols.length - 1]);
+                    this.targetDate = over.date;
+                    this.dx = Math.round(over.left - home.left);
+                }
             } else if (this.kind === 'bottom') {
                 this.end = Math.max(this.origStart + this.minLen, Math.min(1440, this.origEnd + dMin));
             } else if (this.kind === 'top') {
@@ -2164,8 +2192,14 @@ document.addEventListener('alpine:init', () => {
             const hhmm = (m) =>
                 `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-            if (kind === 'move') this.$wire.moveEvent(this.id, hhmm(this.start));
-            else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+            if (kind === 'move') {
+                const crossDay = this.targetDate && this.targetDate !== this.homeDate;
+                const call = crossDay
+                    ? this.$wire.moveEvent(this.id, hhmm(this.start), this.targetDate)
+                    : this.$wire.moveEvent(this.id, hhmm(this.start));
+                // Hold the block over its new column until the server has re-rendered it there.
+                Promise.resolve(call).finally(() => (this.dx = 0));
+            } else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
         },
 
         tap() {

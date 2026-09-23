@@ -686,6 +686,16 @@ interactions, desktop & mobile layouts, accounts, future Projects extension).
   "Notifications" above). Desktop uses the hover pencil; mobile uses double-tap. `window.primeFocusAudio()`
   initialises/resumes the shared `AudioContext` on the Start button's `onclick` (a real user gesture), so the
   later automatic chime isn't blocked by autoplay policy.
+- **Dragging a block into another day (week view only).** Each week-view column carries
+  `data-drop-date`; `scheduleEvent`'s body drag collects those columns at gesture start, snaps the block
+  into whichever one the pointer is over (`dx`, a `translateX` in the style binding) and, if that differs
+  from its home column, calls `moveEvent(id, start, date)` — the optional third argument. The day view and
+  the Wochenplan have no `data-drop-date` columns, so they keep the plain two-argument call. Server side
+  (`ManagesSchedule::moveEvent`) the date is parsed strictly (`Y-m-d`, ±800 days of today), the notification
+  flags reset, and a running focus session is ended. **A recurring occurrence leaves its series** when moved
+  to another day: it is detached (`template_id = null`) and a cancelled tombstone stays on the old day —
+  `materializeRange()` is presence-based, so without the tombstone it would generate the block again.
+
 - **Settings** (`App\Livewire\Settings`) has a Pomodoro section (work / short break / long break /
   sessions-per-long-break autosave via `saveSchedule()` on `wire:change`; the autostart toggle saves
   separately and immediately via `togglePomodoroAutostart()`), a Benachrichtigungen section

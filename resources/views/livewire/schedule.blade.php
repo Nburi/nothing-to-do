@@ -114,6 +114,7 @@
                             wire:key="draw-grid-{{ $day->toDateString() }}"
                             class="relative flex-1 border-l border-line"
                             data-grid
+                            data-drop-date="{{ $day->toDateString() }}"
                             data-span="{{ $span }}"
                             data-day-start="{{ $dayStart }}"
                             x-data="scheduleDraw({ date: '{{ $day->toDateString() }}' })"
