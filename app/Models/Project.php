@@ -44,7 +44,15 @@ class Project extends Model
 
     public function isUrgent(): bool
     {
-        return $this->deadline !== null && $this->deadline->diffInDays(self::today()) <= 4 && ! $this->isOverdue();
+        if ($this->deadline === null || $this->isOverdue()) {
+            return false;
+        }
+
+        // today -> deadline, signed: >= 0 here because overdue was ruled out above.
+        // (The other direction, deadline -> today, is *negative* for a future
+        // deadline in Carbon 3 and made every project with any future deadline
+        // read as "urgent" — see Known Issues on diffInDays' sign.)
+        return (int) self::today()->diffInDays($this->deadline, false) <= 4;
     }
 
     public function deadlineLabel(): string
