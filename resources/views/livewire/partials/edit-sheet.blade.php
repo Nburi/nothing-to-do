@@ -253,6 +253,37 @@
                     @error('editDuration') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
+                {{-- Recurring task: a chip row, not a dropdown — there are only four
+                     rules and seeing them all at once is the whole explanation. Picked
+                     locally (no round trip); saved with the rest of the sheet. --}}
+                <div>
+                    <span class="mb-1 block text-xs font-medium text-ink-soft" id="editRepeatLabel">Wiederholen</span>
+                    <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-labelledby="editRepeatLabel">
+                        <button
+                            type="button"
+                            role="radio"
+                            :aria-checked="!$wire.editRepeat"
+                            @click="$wire.set('editRepeat', null, false)"
+                            class="rounded-full border px-3 py-1.5 text-xs transition sm:py-1"
+                            :class="!$wire.editRepeat ? 'border-forest bg-forest-soft font-medium text-forest' : 'border-line text-ink-soft hover:text-ink'"
+                        >Nie</button>
+                        @foreach (\App\Models\Task::REPEAT_RULES as $ruleKey => $ruleLabel)
+                            <button
+                                type="button"
+                                role="radio"
+                                :aria-checked="$wire.editRepeat === @js($ruleKey)"
+                                @click="$wire.set('editRepeat', @js($ruleKey), false)"
+                                class="rounded-full border px-3 py-1.5 text-xs transition sm:py-1"
+                                :class="$wire.editRepeat === @js($ruleKey) ? 'border-forest bg-forest-soft font-medium text-forest' : 'border-line text-ink-soft hover:text-ink'"
+                            >{{ $ruleLabel }}</button>
+                        @endforeach
+                    </div>
+                    <p x-show="$wire.editRepeat" style="display: none;" class="mt-1.5 text-xs text-ink-faint">
+                        Sobald du sie erledigst, entsteht die nächste automatisch.
+                    </p>
+                    @error('editRepeat') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+
                 @include('livewire.partials.notes-editor', ['fieldName' => 'editNotes', 'htmlProperty' => 'editNotesHtml', 'idPrefix' => 'edit'])
 
                 <div class="flex items-center justify-between pt-1">

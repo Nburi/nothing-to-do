@@ -42,9 +42,19 @@ class Task extends Model
         'due_date',
         'notes',
         'duration_minutes',
+        'repeat_rule',
+        'repeated_from_id',
         'is_completed',
         'completed_at',
         'sort_order',
+    ];
+
+    /** Recurring-task rules, keyed by what is stored, valued by what the UI says. */
+    public const REPEAT_RULES = [
+        'daily' => 'Täglich',
+        'weekdays' => 'Werktags',
+        'weekly' => 'Wöchentlich',
+        'monthly' => 'Monatlich',
     ];
 
     /** Words shown in the card-face notes preview before truncating with an ellipsis. */
@@ -85,6 +95,12 @@ class Task extends Model
         return $this->belongsTo(AgendaEntry::class);
     }
 
+    /** The next occurrence this task spawned when it was completed (see syncRepeat()). */
+    public function repeatSuccessor(): HasOne
+    {
+        return $this->hasOne(self::class, 'repeated_from_id');
+    }
+
     /** Which day this task is planned for, if any (see App\Services\DayPlanner). */
     public function dayPlan(): HasOne
     {
@@ -111,6 +127,92 @@ class Task extends Model
         if ($entry !== null && $entry->isDoneFor($user) !== $done) {
             $entry->toggleDoneFor($user);
         }
+    }
+
+    public function isRepeating(): bool
+    {
+        return $this->repeat_rule !== null && isset(self::REPEAT_RULES[$this->repeat_rule]);
+    }
+
+    /**
+     * The date this task's next occurrence falls on: the first date the rule
+     * produces that is strictly after today. Counted from the task's own date
+     * when it has one (finishing Friday's task on Monday still means "next
+     * Friday", not "a week from Monday"), from today when it has none — and
+     * always skipping forward past today, so a habit neglected for three weeks
+     * comes back as one fresh task, not a backlog of overdue ones.
+     */
+    public function nextOccurrenceDate(User $user): Carbon
+    {
+        $today = $user->localToday()->startOfDay();
+        $base = ($this->effectiveDate() ?? $today)->copy()->startOfDay();
+
+        $step = function (Carbon $date): Carbon {
+            $next = $date->copy();
+
+            return match ($this->repeat_rule) {
+                'weekdays' => $next->addDay()->isWeekend() ? $next->next(Carbon::MONDAY) : $next,
+                'weekly' => $next->addWeek(),
+                'monthly' => $next->addMonthNoOverflow(),
+                default => $next->addDay(),
+            };
+        };
+
+        $candidate = $step($base);
+
+        while ($candidate->lessThanOrEqualTo($today)) {
+            $candidate = $step($candidate);
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Completing a repeating task creates its next occurrence as a fresh,
+     * unfinished task (same title/list/notes/importance/duration/project/
+     * group, shifted dates, never flagged Heute); un-completing it takes that
+     * successor away again while it is still untouched. A no-op for every
+     * ordinary task. Called from every place a task's completion can flip,
+     * right next to syncLinkedAgendaEntry() — see the audit note in
+     * CLAUDE.md's Known Issues on "a new invariant needs every write site".
+     */
+    public function syncRepeat(User $user, bool $done): ?self
+    {
+        if ($done) {
+            if (! $this->isRepeating() || $this->repeatSuccessor()->exists()) {
+                return null;
+            }
+
+            $next = $this->nextOccurrenceDate($user);
+            $base = ($this->effectiveDate() ?? $user->localToday())->copy()->startOfDay();
+            $shift = (int) abs($base->diffInDays($next));
+
+            return $user->tasks()->create([
+                'title' => $this->title,
+                'list' => $this->list,
+                'project_id' => $this->project_id,
+                'group_id' => $this->group_id,
+                'is_important' => $this->is_important,
+                'notes' => $this->notes,
+                'duration_minutes' => $this->duration_minutes,
+                'repeat_rule' => $this->repeat_rule,
+                'repeated_from_id' => $this->id,
+                'sort_order' => 0,
+                // Both dates keep their distance from each other; a task with
+                // neither gets the occurrence date as its soft due date, so
+                // "again on Friday" is visible instead of the task just
+                // silently reappearing undated.
+                'deadline' => $this->deadline?->copy()->addDays($shift),
+                'due_date' => $this->due_date?->copy()->addDays($shift)
+                    ?? ($this->deadline === null ? $next : null),
+            ]);
+        }
+
+        // Un-completing: remove the successor only if nobody has worked with
+        // it yet — a finished successor is real history and stays.
+        $this->repeatSuccessor()->where('is_completed', false)->delete();
+
+        return null;
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

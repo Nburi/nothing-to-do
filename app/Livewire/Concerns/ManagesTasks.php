@@ -28,6 +28,9 @@ trait ManagesTasks
 
     public ?int $editDuration = null;
 
+    /** One of Task::REPEAT_RULES' keys, or null for a task that does not repeat. */
+    public ?string $editRepeat = null;
+
     public string $editNotes = '';
 
     public string $editList = 'inbox';
@@ -120,6 +123,7 @@ trait ManagesTasks
         ]);
 
         $task->syncLinkedAgendaEntry($user, $done);
+        $task->syncRepeat($user, $done);
 
         if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
             $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
@@ -134,6 +138,7 @@ trait ManagesTasks
         $this->editDeadline = $task->deadline?->toDateString();
         $this->editDueDate = $task->due_date?->toDateString();
         $this->editDuration = $task->duration_minutes;
+        $this->editRepeat = $task->repeat_rule;
         $this->editNotes = (string) ($task->notes ?? '');
         $this->editList = $task->list;
         $this->editProjectId = $task->project_id;
@@ -153,6 +158,7 @@ trait ManagesTasks
             'editDeadline' => ['nullable', 'date'],
             'editDueDate' => ['nullable', 'date'],
             'editDuration' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'editRepeat' => ['nullable', Rule::in(array_keys(Task::REPEAT_RULES))],
             'editNotes' => ['nullable', 'string', 'max:5000'],
             'editList' => ['required', Rule::in(Task::LISTS)],
             'editProjectId' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', auth()->id())],
@@ -174,6 +180,7 @@ trait ManagesTasks
             'deadline' => $data['editDeadline'] ?: null,
             'due_date' => $data['editDueDate'] ?: null,
             'duration_minutes' => $data['editDuration'] ?: null,
+            'repeat_rule' => $data['editRepeat'] ?: null,
             'notes' => $notes !== '' ? $notes : null,
         ];
 
@@ -259,7 +266,7 @@ trait ManagesTasks
 
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editDuration', 'editNotes', 'editList', 'editProjectId', 'editGroupId']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editDuration', 'editRepeat', 'editNotes', 'editList', 'editProjectId', 'editGroupId']);
     }
 
     public function deleteTask(int $id): void
