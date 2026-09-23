@@ -15,10 +15,12 @@ use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
+#[Title('Board')]
 class TaskBoard extends Component
 {
     use ManagesTasks;

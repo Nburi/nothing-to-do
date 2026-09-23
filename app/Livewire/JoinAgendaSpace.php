@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ManagesAgendaSpaces;
 use App\Models\AgendaSpace;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -15,6 +16,7 @@ use Livewire\Component;
  * link previewers long before a human clicks it.
  */
 #[Layout('layouts.app')]
+#[Title('Klasse beitreten')]
 class JoinAgendaSpace extends Component
 {
     use ManagesAgendaSpaces;

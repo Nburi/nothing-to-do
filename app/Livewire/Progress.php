@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Services\ProgressStats;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -16,6 +17,7 @@ use Livewire\Component;
  * doesn't force a trip elsewhere just to tick something off.
  */
 #[Layout('layouts.app')]
+#[Title('Fortschritt')]
 class Progress extends Component
 {
     /** Every local day with ≥1 completed task, mapped to how many — the one query everything else reuses. */

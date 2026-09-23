@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -21,6 +22,7 @@ use Livewire\Component;
  * own "Wiederholen" checkbox already creates.
  */
 #[Layout('layouts.app')]
+#[Title('Wochenplan')]
 class WeekPlan extends Component
 {
     /** Smallest block the grid will allow (minutes) — mirrors ManagesSchedule::MIN_EVENT. */
