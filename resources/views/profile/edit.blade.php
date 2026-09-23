@@ -21,6 +21,12 @@
 
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <div class="max-w-xl">
+                @include('profile.partials.export-data')
+            </div>
+        </div>
+
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <div class="max-w-xl">
                 @include('profile.partials.delete-user-form')
             </div>
         </div>
