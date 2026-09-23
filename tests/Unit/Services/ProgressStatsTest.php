@@ -322,7 +322,7 @@ class ProgressStatsTest extends TestCase
 
     public function test_evaluate_past_day_marks_a_fully_cleared_today_list_perfect(): void
     {
-        $user = User::factory()->create(['timezone_offset' => 0]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'created_at' => '2026-01-01 00:00:00']);
         $this->todayListOn($user, '2026-08-10', total: 2, done: 2);
 
         ProgressStats::evaluatePastDay($user, Carbon::parse('2026-08-10'));
@@ -334,7 +334,7 @@ class ProgressStatsTest extends TestCase
 
     public function test_evaluate_past_day_leaves_an_incomplete_today_list_undecided(): void
     {
-        $user = User::factory()->create(['timezone_offset' => 0]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'created_at' => '2026-01-01 00:00:00']);
         $this->todayListOn($user, '2026-08-10', total: 2, done: 1);
 
         ProgressStats::evaluatePastDay($user, Carbon::parse('2026-08-10'));
@@ -344,7 +344,7 @@ class ProgressStatsTest extends TestCase
 
     public function test_evaluate_past_day_marks_perfect_via_the_goal_when_theres_no_today_list(): void
     {
-        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 2]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 2, 'created_at' => '2026-01-01 00:00:00']);
         $this->completedOn($user, '2026-08-10', 2);
 
         ProgressStats::evaluatePastDay($user, Carbon::parse('2026-08-10'));
@@ -356,7 +356,7 @@ class ProgressStatsTest extends TestCase
 
     public function test_evaluate_past_day_freezes_a_genuinely_empty_day_when_budget_allows(): void
     {
-        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 5]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 5, 'created_at' => '2026-01-01 00:00:00']);
         // Nothing at all on 2026-08-10.
 
         ProgressStats::evaluatePastDay($user, Carbon::parse('2026-08-10'));
@@ -368,7 +368,7 @@ class ProgressStatsTest extends TestCase
 
     public function test_evaluate_past_day_leaves_a_genuine_break_once_the_weekly_freeze_budget_is_spent(): void
     {
-        $user = User::factory()->create(['timezone_offset' => 0]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'created_at' => '2026-01-01 00:00:00']);
         ProgressStats::recordOutcome($user, Carbon::parse('2026-08-08'), StreakDayOutcome::OUTCOME_FROZEN, 'empty_day');
         ProgressStats::recordOutcome($user, Carbon::parse('2026-08-09'), StreakDayOutcome::OUTCOME_FROZEN, 'empty_day');
 
@@ -379,7 +379,7 @@ class ProgressStatsTest extends TestCase
 
     public function test_evaluate_past_day_is_a_no_op_once_a_day_is_already_decided(): void
     {
-        $user = User::factory()->create(['timezone_offset' => 0]);
+        $user = User::factory()->create(['timezone_offset' => 0, 'created_at' => '2026-01-01 00:00:00']);
         ProgressStats::recordOutcome($user, Carbon::parse('2026-08-10'), StreakDayOutcome::OUTCOME_PERFECT, 'full_clear');
 
         // Would otherwise freeze (nothing else recorded for this day) — must stay untouched.
