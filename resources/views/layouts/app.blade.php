@@ -330,6 +330,13 @@
             </header>
 
             <main id="content">
+                {{-- Board only: every list concept lives on this one route, so a single
+                     include here covers Simple/3 Things/Eisenhower/Kanban alike. --}}
+                @auth
+                    @if (request()->routeIs('app'))
+                        <livewire:overdue-rescue />
+                    @endif
+                @endauth
                 {{ $slot }}
             </main>
         </div>
