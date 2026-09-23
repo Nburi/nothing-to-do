@@ -267,9 +267,10 @@
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-ink">Planer</p>
                     <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
-                        Verteilt offene Aufgaben, To-Dos und Hausaufgaben automatisch auf deine nächsten
-                        Pomodoro-Arbeitsblöcke, damit du früh siehst, ob alles rechtzeitig fertig wird — statt es
-                        erst am Tag der Deadline zu merken. Standardmässig aus.
+                        Ein Tagesbrett für die nächsten zwei Wochen: Zieh Aufgaben, To-Dos und Hausaufgaben auf den
+                        Tag, an dem du sie erledigen willst — so siehst du früh, ob alles vor der Deadline Platz
+                        hat, statt es erst am Tag selbst zu merken. Auf Wunsch verteilt „Rest automatisch
+                        einplanen" den Rest für dich. Standardmässig aus.
                     </p>
                     @if ($plannerEnabled)
                         <a href="{{ route('planner') }}" wire:navigate class="mt-2 inline-block text-xs font-medium text-overprint hover:underline">Zum Planer →</a>
@@ -743,7 +744,7 @@
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Wie viele Aufgaben an einem Tag als "Ziel erreicht" zählen — treibt den Ring auf der
             <a href="{{ route('progress') }}" class="hit-area text-overprint hover:underline" wire:navigate>Fortschritt</a>-Seite
-            und eine der beiden Feier-Animationen.
+            und die Feier „Tagesziel erreicht".
         </p>
 
         <div class="max-w-[8rem]">
