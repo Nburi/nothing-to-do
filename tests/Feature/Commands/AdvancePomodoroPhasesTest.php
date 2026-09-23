@@ -157,4 +157,32 @@ class AdvancePomodoroPhasesTest extends TestCase
         $this->assertSame('short_break', $eventB->pomodoro_phase);
         $this->assertNotNull($eventB->pomodoro_started_at);
     }
+
+    public function test_a_session_left_running_on_a_past_day_is_ended_quietly_instead_of_ticking_forever(): void
+    {
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldNotReceive('notify');
+        });
+
+        $user = User::factory()->create([
+            'timezone_offset' => 0,
+            'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+            'pomodoro_autostart' => true,
+            'notify_pomo_start' => true,
+            'notify_break_start' => true,
+        ]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        Carbon::setTestNow('2026-06-26 14:00:00');
+        $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
+            ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 3, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
+
+        Carbon::setTestNow('2026-06-27 03:00:00');
+
+        $this->artisan('app:advance-pomodoro-phases')->assertSuccessful();
+
+        $event->refresh();
+        $this->assertNull($event->pomodoro_phase);
+        $this->assertNull($event->pomodoro_started_at);
+        $this->assertSame(1, $event->pomodoro_cycle);
+    }
 }
