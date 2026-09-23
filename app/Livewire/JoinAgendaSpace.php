@@ -28,7 +28,8 @@ class JoinAgendaSpace extends Component
     public function mount(string $code): void
     {
         $this->code = $code;
-        $this->space = AgendaSpace::findByInviteCode($code);
+        // Throttled like the join form: an exhausted user sees the plain "unknown code" state.
+        $this->space = $this->inviteLookupsExhausted() ? null : $this->lookUpInviteCode($code);
 
         $this->alreadyMember = $this->space !== null
             && $this->space->hasMember(auth()->user());
