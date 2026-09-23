@@ -2078,6 +2078,26 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
+     * The height the lift raises a block to, and below which it lifts at all.
+     *
+     * NOT the same number as the `@container (min-height: 46px)` threshold in
+     * resources/css/app.css, and deliberately so: a container query sizes
+     * against the container's CONTENT box, while this is a min-height on the
+     * wrapper, a border box. The body's 1px border top and bottom makes a 46px
+     * wrapper a 44px container — two pixels short of its own threshold, so the
+     * pencil the lift exists to reveal would never appear. 46 for the
+     * threshold, 2 for the border, 2 of slack. Kept in step by hand with
+     * DayWindow::LIFT_MIN_PX; neither can read the other.
+     */
+    const LIFT_MIN_PX = 50;
+
+    /** How long a tap-lifted block stays up before lying back down. */
+    const LIFT_HOLD_MS = 2600;
+
+    /** "HH:MM" from minutes since midnight, for the live labels below. */
+    const fmtHM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+    /**
      * scheduleEvent — drag an event on the timeline grid. Body drag moves it
      * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
      * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.
@@ -2091,6 +2111,8 @@ document.addEventListener('alpine:init', () => {
         id: cfg.id,
         start: cfg.start ?? 0,
         end: cfg.end ?? 0,
+        bufBefore: cfg.bufBefore ?? 0,
+        bufAfter: cfg.bufAfter ?? 0,
         ppm: 1,
         dayStart: 360,
         span: 1020,
@@ -2110,6 +2132,13 @@ document.addEventListener('alpine:init', () => {
         origEnd: 0,
         moved: false,
         lastTap: 0,
+        lifted: false,
+        // True from the end of a drag until its save has come back: the live
+        // labels stay up until then, so the old time never flashes back in
+        // between releasing and the server's re-render.
+        pending: false,
+        pointerType: 'mouse',
+        _liftT: null,
 
         init() {
             const grid = this.$el.closest('[data-grid]');
@@ -2126,8 +2155,86 @@ document.addEventListener('alpine:init', () => {
             return ((this.end - this.start) / this.span) * 100;
         },
 
+        /**
+         * Position, plus the lift. `min-height` rather than a height override:
+         * a block already tall enough cannot move, and the top edge — which
+         * is the start time — stays put either way.
+         */
+        get blockStyle() {
+            let style = `top:${this.top}%; height:${this.height}%;`;
+            if (this.lifted) {
+                // Resizing a lifted block from its bottom grip: the lifted
+                // height itself grows/shrinks by exactly the dragged amount,
+                // so the grip stays under the pointer 1:1. Without this the
+                // block sat at >= LIFT_MIN_PX for the whole drag and the user
+                // never saw it get shorter. (Top-resize and move need nothing:
+                // the top edge is true geometry and already follows.)
+                const grow = this.kind === 'bottom' ? (this.end - this.origEnd) * this.ppm : 0;
+                style += ` min-height:${Math.max(16, LIFT_MIN_PX + grow)}px;`;
+            }
+            // Dragging into another day column (week view only) slides the block
+            // sideways; `dx` stays 0 for every other gesture.
+            if (this.dx) style += ` transform:translateX(${this.dx}px);`;
+            return style;
+        },
+
+        /** Live labels — they follow a drag instead of showing the time it started at. */
+        get timeLabel() {
+            return `${fmtHM(this.start)}\u2013${fmtHM(this.end)}`;
+        },
+        get startLabel() {
+            return fmtHM(this.start);
+        },
+        get departureLabel() {
+            return fmtHM(Math.max(0, this.start - this.bufBefore));
+        },
+
+        /**
+         * Weg-/Pufferzeit bands, in percent of the *block*, not of the grid —
+         * so they follow a drag-move and a drag-resize for free, without a
+         * second set of geometry to keep in sync.
+         */
+        get bufBeforeStyle() {
+            const pct = (this.bufBefore / Math.max(1, this.end - this.start)) * 100;
+            return `top:${-pct}%; height:${pct}%;`;
+        },
+        get bufAfterStyle() {
+            const pct = (this.bufAfter / Math.max(1, this.end - this.start)) * 100;
+            return `top:100%; height:${pct}%;`;
+        },
+
+        /**
+         * Raise a block that is too short to carry its own content. Measured,
+         * not derived from its duration: the same 30 minutes is a different
+         * number of pixels on the phone, in the desktop week, and at any
+         * other Tagesrahmen (see DayWindow::ppm).
+         *
+         * `auto` is the touch path — nothing will ever fire a "pointerleave"
+         * there, so the lift settles itself.
+         */
+        lift(auto) {
+            if (!this.lifted && this.$el.getBoundingClientRect().height >= LIFT_MIN_PX) return;
+            // Only ever one block lifted at a time. Dispatched before the flag
+            // is set, so the listener below settling *this* block is a no-op.
+            if (!this.lifted) window.dispatchEvent(new CustomEvent('schedule-block-settle'));
+            this.lifted = true;
+            clearTimeout(this._liftT);
+            if (auto) this._liftT = setTimeout(() => { this.lifted = false; }, LIFT_HOLD_MS);
+        },
+
+        settle() {
+            clearTimeout(this._liftT);
+            this.lifted = false;
+        },
+
         begin(kind, e) {
             if (e.button != null && e.button !== 0) return;
+            // Remembered for tap(): only a touch needs the lift to time itself
+            // out, because only a mouse will ever fire a pointerleave.
+            this.pointerType = e.pointerType || 'mouse';
+            // A drag on a tap-lifted block must not have the lift time out from
+            // under it halfway through — the grip would jump away mid-gesture.
+            clearTimeout(this._liftT);
             const grid = this.$el.closest('[data-grid]');
             if (grid) this.ppm = grid.getBoundingClientRect().height / this.span;
             this.kind = kind;
@@ -2189,26 +2296,47 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            // A block that was actually dragged lies back down: its new
+            // neighbourhood is what the user wants to look at now.
+            this.settle();
+
             const hhmm = (m) =>
                 `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-            if (kind === 'move') {
-                const crossDay = this.targetDate && this.targetDate !== this.homeDate;
-                const call = crossDay
+            const crossDay = kind === 'move' && this.targetDate && this.targetDate !== this.homeDate;
+
+            this.pending = true;
+            const saved = kind === 'move'
+                ? (crossDay
                     ? this.$wire.moveEvent(this.id, hhmm(this.start), this.targetDate)
-                    : this.$wire.moveEvent(this.id, hhmm(this.start));
-                // Hold the block over its new column until the server has re-rendered it there.
-                Promise.resolve(call).finally(() => (this.dx = 0));
-            } else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+                    : this.$wire.moveEvent(this.id, hhmm(this.start)))
+                : this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+            // Hold the block over its new column — and keep the dragged time
+            // label — until the server has re-rendered it there.
+            Promise.resolve(saved).finally(() => {
+                this.dx = 0;
+                this.pending = false;
+            });
         },
 
+        /**
+         * A single tap used to do nothing at all — it only armed the 320ms
+         * double-tap window below. It now also lifts the block, which is how
+         * touch reaches the edit pencil: `group-hover` never fires there, so
+         * on a phone the pencil simply did not exist. The double-tap stays
+         * exactly as it was, as the shortcut for anyone who knows it.
+         */
         tap() {
             const now = Date.now();
             if (now - this.lastTap < 320) {
+                this.settle();
                 this.$wire.startEditEvent(this.id);
                 this.lastTap = 0;
             } else {
                 this.lastTap = now;
+                // A mouse click on a hovered block must NOT arm the auto-settle:
+                // the block would drop back down under a cursor that never left.
+                this.lift(this.pointerType !== 'mouse');
             }
         },
     }));
@@ -2502,3 +2630,20 @@ document.addEventListener('DOMContentLoaded', highlightFromQueryParam);
 // own 'livewire:navigated' dispatch, which would otherwise win a same-tick
 // race against our own scrollIntoView and strand it back at 0.
 document.addEventListener('livewire:navigated', () => setTimeout(highlightFromQueryParam, 0));
+
+/**
+ * A lifted timeline block (see the `lift()` in the scheduleEvent component)
+ * lies back down as soon as the next pointer lands anywhere that is not a
+ * block. Touches that start *on* a block are deliberately skipped: that tap
+ * is on its way to lifting one, and its own lift() settles every other block
+ * itself, so handling it here too would drop a block mid-hover on desktop.
+ *
+ * Bubble phase, not capture, on purpose — the edit pencil's own
+ * `@pointerdown.stop` has to be able to keep this from firing while it is
+ * being clicked, or the pencil would be hidden again before the click lands.
+ */
+document.addEventListener('pointerdown', (e) => {
+    if (e.target instanceof Element && e.target.closest('[data-schedule-block]')) return;
+
+    window.dispatchEvent(new CustomEvent('schedule-block-settle'));
+});

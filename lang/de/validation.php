@@ -281,6 +281,12 @@ return [
         'newTokenName' => 'Name',
         'endpoint' => 'Push-Endpunkt',
         'authToken' => 'Push-Schlüssel',
+        'boundsStart' => 'Aufstehzeit',
+        'boundsEnd' => 'Schlafenszeit',
+        'dayStartTime' => 'Aufstehzeit',
+        'dayEndTime' => 'Schlafenszeit',
+        'eventBufferBefore' => 'Wegzeit davor',
+        'eventBufferAfter' => 'Wegzeit danach',
     ],
 
 ];

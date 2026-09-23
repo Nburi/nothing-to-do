@@ -131,7 +131,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (1563 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (1647 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -1349,6 +1349,155 @@ the whole week plan off for specific dates (Ferien, sick days).
 - Not touched by this feature: the API/Shortcuts, a spontaneous "pause just today" shortcut from the
   Zeitplan itself (management stays centralised on the Wochenplan page), and overlapping-block layout on
   the grid (a pre-existing Zeitplan limitation, not newly solved here).
+
+### Tagesrahmen, kurze Blöcke & Weg-/Pufferzeit (built)
+
+Three reworks of the Zeitplan that shipped together because they share the two timeline block
+partials, `app.css` and `app.js` — splitting them would have meant inventing intermediate states
+that neither build nor test.
+
+**Tagesrahmen — how long a day is.** The visible window was hardcoded `06:00–23:00` in three
+components (`Schedule`, `WeekPlan`, `PrepareTomorrow`). It is now a setting with three tiers,
+resolved in this order by **`App\Services\DayWindow`** (stateless, like `PomodoroCycle`/
+`TaskSuggestor`/`DayPlanner`):
+
+1. **this concrete date** — `schedule_day_bounds` (one row per date, same shape as `SchedulePause`
+   and for the same reason: a single day has to be adjustable independently of any range around
+   it), edited in the Zeitplan;
+2. **this weekday** — `users.weekday_day_bounds` (nullable JSON; `null` means "no overrides", the
+   same "untouched means default" shape as `header_badges`/`hidden_modules`), edited in the
+   Wochenplan, which is the page that already answers "so sieht mein normaler Samstag aus";
+3. **the account default** — `users.day_start_time`/`day_end_time`, Settings' **"Dein Tag"** card
+   ("Ich stehe auf um" / "Ich gehe ins Bett um", immediate-save on `wire:change`). Mirrored in
+   `User::$attributes` against the fresh-model gotcha (§10).
+
+`App\Livewire\Concerns\ManagesDayBounds` + `partials/day-bounds-popover.blade.php` are shared by
+the Zeitplan and the Wochenplan, so the two pages cannot drift on what a day frame means; only
+which tier they write differs (`$boundsScope`). The entry point is a small chip under each column
+header — hover-revealed while that row just follows the tier above it, permanently visible in
+`contour` once it has a frame of its own, the same convention the task card's quick-date
+affordance uses. On mobile the chip is always visible (no hover) and sits on its own centred line.
+
+Two rules sit on top of the resolved setting before anything renders:
+
+- **A 30-minute dimmed night margin on each side** (`DayWindow::NIGHT_MARGIN`, `.tl-night` in
+  `app.css`, with a dashed horizon line), so a day has an edge rather than a hard cut. Rendered
+  **per column** from that column's own setting, so a Saturday that starts later says so at a
+  glance without reading the chip.
+- **Automatic expansion to whole hours** around anything that would otherwise fall outside the
+  frame — including a block's Weg-/Pufferzeit (`occupiedStartMinutes()`/`occupiedEndMinutes()`).
+  A block must never silently disappear. The **stored setting is never rewritten** by the
+  expansion: `frame()` returns `settingStart`/`settingEnd` separately, and the popover reads
+  `settingForDate()`, not the frame. When it happens, the grid says so in one quiet line — without
+  it the chip reads as broken ("I set 09:00–18:00, why does the axis start at 06:00?").
+
+**The scale now follows from the span, not the other way round.** The desktop grid used to be
+`span × 0.6px`, so a shorter day just made the page shorter. `DayWindow::ppm()` keeps the grid at
+roughly `DESKTOP_GRID_HEIGHT` (640px) and derives px-per-minute from the span, clamped to
+`MIN_PPM`/`MAX_PPM`. A shorter day therefore makes every block **taller**, which is what makes
+short blocks legible at all. The default frame lands at 0.59 px/min, so nothing visibly changes
+for an untouched account.
+
+> **One shared frame per grid, except where it isn't forced.** A week grid has a single hour
+> gutter, so all seven columns must agree on one scale — `frameForDates()`/`frameForWeekdays()`
+> take the widest setting in the set. The **mobile** Wochenplan is the exception: it shows one
+> weekday at a time (seven stacked `x-show` panels), so each panel carries its own gutter and its
+> own frame (`WeekPlan::weekdayFrames()`). Without that, shortening Saturday on the very page
+> where you set it changed nothing about the size of Saturday's blocks — found in review round 0.
+> The mobile Zeitplan already worked this way (`$dayFrame`).
+
+**Short blocks — the block is split, and density follows its measured height.** A block is as
+tall as its duration; its content never was. One title row needs ~28px, which at the old fixed
+scale was **47 minutes**, and the hover pencil needed the same — so every block under ~47 min
+rendered its content *outside* its own bounds, over the next block. `overflow-hidden` sat on the
+inner div, which is auto-height and therefore clipped nothing.
+
+`partials/schedule-event.blade.php` and `partials/week-plan-event.blade.php` are now a **wrapper**
+(`.tl-block`: position, gestures, never clipped — the day view's gutter label and the
+Weg-/Pufferzeit bands hang outside it on purpose) around a **clipped body** (`.tl-body`). How much
+that body shows is decided by **CSS container queries on its own height**, not by a duration in
+minutes: minutes stopped being a usable proxy the moment the Tagesrahmen made the scale variable,
+and were never one across desktop, phone and week view.
+
+- `< 30px` — title only, set slightly smaller, `.tl-pad` without vertical padding.
+- `≥ 30px` — plus the time line (`.tl-opt-time`).
+- `≥ 46px` — plus the full attribute line (`.tl-opt-attrs`) and the edit pencil
+  (`.tl-opt-pencil`); the compact colour dots (`.tl-opt-dots`) disappear at the same threshold.
+
+The rules live in **plain CSS at the bottom of `app.css`, outside any `@layer`** — Tailwind
+tree-shakes `@layer components` by class name, and a nested `@container` at-rule is exactly the
+shape that is risky to hand to that scanner (§10). Everything is wrapped in
+`@supports (container-type: size)` so a browser without support shows every tier rather than none.
+
+**Signature moment — der kurze Block richtet sich auf.** A block too short to carry its own
+content lifts to exactly the height it needs, then lies back down. Hover on a mouse
+(`@pointerenter`/`@pointerleave`, gated on `$event.pointerType === 'mouse'` — a device-level
+`pointer: coarse` query would be wrong on a touchscreen laptop driven by a real mouse, see §10);
+on touch, **a single tap**, which was a dead gesture before this (it only armed the 320ms
+double-tap window) and which is how touch reaches the edit pencil at all — `group-hover` never
+fires there, so on a phone the pencil simply did not exist. The double-tap shortcut is unchanged.
+
+- `min-height`, not `height`: a block that is already tall enough cannot move, and the top edge —
+  which is the start time — stays exactly where it is.
+- Whether to lift is decided by a **measured** `getBoundingClientRect().height`, never a duration.
+- Only one block is ever lifted (a `schedule-block-settle` window event), and it settles on the
+  next pointerdown outside any block (a document listener, bubble phase so the pencil's own
+  `@pointerdown.stop` can protect it), on a real drag, and — on touch only — after 2.6s.
+- **`LIFT_MIN_PX` (50) is deliberately NOT the `@container` threshold (46).** A container query
+  sizes against the container's *content* box; the lift sets a `min-height` on the wrapper, a
+  *border* box. The body's 1px border top and bottom left a lifted block two pixels short of the
+  one tier it was lifted for — the pencil never appeared. Found in a real browser, by nothing
+  else; `DayWindow::LIFT_MIN_PX`/`TIER_FULL_PX` document the relationship and a test pins it.
+- **The length is changed on the lifted block.** The first version broke the resize gesture:
+  the lift moved the bottom handle off the event's real end and held the block at >= 50px for
+  the whole drag, so a short block could not be seen getting shorter (reported by Niels in
+  use). Now both edges carry visible grip pills (on hover, and always while lifted) and a
+  bottom-resize grows/shrinks the lifted height by exactly the dragged amount
+  (`blockStyle`: `LIFT_MIN_PX + (end − origEnd) × ppm`), so the grip stays under the pointer
+  1:1; `.tl-block-dragging` turns the lift's easing off during a drag, and `begin()` cancels a
+  tap-lift's 2.6s auto-settle so a touch drag cannot lose its block halfway. Blocks **under 30
+  minutes** — which never had handles at all, because two 6px strips would have covered their
+  whole body — now get them too, inert (`pointer-events: none`) until lifted.
+- **While dragging, a time bubble** sits on the wrapper next to the moving edge (below for a
+  bottom-resize, above otherwise), outside the clipped body, so the live time stays readable
+  even when the drag makes the block too short for its own time line. The resting time line is
+  deliberately **server-rendered**, with the live `x-text` copy shown only while dragging and
+  until the save returns (`pending`): a pure `x-text` label went stale after the Livewire
+  re-render in a real browser — state and DB right, text wrong.
+
+**Weg-/Pufferzeit.** `buffer_before`/`buffer_after` in minutes on `schedule_events` **and**
+`event_templates` — a recurring block has to carry its travel time onto every occurrence
+(`materializeRange()`, `applyTemplate()`, `WeekPlan::refreshMaterializedOccurrences()`), otherwise
+it would have to be re-entered every week, which is what the Wochenplan exists to avoid. Two
+number fields in both event forms, 0–240, offered for a Termin and a Kategorie block alike and
+also for a recurring series (unlike linked tasks and attribute values, which belong to one
+occurrence).
+
+- Rendered as a **hatched extension of the block in its own colour** (`.tl-buf`, `.tl-buf-<token>`):
+  no title, no gestures, `pointer-events: none`. Positioned in **percent of the block**, so a
+  drag-move and a drag-resize carry it along with no second geometry to keep in sync.
+- The day view puts the **departure time** above the start time in the gutter; knowing when to
+  leave is the whole point of having entered one, and it would otherwise only be readable by
+  opening the form.
+- **`occupiedStartMinutes()`/`occupiedEndMinutes()` are deliberately distinct from
+  `startMinutes()`/`endMinutes()`.** Only the timeline's frame and the "you have to leave now"
+  push read the footprint; the Pomodoro timer, the focus strip and `DayPlanner`'s capacity all
+  still read the entry itself — nothing is worked on while travelling.
+- **`app:send-event-upcoming-notifications` counts it**: the threshold is
+  `startInstantUtc − (5 + buffer_before)` and the body becomes "Los in 5 Minuten. …beginnt um
+  17:30". A reminder that only arrives once you would already have had to leave is exactly the
+  failure travel time exists to prevent.
+- Read-only in `ScheduleEventResource`/`EventTemplateResource`: the timeline's footprint is wider
+  than start/end, and an API client reading only those would be told the wrong thing.
+
+Deliberately out of scope for this pass: laying overlapping blocks out side by side (a
+pre-existing grid limitation, not newly caused here); computing travel time from real addresses or
+maps; a warning when a journey overlaps the previous entry; **writing** Weg-/Pufferzeit over the
+API/Shortcuts/MCP; mirroring the Tagesrahmen in the Planer and the Tagesüberblick; a day frame that
+can be set past 23:30 or before 00:00 (`EARLIEST_START`/`LATEST_END` keep every stored value a
+plain "HH:MM" with no 24:00 special case — the *frame* still reaches 24:00 through the margin and
+the expansion); and a per-column scale on the **desktop** week grids, which one hour gutter makes
+structurally impossible.
 
 ### Agenda — Hausaufgaben & Prüfungen (built)
 - A deliberately standalone page (`/app/agenda`, `route('agenda')`) for school deadlines — homework and
@@ -3575,6 +3724,23 @@ the shown endpoint URL starts with `https://nothing-to-do.ch`.
 
 ## 10. Known Issues & Solutions
 
+### A container query sizes against the CONTENT box, so a border-box min-height falls short of its own threshold
+**Symptom:** the Signature Moment lifted a short timeline block to exactly the height its
+`@container (min-height: 46px)` tier needs — `getBoundingClientRect()` confirmed 46px — and the
+edit pencil, the one thing the lift exists to reveal, still did not appear. The 30px tier switched
+on correctly, so the mechanism was obviously working; only the tier at the exact lift height never
+matched. No error, nothing in the console.
+**Cause:** a query container is sized by its **content** box, while the lift sets a `min-height` on
+the wrapper, which (with Tailwind's global `box-sizing: border-box`) is a **border** box. The
+body's 1px border top and bottom makes a 46px wrapper a 44px container — two pixels under its own
+threshold. `getComputedStyle(el).height` is no help here either: it reported 46px for both boxes.
+**Fix:** raise the applied height above the threshold rather than matching it — `LIFT_MIN_PX` is 50
+for a 46px tier (46 + 2 for the border + 2 of slack, so a future padding tweak cannot silently
+re-break it), and `DayWindow::LIFT_MIN_PX`/`TIER_FULL_PX` plus a test document that the two numbers
+are *supposed* to differ. **The general lesson:** whenever a JS-applied size has to satisfy a
+`@container` threshold, the two are measuring different boxes — never set them to the same number,
+and verify it in a real browser, because no server-side test can see this at all.
+
 ### A required-field validation error can render in English on an otherwise fully German page
 **Symptom:** an empty required Livewire property surfaces Laravel's raw English default message
 (e.g. "The event category id field is required.") instead of German, even though the Blade view has
@@ -3643,6 +3809,27 @@ current Mozilla bundle at `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.
 process. Also fixed defensively in code: `PushNotifier` now logs (`Log::warning`) any report that isn't
 a success and isn't a simple expiry, so a persistent delivery failure like this one is visible in
 `storage/logs/laravel.log` even without manually testing.
+
+### A stale `public/hot` makes every locally served page render completely unstyled
+**Symptom:** `php artisan serve` works, the page loads, the HTML is correct — and the whole
+app renders as unstyled Times New Roman with no JavaScript. The page source shows
+`<script type="module" src="http://[::1]:5173/@vite/client">` even though `public/build/` is
+freshly built and `manifest.json` is right there.
+**Cause:** `public/hot` is left behind whenever a `npm run dev` session ends without cleaning up
+(it is gitignored, so it survives branch switches and never shows in `git status`). While it
+exists, Laravel's Vite helper ignores the built manifest entirely and points every asset at the
+dev server the file names — which is not running.
+**Fix:** start Vite (`npm run dev`) alongside the PHP server rather than deleting the file, so
+the local setup stays exactly as the user left it. **Two things worth knowing when checking
+whether it came up:** the file points at the IPv6 loopback, so `curl http://127.0.0.1:5173/...`
+fails while `curl "http://[::1]:5173/..."` succeeds — don't conclude Vite is down from the IPv4
+check alone; and `npm run dev` never exits, so it has to be backgrounded. If a one-shot static
+check is all that is needed, `npm run build` is the command that exits on its own.
+**Related crash:** Vite's file watcher dies with `EBUSY … .playwright-mcp\…crx` when a browser-
+automation session keeps a file locked in the project root's `.playwright-mcp/` scratch folder —
+on Windows a locked file makes the watch call throw, and that takes the whole dev server down.
+`vite.config.js` now ignores `**/.playwright-mcp/**`; don't delete that folder instead, the
+browser holding it may be the user's own with other tabs open.
 
 ### Laravel Pail / `composer run dev` fails on Windows (pcntl)
 **Symptom:** `composer run dev` crashes with a RuntimeException; the `concurrently --kill-others` flag

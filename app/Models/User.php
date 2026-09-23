@@ -18,6 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
     'name', 'email', 'password', 'task_reset_time',
+    'day_start_time', 'day_end_time', 'weekday_day_bounds',
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
     'notify_event_start', 'notify_pomo_start', 'notify_break_start', 'notify_event_upcoming',
     'timezone_offset', 'timezone_auto_dst',
@@ -66,6 +67,12 @@ class User extends Authenticatable
         'notify_streak_risk' => false,
         'default_page' => 'app',
         'list_concept' => 'three_things',
+        // Same fresh-model guard as the rest of this list: DayWindow reads
+        // these on a brand-new account (the register → onboarding → Zeitplan
+        // path) before the row has ever been reloaded, and a null here would
+        // silently fall back to a different default than the column's own.
+        'day_start_time' => '06:00',
+        'day_end_time' => '23:00',
     ];
 
     /** @return HasMany<Task, $this> */
@@ -114,6 +121,12 @@ class User extends Authenticatable
     public function schedulePauses(): HasMany
     {
         return $this->hasMany(SchedulePause::class);
+    }
+
+    /** @return HasMany<ScheduleDayBound, $this> */
+    public function scheduleDayBounds(): HasMany
+    {
+        return $this->hasMany(ScheduleDayBound::class);
     }
 
     /** @return HasMany<AgendaEntry, $this> */
@@ -551,6 +564,7 @@ class User extends Authenticatable
             'streak_risk_sent_on' => 'date',
             'streak_last_evaluated_date' => 'date',
             'header_badges' => 'array',
+            'weekday_day_bounds' => 'array',
             'planner_enabled' => 'boolean',
             'hidden_modules' => 'array',
             'onboarding_completed_at' => 'datetime',

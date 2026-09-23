@@ -1,8 +1,23 @@
 @php
+    use App\Services\DayWindow;
     use Illuminate\Support\Carbon;
 
-    $span = $dayEnd - $dayStart;          // total visible minutes
-    $ppmWeek = 0.6;                       // px per minute, desktop week (mobile day flexes to the viewport)
+    // Desktop week: one frame and one scale for all seven columns — a single hour
+    // gutter cannot serve seven different scales. The grid's pixel height now stays
+    // roughly constant and the scale follows from the span (it used to be a fixed
+    // 0.6 px/min), so a shorter Tagesrahmen makes every block taller instead of
+    // just making the page shorter.
+    $dayStart = $weekFrame['start'];
+    $dayEnd = $weekFrame['end'];
+    $span = $dayEnd - $dayStart;
+    $ppmWeek = DayWindow::ppm($span);
+
+    // Mobile shows one day, so it gets that day's own frame; everything inside is
+    // positioned in percent of its span and flexes to the viewport.
+    $mStart = $dayFrame['start'];
+    $mEnd = $dayFrame['end'];
+    $mSpan = $mEnd - $mStart;
+
     $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     $now = auth()->user()->localNow();
     $today = $now->copy()->startOfDay();
@@ -65,25 +80,58 @@
                 </div>
             @endif
 
+            {{-- The chips above name the *setting*; the axis can be wider than that,
+                 because a block outside it must never disappear. Say so, or the chip
+                 reads as broken. --}}
+            @if ($weekFrame['expanded'])
+                <div class="mb-3 flex items-center gap-1.5 text-xs text-ink-faint">
+                    <span class="tnum">Die Achse reicht bis {{ \App\Services\DayWindow::label($weekFrame['start'], $weekFrame['end']) }} — diese Woche liegt etwas ausserhalb deines Tagesrahmens.</span>
+                </div>
+            @endif
+
             <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
                 {{-- Day headers --}}
                 <div class="flex border-b border-line">
                     <div class="w-12 flex-none"></div>
                     @foreach ($this->weekDays as $day)
-                        @php $isPaused = in_array($day->toDateString(), $this->pausedDates, true); @endphp
-                        <button
-                            wire:click="openEventForm('{{ $day->toDateString() }}')"
+                        @php
+                            $dayKey = $day->toDateString();
+                            $isPaused = in_array($dayKey, $this->pausedDates, true);
+                            $daySetting = $this->daySettings[$dayKey] ?? null;
+                        @endphp
+                        {{-- A div, not a button: the Tagesrahmen chip below is its own
+                             button and cannot be nested inside one. --}}
+                        <div
                             @class([
-                                'group flex-1 border-l border-line px-2 py-2.5 text-center transition hover:bg-paper',
+                                'group flex-1 border-l border-line pb-2 text-center transition hover:bg-paper',
                                 'bg-forest-soft/40' => $day->isSameDay($today),
                             ])
                         >
-                            <div class="text-[11px] uppercase tracking-wide text-ink-faint">{{ $wd[$day->dayOfWeekIso - 1] }}</div>
-                            <div class="tnum text-sm font-medium {{ $day->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $day->day }}</div>
+                            {{-- The button carries the cell's padding, not the cell: the whole
+                                 header used to be one big "add an event here" target and has to
+                                 stay one, now that the chip below needs its own button. --}}
+                            <button wire:click="openEventForm('{{ $dayKey }}')" class="block w-full px-2 pb-1 pt-2.5" aria-label="Termin am {{ $day->format('j.n.') }} hinzufuegen">
+                                <div class="text-[11px] uppercase tracking-wide text-ink-faint">{{ $wd[$day->dayOfWeekIso - 1] }}</div>
+                                <div class="tnum text-sm font-medium {{ $day->isSameDay($today) ? 'text-forest' : 'text-ink' }}">{{ $day->day }}</div>
+                            </button>
                             @if ($isPaused)
-                                <div class="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-ink-faint">Ferien</div>
+                                <div class="text-[9px] font-medium uppercase tracking-wide text-ink-faint">Ferien</div>
                             @endif
-                        </button>
+                            @if ($daySetting !== null)
+                                {{-- Hover-revealed while this day just follows the default, and
+                                     permanently visible once it has a frame of its own — the same
+                                     convention the task card's quick-date affordance uses. --}}
+                                <button
+                                    wire:click="openDateBounds('{{ $dayKey }}')"
+                                    @class([
+                                        'tnum mt-0.5 inline-flex rounded-full border px-1.5 text-[9px] leading-[14px] transition',
+                                        'border-contour/45 bg-contour-soft text-contour' => $daySetting['source'] === 'date',
+                                        'border-line bg-surface text-ink-faint opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:opacity-100' => $daySetting['source'] !== 'date',
+                                    ])
+                                    aria-label="Tagesrahmen aendern - zurzeit {{ $this->dayBoundsLabel($daySetting['start'], $daySetting['end']) }}"
+                                >{{ $this->dayBoundsLabel($daySetting['start'], $daySetting['end']) }}</button>
+                            @endif
+                        </div>
                     @endforeach
                 </div>
 
@@ -103,13 +151,16 @@
                 {{-- Time gutter + 7 day columns --}}
                 <div class="flex" style="height: {{ $span * $ppmWeek }}px">
                     <div class="relative w-12 flex-none">
-                        @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                        @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                             <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px">{{ sprintf('%02d', $h) }}</span>
                         @endfor
                     </div>
 
                     @foreach ($this->weekDays as $day)
-                        @php $dayEvents = $this->events->get($day->toDateString(), collect()); @endphp
+                        @php
+                            $dayEvents = $this->events->get($day->toDateString(), collect());
+                            $daySetting = $this->daySettings[$day->toDateString()] ?? null;
+                        @endphp
                         <div
                             wire:key="draw-grid-{{ $day->toDateString() }}"
                             class="relative flex-1 border-l border-line"
@@ -124,7 +175,18 @@
                             :class="$store.draw.active ? 'cursor-crosshair' : ''"
                             style="touch-action: none"
                         >
-                            @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                            {{-- Everything outside this day's own Tagesrahmen stays visible but
+                                 dimmed: a horizon, so an empty edge reads as "outside my day"
+                                 rather than as a grid that was cut off. Per column, not per week,
+                                 so a Saturday that starts later says so at a glance. --}}
+                            @if ($daySetting !== null && $daySetting['start'] > $dayStart)
+                                <div class="tl-night tl-night-top" style="height: {{ ($daySetting['start'] - $dayStart) * $ppmWeek }}px"></div>
+                            @endif
+                            @if ($daySetting !== null && $daySetting['end'] < $dayEnd)
+                                <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $daySetting['end']) * $ppmWeek }}px"></div>
+                            @endif
+
+                            @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                                 <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) * $ppmWeek }}px"></div>
                             @endfor
 
@@ -155,7 +217,7 @@
             @if ($this->categories->isEmpty() && $this->events->isEmpty())
                 @include('livewire.partials.schedule-first-visit-hint')
             @else
-                <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · Stift bearbeitet</p>
+                <p class="mt-3 text-center text-xs text-ink-faint">Ziehen verschiebt · an den Enden ziehen ändert die Länge · kurze Blöcke richten sich beim Draufzeigen auf · Doppelklick bearbeitet</p>
             @endif
         </div>
     </div>
@@ -191,6 +253,31 @@
                 </button>
             </div>
 
+            {{-- Always visible here, unlike the hover-revealed desktop chip: there is no
+                 hover on a phone, so this is the only way in to this day's Tagesrahmen. On
+                 its own line rather than inside the pager above — squeezed in there it cost
+                 the date roughly a fifth of a 375px screen and read as part of the pager. --}}
+            @php $focusedSetting = $this->daySettings[$focusedDate] ?? null; @endphp
+            @if ($focusedSetting !== null)
+                <div class="mb-2 flex flex-none justify-center">
+                    <button
+                        wire:click="openDateBounds('{{ $focusedDate }}')"
+                        @class([
+                            'tnum rounded-full border px-2.5 py-1 text-[11px] leading-none transition active:scale-95',
+                            'border-contour/45 bg-contour-soft text-contour' => $focusedSetting['source'] === 'date',
+                            'border-line bg-surface text-ink-faint' => $focusedSetting['source'] !== 'date',
+                        ])
+                        aria-label="Tagesrahmen fuer diesen Tag aendern - zurzeit {{ $this->dayBoundsLabel($focusedSetting['start'], $focusedSetting['end']) }}"
+                    >{{ $this->dayBoundsLabel($focusedSetting['start'], $focusedSetting['end']) }}</button>
+                </div>
+            @endif
+
+            @if ($dayFrame['expanded'])
+                <p class="mb-2 flex-none text-center text-[10px] leading-tight text-ink-faint">
+                    <span class="tnum">Achse bis {{ \App\Services\DayWindow::label($dayFrame['start'], $dayFrame['end']) }} — etwas liegt ausserhalb deines Tagesrahmens.</span>
+                </p>
+            @endif
+
             @if ($this->templates->isNotEmpty())
                 <div class="mb-3 flex flex-none gap-2 overflow-x-auto">
                     <span class="flex-none self-center text-[11px] text-ink-faint">Vorlagen:</span>
@@ -212,16 +299,16 @@
                 <div class="flex h-full">
                 {{-- Time gutter — same hour marks as the desktop week view. --}}
                 <div class="relative w-8 flex-none" aria-hidden="true">
-                    @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
-                        <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%">{{ sprintf('%02d', $h) }}</span>
+                    @for ($h = (int) ceil($mStart / 60); $h <= intval($mEnd / 60); $h++)
+                        <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $mStart) / $mSpan * 100 }}%">{{ sprintf('%02d', $h) }}</span>
                     @endfor
                 </div>
                 <div
                     wire:key="draw-grid-{{ $focusedDate }}"
                     class="relative flex-1 border-l border-line/60"
                     data-grid
-                    data-span="{{ $span }}"
-                    data-day-start="{{ $dayStart }}"
+                    data-span="{{ $mSpan }}"
+                    data-day-start="{{ $mStart }}"
                     x-data="scheduleDraw({ date: '{{ $focusedDate }}' })"
                     @pointerdown.self="beginDraw"
                     @pointermove="moveDraw"
@@ -229,12 +316,19 @@
                     :class="$store.draw.active ? 'cursor-crosshair' : ''"
                     style="touch-action: none"
                 >
-                    @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
-                        <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
+                    @if ($focusedSetting !== null && $focusedSetting['start'] > $mStart)
+                        <div class="tl-night tl-night-top" style="height: {{ ($focusedSetting['start'] - $mStart) / $mSpan * 100 }}%"></div>
+                    @endif
+                    @if ($focusedSetting !== null && $focusedSetting['end'] < $mEnd)
+                        <div class="tl-night tl-night-bottom" style="height: {{ ($mEnd - $focusedSetting['end']) / $mSpan * 100 }}%"></div>
+                    @endif
+
+                    @for ($h = (int) ceil($mStart / 60); $h <= intval($mEnd / 60); $h++)
+                        <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $mStart) / $mSpan * 100 }}%"></div>
                     @endfor
 
-                    @if ($focused->isSameDay($today) && $nowMin >= $dayStart && $nowMin <= $dayEnd)
-                        <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) / $span * 100 }}%">
+                    @if ($focused->isSameDay($today) && $nowMin >= $mStart && $nowMin <= $mEnd)
+                        <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $mStart) / $mSpan * 100 }}%">
                             <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-signal"></span>
                         </div>
                     @endif
@@ -259,6 +353,10 @@
                 </div>
             </div>
 
+            <p class="mt-1 flex-none text-center text-[10px] leading-tight text-ink-faint">
+                Kurze Blöcke antippen, um sie aufzurichten · nochmal tippen bearbeitet
+            </p>
+
             @if ($this->categories->isNotEmpty())
                 <div class="mt-2 flex-none rounded-card border border-line bg-surface">
                     @include('livewire.partials.schedule-category-footer')
@@ -271,4 +369,7 @@
 
     {{-- ════════════════ EVENT FORM (create / edit) ════════════════ --}}
     @include('livewire.partials.schedule-event-form')
+
+    {{-- ════════════════ TAGESRAHMEN ════════════════ --}}
+    @include('livewire.partials.day-bounds-popover')
 </div>

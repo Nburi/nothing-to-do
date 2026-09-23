@@ -93,6 +93,26 @@ had any of it.** Clean it up whenever the local database is next rebuilt from sc
   the in-app versions already feel sufficient. (Support-request pushes — admins on a new request, users on an
   answer — are built, see CLAUDE.md "Hilfe-Center & Support".)
 - **Extend the API further:** private Agenda notes, group notes, and joining/leaving a class remain app-only.
+- **Weg-/Pufferzeit is readable over the API, not writable** (2026-09-21). `ScheduleEventResource`/
+  `EventTemplateResource` expose `buffer_before`/`buffer_after`, but no controller or MCP tool accepts
+  them, so a block created through Shortcuts always gets 0. Small and mechanical whenever a real
+  Shortcut needs it; nothing about the app depends on it.
+- **The Tagesrahmen is not mirrored in the Planer or the Tagesueberblick** (2026-09-21). Both show a
+  day without showing its length, so a 09:00-14:00 Saturday looks the same there as a full one.
+  Worth doing once the frame has been lived with - it is not obvious yet that either page wants it.
+- **The desktop week grids cannot scale a single day** (2026-09-21, structural). Seven columns next
+  to one hour gutter have to share a scale, so a per-day or per-weekday frame only changes how far
+  the dimmed night band reaches there, never the size of that day's blocks. The mobile views of both
+  pages do scale per day (see CLAUDE.md). Fixing this would mean a gutter per column, which is a
+  different grid, not a tweak.
+- **No warning when a Wegzeit overlaps the previous entry** (2026-09-21) - the bands just draw over
+  each other, exactly like two overlapping blocks already do. Same underlying gap as the
+  long-standing "overlapping blocks are not laid out side by side" limitation; worth solving
+  together, not separately.
+- **A day frame cannot be set past 23:30** (2026-09-21). `DayWindow::LATEST_END` keeps every stored
+  value a plain "HH:MM" with no 24:00 special case; the rendered axis still reaches 24:00 through the
+  night margin and the automatic expansion, so this only bites someone who genuinely goes to bed
+  after midnight and wants to say so.
 
 ## SEO backlog
 

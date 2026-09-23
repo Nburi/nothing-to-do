@@ -440,6 +440,48 @@
     <section id="schedule" class="scroll-mt-28 space-y-5">
         <h2 class="text-lg font-medium tracking-tight text-ink">Zeitplan &amp; Fokus</h2>
 
+        <div id="day-frame" class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Dein Tag</h3>
+            <p class="mb-4 text-sm text-ink-soft">
+                Wo die Zeitachse beginnt und endet. Einzelne Wochentage änderst du im Wochenplan,
+                einen einzelnen Tag direkt im Zeitplan — beide fallen hierauf zurück.
+            </p>
+            <div class="grid max-w-sm grid-cols-2 gap-3">
+                <div>
+                    <label for="dayStartTime" class="mb-1 block text-xs text-ink-faint">Ich stehe auf um</label>
+                    <select
+                        id="dayStartTime"
+                        wire:model="dayStartTime"
+                        wire:change="saveDayFrame"
+                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    >
+                        @foreach ($this->dayFrameOptions(true) as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('dayStartTime') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="dayEndTime" class="mb-1 block text-xs text-ink-faint">Ich gehe ins Bett um</label>
+                    <select
+                        id="dayEndTime"
+                        wire:model="dayEndTime"
+                        wire:change="saveDayFrame"
+                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    >
+                        @foreach ($this->dayFrameOptions(false) as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('dayEndTime') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-ink-faint">
+                Ein kürzerer Tag macht die Blöcke grösser, nicht die Seite kürzer. Ein Termin ausserhalb
+                bleibt trotzdem sichtbar — die Achse weitet sich dann von selbst.
+            </p>
+        </div>
+
         {{-- Kategorien --}}
         <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Kategorien</h3>

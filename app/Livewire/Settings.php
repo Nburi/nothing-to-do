@@ -11,6 +11,7 @@ use App\Models\EventCategory;
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\DayWindow;
 use App\Services\HeaderBadges;
 use App\Services\PushNotifier;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,6 +30,13 @@ class Settings extends Component
     use ManagesListConceptSettings;
 
     public string $resetTime = '01:00';
+
+    // Tagesrahmen — the default start/end of the day on every timeline grid.
+    // Per-weekday overrides live in the Wochenplan, per-date ones in the
+    // Zeitplan; both fall back to this (see DayWindow).
+    public string $dayStartTime = '06:00';
+
+    public string $dayEndTime = '23:00';
 
     // Pomodoro rhythm
     public int $pWork = 25;
@@ -108,6 +116,8 @@ class Settings extends Component
         $user = auth()->user();
 
         $this->resetTime = $user->task_reset_time ?? '01:00';
+        $this->dayStartTime = DayWindow::format(DayWindow::defaultSetting($user)['start']);
+        $this->dayEndTime = DayWindow::format(DayWindow::defaultSetting($user)['end']);
         $this->pWork = $user->pomodoro_work ?? 25;
         $this->pShortBreak = $user->pomodoro_short_break ?? 5;
         $this->pLongBreak = $user->pomodoro_long_break ?? 15;
@@ -138,6 +148,51 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['task_reset_time' => $data['resetTime']]);
+    }
+
+    /**
+     * Autosaves on change — see the "Dein Tag" card. A day shorter than
+     * DayWindow::MIN_SPAN is rejected with a message rather than silently
+     * clamped: the two selects are the only place the user states this
+     * outright, so quietly changing what they picked would be a lie.
+     */
+    public function saveDayFrame(): void
+    {
+        $data = $this->validate([
+            'dayStartTime' => ['required', 'date_format:H:i'],
+            'dayEndTime' => ['required', 'date_format:H:i', 'after:dayStartTime'],
+        ]);
+
+        $span = DayWindow::toMinutes($data['dayEndTime'], -1) - DayWindow::toMinutes($data['dayStartTime'], -1);
+
+        if ($span < DayWindow::MIN_SPAN) {
+            $this->addError('dayEndTime', 'Ein Tag muss mindestens '.intdiv(DayWindow::MIN_SPAN, 60).' Stunden lang sein.');
+
+            return;
+        }
+
+        DayWindow::setDefault(auth()->user(), $data['dayStartTime'], $data['dayEndTime']);
+    }
+
+    /**
+     * Half-hour options for the two "Dein Tag" selects — the same list the
+     * Zeitplan's and the Wochenplan's own popover offers, so the three can
+     * never disagree about what a day may be set to.
+     *
+     * @return array<string, string>
+     */
+    public function dayFrameOptions(bool $forStart): array
+    {
+        $from = $forStart ? DayWindow::EARLIEST_START : DayWindow::EARLIEST_START + DayWindow::MIN_SPAN;
+        $to = $forStart ? DayWindow::LATEST_END - DayWindow::MIN_SPAN : DayWindow::LATEST_END;
+
+        $options = [];
+
+        for ($minutes = $from; $minutes <= $to; $minutes += 30) {
+            $options[DayWindow::format($minutes)] = DayWindow::format($minutes);
+        }
+
+        return $options;
     }
 
     /** Autosaves on change — see the "Pomodoro" card. Autostart is a separate immediate toggle, togglePomodoroAutostart(). */

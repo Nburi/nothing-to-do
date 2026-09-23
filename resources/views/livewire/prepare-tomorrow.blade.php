@@ -1,6 +1,12 @@
 @php
     $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+    // The target day's own Tagesrahmen (see DayWindow) — step 3 is the Zeitplan's
+    // timeline verbatim, so it renders the same day at the same length.
+    $dayStart = $frame['start'];
+    $dayEnd = $frame['end'];
     $span = $dayEnd - $dayStart;
+    $daySetting = $frame;
     $targetWord = $this->targetWord; // 'heute' | 'morgen'
 @endphp
 
@@ -93,7 +99,7 @@
         <div class="overflow-hidden rounded-card border border-line bg-surface shadow-map">
             <div class="flex" style="height: 480px">
                 <div class="relative w-10 flex-none" aria-hidden="true">
-                    @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                    @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                         <span class="tnum absolute right-2 -translate-y-1/2 text-[10px] text-ink-faint" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%">{{ sprintf('%02d', $h) }}</span>
                     @endfor
                 </div>
@@ -110,7 +116,14 @@
                     :class="$store.draw.active ? 'cursor-crosshair' : ''"
                     style="touch-action: none"
                 >
-                    @for ($h = intval($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
+                    @if ($daySetting['settingStart'] > $dayStart)
+                        <div class="tl-night tl-night-top" style="height: {{ ($daySetting['settingStart'] - $dayStart) / $span * 100 }}%"></div>
+                    @endif
+                    @if ($daySetting['settingEnd'] < $dayEnd)
+                        <div class="tl-night tl-night-bottom" style="height: {{ ($dayEnd - $daySetting['settingEnd']) / $span * 100 }}%"></div>
+                    @endif
+
+                    @for ($h = (int) ceil($dayStart / 60); $h <= intval($dayEnd / 60); $h++)
                         <div class="pointer-events-none absolute inset-x-0 border-t border-line/40" style="top: {{ ($h * 60 - $dayStart) / $span * 100 }}%"></div>
                     @endfor
 
@@ -132,6 +145,17 @@
                     ></div>
                 </div>
             </div>
+
+            {{-- Step 3 embeds the Zeitplan's timeline verbatim, so it has the same
+                 clipped blocks and the same lift — and was the only one of the three
+                 grids that never said so. On touch that matters most: a single tap
+                 was a gesture that did nothing at all until this feature. --}}
+            <p class="mt-1 text-center text-[10px] leading-tight text-ink-faint">
+                Kurze Blöcke antippen, um sie aufzurichten · nochmal tippen bearbeitet
+                @if ($frame['expanded'])
+                    <span class="tnum">· Achse bis {{ \App\Services\DayWindow::label($frame['start'], $frame['end']) }}, etwas liegt ausserhalb deines Tagesrahmens</span>
+                @endif
+            </p>
 
             @if ($this->categories->isNotEmpty())
                 @include('livewire.partials.schedule-category-footer')
