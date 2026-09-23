@@ -402,26 +402,51 @@ class WeekPlan extends Component
     /** Switch one day back on, even inside a longer paused range. */
     public function unpauseDate(string $date): void
     {
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $day = self::realDate($date);
+
+        if ($day === null) {
             return;
         }
 
-        auth()->user()->schedulePauses()->whereDate('date', $date)->delete();
+        auth()->user()->schedulePauses()->whereDate('date', $day->toDateString())->delete();
 
         // Bring the normal blocks back immediately rather than waiting for a
         // separate visit to the Zeitplan to trigger materialisation.
-        ScheduleEvent::materializeRange(auth()->user(), Carbon::parse($date), Carbon::parse($date));
+        ScheduleEvent::materializeRange(auth()->user(), $day, $day);
     }
 
     public function unpauseRange(string $from, string $to): void
     {
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+        $start = self::realDate($from);
+        $end = self::realDate($to);
+
+        // Same one-year ceiling savePauseRange() enforces when a pause is created:
+        // no range this page could have made is longer, so a longer one can only be
+        // a hand-made request — and materialising it would loop over every day of it.
+        if ($start === null || $end === null || $end->lt($start) || (int) abs($start->diffInDays($end)) > 366) {
             return;
         }
 
-        auth()->user()->schedulePauses()->forRange($from, $to)->delete();
+        auth()->user()->schedulePauses()->forRange($start->toDateString(), $end->toDateString())->delete();
 
-        ScheduleEvent::materializeRange(auth()->user(), Carbon::parse($from), Carbon::parse($to));
+        ScheduleEvent::materializeRange(auth()->user(), $start, $end);
+    }
+
+    /**
+     * A Y-m-d string that is a real calendar date, or null. The shape check alone
+     * (four digits, dash, two, dash, two) lets "2026-13-45" through, and Carbon then
+     * throws — a 500 for anyone who edits the request by hand.
+     */
+    private static function realDate(string $value): ?Carbon
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = \DateTimeImmutable::getLastErrors();
+
+        if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            return null;
+        }
+
+        return Carbon::instance($date);
     }
 
     public function render()
