@@ -1061,6 +1061,12 @@ plannable target.
     their current `planned_date`, and `promoteIfToday()` stamps it (`= planned_date`) for every eligible
     task. Moving a plan to another day therefore makes it eligible again on that day with no reset code.
     See *Known Issues* — the earlier `is_today = false` guard silently undid a user's own removal from Heute.
+  - **Moving a task's plan *away* from today does not clear its Heute flag.** `assignDay`/`moveToDay` only
+    ever promote (see above); dragging an already-`is_today` task's plan onto e.g. Wednesday leaves it
+    flagged Heute while the Planer now shows it on Wednesday — the two can say different things about the
+    same task at once. Raised in a 2026-09 exploration session and deliberately left as-is: it is a
+    conscious product decision, not an oversight, so it stays undocumented-as-a-bug here on purpose. Not a
+    "fix later" item — flag it again only if a future session finds a concrete case this actually confuses.
   - **`autoFillBacklog(User)`** — "Rest automatisch einplanen", the one algorithmic action, and **purely
     additive**: it only ever reads/writes tasks with no day yet, so a placement made by hand can never be
     touched by it. This is *why* it needs no armed-double-click confirmation the way the old `regenerate()`
