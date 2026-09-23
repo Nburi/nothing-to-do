@@ -24,6 +24,7 @@ use App\Livewire\Settings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
+use App\Livewire\WeekReviewPage;
 use App\Mcp\McpServer;
 use App\Models\HelpArticle;
 use Illuminate\Support\Facades\Route;
@@ -182,6 +183,11 @@ Route::get('/app/crafts', CraftIdeas::class)
 Route::get('/app/progress', Progress::class)
     ->middleware('auth')
     ->name('progress');
+
+// Wochenrückblick — part of the Fortschritt module (hidden with it, see WeekReviewPage::mount()).
+Route::get('/app/review', WeekReviewPage::class)
+    ->middleware('auth')
+    ->name('review');
 
 // Tagesüberblick — deliberately not in AppModules::CATALOG (see the model docblocks
 // on DayPreview/User::hasSeenDayPreviewToday()): a silent header dot is the only
