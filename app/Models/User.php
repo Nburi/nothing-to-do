@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Mcp\McpAbility;
 use App\Services\AppModules;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -39,6 +40,7 @@ use Laravel\Sanctum\HasApiTokens;
     'is_admin',
     'last_login_at',
     'list_concept',
+    'mcp_oauth_write', 'mcp_oauth_delete',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -67,6 +69,8 @@ class User extends Authenticatable
         'notify_streak_risk' => false,
         'default_page' => 'app',
         'list_concept' => 'three_things',
+        'mcp_oauth_write' => true,
+        'mcp_oauth_delete' => false,
         // Same fresh-model guard as the rest of this list: DayWindow reads
         // these on a brand-new account (the register → onboarding → Zeitplan
         // path) before the row has ever been reloaded, and a null here would
@@ -534,6 +538,32 @@ class User extends Authenticatable
     /**
      * @return array<string, string>
      */
+    /**
+     * What an OAuth-connected AI client may do over the MCP server at /mcp.
+     *
+     * The Sanctum endpoint (/api/mcp) answers the same question from the
+     * token's own abilities, because a personal access token is created with
+     * "Schreiben erlauben"/"Löschen erlauben" checkboxes. An OAuth connection
+     * has no such moment: Laravel MCP advertises a single `mcp:use` scope and
+     * uses OAuth purely as a translation layer to this user, so there is
+     * nothing per-connection to encode the split into. The account carries it
+     * instead (Einstellungen → "Shortcuts, API & MCP"), which also means
+     * revoking Claude's ability to delete is one toggle and does not require
+     * disconnecting and reconnecting the connector.
+     *
+     * Reading is unconditional: an MCP connection that cannot read is not a
+     * connection, and the same is already true of a token (McpAbility::READ).
+     */
+    public function mcpOAuthCan(string $ability): bool
+    {
+        return match ($ability) {
+            McpAbility::READ => true,
+            McpAbility::WRITE => (bool) $this->mcp_oauth_write,
+            McpAbility::DELETE => (bool) $this->mcp_oauth_delete,
+            default => false,
+        };
+    }
+
     protected function casts(): array
     {
         return [
@@ -569,6 +599,8 @@ class User extends Authenticatable
             'hidden_modules' => 'array',
             'onboarding_completed_at' => 'datetime',
             'is_admin' => 'boolean',
+            'mcp_oauth_write' => 'boolean',
+            'mcp_oauth_delete' => 'boolean',
             'last_login_at' => 'datetime',
         ];
     }

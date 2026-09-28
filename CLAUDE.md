@@ -95,7 +95,7 @@ I say so, with reasoning.
 - **Local development:** Windows (Claude Code runs locally on Windows).
   - PHP is a standalone install at **`C:\php\php.exe`** (currently 8.5.8), with `C:\php\php.ini`
     hand-configured (copied from `php.ini-development`; `extension_dir` set to `C:\php\ext`;
-    `curl/fileinfo/gd/intl/mbstring/openssl/pdo_sqlite/sqlite3/zip` enabled — none are on by default
+    `curl/fileinfo/gd/intl/mbstring/openssl/pdo_sqlite/sodium/sqlite3/zip` enabled — none are on by default
     in a fresh Windows PHP build, and Laravel needs all of them). Composer lives as `composer.phar`
     under `~/.config/herd-lite/bin` — run it through the standalone PHP above, not herd-lite's own
     bundled PHP (that one's stuck on 8.4.0, too old for this project's locked deps; see *Known
@@ -122,6 +122,10 @@ I say so, with reasoning.
 - **Auth:** Laravel Breeze (Blade stack), fully restyled.
 - **API auth:** Laravel Sanctum (personal access tokens) — powers the token-authenticated JSON API used by
   Apple Shortcuts and other integrations; see §7 "API (Apple Shortcuts)".
+- **MCP:** `laravel/mcp` (protocol, Streamable HTTP transport, OAuth discovery/registration routes) +
+  `laravel/passport` (OAuth 2.1 authorization server). Passport exists *only* to let claude.ai and Claude
+  Desktop authenticate an MCP connector — it is not a general auth mechanism for this app, and Sanctum
+  remains the auth for everything else. See §7 "MCP über OAuth".
 - **Push notifications:** Web Push (VAPID) via `minishlink/web-push` — a `push_subscriptions` table, a
   service-worker `push`/`notificationclick` handler, and two per-minute scheduled commands drive
   notifications that arrive even with the browser fully closed; see §7 Schedule "Notifications".
@@ -3565,8 +3569,111 @@ reusing its authentication story rather than inventing a second one.
   events/categories/templates (read-only for now), Pomodoro session control (start/stop/continue/skip) via
   MCP, per-list-concept reorder semantics (see `set_task_order` above), posting into a shared Agenda space,
   SSE/server-initiated notifications (`tools/list_changed` is declared `false`), JSON-RPC batching, MCP
-  session management, and OAuth-based MCP authorization (a plain Bearer PAT was judged sufficient, matching
-  the existing Shortcuts API's own auth model on a stack with no OAuth provider of its own).
+  session management. **OAuth-based MCP authorization was originally judged unnecessary here** (a plain
+  Bearer PAT matched the Shortcuts API's own auth model, on a stack with no OAuth provider of its own) —
+  that turned out to be the one thing standing between this server and claude.ai/Claude Desktop, and it
+  was added later; see "MCP über OAuth" below.
+
+### MCP über OAuth — claude.ai & Claude Desktop (built)
+
+The MCP server has always had a second, harder half to its job: being *connectable*. The Sanctum endpoint
+(`/api/mcp`, see "MCP-Server — KI-Zugriff" above) works for anything that can set an `Authorization`
+header — Claude Code, a script, the MCP Inspector — but **claude.ai and Claude Desktop cannot**. An
+individual Pro/Max user adding a custom connector gets a dialog with a server URL and, under Advanced
+settings, an optional OAuth client ID/secret; there is no header field. (Anthropic does support a fixed
+bearer token as an auth type, `static_headers`, but it is beta and entered once by an *organization
+administrator* — not something a single user adding a connector can reach.) The 2026-09-19 "MCP doesn't
+work" report was therefore never a bug in the endpoint; the endpoint was simply unreachable from those
+two clients by design. This adds the OAuth server that is.
+
+- **Two endpoints, one tool layer.** `POST /mcp` (OAuth, `auth:api`) and `POST /api/mcp` (Sanctum,
+  hand-rolled transport) both serve the same 19 tools from the same `App\Mcp\McpServer` registry. The
+  Sanctum endpoint was deliberately **left untouched** — it works, it is documented, and
+  `McpTransportTest` pins its exact JSON-RPC framing (notification → 202, `-32601` vs `-32602` error
+  shapes) which a rewrite would have put at risk for no gain.
+- **`routes/ai.php`** (published by `vendor:publish --tag=ai-routes`, auto-loaded by Laravel MCP's own
+  service provider — it is *not* wired through `bootstrap/app.php`'s `withRouting()`) registers:
+  - `Mcp::oauthRoutes()` — `GET /.well-known/oauth-protected-resource[/{path}]` (RFC 9728),
+    `GET /.well-known/oauth-authorization-server[/{path}]` (RFC 8414), `POST /oauth/register` (RFC 7591
+    dynamic client registration). Passport itself adds `/oauth/authorize` and `/oauth/token`.
+  - `Mcp::web('/mcp', NothingToDoServer::class)->middleware(['auth:api', 'throttle:mcp'])`.
+  Claude discovers everything from the 401: Laravel MCP's `AddWwwAuthenticateHeader` middleware attaches
+  `WWW-Authenticate: Bearer realm="mcp", resource_metadata="…/.well-known/oauth-protected-resource/mcp"`,
+  Claude follows it, reads `authorization_servers`, fetches the auth-server metadata, registers itself as
+  a public client, and runs authorization-code + PKCE (S256). No client ID or secret is ever typed in.
+- **`POST /oauth/register` is re-registered in `routes/ai.php` to add `throttle:10,1`.** The package
+  registers it without a rate limit, and it is necessarily unauthenticated (dynamic client registration
+  happens before any token exists) while writing a row to `oauth_clients` per call. Re-registering the
+  same method+URI replaces the package's route in the collection — the only seam it offers — so
+  `McpOAuthDiscoveryTest` asserts both that exactly one such route exists and that the throttle is
+  attached: a package change that moved the route would otherwise leave two and silently drop the limit.
+- **`App\Mcp\Servers\NothingToDoServer`** holds no tool logic. Its `boot()` wraps every `McpTool` from the
+  registry in **`App\Mcp\Servers\BridgedTool`**, a single adapter onto `Laravel\Mcp\Server\Tool`:
+  - `toArray()` is overridden to emit the tool's own literal JSON Schema and annotations, instead of
+    Laravel MCP building one from its fluent `schema(JsonSchema)` builder. `schema()` therefore returns
+    `[]` deliberately — anything returned there would silently win over the real schema.
+  - `shouldRegister(Request)` (Laravel MCP's conditional-registration hook, called by
+    `Primitive::eligibleForRegistration()`) delegates to `McpServer::isAvailableTo()`. Because
+    `ServerContext::tools()` filters by the same hook and `CallTool` resolves from that filtered
+    collection, an unavailable tool fails with `Tool [x] not found.` (`-32602`) — byte-identical to a
+    genuinely nonexistent name. The adaptive-tool-list guarantee carries over for free.
+  - Writing 19 native `Laravel\Mcp\Server\Tool` subclasses instead would have duplicated every
+    name/description/schema/gating decision into a second implementation that could drift — the same
+    reasoning `App\Support\TaskMutator` was extracted for. Laravel MCP owns the protocol; `App\Mcp\Tools\*`
+    stays the single source of truth.
+  - **`$defaultPaginationLength` / `$maxPaginationLength` are raised to 100.** Laravel MCP paginates
+    `tools/list` at 15 by default and this server has 19 tools, so `delete_task` and three others silently
+    landed behind a `nextCursor`. Found by a test that only failed once the permission model was exercised.
+- **Permissions: an account setting, not a scope.** Laravel MCP advertises exactly one scope, `mcp:use`,
+  and its own docs are explicit that OAuth here is a translation layer to the authenticated user rather
+  than a permission system — so there is no per-connection place to carry the read/write/delete split a
+  personal access token gets from its Sanctum abilities. `users.mcp_oauth_write` (default `true`) and
+  `users.mcp_oauth_delete` (default `false`) carry it instead, read by `User::mcpOAuthCan()` and mirrored
+  in `User::$attributes` against the fresh-model gotcha (§10). The defaults deliberately match the
+  "Neuen Token erstellen" checkboxes: **connecting Claude must not silently grant permanent-delete rights
+  that creating a token makes you tick a box for.** A consequence worth knowing: a change applies to an
+  already-connected client on its very next `tools/list`, with no reconnect — which is why the Settings
+  copy and the consent screen both say so.
+- **Passport is narrowed to this one job** (`AppServiceProvider::configureMcpOAuth()`):
+  `Passport::$deviceCodeGrantEnabled = false` — set in `register()`, not `boot()`, because Passport
+  decides from its own `boot()` whether those routes exist at all; `Passport::$registersJsonApiRoutes =
+  false` (this app has no first-party SPA managing OAuth clients, so those routes would be unreviewed
+  surface area); one-hour access tokens with six-month refresh tokens, so revoking a connection bites
+  within the hour. `config/mcp.php`'s `redirect_domains` ships as `['*']` and is narrowed to
+  `https://claude.ai` / `https://claude.com` plus `http://localhost` / `http://127.0.0.1` — the latter two
+  switch on Laravel MCP's own port-agnostic RFC 8252 loopback match, which Claude Code needs.
+- **`User` does not implement `Laravel\Passport\Contracts\OAuthenticatable`, on purpose.** Passport's
+  `HasApiTokens` trait collides with Sanctum's on `tokens()`, `tokenCan()`, `createToken()`,
+  `withAccessToken()` *and* on the `$accessToken` property (Sanctum's is untyped, Passport's is typed —
+  a fatal "Type of X::$accessToken must be omitted to match the parent definition", verified directly, so
+  even a subclass cannot mix them). It turns out not to matter: `OAuthenticatable` appears nowhere in
+  Passport's runtime code outside its own declaration — it is a docblock/PHPStan contract. The only thing
+  Passport's `TokenGuard` actually calls on the model is `withAccessToken()`, and Sanctum's untyped
+  version accepts Passport's `AccessToken` fine. **Consequence to remember:** on a request authenticated
+  by the `api` guard, `$user->tokenCan()` is answering about a *Passport scope*, not a Sanctum ability.
+  Nothing reads it there (the OAuth path goes through `mcpOAuthCan()`), but a future reader must not
+  assume the two mean the same thing.
+- **The consent screen** is `resources/views/mcp/authorize.blade.php`, wired up with
+  `Passport::authorizationView()`. Laravel MCP publishes a stock one, but it is written against the
+  shadcn-style tokens of Laravel's starter kits (`bg-card`, `text-muted-foreground`, `bg-primary`), none of
+  which exist in this Tailwind v3 Topografie theme — it rendered as unstyled Times New Roman. The
+  replacement uses `<x-guest-layout>`, lists the three permissions with the denied ones struck through
+  (so the delete default is *visible* at the moment of granting, not buried in Settings), names the
+  redirect host per the MCP spec's recommendation, and links to Settings. Only `auth_token` + CSRF are
+  submitted; the stock view's empty `state`/`client_id` hidden inputs are vestigial
+  (`RetrievesAuthRequestFromSession` reads neither).
+- **Settings** — the Entwickler section gained a "Claude verbinden (OAuth)" card next to the token card:
+  the two permission toggles (immediate-save, like every other toggle) and a list of connected clients.
+  `Settings::mcpConnections()` is **one row per client, not per token** — a live connection mints a fresh
+  access token every hour, which would otherwise read as repeated connections — and queries Passport's own
+  token model directly rather than `$user->tokens()`, which on this `User` is Sanctum's relation.
+  `revokeMcpConnection()` revokes the refresh token too, so disconnecting actually ends the connection
+  instead of letting it mint a new access token; the armed double-click pattern applies as everywhere else.
+- **Docs** — `/docs/mcp` now documents both endpoints, with the OAuth flow first (three steps, "client ID
+  and secret stay empty") since that is the path most people need.
+- Deliberately out of scope: replacing the Sanctum endpoint with Laravel MCP's transport, MCP resources or
+  prompts (still tools only), SSE/server-initiated notifications, CIMD as an alternative to DCR, and any
+  per-client (as opposed to per-account) permission model.
 
 ### Fehler-Statistiken (built)
 
@@ -3686,6 +3793,41 @@ new cron entry. Two things to be aware of, though:
    intact), but take the usual DB snapshot before running it, and see `TODO.md` for the follow-up commit
    that drops the column later.
 
+### MCP over OAuth (one time, when that feature first ships)
+
+Claude connects to `/mcp` via OAuth, which needs a few things on the production box beyond the usual
+`migrate --force`:
+
+1. **Run the new migrations.** The standard `php artisan migrate --force` covers them: Passport's five
+   `oauth_*` tables plus `mcp_oauth_write`/`mcp_oauth_delete` on `users`.
+2. **Generate the Passport signing keys, once:** `php artisan passport:keys`. This writes
+   `storage/oauth-private.key` and `storage/oauth-public.key`, which are **gitignored on purpose** and
+   must never be committed. Generate them once and keep them — regenerating invalidates every existing
+   connection, exactly like the VAPID keys above. They must be readable by the web server user and
+   nothing else (`chmod 600`, owned by the php-fpm user). Alternatively set `PASSPORT_PRIVATE_KEY` /
+   `PASSPORT_PUBLIC_KEY` in `.env` instead of using files.
+3. **Check `ext-sodium` is enabled** (`php -m | grep sodium`). `league/oauth2-server` requires it. It is
+   compiled in by default on essentially every Linux PHP build, so this is a one-line sanity check rather
+   than an expected task — it only had to be switched on by hand in local Windows dev (see *Known Issues*).
+4. **`APP_URL` must be the real `https://` origin.** Every discovery document Claude reads is built from
+   it — `resource`, `issuer`, `authorization_endpoint`, `token_endpoint`, `registration_endpoint`. A wrong
+   host there produces a connection failure with no useful client-side message.
+
+No new `.env` variable, no new dependency to install by hand, and **no new cron entry** — OAuth adds
+nothing to the scheduler.
+
+After deploying, the fastest end-to-end check, from any machine:
+
+```bash
+curl -i -X POST https://nothing-to-do.ch/mcp -H 'Content-Type: application/json' -d '{}'
+# expect: 401 + WWW-Authenticate: Bearer realm="mcp", resource_metadata="https://nothing-to-do.ch/.well-known/oauth-protected-resource/mcp"
+curl -s https://nothing-to-do.ch/.well-known/oauth-protected-resource/mcp
+# expect: {"resource":"https://nothing-to-do.ch/mcp", ...} — the resource must match the URL entered in Claude exactly
+```
+
+Then in Claude: **Einstellungen → Connectors → Eigenen Connector hinzufügen**, URL
+`https://nothing-to-do.ch/mcp`, client ID and secret left empty.
+
 ### Every later deploy
 ```bash
 git pull
@@ -3761,6 +3903,60 @@ in practice are covered so far, **not an exhaustive sweep of every validated Liv
 app**; add more there as they're found. Regression tests assert the actual rendered message text at
 each confirmed site (`WeekPlanTest`, `ScheduleTest`, `ApiTokensTest`,
 `Auth/AuthenticationTest`, `Auth/PasswordResetTest`) so an accidental revert to English fails loudly.
+
+### An unauthenticated route can answer 302-to-login instead of 401, because `shouldRenderJsonWhen()` *replaces* the default
+**Symptom:** `POST /mcp` without a token returned `302 Found` with `Location: /login` instead of `401`,
+even for a request sending `Accept: application/json`. Since Claude only begins its OAuth flow when the
+unauthenticated request answers 401 with a `WWW-Authenticate` header, this alone silently blocked every
+possible connection — with no error anywhere, because a redirect is a perfectly successful response.
+**Cause:** `bootstrap/app.php` calls `$exceptions->shouldRenderJsonWhen(fn ($request) => $request->is('api/*'))`.
+That callback does not *add to* Laravel's own `expectsJson()` default — it **replaces** it. Every path
+outside `api/*` therefore renders HTML for an `AuthenticationException` regardless of its `Accept` header,
+and Laravel's HTML rendering of that exception is a redirect to `route('login')`.
+**Fix:** list the path explicitly — `$request->is('api/*') || $request->is('mcp')`. Deliberately *not*
+`|| $request->expectsJson()`, which would restore the framework default for the whole app and change how
+errors render inside Livewire requests (which do send a JSON `Accept` header). **The general lesson:** any
+new non-`api/*` route that must answer machine-readable errors has to be added to that callback, and the
+symptom will be a 302, never an exception — check it with `curl -i` rather than assuming.
+
+### Laravel MCP paginates `tools/list` at 15, which is fewer tools than this server has
+**Symptom:** `delete_task` never appeared in `tools/list` even for a connection explicitly allowed to
+delete. Worse, the *negative* test ("delete is hidden by default") passed for the wrong reason, so the gap
+could have survived review.
+**Cause:** `Laravel\Mcp\Server::$defaultPaginationLength` is 15; this server registers 19 tools, so the
+last four came back behind a `nextCursor`. A spec-compliant client follows that cursor, so nothing is
+strictly broken — but nothing is gained from a second round trip on a list this small either.
+**Fix:** `$defaultPaginationLength` / `$maxPaginationLength` = 100 on `App\Mcp\Servers\NothingToDoServer`,
+plus a regression test asserting one page with no `nextCursor` and the full tool count. If the catalog
+ever passes 100 tools, raise both. **The general lesson:** a framework default that silently truncates a
+list stays invisible in a passing suite unless a test asserts the *count*, not just that particular
+entries are present.
+
+### Passport's and Sanctum's `HasApiTokens` traits cannot coexist on one model — and don't need to
+**Symptom:** adding `Laravel\Passport\HasApiTokens` to `User` (or to a subclass of it) is a fatal error:
+`Type of X::$accessToken must be omitted to match the parent definition`.
+**Cause:** both traits declare `tokens()`, `tokenCan()`, `createToken()`, `currentAccessToken()` and
+`withAccessToken()`, plus a `$accessToken` property — Sanctum's untyped, Passport's typed
+`?ScopeAuthorizable`. A trait property incompatible with an inherited one is a fatal error, so
+`insteadof` conflict resolution does not rescue it either.
+**Fix:** don't try. `Laravel\Passport\Contracts\OAuthenticatable` is referenced nowhere in Passport's
+runtime code outside its own declaration (verified by grepping `vendor/laravel/passport/src`) — it is a
+docblock/PHPStan contract. The only model method Passport's `TokenGuard` actually calls is
+`withAccessToken()`, and Sanctum's untyped one accepts Passport's `AccessToken` at runtime. So the `api`
+guard works against the plain `User` with no trait, no interface and no second model. **Worth
+remembering:** on an `api`-guard request `$user->tokenCan()` asks Passport about a *scope*; on a
+`sanctum`-guard request it asks Sanctum about an *ability*. The MCP OAuth path deliberately consults
+`User::mcpOAuthCan()` instead of either.
+
+### `ext-sodium` is off in the local Windows PHP build, which blocks installing Passport
+**Symptom:** `composer require laravel/passport` fails to resolve at all, ending in
+`lcobucci/jwt 5.6.0 requires ext-sodium * -> it is missing from your system` — but only after walking back
+through every Passport release to v0.1.0 first, so the output reads like a version-constraint problem
+rather than a missing extension.
+**Cause:** the same gap §4 already documents for `curl`/`gd`/`intl`/…: a plain PHP-for-Windows zip ships
+`php_sodium.dll` in `ext/` but leaves `;extension=sodium` commented out in `php.ini`.
+**Fix:** uncomment `extension=sodium` in `C:\php\php.ini` and restart the PHP process. Production Linux
+builds have it compiled in; it is still worth the one-line check in the deploy notes (§9).
 
 ### `openssl_pkey_new()` fails generating VAPID keys on the standalone Windows PHP install
 **Symptom:** `Minishlink\WebPush\VAPID::createVapidKeys()` (or any raw `openssl_pkey_new(['curve_name' =>
@@ -3858,7 +4054,7 @@ unlike Herd, which preconfigures both.
 full path (e.g. `C:\php\php.exe`, `C:\Program Files\nodejs\node.exe`) until `Get-Command` confirms it's
 on PATH. For a fresh PHP install: `Copy-Item php.ini-development php.ini`, set `extension_dir` to the
 install's `ext` folder, and uncomment at least `curl`/`fileinfo`/`gd`/`intl`/`mbstring`/`openssl`/
-`pdo_sqlite`/`sqlite3`/`zip` — all required somewhere in this project (`gd` specifically powers
+`pdo_sqlite`/`sodium`/`sqlite3`/`zip` — all required somewhere in this project (`gd` specifically powers
 `icons:generate`, see §7 PWA).
 
 ### `composer install` fails with "requires php >= 8.4.1" even though *a* working PHP is on PATH

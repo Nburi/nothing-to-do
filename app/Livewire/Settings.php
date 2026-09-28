@@ -14,6 +14,8 @@ use App\Models\Task;
 use App\Services\DayWindow;
 use App\Services\HeaderBadges;
 use App\Services\PushNotifier;
+use Laravel\Passport\Passport;
+use Laravel\Passport\Token;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -126,6 +128,8 @@ class Settings extends Component
         $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
         $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
         $this->homeworkPreviewEnabled = $user->homework_preview_enabled ?? true;
+        $this->mcpOauthWrite = $user->mcp_oauth_write ?? true;
+        $this->mcpOauthDelete = $user->mcp_oauth_delete ?? false;
         $this->plannerEnabled = (bool) $user->planner_enabled;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
@@ -942,6 +946,10 @@ class Settings extends Component
      * armed-double-click pattern, moved to token-creation time since a
      * headless MCP tool call has no click to arm.
      */
+    public bool $mcpOauthWrite = true;
+
+    public bool $mcpOauthDelete = false;
+
     public bool $newTokenCanWrite = true;
 
     public bool $newTokenCanDelete = false;
@@ -989,6 +997,78 @@ class Settings extends Component
     {
         auth()->user()->tokens()->whereKey($id)->delete();
         unset($this->apiTokens);
+    }
+
+    /**
+     * What an OAuth-connected AI client (claude.ai, Claude Desktop) may do —
+     * the account-level equivalent of a personal access token's own
+     * "Schreiben/Löschen erlauben" checkboxes, because Laravel MCP's OAuth
+     * layer only ever advertises a single `mcp:use` scope and has nowhere to
+     * carry the split. Immediate-save, like every other toggle in Settings.
+     * See App\Models\User::mcpOAuthCan().
+     */
+    public function toggleMcpOauthWrite(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->mcp_oauth_write;
+
+        $user->update(['mcp_oauth_write' => $enabled]);
+        $this->mcpOauthWrite = $enabled;
+    }
+
+    public function toggleMcpOauthDelete(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->mcp_oauth_delete;
+
+        $user->update(['mcp_oauth_delete' => $enabled]);
+        $this->mcpOauthDelete = $enabled;
+    }
+
+    /**
+     * One row per connected OAuth client, not per token: a live connection
+     * keeps minting fresh access tokens off its refresh token (they expire
+     * hourly — see AppServiceProvider), so listing tokens would show the same
+     * Claude connection several times over and make it look as if it had
+     * connected again and again.
+     *
+     * Deliberately queried through Passport's own token model rather than
+     * $user->tokens(), which on this User is Sanctum's relation — the two
+     * token systems live side by side here and must never be confused.
+     *
+     * @return Collection<int, Token>
+     */
+    #[Computed]
+    public function mcpConnections(): Collection
+    {
+        return Passport::tokenModel()::query()
+            ->where('user_id', auth()->id())
+            ->where('revoked', false)
+            ->with('client')
+            ->latest('created_at')
+            ->get()
+            ->filter(fn (Token $token): bool => $token->client !== null && ! $token->client->revoked)
+            ->unique('client_id')
+            ->values();
+    }
+
+    /**
+     * Disconnect one AI client. Revokes every token it holds, refresh tokens
+     * included — without those the connection cannot mint a new access token
+     * and is genuinely over, rather than merely expiring within the hour.
+     */
+    public function revokeMcpConnection(string $clientId): void
+    {
+        Passport::tokenModel()::query()
+            ->where('user_id', auth()->id())
+            ->where('client_id', $clientId)
+            ->with('refreshToken')
+            ->each(function (Token $token): void {
+                $token->refreshToken?->revoke();
+                $token->revoke();
+            });
+
+        unset($this->mcpConnections);
     }
 
     public function render()

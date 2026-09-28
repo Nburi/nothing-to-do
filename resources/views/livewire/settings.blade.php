@@ -1186,6 +1186,100 @@
         </form>
         @error('newTokenName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
     </div>
+
+    {{-- Claude & Co. via OAuth (MCP) --}}
+    <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Claude verbinden (OAuth)</h3>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            claude.ai und Claude Desktop können kein Token eintragen — dort gibt es beim Hinzufügen
+            eines eigenen Connectors nur ein Feld für die Server-URL. Darum melden sie sich stattdessen
+            per OAuth an: du fügst <code class="rounded bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">{{ url('/mcp') }}</code>
+            als Connector hinzu, bestätigst einmal hier im Browser, fertig. Die Rechte dafür stellst du
+            unten ein — sie gelten für jede OAuth-Verbindung und lassen sich jederzeit ändern, ohne die
+            Verbindung neu aufzubauen.
+        </p>
+
+        <div class="space-y-4">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Schreiben erlauben</p>
+                    <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">
+                        Aufgaben anlegen, ändern, abhaken und Einstellungen setzen. Alles davon ist
+                        umkehrbar.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleMcpOauthWrite"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $mcpOauthWrite,
+                        'bg-line' => ! $mcpOauthWrite,
+                    ])
+                    aria-label="Schreiben über OAuth {{ $mcpOauthWrite ? 'verbieten' : 'erlauben' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $mcpOauthWrite,
+                        'left-0.5' => ! $mcpOauthWrite,
+                    ])></span>
+                </button>
+            </div>
+
+            <div class="flex items-start justify-between gap-4 border-t border-line pt-4">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Löschen erlauben</p>
+                    <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">
+                        Aufgaben endgültig entfernen. Standardmässig aus — abhaken reicht fast immer,
+                        und ein Löschvorgang lässt sich nicht rückgängig machen.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleMcpOauthDelete"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-signal' => $mcpOauthDelete,
+                        'bg-line' => ! $mcpOauthDelete,
+                    ])
+                    aria-label="Löschen über OAuth {{ $mcpOauthDelete ? 'verbieten' : 'erlauben' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $mcpOauthDelete,
+                        'left-0.5' => ! $mcpOauthDelete,
+                    ])></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-5 border-t border-line pt-4">
+            <p class="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">Verbundene Clients</p>
+
+            @forelse ($this->mcpConnections as $connection)
+                <div class="flex items-center justify-between gap-3 border-b border-line py-2.5 last:border-0">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-medium text-ink">{{ $connection->client->name }}</p>
+                        <p class="text-xs text-ink-faint">
+                            Verbunden {{ $connection->created_at?->format('d.m.Y') }}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        x-data="{ armed: false, _t: null }"
+                        @click="if (armed) { $wire.revokeMcpConnection(@js($connection->client_id)); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                        @click.outside="armed = false; clearTimeout(_t)"
+                        @keydown.escape.window="armed = false; clearTimeout(_t)"
+                        :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+                        class="hit-area flex-none rounded-card px-2.5 py-1 text-xs font-medium transition"
+                        x-text="armed ? 'Wirklich trennen?' : 'Trennen'"
+                    >Trennen</button>
+                </div>
+            @empty
+                <p class="text-sm text-ink-faint">Noch nichts verbunden.</p>
+            @endforelse
+        </div>
+    </div>
     </section>
 
     </div>

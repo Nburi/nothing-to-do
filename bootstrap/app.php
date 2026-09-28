@@ -24,8 +24,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [RecordModuleVisit::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // This callback *replaces* Laravel's own expectsJson() default, so a
+        // path missing from here renders HTML — which for an unauthenticated
+        // request means a 302 to /login, not a 401. The MCP server at /mcp
+        // (routes/ai.php) has to be listed: Claude only begins its OAuth flow
+        // when the unauthenticated POST answers 401 with a WWW-Authenticate
+        // header, and a redirect silently ends the handshake before it starts.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->is('mcp'),
         );
 
         // Every rendered HTML error page (404/403/419/500/...) is counted for

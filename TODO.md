@@ -23,12 +23,30 @@ didn't work.
   exists on the rejected branch. Once (if) the board redesign with splitting merges, extend both queries
   the same way.
 
-### MCP-Server — live client check does not work yet
+### MCP-Server — root-caused and fixed, still needs one real claude.ai connection
 
-Automated tests are green (`tests/Feature/Mcp/`), but a real MCP client connection to `/api/mcp` (Claude
-Desktop's custom connector, or `npx @modelcontextprotocol/inspector`, Bearer token from Settings) was tried
-and is **not working** (2026-09-19). Needs debugging with the actual client's error output — check the
-`initialize`/`tools/list` round trip, the `https://` endpoint URL (see CLAUDE.md §9) and the token abilities.
+The 2026-09-19 "custom connector doesn't work" report was **not** a bug in `/api/mcp`: claude.ai and
+Claude Desktop simply cannot send a bearer token. An individual Pro/Max user's "Add custom connector"
+dialog offers a server URL plus an optional OAuth client ID/secret and nothing else (Anthropic's
+`static_headers` auth type does take a fixed token, but it is beta and set up by an org administrator).
+Fixed 2026-09-20 by adding an OAuth-authenticated server at `/mcp` — see CLAUDE.md §7 "MCP über OAuth".
+
+Verified locally end to end (discovery, DCR, consent, code exchange, `tools/call`, refresh, disconnect)
+against a real `php artisan serve`. **Still owed:** one actual connection from claude.ai against the
+deployed production URL. That needs the deployment checklist in CLAUDE.md §9 to have been run first
+(Passport keys, migrations), and it is the one step that cannot be rehearsed locally, because Anthropic
+reaches the server from its own egress range and will not connect to `http://127.0.0.1`.
+
+### Pre-existing dependency advisories (unrelated to MCP, worth a look)
+
+`composer audit` reports 22 advisories across 4 packages, none of them introduced by the OAuth work
+(checked against the lockfile before it: no existing package version changed). All would be minor/patch
+bumps, so CLAUDE.md §8 allows them, but they were deliberately **not** bundled into a feature branch:
+
+- `league/commonmark` 2.8.2 — several high-severity DoS advisories, fixed in 2.10.0. This one matters
+  most: the app runs `Str::markdown()` over user-entered task notes, project brainstorms and group notes.
+- `livewire/livewire` v4.3.1 — DOM-based XSS advisory, fixed in 4.3.4.
+- `guzzlehttp/guzzle` 7.11.1 and `guzzlehttp/psr7` 2.11.0 — reached only through `minishlink/web-push`.
 
 ### Drop `agenda_entries.is_done` (blocked on a production deploy)
 

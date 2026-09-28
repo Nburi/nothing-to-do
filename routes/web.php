@@ -207,7 +207,8 @@ Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
 
 Route::get('/docs/mcp', function () {
     return view('docs.mcp', [
-        'mcpUrl' => url('/api/mcp'),
+        'mcpUrl' => url('/mcp'),
+        'mcpTokenUrl' => url('/api/mcp'),
         'tools' => app(McpServer::class)->allToolDefinitions(),
     ]);
 })->middleware('auth')->name('docs.mcp');
