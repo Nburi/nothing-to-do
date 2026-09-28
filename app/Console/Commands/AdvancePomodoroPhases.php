@@ -28,6 +28,16 @@ class AdvancePomodoroPhases extends Command
             ->with('user')
             ->chunkById(100, function ($events) use ($pomodoro, &$ticked) {
                 foreach ($events as $event) {
+                    // The focus card only ever shows today's blocks, so a session left
+                    // running on an earlier day can no longer be seen or stopped by its
+                    // owner — with autostart on it would otherwise cascade (and push)
+                    // forever. It ends quietly instead.
+                    if ($event->date->toDateString() < $event->user->localToday()->toDateString()) {
+                        $pomodoro->stop($event);
+
+                        continue;
+                    }
+
                     $pomodoro->handleTick($event, $event->user);
                     $ticked++;
                 }

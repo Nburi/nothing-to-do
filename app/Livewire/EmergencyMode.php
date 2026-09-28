@@ -8,6 +8,7 @@ use App\Models\Task;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -19,6 +20,7 @@ use Livewire\Component;
  * after emergency mode ends.
  */
 #[Layout('layouts.app')]
+#[Title('Notfallmodus')]
 class EmergencyMode extends Component
 {
     use ManagesTasks;

@@ -30,6 +30,7 @@ trait ManagesDeadlineItems
         ]);
 
         $task->syncLinkedAgendaEntry($user, $done);
+        $task->syncRepeat($user, $done);
 
         if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
             $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);

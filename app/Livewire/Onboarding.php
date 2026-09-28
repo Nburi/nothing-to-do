@@ -8,6 +8,7 @@ use App\Services\AppModules;
 use App\Services\OnboardingQuiz;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -37,6 +38,7 @@ use Livewire\Component;
  * skip() do.
  */
 #[Layout('layouts.app')]
+#[Title('Willkommen')]
 class Onboarding extends Component
 {
     use ManagesModuleSettings;

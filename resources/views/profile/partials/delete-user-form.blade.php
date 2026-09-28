@@ -2,7 +2,7 @@
     <header>
         <h2 class="text-base font-medium text-ink">Konto löschen</h2>
         <p class="mt-1 text-sm text-ink-soft">
-            Beim Löschen werden alle Aufgaben und Daten unwiderruflich entfernt. Sichere vorher, was du behalten möchtest.
+            Beim Löschen werden alle Aufgaben und Daten unwiderruflich entfernt. Lade dir vorher oben deine Daten herunter, wenn du etwas behalten möchtest.
         </p>
     </header>
 

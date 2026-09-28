@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ManagesAgendaSpaces;
 use App\Models\AgendaSpace;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -15,6 +16,7 @@ use Livewire\Component;
  * link previewers long before a human clicks it.
  */
 #[Layout('layouts.app')]
+#[Title('Klasse beitreten')]
 class JoinAgendaSpace extends Component
 {
     use ManagesAgendaSpaces;
@@ -28,7 +30,8 @@ class JoinAgendaSpace extends Component
     public function mount(string $code): void
     {
         $this->code = $code;
-        $this->space = AgendaSpace::findByInviteCode($code);
+        // Throttled like the join form: an exhausted user sees the plain "unknown code" state.
+        $this->space = $this->inviteLookupsExhausted() ? null : $this->lookUpInviteCode($code);
 
         $this->alreadyMember = $this->space !== null
             && $this->space->hasMember(auth()->user());

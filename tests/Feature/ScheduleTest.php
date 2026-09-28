@@ -319,6 +319,82 @@ class ScheduleTest extends TestCase
         $this->assertSame('11:30', $event->end_time); // 60' preserved
     }
 
+    public function test_dragging_a_block_into_another_day_column_moves_its_date(): void
+    {
+        $user = $this->actingUser();
+        $event = ScheduleEvent::factory()->for($user)->at('08:00', '09:00')->create(['date' => '2026-06-26']);
+
+        Livewire::test(Schedule::class)->call('moveEvent', $event->id, '10:30', '2026-06-29');
+
+        $event->refresh();
+        $this->assertSame('2026-06-29', $event->date->toDateString());
+        $this->assertSame('10:30', $event->start_time);
+        $this->assertSame('11:30', $event->end_time);
+    }
+
+    public function test_moving_to_another_day_makes_the_event_notify_again(): void
+    {
+        $user = $this->actingUser();
+        $event = ScheduleEvent::factory()->for($user)->at('08:00', '09:00')->create([
+            'date' => '2026-06-26', 'notified_at' => now(), 'notified_upcoming_at' => now(),
+        ]);
+
+        Livewire::test(Schedule::class)->call('moveEvent', $event->id, '08:00', '2026-06-27');
+
+        $event->refresh();
+        $this->assertNull($event->notified_at);
+        $this->assertNull($event->notified_upcoming_at);
+    }
+
+    public function test_a_malformed_or_absurd_target_date_is_ignored(): void
+    {
+        $user = $this->actingUser();
+        $event = ScheduleEvent::factory()->for($user)->at('08:00', '09:00')->create(['date' => '2026-06-26']);
+
+        foreach (['2026-13-40', 'tomorrow', '2026-6-27', '1999-01-01'] as $bad) {
+            Livewire::test(Schedule::class)->call('moveEvent', $event->id, '10:00', $bad);
+        }
+
+        $event->refresh();
+        $this->assertSame('2026-06-26', $event->date->toDateString());
+        $this->assertSame('08:00', $event->start_time);
+    }
+
+    public function test_a_recurring_occurrence_leaves_its_series_and_the_old_day_stays_empty(): void
+    {
+        $user = $this->actingUser();
+        $template = EventTemplate::factory()->recurring('5')->create([ // Fridays
+            'user_id' => $user->id, 'name' => 'Training', 'duration' => 60, 'default_start' => '17:00',
+        ]);
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-26'), Carbon::parse('2026-06-28'));
+        $occurrence = ScheduleEvent::where('template_id', $template->id)->whereDate('date', '2026-06-26')->firstOrFail();
+
+        Livewire::test(Schedule::class)->call('moveEvent', $occurrence->id, '18:00', '2026-06-27');
+
+        $moved = $occurrence->fresh();
+        $this->assertNull($moved->template_id);
+        $this->assertSame('2026-06-27', $moved->date->toDateString());
+        $this->assertSame('18:00', $moved->start_time);
+
+        // Re-materialising must not bring the Friday block back.
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-26'), Carbon::parse('2026-06-28'));
+        $friday = ScheduleEvent::where('template_id', $template->id)->whereDate('date', '2026-06-26')->get();
+        $this->assertCount(1, $friday);
+        $this->assertTrue($friday->first()->is_cancelled);
+        $this->assertCount(1, ScheduleEvent::forUser($user)->visible()->forDay(Carbon::parse('2026-06-26'))->get()->concat(
+            ScheduleEvent::forUser($user)->visible()->forDay(Carbon::parse('2026-06-27'))->get()
+        ));
+    }
+
+    public function test_a_foreign_event_cannot_be_dragged_into_another_day(): void
+    {
+        $this->actingUser();
+        $other = ScheduleEvent::factory()->create(['date' => '2026-06-26']);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '10:00', '2026-06-27');
+    }
+
     public function test_resize_guards_a_minimum_length(): void
     {
         $user = $this->actingUser();

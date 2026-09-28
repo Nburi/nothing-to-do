@@ -22,6 +22,7 @@ class TaskResource extends JsonResource
             'deadline' => $this->deadline?->toDateString(),
             'due_date' => $this->due_date?->toDateString(),
             'notes' => $this->notes,
+            'repeat_rule' => $this->repeat_rule,
             'effective_date' => $this->effectiveDate()?->toDateString(),
             'effective_date_label' => $this->effectiveDateLabel(),
             'is_overdue' => $this->isOverdue(),

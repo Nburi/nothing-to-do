@@ -7,6 +7,7 @@ use App\Models\HelpCategory;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -16,6 +17,7 @@ use Livewire\Component;
  * "Hilfe-Center & Support".
  */
 #[Layout('layouts.app')]
+#[Title('Hilfe-Center verwalten')]
 class HelpEditor extends Component
 {
     /** Null shows the tree; an article's id switches to the full-bleed writing view. */

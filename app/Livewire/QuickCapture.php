@@ -304,7 +304,7 @@ class QuickCapture extends Component
      * reset above already cleared it to.
      */
     #[On('quick-capture-opened')]
-    public function resetPanel(?string $target = null, ?int $groupId = null, ?bool $important = null, ?string $dueDate = null): void
+    public function resetPanel(?string $target = null, ?int $groupId = null, ?bool $important = null, ?string $dueDate = null, ?string $title = null): void
     {
         $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
@@ -324,6 +324,13 @@ class QuickCapture extends Component
 
         if ($dueDate !== null) {
             $this->dueDate = $dueDate;
+        }
+
+        // The command palette's "erfassen" action: the sentence the user just
+        // typed there arrives pre-filled, so nothing has to be typed twice.
+        // Trimmed and capped like the field's own validation would.
+        if ($title !== null && trim($title) !== '') {
+            $this->title = mb_substr(trim($title), 0, 255);
         }
 
         // Opened straight onto the agenda target (e.g. Agenda's own page-matching

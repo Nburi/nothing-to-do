@@ -24,7 +24,7 @@
         },
     }"
     @captured.window="typed = ''; forced = null"
-    @quick-capture-opened.window="typed = ''; forced = null"
+    @quick-capture-opened.window="typed = $event.detail?.title ?? ''; forced = null"
     x-show="$store.quickCapture.open"
     x-cloak
     class="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"

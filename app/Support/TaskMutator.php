@@ -48,6 +48,7 @@ class TaskMutator
             'due_date' => $data['due_date'] ?? null,
             'notes' => $notes !== '' ? $notes : null,
             'is_important' => $data['is_important'] ?? false,
+            'repeat_rule' => $data['repeat_rule'] ?? null,
             'sort_order' => 0,
         ];
 
@@ -103,6 +104,9 @@ class TaskMutator
         if (array_key_exists('is_important', $data)) {
             $updates['is_important'] = $data['is_important'];
         }
+        if (array_key_exists('repeat_rule', $data)) {
+            $updates['repeat_rule'] = $data['repeat_rule'];
+        }
         if (array_key_exists('is_completed', $data)) {
             $updates['is_completed'] = $data['is_completed'];
             $updates['completed_at'] = $data['is_completed'] ? now() : null;
@@ -156,6 +160,7 @@ class TaskMutator
 
         if (array_key_exists('is_completed', $updates)) {
             $task->syncLinkedAgendaEntry($user, $updates['is_completed']);
+            $task->syncRepeat($user, $updates['is_completed']);
         }
 
         if ($willComplete) {

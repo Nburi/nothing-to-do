@@ -8,6 +8,7 @@ use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 
@@ -38,6 +39,16 @@ trait ManagesSchedule
     public string $eventEnd = '09:00';
 
     public string $eventColor = 'contour';
+
+    /**
+     * Weg-/Pufferzeit in minutes: how long you're travelling before this
+     * entry starts, and how long you're still not available after it ends.
+     * Zero means no travel time at all and leaves the entry behaving exactly
+     * as it did before the feature existed.
+     */
+    public int $eventBufferBefore = 0;
+
+    public int $eventBufferAfter = 0;
 
     public ?int $eventCategoryId = null;
 
@@ -115,6 +126,7 @@ trait ManagesSchedule
             'editingEventId', 'eventKind', 'eventTitle', 'eventColor', 'eventCategoryId',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
             'eventLinkedTasks', 'eventTaskSearch', 'eventAttributeValues',
+            'eventBufferBefore', 'eventBufferAfter',
         ]);
         $this->eventKind = 'appointment';
         $this->eventColor = 'contour';
@@ -135,6 +147,8 @@ trait ManagesSchedule
         $this->eventDate = $event->date->toDateString();
         $this->eventStart = $event->start_time;
         $this->eventEnd = $event->end_time;
+        $this->eventBufferBefore = (int) $event->buffer_before;
+        $this->eventBufferAfter = (int) $event->buffer_after;
         $this->eventColor = $event->colorToken();
         // Recurrence is set at creation; editing touches this occurrence only.
         $this->eventRecurring = false;
@@ -262,6 +276,8 @@ trait ManagesSchedule
             'eventDate' => ['required', 'date'],
             'eventStart' => ['required', 'date_format:H:i'],
             'eventEnd' => ['required', 'date_format:H:i', 'after:eventStart'],
+            'eventBufferBefore' => ['integer', 'min:0', 'max:240'],
+            'eventBufferAfter' => ['integer', 'min:0', 'max:240'],
             'eventRecurring' => ['boolean'],
             'eventDays' => ['array'],
             'eventDays.*' => ['integer', 'between:1,7'],
@@ -324,6 +340,8 @@ trait ManagesSchedule
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
                 'color' => $color,
                 'template_id' => $movedFromSeries ? null : $event->template_id,
             ]));
@@ -357,6 +375,8 @@ trait ManagesSchedule
                 'name' => $title,
                 'color' => $color,
                 'duration' => $duration,
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
                 'default_start' => $data['eventStart'],
                 'is_recurring' => true,
                 'recurrence' => implode(',', $days),
@@ -380,6 +400,8 @@ trait ManagesSchedule
                     'name' => $title,
                     'color' => $color,
                     'duration' => $duration,
+                    'buffer_before' => $data['eventBufferBefore'],
+                    'buffer_after' => $data['eventBufferAfter'],
                     'default_start' => $data['eventStart'],
                     'is_recurring' => false,
                 ]);
@@ -392,6 +414,8 @@ trait ManagesSchedule
                 'date' => $data['eventDate'],
                 'start_time' => $data['eventStart'],
                 'end_time' => $data['eventEnd'],
+                'buffer_before' => $data['eventBufferBefore'],
+                'buffer_after' => $data['eventBufferAfter'],
             ]);
             $event->linkedTasks()->sync($linkedTasksSync);
             $event->attributeValues()->sync($attributeSync);
@@ -406,6 +430,7 @@ trait ManagesSchedule
             'showEventForm', 'editingEventId', 'eventTitle',
             'eventRecurring', 'eventDays', 'eventSaveAsTemplate',
             'eventLinkedTasks', 'eventTaskSearch', 'eventAttributeValues',
+            'eventBufferBefore', 'eventBufferAfter',
         ]);
     }
 
@@ -444,21 +469,86 @@ trait ManagesSchedule
         }
     }
 
-    /** Drag-to-move: keep the duration, shift the start (times snapped client-side). */
-    public function moveEvent(int $id, string $start): void
+    /**
+     * Drag-to-move: keep the duration, shift the start (times snapped client-side).
+     * With `$date` (the week view's cross-column drag) the block also lands on that day.
+     */
+    public function moveEvent(int $id, string $start, ?string $date = null): void
     {
         if (! preg_match('/^\d{2}:\d{2}$/', $start)) {
             return;
+        }
+
+        $targetDate = null;
+
+        if ($date !== null) {
+            $targetDate = $this->parseDropDate($date);
+
+            if ($targetDate === null) {
+                return;
+            }
         }
 
         $event = $this->userEvent($id);
         $duration = $event->durationMinutes();
         $startMin = max(0, min(24 * 60 - $duration, ScheduleEvent::toMinutes($start)));
 
-        $event->update($event->withNotifiedReset([
+        $updates = [
             'start_time' => ScheduleEvent::fromMinutes($startMin),
             'end_time' => ScheduleEvent::fromMinutes($startMin + $duration),
-        ]));
+        ];
+
+        if ($targetDate === null || $targetDate === $event->date->toDateString()) {
+            $event->update($event->withNotifiedReset($updates));
+
+            return;
+        }
+
+        $updates['date'] = $targetDate;
+
+        DB::transaction(function () use ($event, $updates) {
+            $tombstone = null;
+
+            if ($event->template_id !== null) {
+                // One occurrence leaves its series: it becomes a plain one-off on the new
+                // day, and a cancelled marker stays on the old one — materializeRange()
+                // would otherwise see the old day empty and generate the block again.
+                $tombstone = $event->replicate([
+                    'notified_at', 'notified_upcoming_at', 'pomodoro_started_at', 'pomodoro_phase',
+                ]);
+                $tombstone->is_cancelled = true;
+                $tombstone->pomodoro_cycle = 1;
+                $tombstone->pomodoro_linked_notified = false;
+                $updates['template_id'] = null;
+            }
+
+            // A running focus session belongs to the day it was started on.
+            $updates += [
+                'pomodoro_started_at' => null,
+                'pomodoro_phase' => null,
+                'pomodoro_cycle' => 1,
+                'pomodoro_linked_notified' => false,
+            ];
+
+            $event->update($event->withNotifiedReset($updates));
+            $tombstone?->save();
+        });
+    }
+
+    /** A drop target date from the client: strict Y-m-d, within a sane window around today. */
+    private function parseDropDate(string $date): ?string
+    {
+        try {
+            $parsed = Carbon::createFromFormat('!Y-m-d', $date);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($parsed === false || $parsed->toDateString() !== $date) {
+            return null;
+        }
+
+        return abs($parsed->diffInDays(auth()->user()->localToday())) <= 800 ? $date : null;
     }
 
     /** Drag-to-resize: set both ends, guarding a minimum length. */
@@ -500,6 +590,10 @@ trait ManagesSchedule
             'date' => $date,
             'start_time' => $startTime,
             'end_time' => ScheduleEvent::fromMinutes(ScheduleEvent::toMinutes($startTime) + $template->duration),
+            // A template's Weg-/Pufferzeit travels with it, exactly as it does
+            // through materializeRange() for a recurring series.
+            'buffer_before' => (int) $template->buffer_before,
+            'buffer_after' => (int) $template->buffer_after,
         ]);
     }
 

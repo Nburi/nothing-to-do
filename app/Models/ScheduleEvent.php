@@ -34,6 +34,8 @@ class ScheduleEvent extends Model
         'date',
         'start_time',
         'end_time',
+        'buffer_before',
+        'buffer_after',
         'is_cancelled',
         'pomodoro_started_at',
         'pomodoro_phase',
@@ -47,6 +49,8 @@ class ScheduleEvent extends Model
     {
         return [
             'date' => 'date',
+            'buffer_before' => 'integer',
+            'buffer_after' => 'integer',
             'is_cancelled' => 'boolean',
             'pomodoro_started_at' => 'datetime',
             'pomodoro_cycle' => 'integer',
@@ -243,6 +247,30 @@ class ScheduleEvent extends Model
     public function durationMinutes(): int
     {
         return max(0, $this->endMinutes() - $this->startMinutes());
+    }
+
+    /**
+     * The entry's full footprint on the timeline, Weg-/Pufferzeit included.
+     * Deliberately distinct from start/endMinutes(), which stay the entry
+     * itself: the Pomodoro timer, the focus strip and the Planer's capacity
+     * all still read those — on the way there, nothing is worked on. Only
+     * the timeline's own frame (DayWindow) and the "you have to leave now"
+     * notification care about the footprint.
+     */
+    public function occupiedStartMinutes(): int
+    {
+        return max(0, $this->startMinutes() - (int) $this->buffer_before);
+    }
+
+    public function occupiedEndMinutes(): int
+    {
+        return min(1440, $this->endMinutes() + (int) $this->buffer_after);
+    }
+
+    /** When you have to leave, as "HH:MM" — the start time when there is no travel time. */
+    public function departureTime(): string
+    {
+        return self::fromMinutes($this->occupiedStartMinutes());
     }
 
     /**
@@ -460,6 +488,12 @@ class ScheduleEvent extends Model
                     'date' => $date->toDateString(),
                     'start_time' => $startTime,
                     'end_time' => self::fromMinutes(self::toMinutes($startTime) + $template->duration),
+                    // A recurring block carries its Weg-/Pufferzeit onto every
+                    // occurrence — unlike linked tasks or attribute values,
+                    // which belong to one concrete occurrence only. The way to
+                    // training is the same length every Wednesday.
+                    'buffer_before' => (int) $template->buffer_before,
+                    'buffer_after' => (int) $template->buffer_after,
                     'is_cancelled' => false,
                     'created_at' => $now,
                     'updated_at' => $now,

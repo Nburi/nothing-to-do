@@ -305,6 +305,6 @@ class ProjectPage extends Component
 
     public function render()
     {
-        return view('livewire.project-page');
+        return view('livewire.project-page')->title($this->projectName);
     }
 }

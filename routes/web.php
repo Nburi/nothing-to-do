@@ -24,6 +24,7 @@ use App\Livewire\Settings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
+use App\Livewire\WeekReviewPage;
 use App\Mcp\McpServer;
 use App\Models\HelpArticle;
 use Illuminate\Support\Facades\Route;
@@ -183,6 +184,11 @@ Route::get('/app/progress', Progress::class)
     ->middleware('auth')
     ->name('progress');
 
+// Wochenrückblick — part of the Fortschritt module (hidden with it, see WeekReviewPage::mount()).
+Route::get('/app/review', WeekReviewPage::class)
+    ->middleware('auth')
+    ->name('review');
+
 // Tagesüberblick — deliberately not in AppModules::CATALOG (see the model docblocks
 // on DayPreview/User::hasSeenDayPreviewToday()): a silent header dot is the only
 // entry point, never a hideable nav link.
@@ -219,6 +225,8 @@ Route::get('/dashboard', function () {
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Throttled: building the file reads every table the user has rows in.
+    Route::get('/profile/export', [ProfileController::class, 'export'])->middleware('throttle:6,1')->name('profile.export');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

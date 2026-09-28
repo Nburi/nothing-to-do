@@ -17,6 +17,8 @@ class EventTemplateResource extends JsonResource
             'name' => $this->displayName(),
             'color' => $this->colorToken(),
             'duration' => $this->duration,
+            'buffer_before' => (int) $this->buffer_before,
+            'buffer_after' => (int) $this->buffer_after,
             'default_start' => $this->default_start,
             'is_recurring' => $this->is_recurring,
             'recurrence_days' => $this->recurrenceDays(),

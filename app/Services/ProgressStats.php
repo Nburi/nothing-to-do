@@ -328,6 +328,19 @@ class ProgressStats
     {
         $dateKey = $date->toDateString();
 
+        // A day before the account existed was never "empty" — nobody was there to
+        // leave it empty. Without this, the very first evaluation of a brand-new
+        // account (which always looks at "yesterday") froze that day: the account's
+        // first visit already read "1/2 Ruhetage diese Woche genutzt" and, via the
+        // frozen row, "0% Erfolgsquote". Compared as local calendar days.
+        if ($user->created_at !== null) {
+            $signedUp = $user->created_at->copy()->addMinutes($user->utcOffsetMinutes($user->created_at))->startOfDay();
+
+            if ($date->copy()->startOfDay()->lessThan($signedUp)) {
+                return;
+            }
+        }
+
         if (StreakDayOutcome::query()->forUser($user)->whereDate('date', $dateKey)->exists()) {
             return;
         }

@@ -115,6 +115,50 @@
                 </div>
                 @error('eventEnd') <p class="-mt-2 text-xs text-signal">{{ $message }}</p> @enderror
 
+                {{-- Weg-/Pufferzeit. Unlike the linked tasks and attribute values below, this
+                     is offered for a recurring series too: the way to training is the same
+                     length every Wednesday, so it belongs on the template. --}}
+                <div>
+                    <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Weg- und Pufferzeit</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    id="eventBufferBefore"
+                                    type="number"
+                                    min="0"
+                                    max="240"
+                                    step="5"
+                                    wire:model="eventBufferBefore"
+                                    class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0"
+                                />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="eventBufferBefore" class="mt-1 block text-[11px] text-ink-faint">davor — Hinweg</label>
+                            @error('eventBufferBefore') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    id="eventBufferAfter"
+                                    type="number"
+                                    min="0"
+                                    max="240"
+                                    step="5"
+                                    wire:model="eventBufferAfter"
+                                    class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0"
+                                />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="eventBufferAfter" class="mt-1 block text-[11px] text-ink-faint">danach — Rückweg</label>
+                            @error('eventBufferAfter') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                    <p class="mt-1.5 text-[11px] text-ink-faint">
+                        Belegt Zeit auf der Achse, zählt aber nicht als Fokuszeit — unterwegs wird nicht gearbeitet.
+                    </p>
+                </div>
+
                 @if ($eventKind === 'appointment')
                     <div>
                         <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Farbe</label>

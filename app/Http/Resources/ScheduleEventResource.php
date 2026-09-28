@@ -22,6 +22,11 @@ class ScheduleEventResource extends JsonResource
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
             'duration_minutes' => $this->durationMinutes(),
+            // Weg-/Pufferzeit, read-only for now: the timeline's footprint is
+            // wider than start/end and an API client reading only those would
+            // be told the wrong thing. Writing them is app-only so far.
+            'buffer_before' => (int) $this->buffer_before,
+            'buffer_after' => (int) $this->buffer_after,
             'is_recurring' => $this->template_id !== null,
             'is_cancelled' => $this->is_cancelled,
             'pomodoro_enabled' => (bool) $this->category?->pomodoro_enabled,

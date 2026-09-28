@@ -5,7 +5,7 @@
     <div
         x-show="$store.projectPicker.taskId !== null"
         x-transition.opacity.duration.150ms
-        @click="$store.projectPicker.taskId = null"
+        @click="$store.projectPicker.dismissBackdrop()"
         class="fixed inset-0 z-40 bg-ink/25 backdrop-blur-[1px]"
         style="display: none;"
     ></div>

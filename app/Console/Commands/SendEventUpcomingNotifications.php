@@ -45,15 +45,23 @@ class SendEventUpcomingNotifications extends Command
                     ->whereNull('notified_upcoming_at')
                     ->get()
                     ->each(function (ScheduleEvent $event) use ($user, $now, $pushNotifier, &$sent) {
-                        $threshold = $event->startInstantUtc($user)->subMinutes(self::LEAD_MINUTES);
+                        // The heads-up counts the Weg-/Pufferzeit: a reminder that
+                        // only arrives once you would already have had to leave is
+                        // exactly the failure travel time exists to prevent.
+                        $lead = self::LEAD_MINUTES + (int) $event->buffer_before;
+                        $threshold = $event->startInstantUtc($user)->subMinutes($lead);
 
                         if ($threshold->greaterThan($now)) {
                             return;
                         }
 
+                        $body = $event->buffer_before > 0
+                            ? 'Los in '.self::LEAD_MINUTES." Minuten. {$event->displayTitle()} beginnt um {$event->start_time}"
+                            : "{$event->displayTitle()} beginnt in ".self::LEAD_MINUTES.' Minuten';
+
                         $pushNotifier->notify($user, [
                             'title' => 'Zeitplan',
-                            'body' => "{$event->displayTitle()} beginnt in ".self::LEAD_MINUTES.' Minuten',
+                            'body' => $body,
                             'url' => '/app/schedule',
                         ]);
 

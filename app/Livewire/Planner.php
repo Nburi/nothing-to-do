@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -20,6 +21,7 @@ use Livewire\Component;
  * purely-additive convenience (see App\Services\DayPlanner).
  */
 #[Layout('layouts.app')]
+#[Title('Planer')]
 class Planner extends Component
 {
     /** Which "Standardaufgabe" sheet is open (see PlannerStandardTasks::CATALOG); null means closed. */

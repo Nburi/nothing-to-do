@@ -62,6 +62,7 @@
                 @if ($task->agenda_entry_id)
                     <svg class="-mt-0.5 mr-1 inline h-3 w-3 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H13l3 3v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 16V7"/><path d="M13 4v3h3"/></svg>
                 @endif
+                @include('livewire.partials.task-repeat-marker', ['task' => $task])
                 {{ $task->title }}
             </span>
 

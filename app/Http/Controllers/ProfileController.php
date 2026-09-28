@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\DataExport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
 {
@@ -35,6 +37,25 @@ class ProfileController extends Controller
         $request->user()->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
+    /**
+     * Download everything the user has written into the app as one JSON file.
+     * A GET on purpose (it changes nothing, and a plain link works without JS);
+     * no-store so a shared machine's cache never keeps a copy of someone's data.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $data = DataExport::for($request->user());
+        $filename = 'nothing-to-do-export-'.now()->format('Y-m-d').'.json';
+
+        return response()->streamDownload(
+            function () use ($data) {
+                echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            },
+            $filename,
+            ['Content-Type' => 'application/json; charset=utf-8', 'Cache-Control' => 'no-store, private'],
+        );
     }
 
     /**

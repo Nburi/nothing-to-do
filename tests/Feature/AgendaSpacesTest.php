@@ -79,6 +79,37 @@ class AgendaSpacesTest extends TestCase
         $this->assertDatabaseCount('agenda_space_user', 0);
     }
 
+    public function test_guessing_invite_codes_is_throttled_even_when_the_right_one_comes_up(): void
+    {
+        $owner = User::factory()->create();
+        $guesser = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create(['invite_code' => 'K7M4XQ']);
+
+        $component = Livewire::actingAs($guesser)->test(Agenda::class);
+
+        for ($i = 0; $i < 10; $i++) {
+            $component->set('joinCode', 'ZZZZZ'.$i)->call('joinSpace')->assertHasErrors('joinCode');
+        }
+
+        $component->set('joinCode', 'K7M4XQ')->call('joinSpace')->assertHasErrors('joinCode');
+
+        $this->assertFalse($space->fresh()->hasMember($guesser));
+    }
+
+    public function test_the_invite_link_page_counts_misses_against_the_same_throttle(): void
+    {
+        $owner = User::factory()->create();
+        $guesser = User::factory()->create();
+        $space = AgendaSpace::factory()->for($owner, 'owner')->create(['invite_code' => 'K7M4XQ']);
+        $this->actingAs($guesser);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->get(route('agenda.join', ['code' => 'ZZZZZ'.$i]));
+        }
+
+        $this->get(route('agenda.join', ['code' => 'K7M4XQ']))->assertDontSee($space->name);
+    }
+
     public function test_joining_twice_does_not_duplicate_the_membership(): void
     {
         $owner = User::factory()->create();

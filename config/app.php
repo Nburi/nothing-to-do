@@ -78,7 +78,16 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    /*
+     * Deliberately NOT read from the environment. The whole product is German
+     * (UI copy, lang/de validation messages, every Carbon translatedFormat()
+     * weekday/month name), and .env.example used to ship APP_LOCALE=en - a
+     * production .env copied from it rendered "Monday, 21. September" on the
+     * Tagesueberblick and would have shown Laravel's English validation
+     * messages. A per-deployment switch for a language nothing else follows
+     * only invites that mismatch.
+     */
+    'locale' => 'de',
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
