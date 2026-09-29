@@ -1187,16 +1187,17 @@
         @error('newTokenName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
     </div>
 
-    {{-- Claude & Co. via OAuth (MCP) --}}
-    <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
-        <h3 class="mb-1 text-base font-medium text-ink">Claude verbinden (OAuth)</h3>
+    {{-- KI-Clients via OAuth (MCP) --}}
+    <div id="mcp-oauth" class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Per OAuth verbinden</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             claude.ai und Claude Desktop können kein Token eintragen — dort gibt es beim Hinzufügen
-            eines eigenen Connectors nur ein Feld für die Server-URL. Darum melden sie sich stattdessen
-            per OAuth an: du fügst <code class="rounded bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">{{ url('/mcp') }}</code>
+            eines eigenen Connectors nur ein Feld für die Server-URL. Das gilt für jeden MCP-Client, der
+            OAuth statt eines Tokens erwartet, nicht nur für Claude. Darum meldet sich so ein Client
+            stattdessen per OAuth an: du fügst <code class="rounded bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">{{ url('/mcp') }}</code>
             als Connector hinzu, bestätigst einmal hier im Browser, fertig. Die Rechte dafür stellst du
-            unten ein — sie gelten für jede OAuth-Verbindung und lassen sich jederzeit ändern, ohne die
-            Verbindung neu aufzubauen.
+            unten ein — sie gelten für jede OAuth-Verbindung, unabhängig vom Tool, und lassen sich
+            jederzeit ändern, ohne die Verbindung neu aufzubauen.
         </p>
 
         <div class="space-y-4">

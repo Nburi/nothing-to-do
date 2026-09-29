@@ -15,7 +15,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * The "Claude verbinden (OAuth)" card: the permission toggles that stand in
+ * The "Per OAuth verbinden" card: the permission toggles that stand in
  * for a personal access token's abilities, and the connected-client list.
  */
 class SettingsMcpOAuthTest extends TestCase
