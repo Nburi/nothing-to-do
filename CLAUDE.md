@@ -3675,6 +3675,44 @@ two clients by design. This adds the OAuth server that is.
   prompts (still tools only), SSE/server-initiated notifications, CIMD as an alternative to DCR, and any
   per-client (as opposed to per-account) permission model.
 
+### MCP — Admin-Werkzeuge (built)
+
+16 further tools on the same registry (`App\Mcp\Tools\Admin\*`, base class `AdminTool`) for running the
+support queue, the Hilfe-Center and the feature announcements from an AI client. Both endpoints (Sanctum
+`/api/mcp`, OAuth `/mcp`) serve them, because both go through `McpServer`.
+
+- **Admin gate.** `McpTool::requiresAdmin()` (default `false`) is checked in `McpServer::isAvailable()`
+  before ability and module: a non-admin gets neither the tools in `tools/list` nor anything but the
+  generic `Unknown tool: x` from `tools/call` — same "structurally absent" rule as abilities and modules.
+  The docs page (`/docs/mcp`) shows a "nur für Admins" badge.
+- **The rule: an AI drafts, a human publishes.** No admin tool writes `is_published`/`published_at`.
+  `create_help_article`/`create_announcement` always produce drafts. `update_*`/`delete_*` of an article or
+  announcement that is **already published** is refused (`AdminTool::publishedGuard()`) — an "edit" of live
+  content is a publish in disguise. Likewise `update_help_category`/`delete_help_category` are refused while
+  the category or one of its subcategories holds a published article (`categoryIsLive()`). The admin
+  unpublishes in the admin area first, or edits there directly.
+- **Abilities as usual:** reads need `mcp:read`; answering/creating/editing need `mcp:write`; every
+  `delete_*` needs `mcp:delete` **and** `confirm_title` (`confirm_name` for a category) matching exactly.
+- **Tools:** `list_support_requests`, `get_support_request`, `answer_support_request` (response and/or
+  status; saving a response fires the existing `SupportNotifier` push to the submitter, so the description
+  tells the model to show the admin its draft first) · `list_help_categories`, `create/update/delete_help_category`
+  (two levels only — a parent must be top-level) · `list_help_articles` (drafts included, searchable),
+  `get_help_article`, `create/update/delete_help_article` (a draft's slug follows its title, like the editor) ·
+  `list_announcements`, `create/update/delete_announcement` (`BuildsAnnouncementAttributes` reuses
+  `AnnouncementEditor::save()`'s rules: module link and external link are mutually exclusive, the highlight
+  selector only for a module link, "only for module users" only for a scopable module).
+- Tests: `tests/Feature/Mcp/McpAdminToolsTest.php`.
+- **For any session working on this project (Niels's standing permission):** if a change you ship deserves a
+  "what's new" toast, you may draft it yourself with `create_announcement` when the MCP connector is
+  connected as an admin account — title max 255, description max 500, German, short; pick a `type`
+  (`info`/`release`/`maintenance`/`warning`) and, where it helps, link the page via `related_module`
+  (+ `highlight_selector` for a Settings card). Same for a missing Hilfe-Center article
+  (`create_help_article`). **Never publish** — you can't, and shouldn't try to work around it; tell Niels
+  the draft exists so he can preview and publish it in `/app/admin/announcements` / `/app/admin/help`.
+  Check `list_announcements` first so you don't duplicate an existing draft. If the admin tools aren't
+  in your tool list, the connector isn't an admin account — leave it and mention the draft text in your
+  final message instead.
+
 ### Fehler-Statistiken (built)
 
 Custom, on-brand error pages (never Laravel's/Symfony's default white page, never a stack trace or raw
