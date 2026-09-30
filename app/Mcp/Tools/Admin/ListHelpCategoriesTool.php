@@ -15,7 +15,7 @@ class ListHelpCategoriesTool extends AdminTool
     public function description(): string
     {
         return 'ADMIN: list the Hilfe-Center categories (id, name, parent_id) — needed to file an article into one. '
-            .'Categories themselves can only be managed in the admin area.';
+            .'Manage them with create_/update_/delete_help_category.';
     }
 
     public function inputSchema(): array

@@ -21,7 +21,7 @@ class McpAdminToolsTest extends TestCase
 
     private const ADMIN_TOOLS = [
         'list_support_requests', 'get_support_request', 'answer_support_request',
-        'list_help_categories', 'list_help_articles', 'get_help_article',
+        'list_help_categories', 'create_help_category', 'update_help_category', 'delete_help_category', 'list_help_articles', 'get_help_article',
         'create_help_article', 'update_help_article', 'delete_help_article',
         'list_announcements', 'create_announcement', 'update_announcement', 'delete_announcement',
     ];
@@ -317,5 +317,74 @@ class McpAdminToolsTest extends TestCase
         $this->tool('delete_announcement', ['id' => $id, 'confirm_title' => 'Weg']);
         $this->assertNull(FeatureAnnouncement::find($id));
         $this->assertCount(0, $this->tool('list_announcements')['announcements']);
+    }
+
+    // -- Help categories ---------------------------------------------------
+
+    public function test_categories_can_be_created_renamed_moved_and_deleted(): void
+    {
+        $root = $this->tool('create_help_category', ['name' => 'Start'])['id'];
+        $other = $this->tool('create_help_category', ['name' => 'Mehr'])['id'];
+        $sub = $this->tool('create_help_category', ['name' => 'Basics', 'parent_id' => $root])['id'];
+
+        $this->assertSame($root, HelpCategory::findOrFail($sub)->parent_id);
+
+        $this->tool('update_help_category', ['id' => $sub, 'name' => 'Grundlagen', 'parent_id' => $other]);
+        $moved = HelpCategory::findOrFail($sub);
+        $this->assertSame('Grundlagen', $moved->name);
+        $this->assertSame($other, $moved->parent_id);
+
+        $draft = $this->tool('create_help_article', ['title' => 'Entwurf', 'category_id' => $sub])['id'];
+
+        try {
+            $this->tool('delete_help_category', ['id' => $sub, 'confirm_name' => 'falsch']);
+            $this->fail('expected a mismatch error');
+        } catch (McpToolExecutionException) {
+            $this->assertNotNull(HelpCategory::find($sub));
+        }
+
+        $this->assertTrue($this->tool('delete_help_category', ['id' => $sub, 'confirm_name' => 'Grundlagen'])['deleted']);
+        $this->assertNull(HelpCategory::find($sub));
+        $this->assertNull(HelpArticle::findOrFail($draft)->help_category_id);
+    }
+
+    public function test_category_nesting_is_limited_to_two_levels(): void
+    {
+        $root = $this->tool('create_help_category', ['name' => 'A'])['id'];
+        $sub = $this->tool('create_help_category', ['name' => 'B', 'parent_id' => $root])['id'];
+        $other = $this->tool('create_help_category', ['name' => 'C'])['id'];
+
+        foreach ([
+            ['create_help_category', ['name' => 'D', 'parent_id' => $sub]],
+            ['update_help_category', ['id' => $root, 'parent_id' => $other]], // has children
+            ['update_help_category', ['id' => $other, 'parent_id' => $other]],
+        ] as [$tool, $args]) {
+            try {
+                $this->tool($tool, $args);
+                $this->fail("{$tool} should refuse");
+            } catch (McpToolExecutionException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
+    public function test_a_category_with_published_articles_cannot_be_changed_or_deleted(): void
+    {
+        $category = HelpCategory::create(['name' => 'Live', 'sort_order' => 0]);
+        HelpArticle::create(['title' => 'A', 'slug' => 'a', 'help_category_id' => $category->id, 'is_published' => true, 'published_at' => now()]);
+
+        foreach ([
+            ['update_help_category', ['id' => $category->id, 'name' => 'Neu']],
+            ['delete_help_category', ['id' => $category->id, 'confirm_name' => 'Live']],
+        ] as [$tool, $args]) {
+            try {
+                $this->tool($tool, $args);
+                $this->fail("{$tool} should refuse");
+            } catch (McpToolExecutionException $e) {
+                $this->assertStringContainsString('published articles', $e->getMessage());
+            }
+        }
+
+        $this->assertSame('Live', $category->fresh()->name);
     }
 }

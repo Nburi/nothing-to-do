@@ -35,6 +35,9 @@ use App\Mcp\Tools\Admin\ListHelpCategoriesTool;
 use App\Mcp\Tools\Admin\ListSupportRequestsTool;
 use App\Mcp\Tools\Admin\UpdateAnnouncementTool;
 use App\Mcp\Tools\Admin\UpdateHelpArticleTool;
+use App\Mcp\Tools\Admin\CreateHelpCategoryTool;
+use App\Mcp\Tools\Admin\UpdateHelpCategoryTool;
+use App\Mcp\Tools\Admin\DeleteHelpCategoryTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -82,6 +85,9 @@ class McpServer
             new AnswerSupportRequestTool,
             new ListHelpCategoriesTool,
             new ListHelpArticlesTool,
+            new CreateHelpCategoryTool,
+            new UpdateHelpCategoryTool,
+            new DeleteHelpCategoryTool,
             new GetHelpArticleTool,
             new CreateHelpArticleTool,
             new UpdateHelpArticleTool,

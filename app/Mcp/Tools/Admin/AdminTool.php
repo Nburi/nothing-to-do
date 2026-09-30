@@ -6,6 +6,7 @@ use App\Mcp\Exceptions\McpToolExecutionException;
 use App\Mcp\McpTool;
 use App\Models\FeatureAnnouncement;
 use App\Models\HelpArticle;
+use App\Models\HelpCategory;
 use App\Models\SupportRequest;
 
 /**
@@ -57,6 +58,45 @@ abstract class AdminTool extends McpTool
         }
 
         return $announcement;
+    }
+
+    protected function helpCategory(mixed $id): HelpCategory
+    {
+        $category = HelpCategory::find((int) $id);
+
+        if ($category === null) {
+            throw new McpToolExecutionException("No help category with id {$id} found.");
+        }
+
+        return $category;
+    }
+
+    /** Resolves a parent id; only top-level categories qualify (the sidebar renders two levels). */
+    protected function parentCategory(mixed $id): ?HelpCategory
+    {
+        if ($id === null) {
+            return null;
+        }
+
+        $parent = $this->helpCategory($id);
+
+        if ($parent->parent_id !== null) {
+            throw new McpToolExecutionException('Only two levels exist: the parent must be a top-level category.');
+        }
+
+        return $parent;
+    }
+
+    /**
+     * A category whose subtree holds a published article is live structure:
+     * renaming, moving or deleting it would change the reader's sidebar (and,
+     * for delete, pull published articles out of their folder).
+     */
+    protected function categoryIsLive(HelpCategory $category): bool
+    {
+        $ids = HelpCategory::where('parent_id', $category->id)->pluck('id')->push($category->id);
+
+        return HelpArticle::published()->whereIn('help_category_id', $ids)->exists();
     }
 
     /** Refuses to touch content that is already live. */
