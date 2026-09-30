@@ -130,6 +130,9 @@
                                         nur wenn „{{ $moduleLabels[$tool['requiredModule']]['label'] ?? $tool['requiredModule'] }}" sichtbar ist
                                     </span>
                                 @endif
+                                @if ($tool['requiresAdmin'] ?? false)
+                                    <span class="rounded-full bg-line px-2 py-0.5 text-[11px] font-medium text-ink-soft">nur für Admins</span>
+                                @endif
                                 @if ($tool['annotations']['destructiveHint'] ?? false)
                                     <span class="rounded-full bg-signal-soft px-2 py-0.5 text-[11px] font-medium text-signal">unwiderruflich</span>
                                 @endif

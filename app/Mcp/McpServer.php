@@ -22,6 +22,19 @@ use App\Mcp\Tools\SetListConceptTool;
 use App\Mcp\Tools\SetModuleVisibilityTool;
 use App\Mcp\Tools\SetTaskOrderTool;
 use App\Mcp\Tools\UpdateTaskTool;
+use App\Mcp\Tools\Admin\AnswerSupportRequestTool;
+use App\Mcp\Tools\Admin\CreateAnnouncementTool;
+use App\Mcp\Tools\Admin\CreateHelpArticleTool;
+use App\Mcp\Tools\Admin\DeleteAnnouncementTool;
+use App\Mcp\Tools\Admin\DeleteHelpArticleTool;
+use App\Mcp\Tools\Admin\GetHelpArticleTool;
+use App\Mcp\Tools\Admin\GetSupportRequestTool;
+use App\Mcp\Tools\Admin\ListAnnouncementsTool;
+use App\Mcp\Tools\Admin\ListHelpArticlesTool;
+use App\Mcp\Tools\Admin\ListHelpCategoriesTool;
+use App\Mcp\Tools\Admin\ListSupportRequestsTool;
+use App\Mcp\Tools\Admin\UpdateAnnouncementTool;
+use App\Mcp\Tools\Admin\UpdateHelpArticleTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -63,6 +76,20 @@ class McpServer
             new CreateAgendaEntryTool,
             // Delete
             new DeleteTaskTool,
+            // Admin only (users.is_admin): support queue, Hilfe-Center, announcements
+            new ListSupportRequestsTool,
+            new GetSupportRequestTool,
+            new AnswerSupportRequestTool,
+            new ListHelpCategoriesTool,
+            new ListHelpArticlesTool,
+            new GetHelpArticleTool,
+            new CreateHelpArticleTool,
+            new UpdateHelpArticleTool,
+            new DeleteHelpArticleTool,
+            new ListAnnouncementsTool,
+            new CreateAnnouncementTool,
+            new UpdateAnnouncementTool,
+            new DeleteAnnouncementTool,
         ];
     }
 
@@ -106,6 +133,10 @@ class McpServer
 
     protected function isAvailable(McpTool $tool, User $user, callable $tokenCan): bool
     {
+        if ($tool->requiresAdmin() && ! $user->is_admin) {
+            return false;
+        }
+
         if ($tool->requiredAbility() !== null && ! $tokenCan($tool->requiredAbility())) {
             return false;
         }
@@ -155,7 +186,7 @@ class McpServer
      * user/token — reference documentation only (/docs/mcp). Never used to
      * decide what tools/list or tools/call actually expose.
      *
-     * @return list<array{name: string, description: string, inputSchema: array, annotations: array, requiredAbility: ?string, requiredModule: ?string}>
+     * @return list<array{name: string, description: string, inputSchema: array, annotations: array, requiredAbility: ?string, requiredModule: ?string, requiresAdmin: bool}>
      */
     public function allToolDefinitions(): array
     {
@@ -166,6 +197,7 @@ class McpServer
             'annotations' => $tool->annotations(),
             'requiredAbility' => $tool->requiredAbility(),
             'requiredModule' => $tool->requiredModule(),
+            'requiresAdmin' => $tool->requiresAdmin(),
         ], $this->tools);
     }
 }

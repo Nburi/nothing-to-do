@@ -46,6 +46,17 @@ abstract class McpTool
     }
 
     /**
+     * Admin-only tools (support queue, Hilfe-Center, announcements) are offered
+     * exclusively to accounts with users.is_admin. Like a missing ability or a
+     * hidden module, a non-admin gets neither the tool in tools/list nor a
+     * distinguishable error from tools/call — it simply does not exist for them.
+     */
+    public function requiresAdmin(): bool
+    {
+        return false;
+    }
+
+    /**
      * Run the tool. Returns a plain, JSON-serialisable array â€” the transport
      * layer wraps it into the MCP `content`/`structuredContent` shape.
      * Throw App\Mcp\Exceptions\McpToolExecutionException for anything the
