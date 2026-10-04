@@ -48,6 +48,8 @@ Route::get('/sitemap.xml', function () {
     $entries = [
         ['loc' => url('/'), 'changefreq' => 'monthly', 'priority' => '1.0'],
         ['loc' => url('/hilfe'), 'changefreq' => 'weekly', 'priority' => '0.7'],
+        ['loc' => url('/impressum'), 'changefreq' => 'yearly', 'priority' => '0.3'],
+        ['loc' => url('/datenschutz'), 'changefreq' => 'yearly', 'priority' => '0.3'],
     ];
 
     // Every published Hilfe-Center article gets its own entry — this is the
@@ -92,6 +94,12 @@ Route::get('/sitemap.xml', function () {
 // robots.txt's blanket "Disallow: /app" doesn't also block this.
 Route::get('/hilfe/{slug?}', PublicHelp::class)
     ->name('help.public');
+
+// Static legal pages — no auth, no Livewire needed (plain content), reachable
+// from the footer of every legal/public page and from the login/register
+// screens. See resources/views/components/legal-layout.blade.php.
+Route::view('/impressum', 'legal.impressum')->name('impressum');
+Route::view('/datenschutz', 'legal.datenschutz')->name('datenschutz');
 
 Route::get('/app', TaskBoard::class)
     ->middleware('auth')
