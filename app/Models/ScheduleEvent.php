@@ -135,6 +135,30 @@ class ScheduleEvent extends Model
     }
 
     /**
+     * Replace this occurrence's attribute values from a raw {attribute id => value}
+     * map. Only attributes of the event's CURRENT category count, each value is
+     * normalised by its own type, and an empty/invalid one leaves no row at all
+     * (the app-wide "unfilled means no row" rule) — so a stray key, a value for a
+     * previous category or garbage input is silently ignored, never persisted.
+     *
+     * @param  array<int|string, mixed>  $raw
+     */
+    public function syncAttributeValues(array $raw): void
+    {
+        $attributes = $this->category_id === null
+            ? collect()
+            : CategoryAttribute::query()->where('event_category_id', $this->category_id)->get();
+
+        $sync = $attributes
+            ->mapWithKeys(fn (CategoryAttribute $attr) => [$attr->id => $attr->normalizeValue($raw[$attr->id] ?? $raw[(string) $attr->id] ?? null)])
+            ->filter(fn (?string $value) => $value !== null)
+            ->map(fn (string $value) => ['value' => $value])
+            ->all();
+
+        $this->attributeValues()->sync($sync);
+    }
+
+    /**
      * Non-empty values only, in the category's own attribute order, ready to
      * render on the block face (see partials/schedule-event.blade.php). Each
      * row carries a display string and — for a 'select' value only — the

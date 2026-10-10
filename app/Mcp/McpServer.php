@@ -55,6 +55,31 @@ use App\Mcp\Tools\DeleteProjectTool;
 use App\Mcp\Tools\DissolveTaskGroupTool;
 use App\Mcp\Tools\DeleteGroupNoteTool;
 use App\Mcp\Tools\DeleteAgendaEntryTool;
+use App\Mcp\Tools\ListScheduleEventsTool;
+use App\Mcp\Tools\GetScheduleEventTool;
+use App\Mcp\Tools\GetFocusSessionTool;
+use App\Mcp\Tools\ListEventTemplatesTool;
+use App\Mcp\Tools\ListSchedulePausesTool;
+use App\Mcp\Tools\GetDayFrameTool;
+use App\Mcp\Tools\CreateScheduleEventTool;
+use App\Mcp\Tools\UpdateScheduleEventTool;
+use App\Mcp\Tools\ControlFocusSessionTool;
+use App\Mcp\Tools\ApplyEventTemplateTool;
+use App\Mcp\Tools\CreateWeekPlanBlockTool;
+use App\Mcp\Tools\UpdateWeekPlanBlockTool;
+use App\Mcp\Tools\CreateCategoryTool;
+use App\Mcp\Tools\UpdateCategoryTool;
+use App\Mcp\Tools\SetCategoryTaskLinkTool;
+use App\Mcp\Tools\ClearCategoryTaskLinkTool;
+use App\Mcp\Tools\CreateCategoryAttributeTool;
+use App\Mcp\Tools\UpdateCategoryAttributeTool;
+use App\Mcp\Tools\PauseScheduleTool;
+use App\Mcp\Tools\UnpauseScheduleTool;
+use App\Mcp\Tools\SetDayFrameTool;
+use App\Mcp\Tools\DeleteScheduleEventTool;
+use App\Mcp\Tools\DeleteEventTemplateTool;
+use App\Mcp\Tools\DeleteCategoryTool;
+use App\Mcp\Tools\DeleteCategoryAttributeTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -88,6 +113,12 @@ class McpServer
             new GetTaskGroupTool,
             new GetAgendaEntryTool,
             new ListAgendaSpacesTool,
+            new ListScheduleEventsTool,
+            new GetScheduleEventTool,
+            new GetFocusSessionTool,
+            new ListEventTemplatesTool,
+            new ListSchedulePausesTool,
+            new GetDayFrameTool,
             // Write
             new CreateTaskTool,
             new UpdateTaskTool,
@@ -107,8 +138,27 @@ class McpServer
             new AddGroupNoteTool,
             new UpdateGroupNoteTool,
             new UpdateAgendaEntryTool,
+            new CreateScheduleEventTool,
+            new UpdateScheduleEventTool,
+            new ControlFocusSessionTool,
+            new ApplyEventTemplateTool,
+            new CreateWeekPlanBlockTool,
+            new UpdateWeekPlanBlockTool,
+            new CreateCategoryTool,
+            new UpdateCategoryTool,
+            new SetCategoryTaskLinkTool,
+            new ClearCategoryTaskLinkTool,
+            new CreateCategoryAttributeTool,
+            new UpdateCategoryAttributeTool,
+            new PauseScheduleTool,
+            new UnpauseScheduleTool,
+            new SetDayFrameTool,
             // Delete
             new DeleteTaskTool,
+            new DeleteScheduleEventTool,
+            new DeleteEventTemplateTool,
+            new DeleteCategoryTool,
+            new DeleteCategoryAttributeTool,
             new DeleteProjectTool,
             new DissolveTaskGroupTool,
             new DeleteGroupNoteTool,

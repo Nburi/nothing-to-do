@@ -15,7 +15,7 @@ class EventCategoryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $categories = $request->user()->eventCategories()->ordered()->with('pinnedTasks')->get();
+        $categories = $request->user()->eventCategories()->ordered()->with(['pinnedTasks', 'customAttributes'])->get();
 
         return EventCategoryResource::collection($categories)->response();
     }
@@ -35,7 +35,7 @@ class EventCategoryController extends Controller
             'sort_order' => $request->user()->eventCategories()->count(),
         ]);
 
-        return (new EventCategoryResource($category->fresh('pinnedTasks')))->response()->setStatusCode(201);
+        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response()->setStatusCode(201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -62,7 +62,7 @@ class EventCategoryController extends Controller
 
         $category->update($updates);
 
-        return (new EventCategoryResource($category->fresh('pinnedTasks')))->response();
+        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response();
     }
 
     /**
@@ -129,7 +129,7 @@ class EventCategoryController extends Controller
             );
         }
 
-        return (new EventCategoryResource($category->fresh('pinnedTasks')))->response();
+        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response();
     }
 
     /** Removes the category's task link entirely (back to the generic suggestion tiers). */
@@ -139,7 +139,7 @@ class EventCategoryController extends Controller
 
         $category->clearTaskLink();
 
-        return (new EventCategoryResource($category->fresh('pinnedTasks')))->response();
+        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response();
     }
 
     public function destroy(Request $request, int $id): JsonResponse

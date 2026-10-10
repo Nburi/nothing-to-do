@@ -25,6 +25,14 @@ class EventCategoryResource extends JsonResource
             'linked_group_id' => $this->linked_group_id,
             'linked_agenda_entry_id' => $this->linked_agenda_entry_id,
             'linked_text' => $this->linked_text,
+            // The category's custom-field schema (Kategorie-Attribute); values live on each event.
+            'attributes' => $this->whenLoaded('customAttributes', fn () => $this->customAttributes->map(fn ($attr) => [
+                'id' => $attr->id,
+                'name' => $attr->name,
+                'type' => $attr->type,
+                'unit' => $attr->unit,
+                'options' => $attr->optionsList(),
+            ])->values()->all()),
             'pinned_task_ids' => $this->whenLoaded('pinnedTasks', fn () => $this->pinnedTasks->pluck('id')->all()),
         ];
     }

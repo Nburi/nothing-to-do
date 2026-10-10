@@ -403,32 +403,7 @@ class WeekPlan extends Component
      */
     private function refreshMaterializedOccurrences(EventTemplate $template): void
     {
-        $today = auth()->user()->localToday();
-
-        auth()->user()->scheduleEvents()
-            ->where('template_id', $template->id)
-            ->where('is_cancelled', false)
-            ->whereDate('date', '>', $today->toDateString())
-            ->get()
-            ->each(function (ScheduleEvent $occurrence) use ($template) {
-                if (! $template->occursOn($occurrence->date)) {
-                    $occurrence->delete();
-
-                    return;
-                }
-
-                $occurrence->update($occurrence->withNotifiedReset([
-                    'category_id' => $template->category_id,
-                    'title' => $template->displayName(),
-                    'color' => $template->colorToken(),
-                    'buffer_before' => (int) $template->buffer_before,
-                    'buffer_after' => (int) $template->buffer_after,
-                    'start_time' => $template->default_start,
-                    'end_time' => ScheduleEvent::fromMinutes(
-                        ScheduleEvent::toMinutes($template->default_start) + $template->duration
-                    ),
-                ]));
-            });
+        \App\Services\WeekPlanTemplates::refreshOccurrences(auth()->user(), $template);
     }
 
     // ── Pauses ───────────────────────────────────────────────────────

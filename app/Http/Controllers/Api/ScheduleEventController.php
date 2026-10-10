@@ -15,6 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class ScheduleEventController extends Controller
 {
+    /** Relations every event response is built from. */
+    private const EVENT_RELATIONS = ['category', 'linkedTasks', 'attributeValues'];
+
     protected function userEvent(Request $request, int $id): ScheduleEvent
     {
         return $request->user()->scheduleEvents()->findOrFail($id);
@@ -50,7 +53,7 @@ class ScheduleEventController extends Controller
             ->visible()
             ->forRange($start, $end)
             ->ordered()
-            ->with(['category', 'linkedTasks'])
+            ->with(self::EVENT_RELATIONS)
             ->get();
 
         return ScheduleEventResource::collection($events)->response();
@@ -58,7 +61,7 @@ class ScheduleEventController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        return (new ScheduleEventResource($this->userEvent($request, $id)->load(['category', 'linkedTasks'])))->response();
+        return (new ScheduleEventResource($this->userEvent($request, $id)->load(self::EVENT_RELATIONS)))->response();
     }
 
     public function store(Request $request): JsonResponse
@@ -72,6 +75,9 @@ class ScheduleEventController extends Controller
             'days' => ['sometimes', 'array'],
             'days.*' => ['integer', 'between:1,7'],
             'save_as_template' => ['sometimes', 'boolean'],
+            'buffer_before' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            'buffer_after' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            'attribute_values' => ['sometimes', 'array'],
             'linked_task_ids' => ['sometimes', 'array'],
             'linked_task_ids.*' => ['integer', 'distinct', Rule::exists('tasks', 'id')->where('user_id', $request->user()->id)],
         ];
@@ -94,6 +100,13 @@ class ScheduleEventController extends Controller
             ]);
         }
 
+        // Same reasoning as linked tasks: a value belongs to one concrete occurrence.
+        if (($data['recurring'] ?? false) && ! empty($data['attribute_values'])) {
+            throw ValidationException::withMessages([
+                'attribute_values' => 'Attribute values can only be set on a single occurrence, not a recurring series.',
+            ]);
+        }
+
         if ($data['kind'] === 'category') {
             $category = $user->eventCategories()->findOrFail($data['category_id']);
             $categoryId = $category->id;
@@ -104,6 +117,9 @@ class ScheduleEventController extends Controller
             $title = trim($data['title']);
             $color = $data['color'];
         }
+
+        $bufferBefore = (int) ($data['buffer_before'] ?? 0);
+        $bufferAfter = (int) ($data['buffer_after'] ?? 0);
 
         $date = Carbon::parse($data['date']);
         $duration = ScheduleEvent::toMinutes($data['end_time']) - ScheduleEvent::toMinutes($data['start_time']);
@@ -117,6 +133,8 @@ class ScheduleEventController extends Controller
                 'name' => $title,
                 'color' => $color,
                 'duration' => $duration,
+                'buffer_before' => $bufferBefore,
+                'buffer_after' => $bufferAfter,
                 'default_start' => $data['start_time'],
                 'is_recurring' => true,
                 'recurrence' => implode(',', $days),
@@ -138,6 +156,8 @@ class ScheduleEventController extends Controller
                 'name' => $title,
                 'color' => $color,
                 'duration' => $duration,
+                'buffer_before' => $bufferBefore,
+                'buffer_after' => $bufferAfter,
                 'default_start' => $data['start_time'],
                 'is_recurring' => false,
             ]);
@@ -150,13 +170,19 @@ class ScheduleEventController extends Controller
             'date' => $data['date'],
             'start_time' => $data['start_time'],
             'end_time' => $data['end_time'],
+            'buffer_before' => $bufferBefore,
+            'buffer_after' => $bufferAfter,
         ]);
 
         if (array_key_exists('linked_task_ids', $data)) {
             $event->syncLinkedTaskIds($data['linked_task_ids']);
         }
 
-        return (new ScheduleEventResource($event->fresh(['category', 'linkedTasks'])))->response()->setStatusCode(201);
+        if (! empty($data['attribute_values'])) {
+            $event->syncAttributeValues($data['attribute_values']);
+        }
+
+        return (new ScheduleEventResource($event->fresh(self::EVENT_RELATIONS)))->response()->setStatusCode(201);
     }
 
     /**
@@ -178,6 +204,9 @@ class ScheduleEventController extends Controller
             'date' => ['sometimes', 'date'],
             'start_time' => ['sometimes', 'date_format:H:i'],
             'end_time' => ['sometimes', 'date_format:H:i'],
+            'buffer_before' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            'buffer_after' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            'attribute_values' => ['sometimes', 'array'],
             'linked_task_ids' => ['sometimes', 'array'],
             'linked_task_ids.*' => ['integer', 'distinct', Rule::exists('tasks', 'id')->where('user_id', $user->id)],
         ]);
@@ -207,8 +236,15 @@ class ScheduleEventController extends Controller
         if (array_key_exists('end_time', $data)) {
             $updates['end_time'] = $data['end_time'];
         }
-        if (isset($updates['start_time']) && isset($updates['end_time'])
-            && ScheduleEvent::toMinutes($updates['end_time']) <= ScheduleEvent::toMinutes($updates['start_time'])) {
+        foreach (['buffer_before', 'buffer_after'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $updates[$key] = (int) $data[$key];
+            }
+        }
+        // Compared against the stored value when only one end moves, so a lone start_time
+        // can't push an event past its own end_time.
+        if ((isset($updates['start_time']) || isset($updates['end_time']))
+            && ScheduleEvent::toMinutes($updates['end_time'] ?? $event->end_time) <= ScheduleEvent::toMinutes($updates['start_time'] ?? $event->start_time)) {
             return response()->json(['message' => 'end_time must be after start_time'], 422);
         }
 
@@ -230,6 +266,16 @@ class ScheduleEventController extends Controller
             $event->syncLinkedTaskIds($data['linked_task_ids']);
         }
 
+        // Values only ever make sense for the event's CURRENT category: explicit input wins,
+        // otherwise a category switch keeps whatever still fits the new one and drops the rest.
+        if (array_key_exists('attribute_values', $data)) {
+            $event->syncAttributeValues($data['attribute_values']);
+        } elseif (array_key_exists('category_id', $data)) {
+            $event->syncAttributeValues(
+                $event->attributeValues()->get()->mapWithKeys(fn ($attr) => [$attr->id => $attr->pivot->value])->all()
+            );
+        }
+
         if ($movedFromSeries) {
             $user->scheduleEvents()->create([
                 'template_id' => $origTemplate,
@@ -240,7 +286,7 @@ class ScheduleEventController extends Controller
             ]);
         }
 
-        return (new ScheduleEventResource($event->fresh(['category', 'linkedTasks'])))->response();
+        return (new ScheduleEventResource($event->fresh(self::EVENT_RELATIONS)))->response();
     }
 
     /** Delete a one-off; cancel (tombstone) a recurring occurrence so it can't regenerate. */
