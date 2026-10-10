@@ -170,6 +170,28 @@ class McpOAuthFlowTest extends TestCase
         $this->assertDatabaseHas('tasks', ['user_id' => $user->id, 'title' => 'Aus Claude erstellt']);
     }
 
+    public function test_a_controller_bridged_tool_and_the_planner_gate_work_over_oauth(): void
+    {
+        $user = User::factory()->create();
+        $tokens = $this->connect($user);
+
+        // Planer off: its tools are absent, and calling one is the same unknown-tool error.
+        $this->assertNotContains('get_planner', $this->toolNames($tokens));
+        $this->assertSame(-32602, $this->rpc($tokens['access_token'], 'tools/call', ['name' => 'get_planner', 'arguments' => []])['error']['code']);
+
+        // A tool that runs a REST controller in-process, authenticated through Passport.
+        $created = $this->rpc($tokens['access_token'], 'tools/call', [
+            'name' => 'create_schedule_event',
+            'arguments' => ['kind' => 'appointment', 'title' => 'Arzt', 'color' => 'ink', 'date' => '2026-12-01', 'start_time' => '09:00', 'end_time' => '10:00'],
+        ]);
+        $this->assertFalse($created['result']['isError'] ?? true);
+        $this->assertDatabaseHas('schedule_events', ['user_id' => $user->id, 'title' => 'Arzt']);
+
+        // The very next tools/list reflects a settings change made through MCP itself.
+        $this->rpc($tokens['access_token'], 'tools/call', ['name' => 'update_settings', 'arguments' => ['planner_enabled' => true]]);
+        $this->assertContains('get_planner', $this->toolNames($tokens));
+    }
+
     public function test_the_connection_only_ever_reaches_its_own_account(): void
     {
         $user = User::factory()->create();

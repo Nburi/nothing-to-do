@@ -25,6 +25,9 @@ class McpDocsPageTest extends TestCase
             ->assertSee('list_tasks')
             ->assertSee('delete_task')
             ->assertSee('create_task')
-            ->assertSee(url('/api/mcp'));
+            ->assertSee(url('/api/mcp'))
+            ->assertSee('create_schedule_event')
+            ->assertSee('get_planner')
+            ->assertSee('nur wenn der Planer eingeschaltet ist');
     }
 }

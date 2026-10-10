@@ -111,10 +111,6 @@ had any of it.** Clean it up whenever the local database is next rebuilt from sc
   the in-app versions already feel sufficient. (Support-request pushes — admins on a new request, users on an
   answer — are built, see CLAUDE.md "Hilfe-Center & Support".)
 - **Extend the API further:** private Agenda notes, group notes, and joining/leaving a class remain app-only.
-- **Weg-/Pufferzeit is readable over the API, not writable** (2026-09-21). `ScheduleEventResource`/
-  `EventTemplateResource` expose `buffer_before`/`buffer_after`, but no controller or MCP tool accepts
-  them, so a block created through Shortcuts always gets 0. Small and mechanical whenever a real
-  Shortcut needs it; nothing about the app depends on it.
 - **The Tagesrahmen is not mirrored in the Planer or the Tagesueberblick** (2026-09-21). Both show a
   day without showing its length, so a 09:00-14:00 Saturday looks the same there as a full one.
   Worth doing once the frame has been lived with - it is not obvious yet that either page wants it.

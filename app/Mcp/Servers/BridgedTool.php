@@ -18,7 +18,7 @@ use Laravel\Mcp\Server\Tool;
  * Adapts one of this app's own App\Mcp\Tools\* tools onto Laravel MCP's Tool
  * primitive, so the OAuth server (App\Mcp\Servers\NothingToDoServer) and the
  * Sanctum server (App\Http\Controllers\Api\McpController) expose the exact
- * same 19 tools from the exact same code.
+ * same tools from the exact same code.
  *
  * Deliberately a bridge rather than 19 rewritten Laravel\Mcp\Server\Tool
  * subclasses: the tool layer is the tested, documented part of this feature

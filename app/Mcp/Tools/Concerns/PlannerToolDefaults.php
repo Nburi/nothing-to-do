@@ -21,6 +21,11 @@ trait PlannerToolDefaults
         return (bool) $user->planner_enabled;
     }
 
+    public function requiredFeatureLabel(): ?string
+    {
+        return 'Planer';
+    }
+
     /** A Y-m-d date inside the board's horizon (today … today + HORIZON_DAYS − 1); anything else is refused, as the client-trusting Livewire action never had to. */
     protected static function horizonDate(User $user, mixed $value, string $field = 'date'): string
     {

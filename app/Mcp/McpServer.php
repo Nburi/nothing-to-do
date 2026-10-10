@@ -335,6 +335,7 @@ class McpServer
             'annotations' => $tool->annotations(),
             'requiredAbility' => $tool->requiredAbility(),
             'requiredModule' => $tool->requiredModule(),
+            'requiredFeature' => $tool->requiredFeatureLabel(),
             'requiresAdmin' => $tool->requiresAdmin(),
         ], $this->tools);
     }
