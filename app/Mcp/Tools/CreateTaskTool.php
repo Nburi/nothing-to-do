@@ -36,6 +36,8 @@ class CreateTaskTool extends McpTool
                 'deadline' => ['type' => 'string', 'format' => 'date', 'description' => 'Hard, externally-imposed date (YYYY-MM-DD).'],
                 'due_date' => ['type' => 'string', 'format' => 'date', 'description' => 'Soft, self-imposed date (YYYY-MM-DD).'],
                 'notes' => ['type' => 'string', 'description' => 'Markdown source, max 5000 characters.'],
+                'duration_minutes' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 600, 'description' => 'Estimated length in minutes (1–600).'],
+                'repeat_rule' => ['type' => 'string', 'enum' => array_keys(Task::REPEAT_RULES), 'description' => 'Recurrence: a completed task spawns its next occurrence.'],
                 'is_important' => ['type' => 'boolean'],
                 'is_today' => ['type' => 'boolean', 'description' => 'Flag for today. Only takes effect for a todos/tasks-list task with no project.'],
             ],
@@ -63,6 +65,8 @@ class CreateTaskTool extends McpTool
             'deadline' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['sometimes', 'nullable', 'date'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:600'],
+            'repeat_rule' => ['sometimes', 'nullable', Rule::in(array_keys(Task::REPEAT_RULES))],
             'is_important' => ['sometimes', 'boolean'],
             'is_today' => ['sometimes', 'boolean'],
         ])->validate();

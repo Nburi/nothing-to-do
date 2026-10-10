@@ -47,15 +47,15 @@ class NothingToDoServer extends Server
 
     /**
      * Laravel MCP paginates tools/list at 15 per page by default — one page
-     * short of this server's 19 tools, which quietly pushed the last few
+     * short of this server's tool count (19 when this was found, ~75 now), which quietly pushed the last few
      * (delete_task among them) onto a second page behind a nextCursor. A
      * spec-compliant client follows that cursor, but there is nothing to gain
      * from making every client do a second round trip for a list this small,
      * and plenty to lose if one doesn't. One page, always.
      */
-    public int $defaultPaginationLength = 100;
+    public int $defaultPaginationLength = 200;
 
-    public int $maxPaginationLength = 100;
+    public int $maxPaginationLength = 200;
 
     protected function boot(): void
     {

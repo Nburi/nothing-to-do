@@ -28,6 +28,23 @@ class TaskApiTest extends TestCase
         $this->assertDatabaseHas('tasks', ['user_id' => $user->id, 'title' => 'Vokabeln lernen', 'list' => 'inbox']);
     }
 
+    public function test_it_sets_and_clears_a_duration_estimate(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $id = $this->postJson('/api/tasks', ['title' => 'Lernen', 'duration_minutes' => 40])
+            ->assertCreated()
+            ->assertJsonPath('data.duration_minutes', 40)
+            ->json('data.id');
+
+        $this->patchJson("/api/tasks/{$id}", ['duration_minutes' => null])
+            ->assertOk()
+            ->assertJsonPath('data.duration_minutes', null);
+
+        $this->patchJson("/api/tasks/{$id}", ['duration_minutes' => 601])->assertUnprocessable();
+    }
+
     public function test_it_creates_a_task_directly_inside_a_project(): void
     {
         $user = User::factory()->create();

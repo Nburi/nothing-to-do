@@ -3713,6 +3713,82 @@ support queue, the Hilfe-Center and the feature announcements from an AI client.
   in your tool list, the connector isn't an admin account — leave it and mention the draft text in your
   final message instead.
 
+### MCP — Parität mit der App (built)
+
+The first MCP release covered tasks plus a read-only look at the rest; everything shipped afterwards
+(recurring tasks, Tagesrahmen, Weg-/Pufferzeit, Wochenrückblick, Overdue-Rescue) and a good part of what
+shipped before it (Zeitplan, Planer, Notfallmodus, Bastelideen, project/group/Agenda editing) was invisible
+to an AI client. This closes that gap — ~75 tools in total now, still one registry (`App\Mcp\McpServer`)
+serving both endpoints, so nothing below needs a second implementation for the OAuth transport.
+
+- **Tasks.** `create_task`/`update_task` accept `duration_minutes` (1–600, `null` clears) and `repeat_rule`
+  (`daily|weekdays|weekly|monthly`, `null` clears) — `TaskMutator` and `TaskResource` already knew
+  `repeat_rule`; only the tool schemas lacked it. `duration_minutes` is new in `TaskMutator`, the REST
+  `TaskController` and `TaskResource` (plus `agenda_entry_id`). `list_tasks` gained `due_on_or_before`/
+  `due_on_or_after`/`overdue` (all on the *effective* date, `DATE(COALESCE(deadline, due_date))` — a bare
+  comparison against a `date`-cast column silently misses, see Known Issues), `without_duration`,
+  `repeating`, `offset` and a `total`. `create_tasks`/`update_tasks` run each item through the single-item
+  tool inside one transaction: all-or-nothing, so a retry never creates half a batch twice.
+- **Projects, groups, Agenda.** `get/create/update/delete_project`, `get/create/update_task_group` +
+  `dissolve_task_group`, `add/update/delete_group_note`, `get/update/delete_agenda_entry`,
+  `list_agenda_spaces`; `create_agenda_entry` takes `duration_minutes`. Rules carried over from the app:
+  `is_done` is per person, any member may edit what a class posted, `private_note` exists only on an entry
+  shared with a class (and is read through `privateNoteFor($user)` only — never another member's), and an
+  entry **still cannot be created into or moved between classes over MCP** (posting where classmates see it
+  stays a deliberate in-app step). `AgendaEntryPresenter` is the one shape for get/update.
+- **Every delete is `mcp:delete` + an exact confirmation string** (`confirm_name` for project/group/
+  category/template/attribute, `confirm_title` for task/event/Agenda entry/Bastelidee, `confirm_group_name`
+  for a group note). `dissolve_task_group` sits behind delete although its tasks survive, because the
+  group's note cards cascade-delete with it.
+- **Zeitplan.** `list/get/create/update/delete_schedule_event`, `get_focus_session`, `control_focus_session`
+  (`start|stop|continue|skip_break`), `list_event_templates`, `apply_event_template`, `delete_event_template`,
+  `create/update_week_plan_block`, categories (`create/update/delete_category`, `set/clear_category_task_link`,
+  `create/update/delete_category_attribute`), `list_schedule_pauses`/`pause_schedule`/`unpause_schedule`,
+  `get_day_frame`/`set_day_frame`. **Events, categories and templates run the REST controllers in-process**
+  (`App\Mcp\Support\ControllerBridge`: a synthetic `Request` with the user resolver set, `ValidationException`
+  propagates, a 4xx body or a missing model becomes `McpToolExecutionException`). That is deliberate: the
+  recurrence tombstones, Pomodoro phase math and category task links already live in those controllers, and
+  a second copy per tool is the drift CLAUDE.md §10 keeps warning about. The REST API grew with it:
+  `buffer_before`/`buffer_after` and `attribute_values` on events (create and update), a category's
+  attribute schema on `EventCategoryResource`, buffers carried by template apply, and a check that a lone
+  `start_time`/`end_time` can no longer put an event's end before its start.
+  `ScheduleEvent::syncAttributeValues()` is the one write for values: only attributes of the event's
+  *current* category count, each normalised by `CategoryAttribute::normalizeValue()`, an empty value leaves no
+  row. `App\Services\WeekPlanTemplates::refreshOccurrences()` (extracted from `WeekPlan`) pushes a template
+  edit onto strictly-future occurrences — the page and `update_week_plan_block` share it. Attribute values
+  and linked tasks are refused for a recurring series, as in the app. Pause/unpause/day-frame call the same
+  `SchedulePause`/`DayWindow` helpers as the pages; `set_day_frame` enforces `DayWindow::MIN_SPAN` and
+  `EARLIEST_START..LATEST_END` itself because `DayWindow::setDefault()` would silently clamp or ignore.
+- **Planer.** `get_planner`, `plan_task`, `set_day_plan`, `unplan_task`, `auto_plan_backlog`,
+  `add_standard_task` — all thin passes onto `DayPlanner`/`PlannerStandardTasks`. The Planer has its own
+  switch rather than an `AppModules` entry, so `McpTool` gained **`isEnabledFor(User)`** (checked by
+  `McpServer::isAvailable()`, hence by both transports): with `planner_enabled` off these tools don't exist,
+  same unknown-tool error as a hidden module. `requiredFeatureLabel()` only feeds the docs badge. Dates are
+  validated against the board horizon here (`PlannerToolDefaults::horizonDate`) — `DayPlanner::assignDay()`
+  itself trusts the string. `auto_plan_backlog` only fills days with Pomodoro capacity, by design of the
+  service. A task still lives on at most one day.
+- **Notfallmodus, Bastelideen.** `get/start/end_emergency_mode`, `arrange_emergency_tasks` (order = the
+  project's `sort_order`, plus the per-task board column `emergency_list`); `list/create/update/delete_craft_idea`
+  (the "note" is the old `where_to_begin` column).
+- **Overviews.** `get_day_overview` is the Tagesüberblick **without** `DayPreviewData`'s three-row caps (a
+  model needs the whole day), module-aware like the page; `get_week_review(weeks_ago)`;
+  `reschedule_overdue_tasks(when)` is the board banner's action — soft `due_date`s only, never a hard
+  deadline, and it returns the previous dates so `update_tasks` can undo it.
+- **Settings.** `update_settings` mirrors the Settings component field by field (goal, reminders and push
+  toggles with their times, Pomodoro rhythm, timezone, `task_reset_time`, Vorbereitung, the two previews,
+  `planner_enabled`, `show_presence` — off also clears `last_seen_at` — and `header_badges` as an ordered
+  `{key, enabled}` list that keeps unlisted badges); unknown keys are refused, so `is_admin`/`password`/
+  `email` can never be written through it. `get_settings` now returns all of those. The list concept, module
+  visibility, landing page and Tagesrahmen keep their own tools.
+- **Help & support for everyone.** `search_help`/`read_help_article` (published only — the admin tools stay
+  the only way to see drafts), `list_my_support_requests`, `submit_support_request` (its description tells
+  the model to send only on request and to show the text first: it pushes the team's admins).
+- **Test seam worth knowing.** `McpOAuthFlowTest::test_every_tool_arrives_in_a_single_tools_list_page`
+  compares against the registry, not a hard-coded number — and enables the Planer for its user, since
+  those tools are structurally absent otherwise. `NothingToDoServer`'s page size is 200.
+- **Still out of scope:** joining/leaving classes and posting into one, the onboarding quiz, API tokens/OAuth
+  connections, the data export, reordering of categories/attributes, and the admin error log.
+
 ### Fehler-Statistiken (built)
 
 Custom, on-brand error pages (never Laravel's/Symfony's default white page, never a stack trace or raw
@@ -3961,7 +4037,7 @@ symptom will be a 302, never an exception — check it with `curl -i` rather tha
 **Symptom:** `delete_task` never appeared in `tools/list` even for a connection explicitly allowed to
 delete. Worse, the *negative* test ("delete is hidden by default") passed for the wrong reason, so the gap
 could have survived review.
-**Cause:** `Laravel\Mcp\Server::$defaultPaginationLength` is 15; this server registers 19 tools, so the
+**Cause:** `Laravel\Mcp\Server::$defaultPaginationLength` is 15; this server registered 19 tools at the time (now ~75, page size 200), so the
 last four came back behind a `nextCursor`. A spec-compliant client follows that cursor, so nothing is
 strictly broken — but nothing is gained from a second round trip on a list this small either.
 **Fix:** `$defaultPaginationLength` / `$maxPaginationLength` = 100 on `App\Mcp\Servers\NothingToDoServer`,

@@ -98,7 +98,7 @@
                     <span class="font-medium text-ink">Rechte der Verbindung.</span> Bei einem Token sind das
                     dessen eigene Rechte, bei OAuth die Einstellungen deines Accounts. Ohne „Schreiben" ist nie
                     ein schreibendes Werkzeug zu sehen; ohne „Löschen erlauben" fehlt
-                    <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_task</code> ganz — auch
+                    alle <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeuge ganz — auch
                     nicht als „gesperrt". Ein Aufruf eines nicht angebotenen Werkzeugs wird exakt wie ein nicht
                     existierendes behandelt (derselbe Fehler), damit eine Verbindung nie verrät, was mit mehr
                     Rechten möglich wäre.
@@ -130,6 +130,9 @@
                                         nur wenn „{{ $moduleLabels[$tool['requiredModule']]['label'] ?? $tool['requiredModule'] }}" sichtbar ist
                                     </span>
                                 @endif
+                                @if ($tool['requiredFeature'] ?? null)
+                                    <span class="rounded-full bg-line px-2 py-0.5 text-[11px] font-medium text-ink-soft">nur wenn der {{ $tool['requiredFeature'] }} eingeschaltet ist</span>
+                                @endif
                                 @if ($tool['requiresAdmin'] ?? false)
                                     <span class="rounded-full bg-line px-2 py-0.5 text-[11px] font-medium text-ink-soft">nur für Admins</span>
                                 @endif
@@ -149,7 +152,7 @@
             <h2 class="mb-3 text-base font-medium text-ink">Fehler</h2>
             <ul class="space-y-2 text-sm leading-relaxed text-ink-soft">
                 <li>Ein unbekanntes oder nicht angebotenes Werkzeug → JSON-RPC-Protokollfehler (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">-32602</code>).</li>
-                <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_task</code> → ein normales Tool-Ergebnis mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
+                <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei einem <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeug → ein normales Tool-Ergebnis mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
             </ul>
         </section>
     </div>

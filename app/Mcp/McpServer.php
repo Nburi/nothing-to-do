@@ -6,6 +6,8 @@ use App\Mcp\Exceptions\McpUnknownToolException;
 use App\Mcp\Tools\CompleteTaskTool;
 use App\Mcp\Tools\CreateAgendaEntryTool;
 use App\Mcp\Tools\CreateTaskTool;
+use App\Mcp\Tools\CreateTasksTool;
+use App\Mcp\Tools\UpdateTasksTool;
 use App\Mcp\Tools\DeleteTaskTool;
 use App\Mcp\Tools\GetBoardTool;
 use App\Mcp\Tools\GetProgressTool;
@@ -38,6 +40,68 @@ use App\Mcp\Tools\Admin\UpdateHelpArticleTool;
 use App\Mcp\Tools\Admin\CreateHelpCategoryTool;
 use App\Mcp\Tools\Admin\UpdateHelpCategoryTool;
 use App\Mcp\Tools\Admin\DeleteHelpCategoryTool;
+use App\Mcp\Tools\GetProjectTool;
+use App\Mcp\Tools\GetTaskGroupTool;
+use App\Mcp\Tools\GetAgendaEntryTool;
+use App\Mcp\Tools\ListAgendaSpacesTool;
+use App\Mcp\Tools\CreateProjectTool;
+use App\Mcp\Tools\UpdateProjectTool;
+use App\Mcp\Tools\CreateTaskGroupTool;
+use App\Mcp\Tools\UpdateTaskGroupTool;
+use App\Mcp\Tools\AddGroupNoteTool;
+use App\Mcp\Tools\UpdateGroupNoteTool;
+use App\Mcp\Tools\UpdateAgendaEntryTool;
+use App\Mcp\Tools\DeleteProjectTool;
+use App\Mcp\Tools\DissolveTaskGroupTool;
+use App\Mcp\Tools\DeleteGroupNoteTool;
+use App\Mcp\Tools\DeleteAgendaEntryTool;
+use App\Mcp\Tools\ListScheduleEventsTool;
+use App\Mcp\Tools\GetScheduleEventTool;
+use App\Mcp\Tools\GetFocusSessionTool;
+use App\Mcp\Tools\ListEventTemplatesTool;
+use App\Mcp\Tools\ListSchedulePausesTool;
+use App\Mcp\Tools\GetDayFrameTool;
+use App\Mcp\Tools\CreateScheduleEventTool;
+use App\Mcp\Tools\UpdateScheduleEventTool;
+use App\Mcp\Tools\ControlFocusSessionTool;
+use App\Mcp\Tools\ApplyEventTemplateTool;
+use App\Mcp\Tools\CreateWeekPlanBlockTool;
+use App\Mcp\Tools\UpdateWeekPlanBlockTool;
+use App\Mcp\Tools\CreateCategoryTool;
+use App\Mcp\Tools\UpdateCategoryTool;
+use App\Mcp\Tools\SetCategoryTaskLinkTool;
+use App\Mcp\Tools\ClearCategoryTaskLinkTool;
+use App\Mcp\Tools\CreateCategoryAttributeTool;
+use App\Mcp\Tools\UpdateCategoryAttributeTool;
+use App\Mcp\Tools\PauseScheduleTool;
+use App\Mcp\Tools\UnpauseScheduleTool;
+use App\Mcp\Tools\SetDayFrameTool;
+use App\Mcp\Tools\DeleteScheduleEventTool;
+use App\Mcp\Tools\DeleteEventTemplateTool;
+use App\Mcp\Tools\DeleteCategoryTool;
+use App\Mcp\Tools\DeleteCategoryAttributeTool;
+use App\Mcp\Tools\GetDayOverviewTool;
+use App\Mcp\Tools\GetWeekReviewTool;
+use App\Mcp\Tools\GetPlannerTool;
+use App\Mcp\Tools\GetEmergencyModeTool;
+use App\Mcp\Tools\ListCraftIdeasTool;
+use App\Mcp\Tools\RescheduleOverdueTasksTool;
+use App\Mcp\Tools\PlanTaskTool;
+use App\Mcp\Tools\SetDayPlanTool;
+use App\Mcp\Tools\UnplanTaskTool;
+use App\Mcp\Tools\AutoPlanBacklogTool;
+use App\Mcp\Tools\AddStandardTaskTool;
+use App\Mcp\Tools\StartEmergencyModeTool;
+use App\Mcp\Tools\EndEmergencyModeTool;
+use App\Mcp\Tools\ArrangeEmergencyTasksTool;
+use App\Mcp\Tools\CreateCraftIdeaTool;
+use App\Mcp\Tools\UpdateCraftIdeaTool;
+use App\Mcp\Tools\DeleteCraftIdeaTool;
+use App\Mcp\Tools\SearchHelpTool;
+use App\Mcp\Tools\ReadHelpArticleTool;
+use App\Mcp\Tools\ListMySupportRequestsTool;
+use App\Mcp\Tools\UpdateSettingsTool;
+use App\Mcp\Tools\SubmitSupportRequestTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -67,9 +131,29 @@ class McpServer
             new ListAgendaEntriesTool,
             new GetProgressTool,
             new GetSettingsTool,
+            new GetProjectTool,
+            new GetTaskGroupTool,
+            new GetAgendaEntryTool,
+            new ListAgendaSpacesTool,
+            new ListScheduleEventsTool,
+            new GetScheduleEventTool,
+            new GetFocusSessionTool,
+            new ListEventTemplatesTool,
+            new ListSchedulePausesTool,
+            new GetDayFrameTool,
+            new GetDayOverviewTool,
+            new GetWeekReviewTool,
+            new GetPlannerTool,
+            new GetEmergencyModeTool,
+            new ListCraftIdeasTool,
+            new SearchHelpTool,
+            new ReadHelpArticleTool,
+            new ListMySupportRequestsTool,
             // Write
             new CreateTaskTool,
             new UpdateTaskTool,
+            new CreateTasksTool,
+            new UpdateTasksTool,
             new CompleteTaskTool,
             new ReopenTaskTool,
             new SetTaskOrderTool,
@@ -77,8 +161,52 @@ class McpServer
             new SetModuleVisibilityTool,
             new SetDefaultLandingPageTool,
             new CreateAgendaEntryTool,
+            new CreateProjectTool,
+            new UpdateProjectTool,
+            new CreateTaskGroupTool,
+            new UpdateTaskGroupTool,
+            new AddGroupNoteTool,
+            new UpdateGroupNoteTool,
+            new UpdateAgendaEntryTool,
+            new CreateScheduleEventTool,
+            new UpdateScheduleEventTool,
+            new ControlFocusSessionTool,
+            new ApplyEventTemplateTool,
+            new CreateWeekPlanBlockTool,
+            new UpdateWeekPlanBlockTool,
+            new CreateCategoryTool,
+            new UpdateCategoryTool,
+            new SetCategoryTaskLinkTool,
+            new ClearCategoryTaskLinkTool,
+            new CreateCategoryAttributeTool,
+            new UpdateCategoryAttributeTool,
+            new PauseScheduleTool,
+            new UnpauseScheduleTool,
+            new SetDayFrameTool,
+            new RescheduleOverdueTasksTool,
+            new PlanTaskTool,
+            new SetDayPlanTool,
+            new UnplanTaskTool,
+            new AutoPlanBacklogTool,
+            new AddStandardTaskTool,
+            new StartEmergencyModeTool,
+            new EndEmergencyModeTool,
+            new ArrangeEmergencyTasksTool,
+            new CreateCraftIdeaTool,
+            new UpdateCraftIdeaTool,
+            new UpdateSettingsTool,
+            new SubmitSupportRequestTool,
             // Delete
             new DeleteTaskTool,
+            new DeleteCraftIdeaTool,
+            new DeleteScheduleEventTool,
+            new DeleteEventTemplateTool,
+            new DeleteCategoryTool,
+            new DeleteCategoryAttributeTool,
+            new DeleteProjectTool,
+            new DissolveTaskGroupTool,
+            new DeleteGroupNoteTool,
+            new DeleteAgendaEntryTool,
             // Admin only (users.is_admin): support queue, Hilfe-Center, announcements
             new ListSupportRequestsTool,
             new GetSupportRequestTool,
@@ -151,6 +279,10 @@ class McpServer
             return false;
         }
 
+        if (! $tool->isEnabledFor($user)) {
+            return false;
+        }
+
         return true;
     }
 
@@ -203,6 +335,7 @@ class McpServer
             'annotations' => $tool->annotations(),
             'requiredAbility' => $tool->requiredAbility(),
             'requiredModule' => $tool->requiredModule(),
+            'requiredFeature' => $tool->requiredFeatureLabel(),
             'requiresAdmin' => $tool->requiresAdmin(),
         ], $this->tools);
     }
