@@ -38,6 +38,22 @@ class BoardFocusTimerTest extends TestCase
         $this->assertSame(1, $event->pomodoro_cycle);
     }
 
+    public function test_running_ring_polls_in_the_background_and_carries_the_server_remaining_time(): void
+    {
+        Carbon::setTestNow('2026-06-26 14:10:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'timezone_auto_dst' => false]);
+        $this->actingAs($user);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        ScheduleEvent::factory()->for($user)->for($category, 'category')->create([
+            'date' => '2026-06-26', 'start_time' => '14:00', 'end_time' => '15:00',
+            'pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:05:00',
+        ]);
+
+        Livewire::test(TaskBoard::class)
+            ->assertSeeHtml('wire:poll.5s.keep-alive')
+            ->assertSeeHtml('data-remaining="1200"');
+    }
+
     public function test_start_focus_timer_is_a_no_op_when_the_category_has_pomodoro_disabled(): void
     {
         $user = User::factory()->create();

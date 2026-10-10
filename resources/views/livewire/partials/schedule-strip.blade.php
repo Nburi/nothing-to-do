@@ -36,7 +36,7 @@
                     default => 'Nächste Session bereit',
                 };
             @endphp
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4" wire:poll.5s.keep-alive>
                 <div class="grid h-16 w-16 flex-none place-items-center rounded-full border-2 border-dashed border-forest/40 text-forest">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 </div>
@@ -75,7 +75,8 @@
         @elseif ($phase)
             <div
                 wire:key="focus-ring-{{ $focus->id }}-{{ $phase['phase'] }}-{{ $phase['cycle'] }}"
-                wire:poll.5s.visible
+                wire:poll.5s.keep-alive
+                data-remaining="{{ $phase['remaining_seconds'] }}"
                 class="flex items-center gap-4"
                 x-data="focusTimer({ id: {{ $focus->id }}, remaining: {{ $phase['remaining_seconds'] }}, total: {{ $phase['total_seconds'] }}, circ: 263.9 })"
             >
@@ -126,7 +127,7 @@
                 </div>
             </div>
         @else
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4" wire:poll.5s.keep-alive>
                 <div class="grid h-16 w-16 flex-none place-items-center rounded-full border-2 border-dashed border-forest/40 text-forest">
                     <svg class="h-5 w-5 translate-x-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                 </div>
