@@ -80,6 +80,28 @@ use App\Mcp\Tools\DeleteScheduleEventTool;
 use App\Mcp\Tools\DeleteEventTemplateTool;
 use App\Mcp\Tools\DeleteCategoryTool;
 use App\Mcp\Tools\DeleteCategoryAttributeTool;
+use App\Mcp\Tools\GetDayOverviewTool;
+use App\Mcp\Tools\GetWeekReviewTool;
+use App\Mcp\Tools\GetPlannerTool;
+use App\Mcp\Tools\GetEmergencyModeTool;
+use App\Mcp\Tools\ListCraftIdeasTool;
+use App\Mcp\Tools\RescheduleOverdueTasksTool;
+use App\Mcp\Tools\PlanTaskTool;
+use App\Mcp\Tools\SetDayPlanTool;
+use App\Mcp\Tools\UnplanTaskTool;
+use App\Mcp\Tools\AutoPlanBacklogTool;
+use App\Mcp\Tools\AddStandardTaskTool;
+use App\Mcp\Tools\StartEmergencyModeTool;
+use App\Mcp\Tools\EndEmergencyModeTool;
+use App\Mcp\Tools\ArrangeEmergencyTasksTool;
+use App\Mcp\Tools\CreateCraftIdeaTool;
+use App\Mcp\Tools\UpdateCraftIdeaTool;
+use App\Mcp\Tools\DeleteCraftIdeaTool;
+use App\Mcp\Tools\SearchHelpTool;
+use App\Mcp\Tools\ReadHelpArticleTool;
+use App\Mcp\Tools\ListMySupportRequestsTool;
+use App\Mcp\Tools\UpdateSettingsTool;
+use App\Mcp\Tools\SubmitSupportRequestTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -119,6 +141,14 @@ class McpServer
             new ListEventTemplatesTool,
             new ListSchedulePausesTool,
             new GetDayFrameTool,
+            new GetDayOverviewTool,
+            new GetWeekReviewTool,
+            new GetPlannerTool,
+            new GetEmergencyModeTool,
+            new ListCraftIdeasTool,
+            new SearchHelpTool,
+            new ReadHelpArticleTool,
+            new ListMySupportRequestsTool,
             // Write
             new CreateTaskTool,
             new UpdateTaskTool,
@@ -153,8 +183,22 @@ class McpServer
             new PauseScheduleTool,
             new UnpauseScheduleTool,
             new SetDayFrameTool,
+            new RescheduleOverdueTasksTool,
+            new PlanTaskTool,
+            new SetDayPlanTool,
+            new UnplanTaskTool,
+            new AutoPlanBacklogTool,
+            new AddStandardTaskTool,
+            new StartEmergencyModeTool,
+            new EndEmergencyModeTool,
+            new ArrangeEmergencyTasksTool,
+            new CreateCraftIdeaTool,
+            new UpdateCraftIdeaTool,
+            new UpdateSettingsTool,
+            new SubmitSupportRequestTool,
             // Delete
             new DeleteTaskTool,
+            new DeleteCraftIdeaTool,
             new DeleteScheduleEventTool,
             new DeleteEventTemplateTool,
             new DeleteCategoryTool,
@@ -232,6 +276,10 @@ class McpServer
         }
 
         if ($tool->requiredModule() !== null && ! AppModules::isVisible($user, $tool->requiredModule())) {
+            return false;
+        }
+
+        if (! $tool->isEnabledFor($user)) {
             return false;
         }
 

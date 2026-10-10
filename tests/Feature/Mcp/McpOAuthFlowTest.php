@@ -136,10 +136,13 @@ class McpOAuthFlowTest extends TestCase
         // Laravel MCP's default page size is 15 and this server has more tools
         // than that, so without an explicit pagination length the last few
         // (delete_task included) silently land on a second page.
-        $tokens = $this->connect(User::factory()->create([
+        // The Planer's tools only exist while the Planer is on, so switch it on to see the full catalog.
+        $user = User::factory()->create([
             'mcp_oauth_write' => true,
             'mcp_oauth_delete' => true,
-        ]));
+            'planner_enabled' => true,
+        ]);
+        $tokens = $this->connect($user);
 
         $result = $this->rpc($tokens['access_token'], 'tools/list')['result'];
 
