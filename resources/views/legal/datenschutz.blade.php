@@ -21,10 +21,7 @@
       Personen aus der EU die App nutzen (DSGVO-Pflichten zusätzlich zum
       revDSG).
 --}}
-<x-legal-layout
-    title="Datenschutzerklärung"
-    description="Wie nothing-to-do Daten erhebt, verarbeitet und schützt."
->
+<x-legal-layout title="Datenschutzerklärung" description="Wie nothing-to-do Daten erhebt, verarbeitet und schützt.">
     <h1>Datenschutzerklärung</h1>
     <p>
         Diese Erklärung beschreibt, welche Personendaten nothing-to-do
@@ -34,9 +31,9 @@
     <h2>Verantwortliche Stelle</h2>
     <p>
         nothing-to-do<br>
-        [Name / Firma einfügen]<br>
-        [Strasse und Hausnummer], [PLZ und Ort], Schweiz<br>
-        E-Mail: <a href="mailto:datenschutz@nothing-to-do.ch">datenschutz@nothing-to-do.ch</a>
+        Nino Baur<br>
+        Tuchschmidweg 6, 5000 Aarau, Schweiz<br>
+        E-Mail: <a href="mailto:nino.baur@gmx.net">nino.baur@gmx.net</a>
     </p>
 
     <h2>Welche Daten wir bearbeiten</h2>
@@ -98,8 +95,7 @@
 
     <h2>Hosting</h2>
     <p>
-        Die App wird auf Servern in der Schweiz/EU betrieben. [Hosting-Anbieter
-        und genauer Standort einfügen.]
+        Die App wird auf Servern von Hetzner in der EU/Detuschland betrieben.
     </p>
 
     <h2>Aufbewahrungsdauer</h2>

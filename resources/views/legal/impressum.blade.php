@@ -16,28 +16,24 @@
       lassen — dies ist bewusst nur ein strukturell korrekter Platzhalter, kein
       geprüfter Rechtstext.
 --}}
-<x-legal-layout
-    title="Impressum"
-    description="Angaben zum Betreiber von nothing-to-do gemäss Art. 3 UWG."
->
+<x-legal-layout title="Impressum" description="Angaben zum Betreiber von nothing-to-do gemäss Art. 3 UWG.">
     <h1>Impressum</h1>
     <p>Angaben gemäss den in der Schweiz geltenden Informationspflichten.</p>
 
     <h2>Betreiber</h2>
     <p>
         nothing-to-do<br>
-        [Name / Firma einfügen]<br>
-        [Strasse und Hausnummer]<br>
-        [PLZ und Ort], Schweiz
+        Nino Baur<br>
+        Tuchschmidweg 6, 5000 Aarau, Schweiz<br>
     </p>
 
     <h2>Kontakt</h2>
     <p>
-        E-Mail: <a href="mailto:kontakt@nothing-to-do.ch">kontakt@nothing-to-do.ch</a>
+        E-Mail: <a href="mailto:nino.baur@gmx.net">nino.baur@gmx.net</a>
     </p>
 
-    <h2>Vertretungsberechtigte Person</h2>
-    <p>[Name der für den Inhalt verantwortlichen Person]</p>
+    {{-- <h2>Vertretungsberechtigte Person</h2>
+    <p>[Name der für den Inhalt verantwortlichen Person]</p> --}}
 
     <h2>Haftungsausschluss</h2>
     <p>
