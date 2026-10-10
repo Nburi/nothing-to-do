@@ -53,9 +53,9 @@ class NothingToDoServer extends Server
      * from making every client do a second round trip for a list this small,
      * and plenty to lose if one doesn't. One page, always.
      */
-    public int $defaultPaginationLength = 100;
+    public int $defaultPaginationLength = 200;
 
-    public int $maxPaginationLength = 100;
+    public int $maxPaginationLength = 200;
 
     protected function boot(): void
     {

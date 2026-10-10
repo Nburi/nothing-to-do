@@ -49,6 +49,7 @@ class TaskMutator
             'notes' => $notes !== '' ? $notes : null,
             'is_important' => $data['is_important'] ?? false,
             'repeat_rule' => $data['repeat_rule'] ?? null,
+            'duration_minutes' => $data['duration_minutes'] ?? null,
             'sort_order' => 0,
         ];
 
@@ -106,6 +107,9 @@ class TaskMutator
         }
         if (array_key_exists('repeat_rule', $data)) {
             $updates['repeat_rule'] = $data['repeat_rule'];
+        }
+        if (array_key_exists('duration_minutes', $data)) {
+            $updates['duration_minutes'] = $data['duration_minutes'];
         }
         if (array_key_exists('is_completed', $data)) {
             $updates['is_completed'] = $data['is_completed'];

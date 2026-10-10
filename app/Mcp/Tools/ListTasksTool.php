@@ -6,6 +6,7 @@ use App\Http\Resources\TaskResource;
 use App\Mcp\McpTool;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -41,7 +42,13 @@ class ListTasksTool extends McpTool
                 'is_important' => ['type' => 'boolean'],
                 'completed' => ['type' => 'boolean', 'description' => 'Include completed tasks too. Default false.'],
                 'search' => ['type' => 'string', 'description' => 'Case-insensitive substring match on the title.'],
+                'due_on_or_before' => ['type' => 'string', 'format' => 'date', 'description' => 'Only tasks whose effective date (deadline, else due_date) is on or before this day (YYYY-MM-DD). Undated tasks are excluded.'],
+                'due_on_or_after' => ['type' => 'string', 'format' => 'date', 'description' => 'Only tasks whose effective date is on or after this day. Undated tasks are excluded.'],
+                'overdue' => ['type' => 'boolean', 'description' => 'true = only tasks whose effective date is before today (in the user\'s timezone).'],
+                'without_duration' => ['type' => 'boolean', 'description' => 'true = only tasks that have no duration estimate yet.'],
+                'repeating' => ['type' => 'boolean', 'description' => 'true = only recurring tasks, false = only non-recurring.'],
                 'limit' => ['type' => 'integer', 'description' => 'Max results, default 50, max 200.'],
+                'offset' => ['type' => 'integer', 'description' => 'Skip this many results (pagination), default 0.'],
             ],
         ];
     }
@@ -61,7 +68,13 @@ class ListTasksTool extends McpTool
             'is_important' => ['sometimes', 'boolean'],
             'completed' => ['sometimes', 'boolean'],
             'search' => ['sometimes', 'string', 'max:255'],
+            'due_on_or_before' => ['sometimes', 'date'],
+            'due_on_or_after' => ['sometimes', 'date'],
+            'overdue' => ['sometimes', 'boolean'],
+            'without_duration' => ['sometimes', 'boolean'],
+            'repeating' => ['sometimes', 'boolean'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:200'],
+            'offset' => ['sometimes', 'integer', 'min:0'],
         ])->validate();
 
         $query = $user->tasks()->newQuery();
@@ -90,9 +103,28 @@ class ListTasksTool extends McpTool
             $query->where('title', 'like', '%'.trim($data['search']).'%');
         }
 
-        $tasks = $query->boardOrdered()->limit($data['limit'] ?? 50)->get();
+        // DATE(...) because a 'date'-cast column is stored with a time part (CLAUDE.md §10).
+        if (isset($data['due_on_or_before'])) {
+            $query->whereRaw('DATE(COALESCE(deadline, due_date)) <= ?', [Carbon::parse($data['due_on_or_before'])->toDateString()]);
+        }
+        if (isset($data['due_on_or_after'])) {
+            $query->whereRaw('DATE(COALESCE(deadline, due_date)) >= ?', [Carbon::parse($data['due_on_or_after'])->toDateString()]);
+        }
+        if (($data['overdue'] ?? false) === true) {
+            $query->whereRaw('DATE(COALESCE(deadline, due_date)) < ?', [$user->localToday()->toDateString()]);
+        }
+        if (($data['without_duration'] ?? false) === true) {
+            $query->whereNull('duration_minutes');
+        }
+        if (isset($data['repeating'])) {
+            $data['repeating'] ? $query->whereNotNull('repeat_rule') : $query->whereNull('repeat_rule');
+        }
+
+        $total = (clone $query)->count();
+        $tasks = $query->boardOrdered()->offset($data['offset'] ?? 0)->limit($data['limit'] ?? 50)->get();
 
         return [
+            'total' => $total,
             'count' => $tasks->count(),
             'tasks' => TaskResource::collection($tasks)->resolve(),
         ];

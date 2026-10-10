@@ -6,6 +6,8 @@ use App\Mcp\Exceptions\McpUnknownToolException;
 use App\Mcp\Tools\CompleteTaskTool;
 use App\Mcp\Tools\CreateAgendaEntryTool;
 use App\Mcp\Tools\CreateTaskTool;
+use App\Mcp\Tools\CreateTasksTool;
+use App\Mcp\Tools\UpdateTasksTool;
 use App\Mcp\Tools\DeleteTaskTool;
 use App\Mcp\Tools\GetBoardTool;
 use App\Mcp\Tools\GetProgressTool;
@@ -70,6 +72,8 @@ class McpServer
             // Write
             new CreateTaskTool,
             new UpdateTaskTool,
+            new CreateTasksTool,
+            new UpdateTasksTool,
             new CompleteTaskTool,
             new ReopenTaskTool,
             new SetTaskOrderTool,

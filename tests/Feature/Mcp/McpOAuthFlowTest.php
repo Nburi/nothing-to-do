@@ -144,7 +144,8 @@ class McpOAuthFlowTest extends TestCase
         $result = $this->rpc($tokens['access_token'], 'tools/list')['result'];
 
         $this->assertArrayNotHasKey('nextCursor', $result);
-        $this->assertCount(19, $result['tools']);
+        $expected = collect(app(\App\Mcp\McpServer::class)->tools())->reject(fn ($tool) => $tool->requiresAdmin())->count();
+        $this->assertCount($expected, $result['tools']);
     }
 
     public function test_a_connected_client_can_list_and_call_tools(): void
