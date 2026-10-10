@@ -26,6 +26,10 @@ class ListAgendaEntriesTool extends McpTool
             'type' => 'object',
             'properties' => [
                 'type' => ['type' => 'string', 'enum' => array_keys(AgendaEntry::TYPES)],
+                'from' => ['type' => 'string', 'format' => 'date', 'description' => 'Only entries on or after this day (YYYY-MM-DD).'],
+                'to' => ['type' => 'string', 'format' => 'date', 'description' => 'Only entries on or before this day (YYYY-MM-DD).'],
+                'agenda_space_id' => ['type' => 'integer', 'description' => 'Only entries of this class (see list_agenda_spaces).'],
+                'private' => ['type' => 'boolean', 'description' => 'true = only the user\'s private (unshared) entries.'],
                 'include_done' => ['type' => 'boolean', 'description' => 'Include entries this user already finished. Default false.'],
                 'limit' => ['type' => 'integer', 'description' => 'Max results, default 50, max 200.'],
             ],
@@ -46,6 +50,10 @@ class ListAgendaEntriesTool extends McpTool
     {
         $data = Validator::make($arguments, [
             'type' => ['sometimes', 'string', 'in:'.implode(',', array_keys(AgendaEntry::TYPES))],
+            'from' => ['sometimes', 'date'],
+            'to' => ['sometimes', 'date'],
+            'agenda_space_id' => ['sometimes', 'integer'],
+            'private' => ['sometimes', 'boolean'],
             'include_done' => ['sometimes', 'boolean'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:200'],
         ])->validate();
@@ -54,6 +62,17 @@ class ListAgendaEntriesTool extends McpTool
 
         if (isset($data['type'])) {
             $query->ofType($data['type']);
+        }
+        if (isset($data['from'])) {
+            $query->whereDate('date', '>=', $data['from']);
+        }
+        if (isset($data['to'])) {
+            $query->whereDate('date', '<=', $data['to']);
+        }
+        if (isset($data['agenda_space_id'])) {
+            $query->inSpace((int) $data['agenda_space_id']);
+        } elseif ($data['private'] ?? false) {
+            $query->inSpace(null);
         }
         if (! ($data['include_done'] ?? false)) {
             $query->openFor($user);
@@ -71,6 +90,8 @@ class ListAgendaEntriesTool extends McpTool
                 'date' => $entry->date->toDateString(),
                 'date_label' => $entry->dateLabel(),
                 'is_overdue' => $entry->isOverdue(),
+                'duration_minutes' => $entry->duration_minutes,
+                'agenda_space_id' => $entry->agenda_space_id,
                 'is_shared' => $entry->isShared(),
                 'is_done' => $entry->isDoneFor($user),
                 'notes_preview' => $entry->notesPreview(),

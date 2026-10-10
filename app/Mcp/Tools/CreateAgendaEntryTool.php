@@ -38,7 +38,8 @@ class CreateAgendaEntryTool extends McpTool
                 'subject' => ['type' => 'string', 'description' => 'e.g. "Mathematik". Free text.'],
                 'title' => ['type' => 'string'],
                 'date' => ['type' => 'string', 'format' => 'date'],
-                'notes' => ['type' => 'string'],
+                'duration_minutes' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 600, 'description' => 'Estimated work time in minutes. Homework only — ignored for exams.'],
+                'notes' => ['type' => 'string', 'description' => 'Plain text, max 2000 characters.'],
             ],
             'required' => ['type', 'subject', 'title', 'date'],
         ];
@@ -63,10 +64,11 @@ class CreateAgendaEntryTool extends McpTool
     {
         $data = Validator::make($arguments, [
             'type' => ['required', 'string', 'in:'.implode(',', array_keys(AgendaEntry::TYPES))],
-            'subject' => ['required', 'string', 'max:255'],
+            'subject' => ['required', 'string', 'max:100'],
             'title' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
-            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:600'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ])->validate();
 
         $notes = isset($data['notes']) ? trim($data['notes']) : '';
@@ -76,6 +78,7 @@ class CreateAgendaEntryTool extends McpTool
             'subject' => trim($data['subject']),
             'title' => trim($data['title']),
             'date' => $data['date'],
+            'duration_minutes' => $data['type'] === 'homework' ? ($data['duration_minutes'] ?? null) : null,
             'notes' => $notes !== '' ? $notes : null,
             'agenda_space_id' => null,
         ]);
@@ -86,6 +89,7 @@ class CreateAgendaEntryTool extends McpTool
             'subject' => $entry->subject,
             'title' => $entry->title,
             'date' => $entry->date->toDateString(),
+            'duration_minutes' => $entry->duration_minutes,
             'is_shared' => false,
         ];
     }

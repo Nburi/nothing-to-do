@@ -40,6 +40,21 @@ use App\Mcp\Tools\Admin\UpdateHelpArticleTool;
 use App\Mcp\Tools\Admin\CreateHelpCategoryTool;
 use App\Mcp\Tools\Admin\UpdateHelpCategoryTool;
 use App\Mcp\Tools\Admin\DeleteHelpCategoryTool;
+use App\Mcp\Tools\GetProjectTool;
+use App\Mcp\Tools\GetTaskGroupTool;
+use App\Mcp\Tools\GetAgendaEntryTool;
+use App\Mcp\Tools\ListAgendaSpacesTool;
+use App\Mcp\Tools\CreateProjectTool;
+use App\Mcp\Tools\UpdateProjectTool;
+use App\Mcp\Tools\CreateTaskGroupTool;
+use App\Mcp\Tools\UpdateTaskGroupTool;
+use App\Mcp\Tools\AddGroupNoteTool;
+use App\Mcp\Tools\UpdateGroupNoteTool;
+use App\Mcp\Tools\UpdateAgendaEntryTool;
+use App\Mcp\Tools\DeleteProjectTool;
+use App\Mcp\Tools\DissolveTaskGroupTool;
+use App\Mcp\Tools\DeleteGroupNoteTool;
+use App\Mcp\Tools\DeleteAgendaEntryTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -69,6 +84,10 @@ class McpServer
             new ListAgendaEntriesTool,
             new GetProgressTool,
             new GetSettingsTool,
+            new GetProjectTool,
+            new GetTaskGroupTool,
+            new GetAgendaEntryTool,
+            new ListAgendaSpacesTool,
             // Write
             new CreateTaskTool,
             new UpdateTaskTool,
@@ -81,8 +100,19 @@ class McpServer
             new SetModuleVisibilityTool,
             new SetDefaultLandingPageTool,
             new CreateAgendaEntryTool,
+            new CreateProjectTool,
+            new UpdateProjectTool,
+            new CreateTaskGroupTool,
+            new UpdateTaskGroupTool,
+            new AddGroupNoteTool,
+            new UpdateGroupNoteTool,
+            new UpdateAgendaEntryTool,
             // Delete
             new DeleteTaskTool,
+            new DeleteProjectTool,
+            new DissolveTaskGroupTool,
+            new DeleteGroupNoteTool,
+            new DeleteAgendaEntryTool,
             // Admin only (users.is_admin): support queue, Hilfe-Center, announcements
             new ListSupportRequestsTool,
             new GetSupportRequestTool,

@@ -3,6 +3,8 @@
 namespace App\Mcp\Tools\Concerns;
 
 use App\Mcp\Exceptions\McpToolExecutionException;
+use App\Models\AgendaEntry;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
@@ -36,5 +38,28 @@ trait ResolvesOwnedModel
         }
 
         return $group;
+    }
+
+    protected function ownedProject(User $user, mixed $id): Project
+    {
+        $project = $user->projects()->find((int) $id);
+
+        if ($project === null) {
+            throw new McpToolExecutionException("No project with id {$id} found for this account.");
+        }
+
+        return $project;
+    }
+
+    /** An Agenda entry this user may see: their own private ones or any in a class they belong to. */
+    protected function visibleAgendaEntry(User $user, mixed $id): AgendaEntry
+    {
+        $entry = AgendaEntry::query()->visibleTo($user)->withCompletionState($user)->withPrivateNoteFor($user)->find((int) $id);
+
+        if ($entry === null) {
+            throw new McpToolExecutionException("No agenda entry with id {$id} found for this account.");
+        }
+
+        return $entry;
     }
 }
