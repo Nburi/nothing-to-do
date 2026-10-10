@@ -2513,15 +2513,81 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
+     * Shared 250ms heartbeat for every focus ring. Driven by a Web Worker on
+     * purpose: browsers throttle (and, after a few minutes, nearly freeze)
+     * main-thread timers on a page that is hidden or covered by another window —
+     * exactly the "timer on my second screen" case — while a worker's timers
+     * keep their pace. Falls back to a plain interval if workers are unavailable
+     * (e.g. blocked by CSP). Ring state is derived from an absolute deadline, not
+     * counted tick by tick, so even a late tick lands on the right second.
+     */
+    const focusTicker = (() => {
+        const subscribers = new Set();
+        let worker = null;
+        let fallback = null;
+
+        const run = () => subscribers.forEach((fn) => fn());
+        const startFallback = () => {
+            if (fallback === null) fallback = setInterval(run, 250);
+        };
+        const ensureRunning = () => {
+            if (worker !== null || fallback !== null) return;
+            try {
+                const url = URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 250)'], { type: 'text/javascript' }));
+                worker = new Worker(url);
+                worker.onmessage = run;
+                worker.onerror = () => {
+                    worker?.terminate();
+                    worker = null;
+                    startFallback();
+                };
+            } catch (e) {
+                startFallback();
+            }
+        };
+        const stopIfIdle = () => {
+            if (subscribers.size > 0) return;
+            worker?.terminate();
+            worker = null;
+            if (fallback !== null) clearInterval(fallback);
+            fallback = null;
+        };
+
+        // Catch up the instant the tab/window becomes visible again.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') run();
+        });
+
+        return {
+            subscribe(fn) {
+                subscribers.add(fn);
+                ensureRunning();
+            },
+            unsubscribe(fn) {
+                subscribers.delete(fn);
+                stopIfIdle();
+            },
+        };
+    })();
+
+    /**
      * focusTimer — a live, client-side Pomodoro countdown for the header ring.
-     * Seeded with the seconds left + the phase length; ticks each second and
-     * exposes the mm:ss label and the SVG stroke-dashoffset for the ring fill.
-     * Chimes when it reaches 0 and calls the server's handlePhaseComplete —
-     * which either continues into the next phase (autostart enabled) or
-     * freezes awaiting a manual continue (disabled). Either way, the
-     * server-driven re-render that follows swaps in fresh state (see wire:key
-     * on the ring in schedule-strip.blade.php, keyed on phase+cycle so a
-     * transition always reinitialises this component with a fresh seed).
+     * Seeded with the seconds left + the phase length; derives the mm:ss label
+     * and the SVG stroke-dashoffset for the ring fill from an absolute deadline
+     * (so it counts second by second and never drifts, whatever the browser does
+     * to timers). Chimes when it reaches 0 and calls the server's
+     * handlePhaseComplete — which either continues into the next phase
+     * (autostart enabled) or freezes awaiting a manual continue (disabled).
+     * Either way, the server-driven re-render that follows swaps in fresh state
+     * (see wire:key on the ring in schedule-strip.blade.php, keyed on
+     * phase+cycle so a transition always reinitialises this component with a
+     * fresh seed). If that call fails or lands a hair early, it is retried
+     * every few seconds until the ring is replaced — it never stays stuck at 0:00.
+     *
+     * The ring element carries data-remaining, refreshed by the 5s poll; when the
+     * server's figure disagrees with the local clock by more than a couple of
+     * seconds (clock skew, another device paused/changed the session) the
+     * deadline is re-anchored to the server.
      *
      * cfg: { id, remaining, total, circ }
      */
@@ -2530,22 +2596,45 @@ document.addEventListener('alpine:init', () => {
         remaining: Math.max(0, cfg.remaining ?? 0),
         total: Math.max(1, cfg.total ?? 1),
         circ: cfg.circ ?? 264,
-        timer: null,
+        endsAt: 0,
+        lastServerRemaining: Math.max(0, cfg.remaining ?? 0),
+        completedAt: null,
+        _tick: null,
 
         init() {
-            this.timer = setInterval(() => {
-                if (this.remaining > 0) {
-                    this.remaining--;
-                    if (this.remaining === 0) {
-                        this.chime();
-                        clearInterval(this.timer);
-                        this.$wire.call('handlePhaseComplete', this.id);
-                    }
-                }
-            }, 1000);
+            this.endsAt = Date.now() + this.remaining * 1000;
+            this._tick = () => this.tick();
+            focusTicker.subscribe(this._tick);
         },
         destroy() {
-            clearInterval(this.timer);
+            if (this._tick) focusTicker.unsubscribe(this._tick);
+            this._tick = null;
+        },
+        tick() {
+            const now = Date.now();
+
+            // Re-anchor when a poll brought a server figure that disagrees with us.
+            const server = parseInt(this.$el?.dataset?.remaining ?? '', 10);
+            if (Number.isFinite(server) && server !== this.lastServerRemaining) {
+                this.lastServerRemaining = server;
+                const local = Math.max(0, Math.ceil((this.endsAt - now) / 1000));
+                if (Math.abs(server - local) > 2) {
+                    this.endsAt = now + server * 1000;
+                }
+            }
+
+            const left = Math.max(0, Math.ceil((this.endsAt - now) / 1000));
+            if (left !== this.remaining) this.remaining = left;
+            if (left > 0) return;
+
+            // Reached zero: chime once, then keep (re)trying the server hand-off.
+            if (this.completedAt === null) {
+                try { this.chime(); } catch (e) { /* audio is optional */ }
+            } else if (now - this.completedAt < 3000) {
+                return;
+            }
+            this.completedAt = now;
+            Promise.resolve(this.$wire.call('handlePhaseComplete', this.id)).catch(() => {});
         },
         get mmss() {
             const m = Math.floor(this.remaining / 60);
