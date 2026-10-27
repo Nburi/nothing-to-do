@@ -6,13 +6,16 @@ use App\Livewire\Concerns\ManagesDeadlineItems;
 use App\Livewire\Concerns\ManagesSchedule;
 use App\Livewire\Concerns\ManagesTasks;
 use App\Models\ScheduleEvent;
+use App\Models\Reminder;
 use App\Models\Task;
 use App\Services\DayWindow;
 use App\Services\DeadlineItems;
+use App\Services\Reminders;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -81,6 +84,38 @@ class PrepareTomorrow extends Component
             ->where('is_today', true)
             ->boardOrdered()
             ->get();
+    }
+
+    /**
+     * "Nicht vergessen" for the target day (ticked ones included, struck through) — the
+     * checklist on the schedule step. Packing the bag is the natural moment to tick them off.
+     *
+     * @return Collection<int, Reminder>
+     */
+    #[Computed]
+    public function targetReminders(): Collection
+    {
+        return Reminder::forUser(auth()->user())->on($this->targetDate)->chronological()->get();
+    }
+
+    /** "Hab ich" / "doch noch nicht" on a checklist row. A foreign id is a no-op. */
+    public function toggleReminder(int $id): void
+    {
+        $reminder = auth()->user()->reminders()->find($id);
+
+        if ($reminder !== null) {
+            Reminders::acknowledge($reminder, ! $reminder->isAcknowledged());
+            unset($this->targetReminders);
+            $this->dispatch('reminders-changed');
+        }
+    }
+
+    /** A reminder created or ticked off elsewhere while this page is open. */
+    #[On('reminders-changed')]
+    #[On('captured')]
+    public function refreshReminders(): void
+    {
+        unset($this->targetReminders);
     }
 
     /** The target day's timeline — recurring series materialised on read, same as Schedule::render(). */

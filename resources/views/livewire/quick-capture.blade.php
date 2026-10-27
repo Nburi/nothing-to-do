@@ -13,9 +13,10 @@
         forced: null,
         targets: @js($targets),
         /* Optional fields appear as soon as there is something to attach them to.
-           Agenda is always open: its fields are required, not optional. */
+           Agenda is always open: its fields are required, not optional. A reminder
+           is open too: its day is the one thing it needs. */
         get showExtra() {
-            if ($wire.target === 'agenda' || $wire.target === 'group') return true;
+            if (['agenda', 'group', 'reminder'].includes($wire.target)) return true;
             return this.forced !== null ? this.forced : this.typed.trim().length > 0;
         },
         cycle(dir) {
@@ -64,6 +65,7 @@
                         craft: 'Was möchtest du basteln?',
                         agenda: 'Was ist aufgegeben?',
                         group: 'Was gehört zur Gruppe?',
+                        reminder: 'Woran darfst du nicht vergessen?',
                     }[$wire.target] ?? 'Was steht an?'"
                     autocomplete="off"
                     @input="typed = $event.target.value"
@@ -99,7 +101,7 @@
                 {{-- Hidden for Agenda: its fields are required, so there is nothing to fold away. --}}
                 <button
                     type="button"
-                    x-show="$wire.target !== 'agenda' && $wire.target !== 'group'"
+                    x-show="! ['agenda', 'group', 'reminder'].includes($wire.target)"
                     @click="forced = !showExtra"
                     class="ml-auto flex items-center gap-1 rounded-card px-2 py-2 text-xs text-ink-faint sm:px-1.5 sm:py-1 transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
@@ -242,6 +244,42 @@
                     ></textarea>
                 </div>
 
+                {{-- Reminder ("Nicht vergessen"): the day is the one thing it needs, so — like the
+                     Agenda's fields — this section is always open for it. The pushes are two switches
+                     with sensible defaults; nothing is sent to a device that hasn't enabled push. --}}
+                <div x-show="$wire.target === 'reminder'" style="display: none;" class="flex flex-col gap-3">
+                    <div>
+                        <span class="mb-1.5 block text-[11px] font-medium text-ink-faint" id="qc-reminder-day-label">Wann?</span>
+                        <div class="flex flex-wrap items-center gap-1.5" role="group" aria-labelledby="qc-reminder-day-label">
+                            @foreach ($this->reminderDays as $option)
+                                <button
+                                    type="button"
+                                    wire:click="$set('date', '{{ $option['date'] }}')"
+                                    @class([
+                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                        'border-forest bg-forest text-white' => $date === $option['date'],
+                                        'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $date !== $option['date'],
+                                    ])
+                                    aria-pressed="{{ $date === $option['date'] ? 'true' : 'false' }}"
+                                >{{ $option['label'] }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="max-w-[11rem]">
+                        <label for="qc-reminder-date" class="mb-1 block text-[11px] font-medium text-ink-faint">Oder ein anderer Tag</label>
+                        <input id="qc-reminder-date" type="date" wire:model="date" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                    </div>
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
+                            <input type="checkbox" wire:model="reminderEvening" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            Am Vorabend erinnern
+                        </label>
+                        <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
+                            <input type="checkbox" wire:model="reminderOnDay" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            Am Tag selbst erinnern
+                        </label>
+                    </div>
+                </div>
                 {{-- Agenda: type, Fach and date are all required (mirrors Agenda::save()). --}}
                 <div x-show="$wire.target === 'agenda'" style="display: none;" class="flex flex-col gap-3">
                     <div class="flex flex-wrap items-center gap-1.5">

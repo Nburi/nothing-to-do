@@ -159,6 +159,45 @@
             </div>
         </section>
 
+        {{-- Erinnerungen --}}
+        <section id="reminders" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Erinnerungen</h2>
+            <p class="mb-4 text-sm text-ink-soft">
+                &laquo;Nicht vergessen&raquo;: eine kurze Notiz für einen bestimmten Tag &mdash; bewusst keine Aufgabe. Ab zwei Tagen vorher als Chip über dem Zeitstrahl,
+                dazu auf Wunsch ein Push am Vorabend und am Tag selbst.
+            </p>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /reminders</p>
+                    <p class="mt-1 text-ink-soft">Alle Erinnerungen ab heute, früheste zuerst. <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">?done=0</code> lässt bereits Abgehakte weg.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /reminders</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code> (max. 120 Zeichen) und
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">remind_on</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>, heute bis in einem Jahr); optional
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_evening_before</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_on_day</code> (beide standardmässig <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">true</code>).
+                        Pushes gehen nur an Geräte, die Push aktiviert haben.
+                    </p>
+                    <pre class="mt-2 overflow-x-auto rounded-card bg-paper p-3 font-mono text-xs text-ink"><code>curl -X POST {{ url('/api/reminders') }} \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
+  -d '{"title": "Turnschuhe mitnehmen", "remind_on": "2026-10-28"}'</code></pre>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /reminders/{id}</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PATCH /reminders/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Felder ändern, oder mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"acknowledged": true}</code> &laquo;Hab ich&raquo; setzen (danach kommt kein Push mehr),
+                        mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">false</code> wieder öffnen. Ein neuer Tag öffnet die Erinnerung wieder und schärft die Pushes neu.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /reminders/{id}</p>
+                </div>
+            </div>
+        </section>
         {{-- Projects --}}
         <section id="projects" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-1 text-base font-medium text-ink">Projects</h2>

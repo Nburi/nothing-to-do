@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AgendaEntry;
 use App\Models\Project;
+use App\Models\Reminder;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
@@ -259,6 +260,34 @@ class DayPreviewData
     }
 
     /**
+     * "Nicht vergessen": the open reminders for today and tomorrow — what the tile shows. Null (no tile
+     * at all) when there are none, like every other optional tile.
+     *
+     * @return array{count: int, items: list<array{title: string, when: string}>, hasMore: bool, moreCount: int}|null
+     */
+    public static function reminders(User $user): ?array
+    {
+        $today = $user->localToday();
+
+        $rows = Reminder::forUser($user)->open()
+            ->whereDate('remind_on', '>=', $today->toDateString())
+            ->whereDate('remind_on', '<=', $today->copy()->addDay()->toDateString())
+            ->chronological()
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'count' => $rows->count(),
+            'items' => $rows->take(self::LIST_CAP)->map(fn (Reminder $r) => ['title' => $r->title, 'when' => $r->dateLabel($today)])->values()->all(),
+            'hasMore' => $rows->count() > self::LIST_CAP,
+            'moreCount' => max(0, $rows->count() - self::LIST_CAP),
+        ];
+    }
+
+    /**
      * A short, live summary for the morning push notification (see
      * App\Console\Commands\SendDayPreviewNotifications) — never a static
      * config string, since "how many tasks/terms today" is the entire point.
@@ -287,6 +316,12 @@ class DayPreviewData
 
         if ($due['count'] > 0) {
             $parts[] = $due['count'] === 1 ? '1 Aufgabe fällig' : "{$due['count']} Aufgaben fällig";
+        }
+
+        $reminders = Reminder::forUser($user)->open()->on($user->localToday())->count();
+
+        if ($reminders > 0) {
+            $parts[] = $reminders === 1 ? '1 Sache nicht vergessen' : "{$reminders} Sachen nicht vergessen";
         }
 
         if ($parts === []) {

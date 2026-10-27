@@ -85,6 +85,30 @@
             </div>
         @endif
 
+        {{-- "Nicht vergessen" for the target day: a short checklist, because packing the bag is when
+             you actually remember. Ticking is "Hab ich" — it ends the pushes for that reminder. --}}
+        @if ($this->targetReminders->isNotEmpty())
+            <div class="mb-3 rounded-card border border-line bg-surface px-3 py-2.5">
+                <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Nicht vergessen · {{ $targetWord }}</p>
+                <ul class="space-y-1">
+                    @foreach ($this->targetReminders as $reminder)
+                        <li wire:key="prep-reminder-{{ $reminder->id }}">
+                            <button
+                                type="button"
+                                wire:click="toggleReminder({{ $reminder->id }})"
+                                class="flex w-full items-center gap-2.5 rounded py-1 text-left text-sm transition hover:bg-paper focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                                aria-label="{{ $reminder->title }}: {{ $reminder->isAcknowledged() ? 'doch noch nicht' : 'hab ich' }}"
+                            >
+                                <span class="grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition {{ $reminder->isAcknowledged() ? 'border-forest bg-forest text-white' : 'border-line text-transparent' }}">
+                                    <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.4 4.8 8.7 9.5 3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </span>
+                                <span class="min-w-0 flex-1 truncate {{ $reminder->isAcknowledged() ? 'text-ink-faint line-through' : 'text-ink' }}">{{ $reminder->title }}</span>
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         @if ($this->templates->isNotEmpty())
             <div class="mb-3 flex items-center gap-2 overflow-x-auto">
                 <span class="flex-none text-[11px] text-ink-faint">Vorlagen:</span>

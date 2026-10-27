@@ -32,6 +32,10 @@ class UpdateSettingsTool extends McpTool
             // Tagesüberblick
             'notify_day_preview' => ['rules' => ['boolean'], 'schema' => ['type' => 'boolean', 'description' => 'Daily morning push summarising the day.']],
             'day_preview_notification_time' => ['rules' => self::TIME, 'schema' => ['type' => 'string', 'description' => 'HH:MM of that push.']],
+            // Erinnerungen ("Nicht vergessen")
+            'reminder_evening_time' => ['rules' => self::TIME, 'schema' => ['type' => 'string', 'description' => 'HH:MM of the evening-before reminder push.']],
+            'reminder_morning_time' => ['rules' => self::TIME, 'schema' => ['type' => 'string', 'description' => 'HH:MM — the latest time today\'s reminders are pushed.']],
+            'reminder_smart_timing' => ['rules' => ['boolean'], 'schema' => ['type' => 'boolean', 'description' => 'Push today\'s reminders before the first block\'s departure when that is earlier.']],
             // Pomodoro
             'pomodoro_work' => ['rules' => ['integer', 'min:1'], 'schema' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Work phase, minutes.']],
             'pomodoro_short_break' => ['rules' => ['integer', 'min:1'], 'schema' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Short break, minutes.']],

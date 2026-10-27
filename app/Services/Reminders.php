@@ -118,6 +118,17 @@ class Reminders
     }
 
     /**
+     * How many open reminders lie beyond the badge window — the quiet "+N geplant" chip, which is also the
+     * only way into the list while nothing is close enough to show a chip of its own.
+     */
+    public static function laterCount(User $user): int
+    {
+        return Reminder::forUser($user)->open()
+            ->whereDate('remind_on', '>', $user->localToday()->addDays(self::BADGE_DAYS_AHEAD)->toDateString())
+            ->count();
+    }
+
+    /**
      * Everything from today on, ticked ones included — the "Alle Erinnerungen" sheet.
      *
      * @return Collection<int, Reminder>

@@ -1503,6 +1503,65 @@ plain "HH:MM" with no 24:00 special case — the *frame* still reaches 24:00 thr
 the expansion); and a per-column scale on the **desktop** week grids, which one hour gutter makes
 structurally impossible.
 
+### Erinnerungen — "Nicht vergessen" (built)
+
+A dated note that is **deliberately not a task**: "take the gym shoes to school on Wednesday". It sits in no list,
+has no estimate, counts for no goal or streak and never shows up in Inbox/Planer/Fortschritt — the whole point is
+that it no longer has to be smuggled into the Inbox. Branch `feature/reminders`.
+
+- **`reminders`** (`user_id` cascade, `title` ≤ 120, `remind_on` date, `notify_evening_before`, `notify_on_day`,
+  `acknowledged_at`, `notified_before_at`, `notified_on_at`) + **`App\Models\Reminder`**; `users` gained
+  `reminder_evening_time` (19:00), `reminder_morning_time` (07:00), `reminder_smart_timing` (true), mirrored in
+  `User::$attributes` against the fresh-model gotcha.
+- **`App\Services\Reminders` is the one place the rules live**, so the sheet, QuickCapture, the REST API and MCP
+  cannot drift: `create`/`update`/`acknowledge`/`delete` (validation incl. "not in the past", ≤ 1 year ahead, a cap of
+  `MAX_UPCOMING` = 100; **moving a reminder clears its acknowledgement and both push stamps**, a rename does not; an
+  existing reminder whose day has passed may keep that day when only its title is edited), `badges()`, `upcoming()`,
+  `laterCount()`, `forDate()`, `dueNotifications()`, `onDayDueMinute()`, `pushPayload()`.
+- **The badge row** is its own child Livewire component, **`App\Livewire\ReminderBadges`**, included once at the top of
+  `partials/schedule-strip.blade.php` — so it appears above the Zeitstrahl on every list concept, desktop and mobile
+  (each layout renders one instance; they stay in step through the `reminders-changed` event). Window: today …
+  `BADGE_DAYS_AHEAD` (2) days; tone escalates quietly (neutral → contour the day before → overprint on the day;
+  `signal` is never used, an open reminder is not an emergency). A reminder whose day has passed is simply gone. Further-out
+  reminders get **one quiet "+N geplant" / "N Erinnerungen geplant" chip** — not worth a chip each, but it is the only way
+  into the list while nothing is close; with nothing at all the row is an empty div (zero footprint).
+- **Signature moment — "Eingepackt".** "Hab ich" folds the chip into a check mark whose stroke draws itself
+  (`.reminder-fold` in `app.css`) and a line says what that changed: "Morgen früh kommt nichts mehr." / "Eingepackt —
+  nichts mehr offen." / "Dann ist das erledigt.", then leaves after 3.4 s (Alpine timer). **How it works:** the server
+  acknowledges immediately; `Reminders::badges()` keeps an acknowledged reminder for `ACK_LINGER_SECONDS` (8) and the
+  chip's `wire:key` differs between open and done, so Livewire swaps in a fresh node and the animation plays once.
+  (A client-side "play it, then call the server" would lose the acknowledgement if the page was left within the animation.)
+- **`App\Livewire\ReminderSheet`** ("Alle Erinnerungen", one global component in `layouts/app.blade.php`, opened by
+  `Livewire.dispatch('open-reminders', { id? })` from a chip, the Tagesüberblick tile or the "+N geplant" chip): list,
+  add/edit form, a round "Hab ich"/reopen toggle per row, delete by the armed double-click.
+- **QuickCapture** has a fourth task-adjacent target **"Erinnerung"** (`TARGETS` gained `reminder`, between To-Dos/Tasks
+  and Gruppe): its section is always open like the Agenda's, with day chips (Morgen, Übermorgen, then weekday names — today
+  is deliberately not a chip; the date field still takes it) and the two push switches. The date reuses `$date`
+  (the Agenda's property), so `setTarget()` now drops it only for targets other than agenda/reminder. Day and switches
+  survive a save (writing down the shoes and the water bottle for one Wednesday is the normal case). Always available —
+  no `AppModules` entry, it is not a hideable page.
+- **Pushes** — `app:send-reminder-notifications` (every minute, `bootstrap/app.php`): the evening before from
+  `reminder_evening_time`, and on the day itself at `onDayDueMinute()`: the **morning time, or — with smart timing — earlier
+  when the day's first block (its Weg-/Pufferzeit counted in, via `occupiedStartMinutes()`) starts before it, 30 minutes
+  ahead of leaving, but never before 05:00**. Only pushes to devices that already enabled push (`PushNotifier`); nothing
+  is toggleable besides the two per-reminder switches and the times, matching the support-channel pushes. Dedup is the
+  `notified_*_at` stamps (a delayed tick still fires, a restart never repeats); **a push whose moment passed before the
+  reminder existed (set up at 21:00 for tomorrow, evening push due 19:00) is only stamped, never sent** — a push seconds
+  after creating the thing would be noise. An acknowledged reminder never pushes. The command also deletes reminders whose
+  day is more than `PRUNE_AFTER_DAYS` (30) behind.
+- **Vorbereitung** step 3 shows the target day's reminders as a tick-off checklist ("Nicht vergessen · morgen"; packing
+  the bag is when you actually remember). **Tagesüberblick** gets a "Nicht vergessen" tile (today + tomorrow, open only),
+  and its morning push summary counts today's open ones.
+- **Settings → Benachrichtigungen** has the two clock times (autosave on change, `saveReminderTimes()`) and the smart-timing
+  switch (`toggleReminderSmartTiming()`).
+- **API / MCP / export:** `GET|POST /api/reminders`, `GET|PATCH|DELETE /api/reminders/{id}` (`acknowledged: true|false` in
+  the PATCH); MCP `list_reminders`, `create_reminder`, `update_reminder`, `delete_reminder` (needs `mcp:delete` + exact
+  `confirm_title`), `get_day_overview` carries `reminders`, `get_settings`/`update_settings` the three times; the export has
+  `reminders`. Docs: `/docs/api` "Erinnerungen".
+- Deliberately out of scope: recurring reminders ("jeden Mittwoch Sportsachen"), a reminder as an entry inside the
+  Zeitplan, snooze, a per-reminder push time, and reminders shared with a class. **Verification was tests + `npm run build`
+  only — no live browser pass** (the chip row's look at 375 px, the fold animation and the QuickCapture section are
+  unchecked in a real browser).
 ### Agenda — Hausaufgaben & Prüfungen (built)
 - A deliberately standalone page (`/app/agenda`, `route('agenda')`) for school deadlines — homework and
   exams — kept fully isolated from Task/Project/Schedule for now: no FK/relation, and it doesn't surface
@@ -3955,8 +4014,8 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 **Cron is required** as of the Web Push feature: `php artisan schedule:run` must run every minute (a
 single crontab line, see step 10 above) — it drives `app:advance-pomodoro-phases`,
 `app:send-event-start-notifications`, `app:send-event-upcoming-notifications`, `app:send-prepare-reminders`,
-`app:send-progress-reminders`, and `app:send-day-preview-notifications`, the six commands that make
-Pomodoro/event-start/event-upcoming/Vorbereitung/Fortschritt/Tagesüberblick push notifications fire even
+`app:send-progress-reminders`, `app:send-day-preview-notifications` and `app:send-reminder-notifications`, the seven commands that make
+Pomodoro/event-start/event-upcoming/Vorbereitung/Fortschritt/Tagesüberblick/Erinnerungs push notifications fire even
 with no tab open. No separate queue worker is needed (notifications send synchronously inline). Cron
 also drives `app:promote-day-plans-to-today` (Planer) and, since the 2026-09-17 streak rework,
 `app:evaluate-streak-days` — without it, a genuinely idle day never gets its "Ruhetag" freeze decided
@@ -4703,6 +4762,15 @@ appropriate) the moment it's plausible that some future caller wants to override
 mistakes, this one produces no error, no warning, and can look correct in a diff review of the *including*
 file alone (the bug lives entirely in the file that was never touched by the branch that introduced it).
 
+### The inline `@php(...)` directive silently swallows the rest of a Blade view when its expression contains parentheses
+
+**Symptom:** a view fails with `syntax error, unexpected token "endif", expecting end of file` — pointing at the compiled view, not at
+anything that looks wrong in the source (found on `reminder-badges.blade.php`).
+**Cause:** `@php($today = auth()->user()->localToday())` is the one-line form of `@php`, but with nested parentheses Blade's matcher
+does not find the end of the directive correctly and treats it as the start of a `@php … @endphp` block — so everything after it
+is compiled as raw PHP and the later `@if`/`@endif` pairs no longer balance.
+**Fix:** use the block form (`@php` … `@endphp`) whenever the expression calls anything, e.g. `auth()->user()->…`. The one-line
+form is only safe for expressions without parentheses.
 ### A literal directive word inside a `{{-- ... --}}` Blade comment can swallow everything before it
 **Symptom:** a brand-new partial (`partials/mehr-nav-links.blade.php`, Mobile Header Redesign) threw
 `ErrorException: Undefined variable $mehrShowAgendaNav` at the exact line that used it — even though the

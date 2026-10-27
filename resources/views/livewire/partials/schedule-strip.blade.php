@@ -23,6 +23,9 @@
 @endphp
 
 <div>
+{{-- "Nicht vergessen" chips sit above the Zeitstrahl / focus card; an empty row has no footprint. --}}
+<livewire:reminder-badges />
+
 @if ($focus)
     {{-- Focus card: a plain div (not the clickable-card <a> below) since it hosts
          its own Start/Stop/Continue/Skip buttons — a button can't sit inside an <a>. --}}

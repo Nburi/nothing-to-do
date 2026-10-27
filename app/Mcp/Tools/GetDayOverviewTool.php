@@ -68,6 +68,13 @@ class GetDayOverviewTool extends McpTool
                 ])->values()->all();
         }
 
+        // "Nicht vergessen": today's and tomorrow's open reminders (not a task, so not under today_tasks).
+        $overview['reminders'] = \App\Models\Reminder::forUser($user)->open()
+            ->whereDate('remind_on', '>=', $today->toDateString())
+            ->whereDate('remind_on', '<=', $today->copy()->addDay()->toDateString())
+            ->chronological()->get()
+            ->map(fn ($r) => (new \App\Http\Resources\ReminderResource($r))->resolve())->all();
+
         $overview['today_tasks'] = TaskResource::collection(
             Task::query()->forUser($user)->onBoard()->active()->where('is_today', true)->boardOrdered()->get()
         )->resolve();
