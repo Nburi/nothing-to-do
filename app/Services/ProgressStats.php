@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\StreakDayOutcome;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
+use App\Models\TaskSession;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -125,6 +126,11 @@ class ProgressStats
             foreach (TaskDayPlan::query()->whereHas('task', fn ($q) => $q->forUser($user))->with('task:id,is_completed')->get() as $plan) {
                 $add($plan->planned_date->toDateString(), $plan->task_id, (bool) $plan->task?->is_completed);
             }
+
+            // A split task's parts: each part's own day counts, and a ticked part is a cleared one.
+            foreach (TaskSession::query()->whereHas('task', fn ($q) => $q->forUser($user))->with('task:id,is_completed')->get() as $part) {
+                $add($part->planned_date->toDateString(), $part->task_id, $part->isDone() || (bool) $part->task?->is_completed);
+            }
         }
 
         return array_map(
@@ -164,7 +170,13 @@ class ProgressStats
                 ->whereDate('planned_date', $dateStr)
                 ->pluck('task_id');
 
-            $ids = $ids->merge($plannerIds);
+            // Open parts of a split task (a finished part is no longer something to do today).
+            $partIds = TaskSession::query()->open()
+                ->whereHas('task', fn ($q) => $q->forUser($user))
+                ->whereDate('planned_date', $dateStr)
+                ->pluck('task_id');
+
+            $ids = $ids->merge($plannerIds)->merge($partIds);
         }
 
         return $ids->unique()->values();
@@ -280,6 +292,31 @@ class ProgressStats
         }
 
         return $map;
+    }
+
+    /**
+     * Called after a part of a split task is ticked off (no task was
+     * completed, so celebrationFor() never runs): if that was the last open
+     * item of today's today-set, today is perfect — persist it, and return
+     * the celebration for the caller to dispatch. Null when the day isn't
+     * cleared yet, has no today-set, or was already decided before.
+     *
+     * @return array{kind: string, label: string}|null
+     */
+    public static function recordPerfectDayIfReached(User $user): ?array
+    {
+        $today = $user->localToday();
+        $stats = self::todayListStatsByDay($user)[$today->toDateString()] ?? null;
+
+        if ($stats === null || $stats['total'] === 0 || $stats['done'] !== $stats['total']) {
+            return null;
+        }
+
+        if (! self::recordOutcome($user, $today, StreakDayOutcome::OUTCOME_PERFECT, 'today_list')) {
+            return null;
+        }
+
+        return ['kind' => 'perfect-day', 'label' => 'Perfekter Tag'];
     }
 
     /**
