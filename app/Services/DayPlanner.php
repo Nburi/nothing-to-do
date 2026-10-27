@@ -568,6 +568,12 @@ class DayPlanner
         ];
     }
 
+    /** How many parts the sheet starts with: roughly an hour of work each, at least two. */
+    public static function defaultPartCount(int $totalMinutes): int
+    {
+        return max(2, min(8, (int) ceil($totalMinutes / 60)));
+    }
+
     /**
      * The app's proposal for which days to put $parts parts on. Prefers days
      * whose Arbeit-Blöcke still have room for one part, then days without any

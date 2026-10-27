@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ScheduleEventController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\TaskSplitController;
 use App\Http\Controllers\Api\TaskGroupController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}', [TaskController::class, 'show']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
+    Route::put('/tasks/{task}/split', [TaskSplitController::class, 'update']);
+    Route::delete('/tasks/{task}/split', [TaskSplitController::class, 'destroy']);
+    Route::patch('/task-sessions/{session}', [TaskSplitController::class, 'part']);
 
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::post('/projects', [ProjectController::class, 'store']);
