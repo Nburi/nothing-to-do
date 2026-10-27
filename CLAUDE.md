@@ -27,7 +27,7 @@ As specified in the global CLAUDE.md, you work here with git and branches. Every
 Hotfixes for the live app are still branched from `main` (e.g. `fix/<shortname>`) and merged back into `main`.
 
 ### create a preview, instead of describing it
-Whenever you plan a visual change, instead of describing it, generate a preview prefered as an artefact. If there are options, add them to the artefact, let me choose from the options (e.g. buttons) and see what they'll do to the app.
+Whenever you plan a visual change, instead of describing it, generate a preview, preferably as an artifact. If there are options, add them to the artefact, let me choose from the options (e.g. buttons) and see what they'll do to the app.
 
 ### user data must never be lost
 The app has real users. Their existing data must never be lost — not during the refactor and not afterwards. Every change to the data model needs a migration path for the existing production data (e.g. a migration that carries the data over, or an import from the old schema). If you're unsure whether a change could lose data, ask first.
