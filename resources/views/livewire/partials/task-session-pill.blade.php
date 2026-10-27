@@ -29,7 +29,7 @@
             default => $wd[$nextDate->dayOfWeek].' '.$nextDate->isoFormat('D.M.'),
         };
     @endphp
-    <div class="mt-1 flex flex-wrap items-center gap-1.5" wire:key="session-pill-{{ $task->id }}">
+    <div class="mt-1 flex flex-wrap items-center gap-1.5">
         <button
             type="button"
             @click.stop="Livewire.dispatch('open-split-sheet', { taskId: {{ $task->id }} })"

@@ -135,7 +135,7 @@ I say so, with reasoning.
   RGB channels) so one `prefers-color-scheme` media query flips the whole "map" day↔night and Tailwind
   opacity modifiers (`bg-paper/85`) still work. Font: self-hosted **Space Grotesk** (Fontsource).
 - **Database:** SQLite (development), MySQL (production-ready).
-- **Build:** Vite 8. **Tests:** PHPUnit (1647 tests).
+- **Build:** Vite 8. **Tests:** PHPUnit (1963 tests).
 - **PWA:** installable from Chrome/Edge — `public/manifest.json`, generated icons (`public/icons/`,
   via `php artisan icons:generate`, see §7), a service worker (`public/sw.js`) caching the app shell
   with a custom offline page (`public/offline.html`), registered from `resources/js/app.js`.
@@ -1272,6 +1272,78 @@ plannable target.
   (capacity stays tied to real Pomodoro blocks only, an explicit choice — see above), splitting a task
   across multiple days, time-of-day precision within a day (that's what Zeitplan/the per-block link are
   for), and actually dropping `schedule_event_task_links.source` (see *TODO.md*).
+
+### Planer — Aufteilen (built)
+
+One long task spread over several calendar days as separate work parts. Needs the Planer
+(`users.planner_enabled`) — with it off there is no entry point, no sheet and no MCP tool. Branch
+`feature/task-sessions`. (Not the rejected `feature/planner-grid-view` version: no board redesign, a different table,
+parts are individually tickable and removable.)
+
+- **`task_sessions`** (`task_id` cascade, `planned_date`, `minutes`, `sort_order`, `done_at`; **unique
+  `(task_id, planned_date)` under the explicit short name `task_sessions_task_day_unique`** — the 64-character
+  MariaDB limit, see Known Issues) + **`App\Models\TaskSession`**. `Task::sessions()`/`sessionProgress()` (done count,
+  next open part, `allDone`) read the loaded relation, so list queries eager-load `sessions`.
+- **`task_day_plans` stays "one row per task" and acts as the anchor.** For a split task its row mirrors the
+  **earliest open part** (`DayPlanner::syncAnchor()`, called by every write that can change which part that is) and is
+  deleted once every part is done. That is the whole reason nothing else had to learn about parts: the promote-to-Heute
+  cron, the focus-timer's Tagesplan tier, `DeadlineItems`' planned chips, `ProgressStats`' today-set and the rollover
+  keep reading `task_day_plans` unchanged. **Only the Planer board draws parts**: `board()` leaves the anchor row of a
+  split task out (`whereDoesntHave('sessions')`) and draws every open part instead, as a chip of `type=session` whose id
+  is the *part's* id (drag token `session:<id>`) and whose minutes count against the day's capacity.
+- **`DayPlanner`** gained `splitContext` (the 14 days with capacity — this task's own parts excluded so the sheet can
+  add the selection on top —, the buffered deadline offset, existing parts), `suggestSplitDates`, `saveSplit`, `unsplit`,
+  `removeSession`, `completeSession`, `canSplit`. `assignDay`/`moveToDay` understand `session:<id>` tokens
+  (`placeSession()`: refused when the part is done or the task already has a part on that day). Dropping a split task as a
+  whole (`task:<id>` — only possible for an all-parts-done task coming back from the backlog) ends its split.
+  - **Suggestion rule:** usable days = not after the buffered deadline (any day when none or already past), not a day a
+    finished part occupies; ranked *room for one part* → *no Arbeit-Block at all* → *already full*; dated tasks are spread
+    evenly over the usable window, undated ones take the earliest days. Part minutes = total ÷ parts, rounded to 5.
+  - **`saveSplit`** replaces the *open* parts only: a part on a day that stays selected keeps its row (and its place in the
+    day's order), finished parts are never touched, at least two parts must exist afterwards (finished ones count).
+  - **`removeSession`** drops one open part; if exactly one open part is left and nothing is finished, it stops being a
+    split and stays as an ordinary placement.
+  - **`completeSession`** ticks/unticks a part. It takes the task **off Heute** when no open part is due any more
+    (`is_today=false`, `today_date` via `todayDateFor(false)`) — the next part brings it back on its day because the anchor
+    moved and `promoted_for_date` no longer matches. **It never completes the task** (the card offers "Aufgabe abhaken?"
+    instead): auto-completing would fire celebration and streak for something the user may not consider done. It returns
+    `{progress, celebration}`; the celebration is `ProgressStats::recordPerfectDayIfReached()` ("Perfekter Tag" when the
+    ticked part cleared today's set), since no task was completed and `celebrationFor()` never runs.
+  - A completed task keeps its parts (hidden everywhere by `active()`); reopening it brings them back.
+- **`ProgressStats`** counts parts in the today-set: `todayListStatsByDay()` adds one entry per part (done = part ticked or
+  task completed), `todaySetTaskIds()` the *open* parts — so a day whose only item was a part is perfect once the part is
+  ticked, even though the task isn't complete.
+- **`App\Livewire\SplitTaskSheet`** — the sheet, one global component in `layouts/app.blade.php` (only rendered with the
+  Planer on), opened with `Livewire.dispatch('open-split-sheet', { taskId })` from: the edit sheet ("Auf mehrere Tage
+  aufteilen …" / "Auf N Tage aufgeteilt · ändern"), a Planer backlog chip's split button, and the pill on a split card.
+  It tells pages to refresh with the `plan-changed` event (`ManagesTasks::refreshAfterPlanChange()`,
+  `Planner::refreshAfterPlanChange()` — empty bodies, the re-render is the point, like `captured`).
+  - **Signature moment — "Rückwärts planen".** The sheet is a 14-day strip (two rows of seven) with each day's Arbeit-Block
+    time as a bar, the deadline day flagged, days after it dimmed, and finished parts locked. Tapping a day drops a part on
+    it (`.split-pop` spring); the part's minutes show as the forest-coloured share of that day's bar, or contour when the
+    day would overflow, and a live line says whether it fits. The selection is Alpine state (`splitSheet` in `app.js`) so a
+    tap costs no round trip; only the app's proposal (`suggest`, from the +/- stepper) and saving do. The initial
+    proposal is computed server-side (`sheetConfig`) so the strip never opens empty and jumps.
+- **Cards** show `partials/task-session-pill.blade.php` — dots + "Teil 2/3 · Mi 29.10.", signal-toned when the part is
+  overdue — with a "Teil erledigt" tick once a part is due (`ManagesTasks::completeTaskPart`) and "Aufgabe abhaken?" when
+  all parts are ticked. The project page's card shows a read-only line instead (the whole block is one `<button>`; a
+  button can't nest in it).
+- **Planer chips:** a part chip carries "Teil 2/3", a ✓ (`Planner::completeSession`) and an × that removes only that part
+  (`removeSession`); dropping a part on the backlog does the same. The Zeitplan strip lists each open part and its tick
+  marks only that part (`ManagesDeadlineItems::toggleDeadlinePartDone`). The focus card's suggestion reads
+  "Tagesplan · Teil 1/3".
+- **API / MCP / export:** `PUT|DELETE /api/tasks/{id}/split` (give `dates` or `parts`, plus optional `total_minutes`),
+  `PATCH /api/task-sessions/{id}` (`done`), `sessions` on `GET /tasks/{id}`; MCP `split_task`, `unsplit_task`,
+  `set_task_part_done`, `plan_task`/`unplan_task` accept `session_id`, `get_task`/`get_planner` expose parts (all under
+  the Planer switch via `PlannerToolDefaults`); the export has `task_parts`.
+- **Gotcha:** `promoteIfToday($user, $ids, $date)` promotes *every* given task when `$date` is today **and stamps their
+  anchor `promoted_for_date = planned_date`** — so calling it for a task whose next part is *not* today flags it Heute
+  wrongly and makes the cron skip the real day later. `saveSplit` only calls it when the earliest open part is today
+  (caught by a test: a rollover case came back empty because the task had been flagged Heute).
+- Deliberately out of scope: titles per part ("Gliederung", "Entwurf"), auto-redistributing missed parts, splitting
+  without the Planer, a part shorter than 5 or longer than 600 minutes, and showing finished parts on the Planer board.
+  Verification was tests + `npm run build` only — **no live browser pass** (the sheet's Alpine template, the strip's look at
+  375 px and the drag of a part chip are unchecked in a real browser).
 
 ### Wochenplan (built)
 

@@ -18,10 +18,9 @@ Kategorie-Filter) was explicitly **not** approved ("grid view is not ok") and is
 branch still exists locally. Don't rework it by guessing; wait for Niels's feedback on what specifically
 didn't work.
 
-- **The `TaskSplitSession` cross-feature follow-up is on hold.** Both `Schedule::deadlineItems()` and
-  `TaskSuggestor::plannerSuggestion()` are scoped to `TaskDayPlan` only, since `TaskSplitSession` only
-  exists on the rejected branch. Once (if) the board redesign with splitting merges, extend both queries
-  the same way.
+- **Splitting a task over several days now exists on `main`** (`task_sessions`, see CLAUDE.md "Planer — Aufteilen"),
+  built without the grid view. The rejected branch's own `task_split_sessions` table is obsolete — don't merge it;
+  anything worth keeping from it (due-date "Geister", category filter) would be a separate rework.
 
 ### MCP-Server — root-caused and fixed, still needs one real claude.ai connection
 

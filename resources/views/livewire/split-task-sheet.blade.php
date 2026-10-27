@@ -37,7 +37,7 @@
             <p class="mb-4 text-sm leading-relaxed text-ink-soft">
                 Tippe die Tage an, an denen du daran arbeiten willst. Die Balken zeigen, wie viel Arbeitsblock-Zeit der Tag noch hat.
                 @if ($context['deadlineLabel'])
-                    <span class="text-contour">Fällig {{ $context['deadlineLabel'] }}.</span>
+                    <span class="{{ $context['deadlineLabel'] === 'überfällig' ? 'text-signal' : 'text-contour' }}">{{ $context['deadlineLabel'] === 'überfällig' ? 'Die Frist ist schon vorbei.' : 'Fällig '.$context['deadlineLabel'].'.' }}</span>
                 @endif
             </p>
 
