@@ -13,9 +13,14 @@ Work is sorted by **size and shape**, not by project:
 |---|---|
 | **To-Do** | Small; several can be cleared in one work session. |
 | **Task** | Larger, but still a single work step. |
-| **Project** | Multi-part, has sub-tasks. **Not built now — architecture must allow it later.** |
+| **Later** | Things worth remembering for when there's spare time or boredom. **Not prioritized** — no today flag, no urgency. |
 
-New items land in the **Inbox** and are triaged into **To-Dos** or **Tasks**.
+New items land in the **Inbox** (not part of the 3 Things; it is the triage step before them) and are
+sorted into **To-Dos**, **Tasks** or **Later**.
+
+**Projects** were removed from the concept: in practice they are just groups of Tasks or To-Dos.
+They are meant to come back in a later version — the architecture must allow adding them without
+schema breakage (see §2).
 
 ---
 
@@ -26,8 +31,8 @@ New items land in the **Inbox** and are triaged into **To-Dos** or **Tasks**.
 | `id` | bigint PK | |
 | `user_id` | FK → users | Owner. Every query is scoped to the authenticated user. |
 | `title` | string | Task name. Required. |
-| `list` | enum | `inbox` \| `todos` \| `tasks`. Default `inbox`. (Designed to accept `projects` later.) |
-| `is_today` | boolean | Focus-for-today flag. Default `false`. Only meaningful when `list != inbox`. |
+| `list` | enum | `inbox` \| `todos` \| `tasks` \| `later`. Default `inbox`. (Designed to accept `projects` later.) |
+| `is_today` | boolean | Focus-for-today flag. Default `false`. Only meaningful when `list` is `todos` or `tasks` (not `inbox`, not `later`). |
 | `is_important` | boolean | Important flag. Default `false`. |
 | `deadline` | date \| null | **Hard deadline** — external/real. Must be done that day. Always takes precedence. |
 | `due_date` | date \| null | **Soft target** — self-imposed. Aimed for, but yields to a hard `deadline` on conflict. |
@@ -40,9 +45,10 @@ New items land in the **Inbox** and are triaged into **To-Dos** or **Tasks**.
 - "Effective date" used for sorting/urgency = `deadline ?? due_date`.
 - Urgency window = effective date within the next **4 days** (inclusive of today).
 
-**Future Projects (not now, but no schema breakage when added):**
-- A fourth `list` value `projects`, and a separate `Project` model with `Task` children
-  (`project_id` nullable FK). The `list` enum and the board's column abstraction must extend cleanly.
+**Future Projects (removed from the concept for now, to be re-added later without schema breakage):**
+- A separate `Project` model as a group of `Task`/To-Do items (`project_id` nullable FK on the task).
+  Whether a project also gets its own `list` value is open. The `list` enum and the board's column
+  abstraction must extend cleanly.
 
 ---
 
@@ -51,11 +57,18 @@ New items land in the **Inbox** and are triaged into **To-Dos** or **Tasks**.
 Completed tasks are **hidden** from the active board (kept in DB, togg-able view later).
 Rationale: the board is a "what's left to do" surface; done items are noise. They are not deleted.
 
-Active tasks sort by:
+Active tasks in `todos` and `tasks` sort by:
 1. `is_today = true` (top; on desktop visually separated in a Today area)
 2. `is_important = true`
 3. Effective date (`deadline ?? due_date`) within the next 4 days
 4. Everything else — by `sort_order`, then `created_at`
+
+`later` is deliberately **not prioritized**: no Today area, no urgency sorting — only manual
+`sort_order`, then `created_at`.
+
+> **Open:** layout (§5, §6) and interactions (§4) were written for three lists (Inbox | To-Dos | Tasks)
+> and still need to be extended for `later` (desktop column vs. secondary view, mobile navigation,
+> swipe actions). To be decided when the layout is planned.
 
 ---
 
