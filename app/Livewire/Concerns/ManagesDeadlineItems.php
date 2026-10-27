@@ -3,6 +3,7 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\AgendaEntry;
+use App\Services\DayPlanner;
 use App\Services\ProgressStats;
 
 /**
@@ -34,6 +35,19 @@ trait ManagesDeadlineItems
 
         if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
             $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
+        }
+    }
+
+    /**
+     * The tick on a split task's part in the strip: marks that part done (the task
+     * itself stays open — see DayPlanner::completeSession()). A foreign id is a no-op.
+     */
+    public function toggleDeadlinePartDone(int $sessionId): void
+    {
+        $result = DayPlanner::completeSession(auth()->user(), $sessionId);
+
+        if ($result !== null && $result['celebration'] !== null) {
+            $this->dispatch('celebrate', kind: $result['celebration']['kind'], label: $result['celebration']['label']);
         }
     }
 

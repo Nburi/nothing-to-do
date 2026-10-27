@@ -102,7 +102,7 @@ class GroupPage extends Component
 
         return auth()->user()->tasks()
             ->inGroup($this->groupId)
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {

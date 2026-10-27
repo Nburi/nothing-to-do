@@ -4,11 +4,13 @@ namespace App\Livewire\Concerns;
 
 use App\Models\Task;
 use App\Models\TaskGroup;
+use App\Services\DayPlanner;
 use App\Services\ProgressStats;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 
 /**
  * Shared task mutations + the inline edit sheet. Used by TaskBoard, ProjectPage
@@ -105,6 +107,32 @@ trait ManagesTasks
     public function goToPlanner(): void
     {
         $this->redirectRoute('planner', navigate: true);
+    }
+
+    /**
+     * "Teil erledigt" on a split task's card (see partials/task-session-pill):
+     * ticks that part off. Ticking a part never completes the task itself —
+     * that stays an explicit tap on the checkbox or on "Aufgabe abhaken?".
+     * Ownership is checked inside DayPlanner (the part must belong to one of
+     * the user's open tasks), so a foreign id is simply a no-op.
+     */
+    public function completeTaskPart(int $sessionId): void
+    {
+        $result = DayPlanner::completeSession(auth()->user(), $sessionId);
+
+        if ($result !== null && $result['celebration'] !== null) {
+            $this->dispatch('celebrate', kind: $result['celebration']['kind'], label: $result['celebration']['label']);
+        }
+    }
+
+    /**
+     * The split sheet lives outside every page component, so a save there only
+     * reaches the page behind it as this event. Handling it is the re-render —
+     * every read is a computed property that re-evaluates on the way out.
+     */
+    #[On('plan-changed')]
+    public function refreshAfterPlanChange(): void
+    {
     }
 
     public function toggleComplete(int $id): void

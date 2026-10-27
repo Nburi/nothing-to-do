@@ -15,7 +15,13 @@
         $item['subtype'] === 'planned' => ['dot' => 'border-ink-soft bg-ink-soft', 'tx' => 'text-ink-soft', 'bg' => 'bg-line/50'],
         default => ['dot' => 'border-ink-faint', 'tx' => 'text-ink-soft', 'bg' => 'bg-surface'],
     };
-    $toggleAction = $item['kind'] === 'agenda' ? 'toggleDeadlineAgendaDone' : 'toggleDeadlineTaskDone';
+    $isPart = isset($item['sessionId']);
+    $toggleAction = match (true) {
+        $item['kind'] === 'agenda' => 'toggleDeadlineAgendaDone',
+        $isPart => 'toggleDeadlinePartDone',
+        default => 'toggleDeadlineTaskDone',
+    };
+    $toggleId = $isPart ? $item['sessionId'] : $item['id'];
     $sourceUrl = match (true) {
         $item['kind'] === 'agenda' => route('agenda'),
         $item['subtype'] === 'planned' => route('planner'),
@@ -42,9 +48,9 @@
 >
     <button
         type="button"
-        wire:click="{{ $toggleAction }}({{ $item['id'] }})"
+        wire:click="{{ $toggleAction }}({{ $toggleId }})"
         class="hit-area grid h-3 w-3 flex-none place-items-center rounded-full border-[1.5px] {{ $styles['dot'] }} transition hover:scale-110"
-        aria-label="Erledigt markieren: {{ $item['title'] }}"
+        aria-label="{{ $isPart ? 'Teil erledigt markieren' : 'Erledigt markieren' }}: {{ $item['title'] }}"
     ></button>
 
     <span class="min-w-0 flex-1 truncate text-[11px] {{ $item['isPreview'] ? $styles['tx'].' opacity-80' : $styles['tx'] }}">{{ $item['title'] }}</span>

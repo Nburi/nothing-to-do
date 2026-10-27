@@ -981,3 +981,17 @@
 @media (prefers-color-scheme: dark) {
     .tl-night { background: rgb(0 0 0 / 0.28); }
 }
+
+/* "Aufteilen" sheet: a part drops onto its day with a small spring, so choosing
+   a day feels like placing something. Plain CSS outside any @layer (Tailwind
+   would purge a class only the sheet's Alpine template mentions). Reduced
+   motion is handled by the global animation-collapse rule. */
+@keyframes split-pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+.split-pop {
+    animation: split-pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}

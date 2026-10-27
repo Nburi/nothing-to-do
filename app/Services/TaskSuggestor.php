@@ -178,7 +178,7 @@ class TaskSuggestor
 
         $next = TaskDayPlan::forDate($user->localToday()->toDateString())
             ->whereHas('task', fn ($q) => $q->forUser($user)->active())
-            ->with('task')
+            ->with('task.sessions')
             ->ordered()
             ->first();
 
@@ -186,11 +186,14 @@ class TaskSuggestor
             return null;
         }
 
+        // A split task's anchor is its next open part — say which one it is.
+        $progress = $next->task->sessionProgress();
+
         return [
             'kind' => 'planned',
             'title' => $next->task->title,
             'task_id' => $next->task_id,
-            'subtitle' => 'Tagesplan',
+            'subtitle' => $progress === null ? 'Tagesplan' : 'Tagesplan · Teil '.$progress['position'].'/'.$progress['total'],
         ];
     }
 

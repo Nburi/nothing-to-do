@@ -848,6 +848,8 @@ window.plannerDaySortable = function (el, wire) {
             if (to.dataset.backlog !== undefined) {
                 if (evt.from !== to && evt.item.dataset.type === 'task') {
                     wire.unassignTask(parseInt(evt.item.dataset.id, 10));
+                } else if (evt.from !== to && evt.item.dataset.type === 'session') {
+                    wire.removeSession(parseInt(evt.item.dataset.id, 10)); // only this part goes; the task's other parts stay
                 }
                 return; // a backlog-internal reorder isn't persisted — order there carries no meaning
             }
@@ -1614,6 +1616,99 @@ document.addEventListener('alpine:init', () => {
             this.saved = true;
             clearTimeout(this._t);
             this._t = setTimeout(() => (this.saved = false), 1600);
+        },
+    }));
+
+    /**
+     * splitSheet — the "Aufteilen" sheet's 14-day strip (partials of
+     * livewire/split-task-sheet.blade.php). The selection lives here, not on
+     * the server: tapping a day is instant, and only the app's proposal
+     * (`$wire.suggest`) and saving cost a round trip.
+     *
+     * cfg: { days, deadlineOffset, selected, total, doneCount }
+     *   days[]: { date, offset, weekday, dayNumber, label, capacityTotal,
+     *             capacityUsed (without this task's own parts), locked }
+     * A part's minutes are the total divided by the number of selected days,
+     * rounded to 5 — the same rule DayPlanner::saveSplit() applies.
+     */
+    window.Alpine.data('splitSheet', (cfg = {}) => ({
+        days: cfg.days ?? [],
+        deadlineOffset: cfg.deadlineOffset ?? null,
+        doneCount: cfg.doneCount ?? 0,
+        selected: [...(cfg.selected ?? [])],
+        total: cfg.total ?? 60,
+        busy: false,
+        saving: false,
+
+        get count() { return this.selected.length; },
+        get partsAfterwards() { return this.count + this.doneCount; },
+        get per() {
+            if (this.count === 0) return 0;
+            return Math.max(5, Math.round(this.total / this.count / 5) * 5);
+        },
+        isSelected(date) { return this.selected.includes(date); },
+        isAfterDeadline(day) { return this.deadlineOffset !== null && this.deadlineOffset >= 0 && day.offset > this.deadlineOffset; },
+        isDeadlineDay(day) { return this.deadlineOffset !== null && day.offset === this.deadlineOffset; },
+        free(day) {
+            return day.capacityTotal - day.capacityUsed - (this.isSelected(day.date) ? this.per : 0);
+        },
+        /** Share of the day's Arbeit-Block time that is taken, with this task's part on top. */
+        usedPct(day) {
+            if (day.capacityTotal <= 0) return 0;
+            const used = day.capacityUsed + (this.isSelected(day.date) ? this.per : 0);
+            return Math.min(100, Math.round((used / day.capacityTotal) * 100));
+        },
+        partPct(day) {
+            if (day.capacityTotal <= 0 || ! this.isSelected(day.date)) return 0;
+            return Math.min(100, Math.round((this.per / day.capacityTotal) * 100));
+        },
+        overflows(day) {
+            return day.capacityTotal > 0 && this.isSelected(day.date) && day.capacityUsed + this.per > day.capacityTotal;
+        },
+        toggle(day) {
+            if (day.locked) return;
+            if (this.isSelected(day.date)) {
+                this.selected = this.selected.filter((d) => d !== day.date);
+            } else {
+                this.selected = [...this.selected, day.date].sort();
+            }
+        },
+        get lateCount() {
+            return this.days.filter((d) => this.isSelected(d.date) && this.isAfterDeadline(d)).length;
+        },
+        get tightCount() {
+            return this.days.filter((d) => this.overflows(d)).length;
+        },
+        get blocklessCount() {
+            return this.days.filter((d) => this.isSelected(d.date) && d.capacityTotal === 0).length;
+        },
+        get canSave() {
+            return this.partsAfterwards >= 2 && this.count >= 1 && ! this.saving;
+        },
+        async propose(parts) {
+            this.busy = true;
+            try {
+                const dates = await this.$wire.suggest(Math.max(1, parts), this.total);
+                if (Array.isArray(dates) && dates.length) this.selected = dates;
+            } finally {
+                this.busy = false;
+            }
+        },
+        step(delta) {
+            const next = Math.min(this.days.filter((d) => ! d.locked).length, Math.max(1, this.count + delta));
+            if (next !== this.count) this.propose(next);
+        },
+        bump(deltaMinutes) {
+            this.total = Math.min(this.count * 600, Math.max(15, this.total + deltaMinutes));
+        },
+        async save() {
+            if (! this.canSave) return;
+            this.saving = true;
+            try {
+                await this.$wire.save(this.selected, this.total);
+            } finally {
+                this.saving = false;
+            }
         },
     }));
 

@@ -156,6 +156,29 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">ids</code> (vollständige, geordnete ID-Liste der Zielzone).
                     </p>
                 </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PUT /tasks/{id}/split</p>
+                    <p class="mt-1 text-ink-soft">
+                        Teilt eine lange Aufgabe auf mehrere Tage auf (Planer &laquo;Aufteilen&raquo;; nur mit eingeschaltetem Planer, sonst 422).
+                        Entweder <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">dates</code> (Liste von <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>,
+                        heute bis heute+13) oder <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">parts</code> (Anzahl &ndash; die App schlägt die Tage vor).
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">total_minutes</code> ist die noch zu planende Arbeit, gleichmässig auf die offenen Teile verteilt.
+                        Pro Tag höchstens ein Teil, mindestens zwei Teile; erledigte Teile bleiben unangetastet. Antwort: die Aufgabe inkl.
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">sessions</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">id</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">date</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">minutes</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">done</code>);
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">GET /tasks/{id}</code> liefert sie ebenfalls.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /tasks/{id}/split</p>
+                    <p class="mt-1 text-ink-soft">Hebt die Aufteilung auf: alle Teile weg, die Aufgabe kehrt in &laquo;Nicht eingeplant&raquo; zurück.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PATCH /task-sessions/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"done": true}</code> hakt einen Teil ab, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">false</code> öffnet ihn wieder.
+                        Der letzte Teil erledigt die Aufgabe <em>nicht</em> automatisch.
+                    </p>
+                </div>
             </div>
         </section>
 

@@ -127,7 +127,7 @@ class TaskBoard extends Component
             ->forUser(auth()->user())
             ->onBoard()
             ->inList($list)
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             // A grouped task lives inside its group's box, not loose in the
             // column — unless it's flagged important or for today. Those two are
             // explicit "this one matters now" signals and outrank the bundling,
@@ -203,7 +203,7 @@ class TaskBoard extends Component
             ->active()
             ->onBoard()
             ->where('is_today', true)
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->boardOrdered()
             ->get();
     }
@@ -241,7 +241,7 @@ class TaskBoard extends Component
         return Task::query()
             ->forUser(auth()->user())
             ->onBoard()
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) {
                 $q->whereNull('group_id')
                     ->orWhere('is_important', true)
@@ -293,7 +293,7 @@ class TaskBoard extends Component
         $tasks = Task::query()
             ->forUser(auth()->user())
             ->onBoard()
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) {
                 $q->whereNull('group_id')
                     ->orWhere('is_important', true)
@@ -353,7 +353,7 @@ class TaskBoard extends Component
         $tasks = Task::query()
             ->forUser(auth()->user())
             ->onBoard()
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) {
                 $q->whereNull('group_id')
                     ->orWhere('is_important', true)
