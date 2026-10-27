@@ -46,18 +46,6 @@ Capture → sort (3 Things) → plan the day → get it done.
 - **No auto-filling of free time.** An earlier prototype planned all free time automatically and felt
   oppressive. Automation only happens when the user triggers it.
 - **Speed over ceremony:** capture and sort in as few clicks as possible.
-- **Quiet:** no streaks, badges or gamification.
+- **Quiet:** no streaks, badges or gamification. About one celebration a day is okay.
 - **User data is never lost** — see CLAUDE.md.
 - **Core stays small.** Everything else is a module that can be switched on.
-
-## Possible modules (not decided)
-Agenda / homework, weekly plan templates, week review, Projects (as groups of tasks, to come back later).
-Not part of the rebuild: craft ideas, announcements, hub connection.
-
-## Open questions
-- Schedule with focus blocks: part of the core? Suggestion: yes, with a sensible default
-  (e.g. 4 hours per day) while no blocks are defined.
-- Which existing features come back, which come later, which are dropped?
-- How do the existing users' data get migrated to the new schema?
-- Name and wording of the two modes (German UI).
-- Where does `Later` live in the desktop and mobile layout?
