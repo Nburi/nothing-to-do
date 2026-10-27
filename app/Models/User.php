@@ -27,6 +27,7 @@ use Laravel\Sanctum\HasApiTokens;
     'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
     'day_preview_seen_on',
     'notify_day_preview', 'day_preview_notification_time', 'day_preview_notification_sent_on',
+    'reminder_evening_time', 'reminder_morning_time', 'reminder_smart_timing',
     'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
@@ -77,12 +78,22 @@ class User extends Authenticatable
         // silently fall back to a different default than the column's own.
         'day_start_time' => '06:00',
         'day_end_time' => '23:00',
+        // Reminder pushes (App\Services\Reminders) read these on a brand-new account too.
+        'reminder_evening_time' => '19:00',
+        'reminder_morning_time' => '07:00',
+        'reminder_smart_timing' => true,
     ];
 
     /** @return HasMany<Task, $this> */
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    /** @return HasMany<Reminder, $this> */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
     }
 
     /** @return HasMany<Project, $this> */
@@ -581,6 +592,7 @@ class User extends Authenticatable
             'prepare_prompt_dismissed_on' => 'date',
             'day_preview_seen_on' => 'date',
             'notify_day_preview' => 'boolean',
+            'reminder_smart_timing' => 'boolean',
             'day_preview_notification_sent_on' => 'date',
             'last_seen_at' => 'datetime',
             'show_presence' => 'boolean',
