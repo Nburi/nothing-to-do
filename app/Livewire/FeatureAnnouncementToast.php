@@ -14,7 +14,7 @@ use Livewire\Component;
  * published App\Models\FeatureAnnouncement at a time, oldest-published first;
  * dismissing advances to the next one in the same queue. Renders nothing at
  * all once the queue is empty — same "zero footprint when there's nothing to
- * show" convention as the prepare prompt.
+ * show" convention as other optional dashboard cards.
  *
  * Also carries the long-gap "welcome back" greeting (see
  * User::WELCOME_BACK_MESSAGES): AuthenticatedSessionController flashes an

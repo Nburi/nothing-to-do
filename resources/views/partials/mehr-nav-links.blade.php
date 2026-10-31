@@ -1,5 +1,5 @@
 {{--
-    The "Mehr" feature-navigation links — Vorbereiten/Zeitplan/Wochenplan/
+    The "Mehr" feature-navigation links — Zeitplan/Wochenplan/
     Planer/Bastelideen/Notfall. Shared by two places: the standalone
     desktop "Mehr" dropdown panel (layouts/app.blade.php, sm and up) and the
     mobile-only section folded into the avatar menu (same file, below sm) —
@@ -23,7 +23,6 @@
 --}}
 @php
     $stagger = $stagger ?? false;
-    $mehrShowPrepareNav = \App\Services\AppModules::isVisible(auth()->user(), 'prepare');
     $mehrShowScheduleNav = \App\Services\AppModules::isVisible(auth()->user(), 'schedule');
     $mehrShowWeekplanNav = \App\Services\AppModules::isVisible(auth()->user(), 'weekplan');
     $mehrShowCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
@@ -39,17 +38,6 @@
         return $stagger ? 'style="animation-delay: '.($mehrLinkIndex++ * 35).'ms"' : '';
     };
 @endphp
-@if ($mehrShowPrepareNav)
-<a href="{{ route('prepare') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
-    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-    'header-menu-fan-in' => $stagger,
-    'bg-paper font-medium text-ink' => request()->routeIs('prepare'),
-    'text-ink-soft hover:text-ink' => !request()->routeIs('prepare'),
-]) @if(request()->routeIs('prepare')) aria-current="page" @endif>
-    <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
-    Vorbereiten
-</a>
-@endif
 @if ($mehrShowScheduleNav)
 <a href="{{ route('schedule') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
     'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',

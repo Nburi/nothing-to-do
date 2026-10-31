@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\PrepareTomorrow;
 use App\Livewire\ProjectPage;
 use App\Livewire\TaskBoard;
 use App\Models\Project;
@@ -171,43 +170,6 @@ class TodayDateStampingTest extends TestCase
             ->call('saveEdit');
 
         $this->assertNull($task->fresh()->today_date);
-    }
-
-    // ── PrepareTomorrow::markToday ───────────────────────────────────────
-
-    public function test_mark_today_stamps_tomorrow_in_evening_mode(): void
-    {
-        Carbon::setTestNow('2026-08-18 20:00:00');
-        $user = User::factory()->create(['timezone_offset' => 0, 'prepare_time_of_day' => 'evening']);
-        $task = Task::factory()->for($user)->todos()->create();
-
-        Livewire::actingAs($user)->test(PrepareTomorrow::class)->call('markToday', $task->id);
-
-        // Evening prep flags tasks for TOMORROW, not the still-running today —
-        // the whole reason today_date exists rather than reusing "now".
-        $this->assertSame('2026-08-19', $task->fresh()->today_date->toDateString());
-    }
-
-    public function test_mark_today_stamps_today_in_morning_mode(): void
-    {
-        Carbon::setTestNow('2026-08-18 08:00:00');
-        $user = User::factory()->create(['timezone_offset' => 0, 'prepare_time_of_day' => 'morning']);
-        $task = Task::factory()->for($user)->todos()->create();
-
-        Livewire::actingAs($user)->test(PrepareTomorrow::class)->call('markToday', $task->id);
-
-        $this->assertSame('2026-08-18', $task->fresh()->today_date->toDateString());
-    }
-
-    public function test_mark_today_preserves_an_existing_date(): void
-    {
-        Carbon::setTestNow('2026-08-18 20:00:00');
-        $user = User::factory()->create(['timezone_offset' => 0, 'prepare_time_of_day' => 'evening']);
-        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-10')->create();
-
-        Livewire::actingAs($user)->test(PrepareTomorrow::class)->call('markToday', $task->id);
-
-        $this->assertSame('2026-08-10', $task->fresh()->today_date->toDateString());
     }
 
     // ── API: PATCH /api/tasks/{id} ───────────────────────────────────────

@@ -158,7 +158,7 @@
                                         <x-logo class="h-3 w-3 text-forest" />
                                         <span class="text-[10px] font-medium text-ink">nothing-to-do</span>
                                     </div>
-                                    <p class="mt-1 text-[10px] leading-snug text-ink-soft">Zeit für „Vorbereitung für morgen“.</p>
+                                    <p class="mt-1 text-[10px] leading-snug text-ink-soft">Zeit für deine nächste Fokus-Session.</p>
                                 </div>
                             </div>
                         </div>

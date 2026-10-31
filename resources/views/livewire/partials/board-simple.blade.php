@@ -18,7 +18,7 @@
     second way to move a card in/out of the zone, same as 3-Things' own
     Heute area doesn't stop a card from also being swiped.
 
-    Companion features (Vorbereitung, Notfallmodus, Zeitplan/focus timer,
+    Companion features (Notfallmodus, Zeitplan/focus timer,
     Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
     requirement 6 — the same top-of-page furniture as board-three-things.php
     renders here unchanged. What does NOT carry over is the *per-list*
@@ -35,7 +35,6 @@
                 @include('livewire.partials.schedule-strip')
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
 
             @php
                 $simpleActive = $this->simpleTasks->where('is_completed', false)->values();
@@ -109,7 +108,6 @@
                 @include('livewire.partials.schedule-strip')
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
 
             @php
                 $mobileSimpleActive = $this->simpleTasks->where('is_completed', false)->values();

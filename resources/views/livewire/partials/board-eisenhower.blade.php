@@ -32,7 +32,7 @@
     just not as a quadrant
     gesture in this first pass.
 
-    Companion features (Vorbereitung, Notfallmodus, Zeitplan/focus timer,
+    Companion features (Notfallmodus, Zeitplan/focus timer,
     Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
     requirement 6 — the same top-of-page furniture as board-three-things.php
     renders here unchanged.
@@ -84,7 +84,6 @@
                 @include('livewire.partials.schedule-strip')
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
 
             <div class="grid grid-cols-2 gap-4">
                 @foreach ($quadrantMeta as $key => $meta)
@@ -171,7 +170,6 @@
                 @include('livewire.partials.schedule-strip')
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
 
             <div class="mb-3 grid grid-cols-2 gap-1.5">
                 @foreach ($quadrantMeta as $key => $meta)

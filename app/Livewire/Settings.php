@@ -53,13 +53,6 @@ class Settings extends Component
 
     public bool $timezoneAutoDst = false;
 
-    // Vorbereitung
-    public string $prepareTimeOfDay = 'evening';
-
-    public string $prepareReminderMode = 'off';
-
-    public ?string $prepareReminderTime = null;
-
     // Fortschritt
     public int $dailyTaskGoal = 5;
 
@@ -110,9 +103,6 @@ class Settings extends Component
         $this->plannerEnabled = (bool) $user->planner_enabled;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
-        $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
-        $this->prepareReminderMode = $user->prepare_reminder_mode ?? 'off';
-        $this->prepareReminderTime = $user->prepare_reminder_time;
         $this->dailyTaskGoal = $user->dailyTaskGoal();
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
@@ -178,38 +168,6 @@ class Settings extends Component
         auth()->user()->update(['deadline_preview_days' => $data['deadlinePreviewDays']]);
     }
 
-    /** Which day the Vorbereitung ritual targets — an immediate-save choice, like a category's colour swatch. */
-    public function setPrepareTimeOfDay(string $value): void
-    {
-        if (! in_array($value, ['morning', 'evening'], true)) {
-            return;
-        }
-
-        $this->prepareTimeOfDay = $value;
-        auth()->user()->update(['prepare_time_of_day' => $value]);
-    }
-
-    /** off | automatic | fixed — also an immediate-save choice. */
-    public function setPrepareReminderMode(string $value): void
-    {
-        if (! in_array($value, ['off', 'automatic', 'fixed'], true)) {
-            return;
-        }
-
-        $this->prepareReminderMode = $value;
-        auth()->user()->update(['prepare_reminder_mode' => $value]);
-    }
-
-    /** Only relevant in "fixed" reminder mode — saves on change, no separate submit button. */
-    public function savePrepareReminderTime(): void
-    {
-        $data = $this->validate([
-            'prepareReminderTime' => ['nullable', 'date_format:H:i'],
-        ]);
-
-        auth()->user()->update(['prepare_reminder_time' => $data['prepareReminderTime']]);
-    }
-
     /** Autosaves on change. How many tasks completed in one day counts as "hit the daily goal" — drives the progress ring and one of the two celebrations. */
     public function saveDailyGoal(): void
     {
@@ -228,7 +186,7 @@ class Settings extends Component
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
     }
 
-    /** Only relevant while the reminder above is on — saves on change, no separate submit button (mirrors savePrepareReminderTime). */
+    /** Only relevant while the reminder above is on — saves on change, no separate submit button. */
     public function saveDailyReminderTime(): void
     {
         $data = $this->validate([

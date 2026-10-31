@@ -51,7 +51,7 @@ class OnboardingQuiz
             'key' => 'plan_the_day',
             'label' => 'Ich will meinen ganzen Tag durchplanen — Termine, Fokuszeit, alles',
             'concept' => 'kanban',
-            'modules' => ['schedule', 'weekplan', 'prepare'],
+            'modules' => ['schedule', 'weekplan'],
         ],
         [
             'key' => 'bored',

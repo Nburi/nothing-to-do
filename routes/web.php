@@ -12,7 +12,6 @@ use App\Livewire\GroupPage;
 use App\Livewire\Help;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
-use App\Livewire\PrepareTomorrow;
 use App\Livewire\Progress;
 use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
@@ -81,10 +80,6 @@ Route::get('/app/weekplan', WeekPlan::class)
 Route::get('/app/planner', Planner::class)
     ->middleware('auth')
     ->name('planner');
-
-Route::get('/app/prepare', PrepareTomorrow::class)
-    ->middleware('auth')
-    ->name('prepare');
 
 Route::get('/app/settings', Settings::class)
     ->middleware('auth')

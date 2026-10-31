@@ -17,7 +17,6 @@ class ModuleNavVisibilityTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('app'));
 
-        $response->assertSee('Vorbereiten');
         $response->assertSee('Zeitplan');
         $response->assertSee('Wochenplan &amp; Ferien', false);
         $response->assertSee('Bastelideen');
@@ -46,7 +45,7 @@ class ModuleNavVisibilityTest extends TestCase
     public function test_hiding_every_module_removes_the_whole_mehr_button(): void
     {
         $user = User::factory()->create(['hidden_modules' => [
-            'prepare', 'schedule', 'weekplan', 'agenda', 'crafts', 'emergency',
+            'schedule', 'weekplan', 'crafts', 'emergency',
         ]]);
 
         $this->actingAs($user)->get(route('app'))->assertDontSee('Weitere Funktionen');

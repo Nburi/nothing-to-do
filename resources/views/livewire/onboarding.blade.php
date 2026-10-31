@@ -254,9 +254,6 @@
                 >
                     <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-forest-soft">
                         @switch ($moduleKey)
-                            @case ('prepare')
-                                <svg class="h-7 w-7 text-forest" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
-                                @break
                             @case ('schedule')
                                 <svg class="h-7 w-7 text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
                                 @break

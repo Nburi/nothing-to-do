@@ -241,8 +241,7 @@ class Task extends Model
      *
      * Stamps `$targetDate` only when actually ENTERING today (is_today was
      * false); leaves an already-true flag's date untouched, so reordering
-     * within the Today zone — or PrepareTomorrow re-touching something
-     * already flagged — doesn't silently re-date an old leftover task to
+     * within the Today zone — doesn't silently re-date an old leftover task to
      * "now"; always clears to null when leaving. See ProgressStats for what
      * this date is used for (it's never read by board display logic).
      */

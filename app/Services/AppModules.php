@@ -35,11 +35,6 @@ class AppModules
      * @var array<string, array{label: string, description: string, route: string}>
      */
     public const CATALOG = [
-        'prepare' => [
-            'label' => 'Vorbereiten',
-            'description' => 'Der Abend-/Morgen-Ritual-Screen zum Planen des nächsten Tages.',
-            'route' => 'prepare',
-        ],
         'schedule' => [
             'label' => 'Zeitplan',
             'description' => 'Der Tages-/Wochen-Zeitplan mit Terminen, Kategorien und Pomodoro.',

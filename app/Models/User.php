@@ -21,8 +21,6 @@ use Laravel\Sanctum\HasApiTokens;
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
     'notify_event_start', 'notify_pomo_start', 'notify_break_start', 'notify_event_upcoming',
     'timezone_offset', 'timezone_auto_dst',
-    'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
-    'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
     'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
@@ -345,54 +343,6 @@ class User extends Authenticatable
     }
 
     /**
-     * The day the "Vorbereitung" ritual (`PrepareTomorrow`) plans for:
-     * "morning" mode plans the already-running today, "evening" (default)
-     * plans tomorrow.
-     */
-    public function prepareTargetDate(): Carbon
-    {
-        return $this->prepare_time_of_day === 'morning'
-            ? $this->localToday()
-            : $this->localToday()->addDay();
-    }
-
-    /** True once `PrepareTomorrow::finish()` has stamped today (the user's local day) as done. */
-    public function hasPreparedToday(): bool
-    {
-        return $this->prepared_on?->toDateString() === $this->localToday()->toDateString();
-    }
-
-    /**
-     * True during the half of the day an "automatic" reminder is relevant:
-     * before noon for "morning" mode, from noon on for "evening" mode. Drives
-     * the in-app banner on the board — it's deliberately a loose half-day
-     * window, not a specific time, since "automatic" means "whenever you
-     * happen to open the app", unlike "fixed" mode's exact time.
-     */
-    public function isWithinPrepareWindow(): bool
-    {
-        $hour = $this->localNow()->hour;
-
-        return $this->prepare_time_of_day === 'morning' ? $hour < 12 : $hour >= 12;
-    }
-
-    /**
-     * HH:MM the daily push reminder should fire, or null if reminders are
-     * off. "fixed" mode uses the user's own chosen time; "automatic" mode has
-     * no user-chosen time (it's driven by opening the app instead) so this is
-     * only its fallback — a single "last call" push if the app was never
-     * opened during the relevant half of the day.
-     */
-    public function prepareReminderDueTime(): ?string
-    {
-        return match ($this->prepare_reminder_mode) {
-            'fixed' => $this->prepare_reminder_time,
-            'automatic' => $this->prepare_time_of_day === 'morning' ? '10:00' : '21:00',
-            default => null,
-        };
-    }
-
-    /**
      * How many tasks completed in one local calendar day counts as "hit the daily
      * goal" — drives the progress ring and the "goal reached" celebration (see
      * ProgressStats::celebrationFor()).
@@ -404,7 +354,7 @@ class User extends Authenticatable
 
     /**
      * Fixed "last call" time for the streak-at-risk push — deliberately not
-     * user-configurable (mirrors prepareReminderDueTime()'s 'automatic' fallback):
+     * user-configurable:
      * one plain warning shortly before midnight, not another field to tune.
      */
     public const STREAK_RISK_DUE_TIME = '21:00';
@@ -442,8 +392,7 @@ class User extends Authenticatable
 
     /**
      * Re-stamped on every run, not just the first — finishing and skipping
-     * both count as "seen it" (mirrors PrepareTomorrow::finish()'s
-     * either-button-counts shape), and a later replay from Settings just
+     * both count as "seen it", and a later replay from Settings just
      * moves the timestamp forward so it doubles as "last viewed on".
      */
     public function markOnboardingSeen(): void
@@ -466,9 +415,6 @@ class User extends Authenticatable
             'notify_pomo_start' => 'boolean',
             'notify_break_start' => 'boolean',
             'notify_event_upcoming' => 'boolean',
-            'prepared_on' => 'date',
-            'prepare_reminder_sent_on' => 'date',
-            'prepare_prompt_dismissed_on' => 'date',
             'last_seen_at' => 'datetime',
             'show_presence' => 'boolean',
             'deadline_preview_enabled' => 'boolean',

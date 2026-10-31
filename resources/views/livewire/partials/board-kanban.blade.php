@@ -29,7 +29,7 @@
     gesture that already exists needs a real reason to stay, and there
     wasn't one once actually compared side by side.
 
-    Companion features (Vorbereitung, Notfallmodus, Zeitplan/focus timer,
+    Companion features (Notfallmodus, Zeitplan/focus timer,
     Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
     requirement 6 — the same top-of-page furniture as board-three-things.php
     renders here unchanged.
@@ -58,7 +58,6 @@
                 @include('livewire.partials.schedule-strip')
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
 
             <div class="grid grid-cols-3 gap-4">
                 @foreach ($columnMeta as $key => $meta)
@@ -93,7 +92,6 @@
                 @include('livewire.partials.schedule-strip')
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
 
             <div class="mb-3 grid grid-cols-3 gap-1.5">
                 @foreach ($columnMeta as $key => $meta)

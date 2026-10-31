@@ -69,7 +69,7 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'planner', 'emergency', 'crafts']);
+                            $featuresActive = request()->routeIs(['schedule', 'weekplan', 'planner', 'emergency', 'crafts']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
 
@@ -79,13 +79,12 @@
                             // hiding a module must never strand them mid-emergency with no way
                             // to see or end it. When every entry ends up hidden, the whole
                             // "Mehr" button disappears rather than opening onto an empty panel.
-                            $showPrepareNav = \App\Services\AppModules::isVisible(auth()->user(), 'prepare');
                             $showScheduleNav = \App\Services\AppModules::isVisible(auth()->user(), 'schedule');
                             $showWeekplanNav = \App\Services\AppModules::isVisible(auth()->user(), 'weekplan');
                             $showCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
                             $showEmergencyNav = \App\Services\AppModules::isVisible(auth()->user(), 'emergency') || auth()->user()->isInEmergencyMode();
                             $showProgressNav = \App\Services\AppModules::isVisible(auth()->user(), 'progress');
-                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showCraftsNav || $showEmergencyNav;
+                            $anyMehrNavVisible = $showScheduleNav || $showWeekplanNav || $showCraftsNav || $showEmergencyNav;
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
@@ -110,7 +109,7 @@
                         @endif
 
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills
-                             (Vorbereiten/Zeitplan/Notfall), styled like the avatar
+                             (Zeitplan/Notfall), styled like the avatar
                              menu below so it reads as native to the app rather than a
                              second, differently-built dropdown. Bastelideen is in here too:
                              it never had a header pill of its own before, but it's exactly

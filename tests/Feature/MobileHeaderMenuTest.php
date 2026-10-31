@@ -70,7 +70,7 @@ class MobileHeaderMenuTest extends TestCase
     public function test_the_avatar_menus_funktionen_section_disappears_with_every_module_hidden(): void
     {
         $user = User::factory()->create(['hidden_modules' => [
-            'prepare', 'schedule', 'weekplan', 'agenda', 'crafts', 'emergency',
+            'schedule', 'weekplan', 'crafts', 'emergency',
         ]]);
 
         $response = $this->actingAs($user)->get(route('app'));

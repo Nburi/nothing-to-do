@@ -137,7 +137,7 @@ class OnboardingTest extends TestCase
         $result = OnboardingQuiz::resolve(['plan_the_day', 'in_progress_done', 'mixed_sizes']);
 
         $this->assertSame('kanban', $result['concept']);
-        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'prepare', 'progress'], $result['modules']);
+        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'progress'], $result['modules']);
     }
 
     public function test_resolve_breaks_a_tie_in_favor_of_whichever_concept_appears_first_in_the_catalog(): void
@@ -154,7 +154,7 @@ class OnboardingTest extends TestCase
         // "mixed_sizes" and "stay_consistent" both add the progress module; only modules matter here.
         $result = OnboardingQuiz::resolve(['plan_the_day', 'mixed_sizes', 'stay_consistent']);
 
-        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'prepare', 'progress'], $result['modules']);
+        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'progress'], $result['modules']);
     }
 
     // ── Applying the quiz (App\Livewire\Onboarding::applyQuizAnswers) ──
