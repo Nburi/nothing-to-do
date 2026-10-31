@@ -82,7 +82,7 @@ class McpController extends Controller
             'protocolVersion' => self::PROTOCOL_VERSION,
             'capabilities' => ['tools' => ['listChanged' => false]],
             'serverInfo' => ['name' => 'nothing-to-do', 'version' => '1.0.0'],
-            'instructions' => 'Read and organize this user\'s tasks, projects, task groups, agenda, '
+            'instructions' => 'Read and organize this user\'s tasks, projects, task groups, '
                 .'categories, progress and settings in nothing-to-do. Which tools you see adapts live to '
                 .'what this user has enabled in Settings and to what this token is allowed to do — an '
                 .'absent tool means "not available right now", not a bug.',

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\TaskBoard;
-use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
@@ -73,19 +72,6 @@ class BoardCategoryLinkNoticeTest extends TestCase
         $groupSession = $this->runningSessionFor($user, $groupCategory);
         Livewire::test(TaskBoard::class)->assertSee('Referat')->assertSee('Folien bauen');
         $groupSession->delete();
-
-        $entry = AgendaEntry::factory()->for($user)->homework()->create(['subject' => 'Mathematik', 'title' => 'Übungsblatt 3']);
-        $agendaCategory = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'agenda_entry', 'linked_agenda_entry_id' => $entry->id]);
-        $agendaSession = $this->runningSessionFor($user, $agendaCategory);
-        Livewire::test(TaskBoard::class)->assertSee('Mathematik')->assertSee('Übungsblatt 3');
-        $agendaSession->delete();
-        $entry->toggleDoneFor($user); // keep the next block's "open homework" count self-contained
-
-        AgendaEntry::factory()->for($user)->homework()->create();
-        $genericCategory = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'agenda_generic']);
-        $genericSession = $this->runningSessionFor($user, $genericCategory);
-        Livewire::test(TaskBoard::class)->assertSee('Hausaufgaben erledigen')->assertSee('1 offen');
-        $genericSession->delete();
 
         $textCategory = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'text', 'linked_text' => 'Zimmer aufräumen']);
         $this->runningSessionFor($user, $textCategory);

@@ -26,7 +26,6 @@ use Laravel\Sanctum\HasApiTokens;
     'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
-    'homework_preview_enabled',
     'daily_task_goal',
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
     'notify_streak_risk', 'streak_risk_sent_on',
@@ -57,7 +56,6 @@ class User extends Authenticatable
         'is_admin' => false,
         'show_presence' => true,
         'deadline_preview_enabled' => true,
-        'homework_preview_enabled' => true,
         'daily_task_goal' => 5,
         'notify_daily_reminder' => false,
         'daily_reminder_time' => '19:00',
@@ -114,12 +112,6 @@ class User extends Authenticatable
         return $this->hasMany(SchedulePause::class);
     }
 
-    /** @return HasMany<AgendaEntry, $this> */
-    public function agendaEntries(): HasMany
-    {
-        return $this->hasMany(AgendaEntry::class);
-    }
-
     /** @return HasMany<CraftIdea, $this> */
     public function craftIdeas(): HasMany
     {
@@ -148,41 +140,6 @@ class User extends Authenticatable
     public function supportRequests(): HasMany
     {
         return $this->hasMany(SupportRequest::class);
-    }
-
-    /** Shared class/group agendas this user belongs to (a class, a study group, …). */
-    public function agendaSpaces(): BelongsToMany
-    {
-        return $this->belongsToMany(AgendaSpace::class)->withTimestamps();
-    }
-
-    /** @return HasMany<AgendaSpace, $this> */
-    public function ownedAgendaSpaces(): HasMany
-    {
-        return $this->hasMany(AgendaSpace::class, 'owner_id');
-    }
-
-    /**
-     * Hands ownership of every class/group agenda this user owns to the next
-     * longest-standing member — the same rule ManagesAgendaSpaces::leaveSpace()
-     * already applies when someone leaves a space deliberately. Must run
-     * before the row itself is deleted (see ProfileController::destroy()):
-     * agenda_spaces.owner_id has cascadeOnDelete, so without this, deleting an
-     * owner's account would silently delete the whole shared space — and with
-     * it every other member's access — instead of just handing it off. A space
-     * with no other member left is deliberately untouched here: the same
-     * cascade then deletes it, matching leaveSpace()'s own "last member out"
-     * branch exactly.
-     */
-    public function reassignOwnedAgendaSpaces(): void
-    {
-        $this->ownedAgendaSpaces->each(function (AgendaSpace $space) {
-            $successor = $space->nextOwnerCandidate(excludingUserId: $this->id);
-
-            if ($successor !== null) {
-                $space->update(['owner_id' => $successor->id]);
-            }
-        });
     }
 
     // ── Welcome back ──────────────────────────────────────────────────
@@ -516,7 +473,6 @@ class User extends Authenticatable
             'show_presence' => 'boolean',
             'deadline_preview_enabled' => 'boolean',
             'deadline_preview_days' => 'integer',
-            'homework_preview_enabled' => 'boolean',
             'daily_task_goal' => 'integer',
             'notify_daily_reminder' => 'boolean',
             'daily_reminder_sent_on' => 'date',

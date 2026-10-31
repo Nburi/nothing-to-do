@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AgendaEntry;
 use App\Models\CraftIdea;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
@@ -30,7 +29,7 @@ use App\Models\User;
 class HeaderBadges
 {
     /** Catalog keys enabled for anyone who hasn't customised header_badges yet. */
-    public const DEFAULT_ENABLED = ['streak', 'agenda'];
+    public const DEFAULT_ENABLED = ['streak'];
 
     /**
      * label = Settings row label. route = the Livewire route name a click
@@ -42,7 +41,6 @@ class HeaderBadges
      */
     public const CATALOG = [
         'streak' => ['label' => 'Serie', 'route' => 'progress', 'tone' => 'ink'],
-        'agenda' => ['label' => 'Agenda', 'route' => 'agenda', 'tone' => 'ink'],
         'today' => ['label' => 'Heute offen', 'route' => 'app', 'tone' => 'ink'],
         'schedule' => ['label' => 'Zeitplan', 'route' => 'schedule', 'tone' => 'ink'],
         'goal' => ['label' => 'Tagesziel', 'route' => 'progress', 'tone' => 'ink'],
@@ -107,7 +105,6 @@ class HeaderBadges
      * @var array<string, string>
      */
     private const MODULE_FOR_BADGE = [
-        'agenda' => 'agenda',
         'schedule' => 'schedule',
         'emergency' => 'emergency',
         'crafts' => 'crafts',
@@ -157,7 +154,6 @@ class HeaderBadges
     {
         return match ($key) {
             'streak' => self::streakBadge($user),
-            'agenda' => self::agendaBadge($user),
             'today' => self::todayBadge($user),
             'schedule' => self::scheduleBadge($user),
             'goal' => self::goalBadge($user),
@@ -182,18 +178,6 @@ class HeaderBadges
         return self::badge('streak', (string) $streak,
             $streak === 1 ? '1 Tag Serie — Fortschritt ansehen' : $streak.' Tage Serie — Fortschritt ansehen',
             [], ['tier' => ProgressStats::streakTier($streak)]);
-    }
-
-    private static function agendaBadge(User $user): ?array
-    {
-        $open = AgendaEntry::visibleTo($user)->openFor($user)->count();
-
-        if ($open <= 0) {
-            return null;
-        }
-
-        return self::badge('agenda', (string) $open,
-            $open === 1 ? '1 offene Hausaufgabe/Prüfung — Agenda ansehen' : $open.' offene Hausaufgaben/Prüfungen — Agenda ansehen');
     }
 
     private static function todayBadge(User $user): ?array

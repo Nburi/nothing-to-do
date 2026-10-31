@@ -6,7 +6,7 @@
     {{-- In-context capture: on the ideas page itself, adding one shouldn't need
          the global panel. The Notiz field stays folded away until it's wanted.
          The same form doubles as the edit form — $editingId set by startEdit()
-         swaps it into "editing" mode, mirroring Agenda's single create/edit form. --}}
+         swaps it into "editing" mode.. --}}
     <form
         wire:submit="saveIdea"
         x-data="{ exp: false }"

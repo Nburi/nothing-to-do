@@ -55,7 +55,7 @@ class AnnouncementAudienceScopingTest extends TestCase
     public function test_module_key_for_route_name_resolves_a_scopable_route(): void
     {
         $this->assertSame('planner', FeatureAnnouncement::moduleKeyForRouteName('planner'));
-        $this->assertSame('agenda', FeatureAnnouncement::moduleKeyForRouteName('agenda'));
+        $this->assertSame('weekplan', FeatureAnnouncement::moduleKeyForRouteName('weekplan'));
     }
 
     public function test_module_key_for_route_name_returns_null_for_a_non_module_route(): void
@@ -85,9 +85,9 @@ class AnnouncementAudienceScopingTest extends TestCase
     {
         $visitor = User::factory()->create();
         $stranger = User::factory()->create();
-        $this->visit($visitor, 'agenda');
+        $this->visit($visitor, 'weekplan');
 
-        $counts = FeatureAnnouncement::moduleReachCounts('agenda');
+        $counts = FeatureAnnouncement::moduleReachCounts('weekplan');
 
         $this->assertSame(2, $counts['total']);
         $this->assertSame(1, $counts['inUse']);
@@ -182,11 +182,11 @@ class AnnouncementAudienceScopingTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $visitor = User::factory()->create();
-        $this->visit($visitor, 'agenda');
+        $this->visit($visitor, 'weekplan');
 
         $estimate = Livewire::actingAs($admin)->test(AnnouncementEditor::class)
             ->set('formLinkType', 'module')
-            ->set('formRelatedModule', 'agenda')
+            ->set('formRelatedModule', 'weekplan')
             ->instance()
             ->moduleUsageEstimate();
 
@@ -231,8 +231,8 @@ class AnnouncementAudienceScopingTest extends TestCase
     {
         $visitor = User::factory()->create();
         $stranger = User::factory()->create();
-        $this->visit($visitor, 'agenda');
-        $announcement = $this->published(['related_module' => 'agenda', 'only_for_module_users' => true]);
+        $this->visit($visitor, 'weekplan');
+        $announcement = $this->published(['related_module' => 'weekplan', 'only_for_module_users' => true]);
 
         Livewire::actingAs($visitor)->test(FeatureAnnouncementToast::class)->assertSee($announcement->title);
         Livewire::actingAs($stranger)->test(FeatureAnnouncementToast::class)->assertDontSee($announcement->title);

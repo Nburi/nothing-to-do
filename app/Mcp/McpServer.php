@@ -4,14 +4,12 @@ namespace App\Mcp;
 
 use App\Mcp\Exceptions\McpUnknownToolException;
 use App\Mcp\Tools\CompleteTaskTool;
-use App\Mcp\Tools\CreateAgendaEntryTool;
 use App\Mcp\Tools\CreateTaskTool;
 use App\Mcp\Tools\DeleteTaskTool;
 use App\Mcp\Tools\GetBoardTool;
 use App\Mcp\Tools\GetProgressTool;
 use App\Mcp\Tools\GetSettingsTool;
 use App\Mcp\Tools\GetTaskTool;
-use App\Mcp\Tools\ListAgendaEntriesTool;
 use App\Mcp\Tools\ListCategoriesTool;
 use App\Mcp\Tools\ListProjectsTool;
 use App\Mcp\Tools\ListTaskGroupsTool;
@@ -48,7 +46,6 @@ class McpServer
             new ListProjectsTool,
             new ListTaskGroupsTool,
             new ListCategoriesTool,
-            new ListAgendaEntriesTool,
             new GetProgressTool,
             new GetSettingsTool,
             // Write
@@ -60,7 +57,6 @@ class McpServer
             new SetListConceptTool,
             new SetModuleVisibilityTool,
             new SetDefaultLandingPageTool,
-            new CreateAgendaEntryTool,
             // Delete
             new DeleteTaskTool,
         ];

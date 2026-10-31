@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
@@ -102,33 +101,6 @@ class DayPlannerTest extends TestCase
         $this->assertSame(0, TaskDayPlan::count());
     }
 
-    public function test_assign_day_promotes_an_agenda_token_into_a_real_task(): void
-    {
-        $user = $this->plannerUser();
-        $entry = AgendaEntry::factory()->for($user)->homework()->duration(20)
-            ->create(['date' => now()->addDays(3)->toDateString(), 'subject' => 'Bio', 'title' => 'Zellatmung']);
-
-        DayPlanner::assignDay($user, now()->toDateString(), ["agenda:{$entry->id}"]);
-
-        $task = Task::where('agenda_entry_id', $entry->id)->first();
-        $this->assertNotNull($task);
-        $this->assertSame('Bio: Zellatmung', $task->title);
-        $this->assertSame(20, $task->duration_minutes);
-        $this->assertTrue(TaskDayPlan::where('task_id', $task->id)->exists());
-    }
-
-    public function test_assign_day_reuses_an_already_promoted_homework_task(): void
-    {
-        $user = $this->plannerUser();
-        $entry = AgendaEntry::factory()->for($user)->homework()->create(['date' => now()->toDateString()]);
-        $existingTask = Task::factory()->for($user)->tasks()->create(['agenda_entry_id' => $entry->id]);
-
-        DayPlanner::assignDay($user, now()->toDateString(), ["agenda:{$entry->id}"]);
-
-        $this->assertSame(1, Task::where('agenda_entry_id', $entry->id)->count());
-        $this->assertSame($existingTask->id, TaskDayPlan::first()->task_id);
-    }
-
     public function test_unassign_task_releases_it_back_to_the_backlog(): void
     {
         $user = $this->plannerUser();
@@ -178,14 +150,6 @@ class DayPlannerTest extends TestCase
     {
         $user = $this->plannerUser();
         Task::factory()->for($user)->inbox()->create();
-
-        $this->assertCount(0, DayPlanner::backlog($user));
-    }
-
-    public function test_backlog_never_includes_exam_entries(): void
-    {
-        $user = $this->plannerUser();
-        AgendaEntry::factory()->for($user)->exam()->create(['date' => now()->toDateString()]);
 
         $this->assertCount(0, DayPlanner::backlog($user));
     }

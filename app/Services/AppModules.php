@@ -7,9 +7,8 @@ use App\Models\User;
 /**
  * The catalog of optional feature pages a user can hide from navigation, plus
  * which page opens by default when the app launches. First step of a wider
- * onboarding/accessibility push (see CLAUDE.md) — a classmate who only cares
- * about the shared class Agenda should be able to declutter everything else
- * and land straight on it. Deliberately built as a stateless catalog (mirrors
+ * onboarding/accessibility push (see CLAUDE.md) — someone who only cares
+ * about a few pages should be able to declutter everything else. Deliberately built as a stateless catalog (mirrors
  * HeaderBadges::CATALOG) rather than a hardcoded enum scattered across the
  * layout, so a later step (a tutorial that should only cover visible modules,
  * an admin-authored feature announcement) has one place to ask "is this
@@ -50,11 +49,6 @@ class AppModules
             'label' => 'Wochenplan & Ferien',
             'description' => 'Die wiederkehrende Wochenvorlage und das Pausieren einzelner Tage.',
             'route' => 'weekplan',
-        ],
-        'agenda' => [
-            'label' => 'Agenda',
-            'description' => 'Hausaufgaben und Prüfungen, privat oder mit einer Klasse geteilt.',
-            'route' => 'agenda',
         ],
         'crafts' => [
             'label' => 'Bastelideen',

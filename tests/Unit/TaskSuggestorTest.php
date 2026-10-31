@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\Task;
@@ -193,48 +192,6 @@ class TaskSuggestorTest extends TestCase
         $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category);
 
         $this->assertSame($open->id, $suggestion['task_id']);
-    }
-
-    public function test_category_link_to_agenda_entry_suggests_it_until_done(): void
-    {
-        $user = User::factory()->create();
-        $entry = AgendaEntry::factory()->for($user)->homework()->create(['subject' => 'Mathematik', 'title' => 'Übungsblatt 3']);
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'agenda_entry', 'linked_agenda_entry_id' => $entry->id]);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category);
-        $this->assertSame('category_agenda', $suggestion['kind']);
-        $this->assertSame($entry->id, $suggestion['agenda_entry_id']);
-        $this->assertSame('Mathematik', $suggestion['subtitle']);
-
-        $entry->toggleDoneFor($user);
-
-        $this->assertNull(TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category));
-    }
-
-    public function test_category_link_to_agenda_generic_counts_open_homework_only(): void
-    {
-        $user = User::factory()->create();
-        AgendaEntry::factory()->for($user)->homework()->create();
-        AgendaEntry::factory()->for($user)->homework()->create();
-        AgendaEntry::factory()->for($user)->exam()->create();
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'agenda_generic']);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category);
-
-        $this->assertSame('agenda_generic', $suggestion['kind']);
-        $this->assertSame('2 offen', $suggestion['subtitle']);
-    }
-
-    public function test_category_link_to_agenda_generic_falls_through_once_homework_is_clear(): void
-    {
-        $user = User::factory()->create();
-        AgendaEntry::factory()->for($user)->homework()->done()->create();
-        $today = Task::factory()->for($user)->tasks()->today()->create(); // list=tasks, not todos, so it doesn't also win via the cycle-1 tier
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'agenda_generic']);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category);
-
-        $this->assertSame($today->id, $suggestion['task_id']);
     }
 
     public function test_category_link_to_text_always_suggests_the_same_text(): void

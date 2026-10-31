@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Models\AgendaEntry;
 use App\Models\CraftIdea;
 use App\Models\Project;
 use App\Models\User;
@@ -16,12 +15,14 @@ class HeaderBadgesModuleVisibilityTest extends TestCase
 
     public function test_a_hidden_modules_badge_is_dropped_even_when_it_has_content(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda']]);
-        AgendaEntry::factory()->for($user)->create(['type' => 'homework', 'date' => now()->addDay()]);
+        $user = User::factory()->create(['header_badges' => [['key' => 'crafts', 'enabled' => true]]]);
+        CraftIdea::factory()->for($user)->create();
 
-        $badges = collect(HeaderBadges::visibleFor($user));
+        $this->assertTrue(collect(HeaderBadges::visibleFor($user))->contains('key', 'crafts'));
 
-        $this->assertFalse($badges->contains('key', 'agenda'));
+        $user->update(['hidden_modules' => ['crafts']]);
+
+        $this->assertFalse(collect(HeaderBadges::visibleFor($user->refresh()))->contains('key', 'crafts'));
     }
 
     public function test_the_emergency_badge_still_shows_while_an_emergency_is_active_even_if_hidden(): void

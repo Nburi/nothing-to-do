@@ -30,7 +30,6 @@ class EventCategory extends Model
         'task_source',
         'linked_project_id',
         'linked_group_id',
-        'linked_agenda_entry_id',
         'linked_text',
     ];
 
@@ -82,11 +81,6 @@ class EventCategory extends Model
         return $this->belongsTo(TaskGroup::class, 'linked_group_id');
     }
 
-    public function linkedAgendaEntry(): BelongsTo
-    {
-        return $this->belongsTo(AgendaEntry::class, 'linked_agenda_entry_id');
-    }
-
     /** Individually pinned tasks for task_source = 'tasks', in suggestion order. */
     public function pinnedTasks(): BelongsToMany
     {
@@ -106,8 +100,6 @@ class EventCategory extends Model
                 1 => '1 Aufgabe',
                 default => "{$count} Aufgaben",
             },
-            'agenda_entry' => $this->linkedAgendaEntry?->title,
-            'agenda_generic' => 'Hausaufgaben erledigen',
             'text' => $this->linked_text,
             default => null,
         };
@@ -125,8 +117,6 @@ class EventCategory extends Model
             'project' => $this->linkedProject !== null ? "{$this->linkedProject->name} ist fertig." : null,
             'group' => $this->linkedGroup !== null ? "{$this->linkedGroup->name} ist fertig." : null,
             'tasks' => 'Die ausgewählten Aufgaben sind fertig.',
-            'agenda_entry' => $this->linkedAgendaEntry !== null ? "{$this->linkedAgendaEntry->title} ist fertig." : null,
-            'agenda_generic' => 'Die Hausaufgaben sind fertig.',
             default => null,
         };
     }
@@ -144,7 +134,6 @@ class EventCategory extends Model
             'task_source' => null,
             'linked_project_id' => null,
             'linked_group_id' => null,
-            'linked_agenda_entry_id' => null,
             'linked_text' => null,
         ]);
     }

@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Services\AppModules;
 use App\Services\ListConcepts;
@@ -29,7 +28,7 @@ class QuickCapture extends Component
      * are also the task `list` value they write; the last two go to entirely
      * different tables, which is why this isn't just Task::BOARD_LISTS.
      */
-    public const TARGETS = ['inbox', 'todos', 'tasks', 'group', 'project', 'craft', 'agenda'];
+    public const TARGETS = ['inbox', 'todos', 'tasks', 'group', 'project', 'craft'];
 
     /** Targets that create a Task — the value doubles as the `list` column. */
     public const TASK_TARGETS = ['inbox', 'todos', 'tasks'];
@@ -61,27 +60,11 @@ class QuickCapture extends Component
      * Estimated duration in minutes, for the Planer's own math — never
      * required, mirrors the card-face quick-set field. Relevant for the same
      * targets that write a Task with a real list (todos/tasks/group — never
-     * Inbox, which is out of scope for planning), plus Agenda homework
-     * (never exams, which the Planer never touches either).
+     * Inbox, which is out of scope for planning).
      */
     public ?int $duration = null;
 
     public string $whereToBegin = '';
-
-    /**
-     * Agenda fields. Unlike every other target's extras these are *required*,
-     * not optional — an AgendaEntry has no meaning without a subject and a date
-     * (see Agenda::save()). The panel mirrors that page's rules rather than
-     * inventing looser ones.
-     */
-    public string $agendaType = 'homework';
-
-    public string $subject = '';
-
-    public ?string $date = null;
-
-    /** Null = "nur ich"; a space id = the whole class sees it. Agenda target only. */
-    public ?int $agendaSpaceId = null;
 
     /**
      * Group target. Either an existing group id, or null plus a name in
@@ -116,10 +99,9 @@ class QuickCapture extends Component
 
     /**
      * TARGETS filtered to modules the user hasn't hidden (Settings' "Module"
-     * card) — 'craft' and 'agenda' map to their App\Services\AppModules key;
+     * card) — 'craft' maps to its App\Services\AppModules key;
      * every other target is core Board functionality and always offered.
-     * Hiding a module has to remove its capture entry point too, or "hide
-     * everything except Agenda" would stay half-done.
+     * Hiding a module has to remove its capture entry point too.
      *
      * Under the "Simple"/"Kanban" concepts, Inbox/To-Dos/Tasks additionally
      * collapse into the single 'tasks' target, and under "Eisenhower" To-Dos/
@@ -143,7 +125,6 @@ class QuickCapture extends Component
         $targets = array_values(array_filter(self::TARGETS, function (string $target) use ($user) {
             $moduleKey = match ($target) {
                 'craft' => 'crafts',
-                'agenda' => 'agenda',
                 default => null,
             };
 
@@ -188,21 +169,8 @@ class QuickCapture extends Component
             'group' => 'Gruppe',
             'project' => 'Projekt',
             'craft' => 'Bastelidee',
-            'agenda' => 'Agenda',
             default => 'Inbox',
         };
-    }
-
-    /** Distinct subjects already used — same suggestion source as the Agenda page's Fach field. */
-    #[Computed]
-    public function existingSubjects(): Collection
-    {
-        return AgendaEntry::query()
-            ->visibleTo(auth()->user())
-            ->select('subject')
-            ->distinct()
-            ->orderBy('subject')
-            ->pluck('subject');
     }
 
     /** The task groups a captured task can be filed into. */
@@ -210,24 +178,6 @@ class QuickCapture extends Component
     public function taskGroups(): Collection
     {
         return auth()->user()->taskGroups()->ordered()->get();
-    }
-
-    /** The classes this user can file an agenda entry into. Empty for most users. */
-    #[Computed]
-    public function agendaSpaces(): Collection
-    {
-        return auth()->user()->agendaSpaces()->ordered()->get();
-    }
-
-    /**
-     * The "Für" default when the agenda target is freshly selected — same
-     * reasoning as Agenda::openCreateForm()'s equivalent default: which class
-     * is meant is only unambiguous when there's exactly one. Two or more stays
-     * private, same as before.
-     */
-    private function defaultAgendaSpaceId(): ?int
-    {
-        return $this->agendaSpaces->count() === 1 ? $this->agendaSpaces->first()->id : null;
     }
 
     /** The notes buffer rendered to safe HTML for the panel's preview (task targets only). */
@@ -272,16 +222,6 @@ class QuickCapture extends Component
             $this->deadline = null;
         }
 
-        if ($target !== 'agenda') {
-            $this->subject = '';
-            $this->date = null;
-            $this->agendaType = 'homework';
-            $this->agendaSpaceId = null;
-        } else {
-            $this->deadline = null;
-            $this->agendaSpaceId = $this->defaultAgendaSpaceId();
-        }
-
         $this->resetValidation();
     }
 
@@ -306,7 +246,7 @@ class QuickCapture extends Component
     #[On('quick-capture-opened')]
     public function resetPanel(?string $target = null, ?int $groupId = null, ?bool $important = null, ?string $dueDate = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'groupId', 'newGroupName', 'groupList']);
         $this->resetValidation();
 
         // reset() restores 'target' to its bare class-declared default
@@ -324,12 +264,6 @@ class QuickCapture extends Component
 
         if ($dueDate !== null) {
             $this->dueDate = $dueDate;
-        }
-
-        // Opened straight onto the agenda target (e.g. Agenda's own page-matching
-        // preselect) gets the same single-class default as setTarget() below.
-        if ($this->target === 'agenda') {
-            $this->agendaSpaceId = $this->defaultAgendaSpaceId();
         }
 
         // Opened from inside a group: preselect it, so the panel doesn't ask for
@@ -350,7 +284,6 @@ class QuickCapture extends Component
     {
         $this->title = trim($this->title);
         $this->whereToBegin = trim($this->whereToBegin);
-        $this->subject = trim($this->subject);
         $this->newGroupName = trim($this->newGroupName);
 
         $rules = [
@@ -362,17 +295,6 @@ class QuickCapture extends Component
             'notes' => ['nullable', 'string', 'max:5000'],
             'whereToBegin' => ['nullable', 'string', 'max:2000'],
         ];
-
-        // Agenda's extras are required, so they're only enforced when that's the
-        // chosen target — otherwise every other capture would demand a Fach.
-        if ($this->target === 'agenda') {
-            $rules['agendaType'] = ['required', Rule::in(array_keys(AgendaEntry::TYPES))];
-            $rules['subject'] = ['required', 'string', 'max:100'];
-            $rules['date'] = ['required', 'date'];
-            // Same authorization boundary as Agenda::saveEntry(): a space id is
-            // only acceptable if it's one this user actually belongs to.
-            $rules['agendaSpaceId'] = ['nullable', 'integer', Rule::in($this->agendaSpaces->pluck('id'))];
-        }
 
         // A group capture needs a group: either an existing one, or a name for a
         // new one. Requiring one of the two is what keeps empty shells from
@@ -407,7 +329,7 @@ class QuickCapture extends Component
 
             // A group created here becomes the selected one, so the next capture
             // lands in it too — writing down three steps of one thing in a row
-            // is the normal case, exactly like the Agenda's Fach.
+            // is the normal case.
             $this->groupId = $group->id;
             $this->newGroupName = '';
 
@@ -428,16 +350,6 @@ class QuickCapture extends Component
                 'title' => $title,
                 'where_to_begin' => $this->whereToBegin !== '' ? $this->whereToBegin : null,
             ]),
-            'agenda' => $user->agendaEntries()->create([
-                'type' => $this->agendaType,
-                'subject' => $this->subject,
-                'title' => $title,
-                'date' => $this->date,
-                // Only meaningful for homework — the field isn't even shown for an
-                // exam, but guard explicitly the same way Agenda::saveEntry() does.
-                'duration_minutes' => $this->agendaType === 'homework' ? ($this->duration ?: null) : null,
-                'agenda_space_id' => $this->agendaSpaceId,
-            ]),
             default => $user->tasks()->create([
                 'title' => $title,
                 'list' => $this->target,
@@ -454,21 +366,10 @@ class QuickCapture extends Component
             ]),
         };
 
-        // Name the class in the confirmation when one was chosen. Sharing is the
-        // one capture here with a consequence beyond your own list, so "→ Agenda"
-        // alone would hide the part worth double-checking.
-        $label = self::labelFor($this->target);
-
-        if ($this->target === 'agenda' && $this->agendaSpaceId !== null) {
-            $label .= ' · '.$this->agendaSpaces->firstWhere('id', $this->agendaSpaceId)?->name;
-        }
-
-        $this->captured = ['title' => $title, 'label' => $label];
+        $this->captured = ['title' => $title, 'label' => self::labelFor($this->target)];
 
         // The target deliberately survives: capturing three To-Dos in a row
-        // shouldn't mean re-picking the chip every time. Agenda's Fach, date,
-        // type and class survive for the same reason — writing down three things
-        // the teacher just set, all for the same class, is the normal case.
+        // shouldn't mean re-picking the chip every time.
         $this->reset(['title', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin']);
 
         $this->dispatch('captured');
@@ -484,10 +385,6 @@ class QuickCapture extends Component
             'dueDate.date' => 'Das ist kein gültiges Datum.',
             'notes.max' => 'Das ist zu lang — höchstens 5000 Zeichen.',
             'whereToBegin.max' => 'Das ist zu lang — höchstens 2000 Zeichen.',
-            'subject.required' => 'Für die Agenda fehlt noch das Fach.',
-            'subject.max' => 'Das Fach ist zu lang — höchstens 100 Zeichen.',
-            'date.required' => 'Für die Agenda fehlt noch das Datum.',
-            'date.date' => 'Das ist kein gültiges Datum.',
             'newGroupName.required' => 'Wähle eine Gruppe oder gib einer neuen einen Namen.',
             'newGroupName.max' => 'Der Gruppenname ist zu lang — höchstens 255 Zeichen.',
         ];

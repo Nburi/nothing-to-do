@@ -19,14 +19,14 @@ class UserDefaultLandingRouteTest extends TestCase
 
     public function test_resolves_a_visible_module_to_its_route(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'weekplan']);
 
-        $this->assertSame('agenda', $user->defaultLandingRouteName());
+        $this->assertSame('weekplan', $user->defaultLandingRouteName());
     }
 
     public function test_falls_back_to_the_board_once_the_chosen_module_is_hidden(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda', 'hidden_modules' => ['agenda']]);
+        $user = User::factory()->create(['default_page' => 'weekplan', 'hidden_modules' => ['weekplan']]);
 
         $this->assertSame('app', $user->defaultLandingRouteName());
     }

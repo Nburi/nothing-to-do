@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\Project;
@@ -86,17 +85,6 @@ class EventCategoryTest extends TestCase
         $group->delete();
 
         $this->assertNull($category->refresh()->linked_group_id);
-    }
-
-    public function test_deleting_a_linked_agenda_entry_nulls_the_link(): void
-    {
-        $user = User::factory()->create();
-        $entry = AgendaEntry::factory()->for($user)->create();
-        $category = EventCategory::factory()->for($user)->create(['task_source' => 'agenda_entry', 'linked_agenda_entry_id' => $entry->id]);
-
-        $entry->delete();
-
-        $this->assertNull($category->refresh()->linked_agenda_entry_id);
     }
 
     public function test_deleting_a_category_detaches_its_pinned_tasks_without_deleting_them(): void

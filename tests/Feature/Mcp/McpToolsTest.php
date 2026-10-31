@@ -6,7 +6,6 @@ use App\Mcp\Exceptions\McpToolExecutionException;
 use App\Mcp\Exceptions\McpUnknownToolException;
 use App\Mcp\McpAbility;
 use App\Mcp\McpServer;
-use App\Models\AgendaEntry;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
@@ -41,15 +40,13 @@ class McpToolsTest extends TestCase
         $full = $this->can([McpAbility::READ, McpAbility::WRITE, McpAbility::DELETE]);
 
         $before = collect($this->server->availableTools($user, $full))->map->name();
-        $this->assertContains('list_agenda_entries', $before);
-        $this->assertContains('create_agenda_entry', $before);
+        $this->assertContains('get_progress', $before);
 
-        $user->update(['hidden_modules' => ['agenda']]);
+        $user->update(['hidden_modules' => ['progress']]);
         $user->refresh();
 
         $after = collect($this->server->availableTools($user, $full))->map->name();
-        $this->assertNotContains('list_agenda_entries', $after);
-        $this->assertNotContains('create_agenda_entry', $after);
+        $this->assertNotContains('get_progress', $after);
         // Nothing else was affected by hiding just one module.
         $this->assertContains('list_tasks', $after);
     }
@@ -205,18 +202,6 @@ class McpToolsTest extends TestCase
         ]);
     }
 
-    public function test_complete_task_syncs_a_linked_agenda_entry(): void
-    {
-        $user = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-        $entry = AgendaEntry::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->todos()->create(['agenda_entry_id' => $entry->id]);
-
-        $this->server->call($user, $write, 'complete_task', ['id' => $task->id]);
-
-        $this->assertTrue($entry->fresh()->isDoneFor($user));
-    }
-
     public function test_update_task_moving_to_a_project_clears_group_and_prunes_it(): void
     {
         $user = User::factory()->create();
@@ -266,11 +251,11 @@ class McpToolsTest extends TestCase
 
     public function test_set_module_visibility_resets_default_page_when_hiding_it(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'crafts']);
         $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
 
         $result = $this->server->call($user, $write, 'set_module_visibility', [
-            'module' => 'agenda',
+            'module' => 'crafts',
             'hidden' => true,
         ]);
 
@@ -286,22 +271,6 @@ class McpToolsTest extends TestCase
         $this->expectException(McpToolExecutionException::class);
 
         $this->server->call($user, $write, 'set_default_landing_page', ['page' => 'agenda']);
-    }
-
-    public function test_create_agenda_entry_is_always_private(): void
-    {
-        $user = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-
-        $result = $this->server->call($user, $write, 'create_agenda_entry', [
-            'type' => 'homework',
-            'subject' => 'Mathematik',
-            'title' => 'Aufgaben S. 12',
-            'date' => now()->addDay()->toDateString(),
-        ]);
-
-        $this->assertFalse($result['is_shared']);
-        $this->assertDatabaseHas('agenda_entries', ['id' => $result['id'], 'agenda_space_id' => null]);
     }
 
     // ── Delete ──────────────────────────────────────────────────────────

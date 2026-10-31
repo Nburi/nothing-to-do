@@ -1,19 +1,16 @@
 {{--
-    One chip in the Zeitplan's all-day strip: a task deadline/Wunschtermin or an Agenda
-    homework/exam entry, on its own date or (dashed) as an advance preview. Colours mirror the
-    rest of the app: hard deadline = contour, soft Wunschtermin = neutral, Hausaufgabe = forest,
-    Prüfung = overprint (see task-card.blade.php / agenda-entry.blade.php).
+    One chip in the Zeitplan's all-day strip: a task deadline/Wunschtermin, on its own
+    date or (dashed) as an advance preview. Colours mirror the rest of the app: hard deadline =
+    contour, soft Wunschtermin = neutral (see task-card.blade.php).
 --}}
 @php
     $styles = match (true) {
-        $item['kind'] === 'agenda' && $item['subtype'] === 'exam' => ['dot' => 'border-overprint', 'tx' => 'text-overprint', 'bg' => 'bg-overprint-soft'],
-        $item['kind'] === 'agenda' => ['dot' => 'border-forest', 'tx' => 'text-forest', 'bg' => 'bg-forest-soft'],
         $item['subtype'] === 'deadline' => ['dot' => 'border-contour', 'tx' => 'text-contour', 'bg' => 'bg-contour-soft'],
         default => ['dot' => 'border-ink-faint', 'tx' => 'text-ink-soft', 'bg' => 'bg-surface'],
     };
-    $toggleAction = $item['kind'] === 'agenda' ? 'toggleDeadlineAgendaDone' : 'toggleDeadlineTaskDone';
-    $sourceUrl = $item['kind'] === 'agenda' ? route('agenda') : url('/app');
-    $sourceLabel = $item['kind'] === 'agenda' ? 'Zur Agenda' : 'Zum Board';
+    $toggleAction = 'toggleDeadlineTaskDone';
+    $sourceUrl = url('/app');
+    $sourceLabel = 'Zum Board';
 @endphp
 <div
     @class([

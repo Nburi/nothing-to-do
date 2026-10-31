@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Schedule;
-use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -59,22 +58,6 @@ class ScheduleDeadlineItemsTest extends TestCase
         $this->assertTrue($previewDay->contains(
             fn (array $i) => $i['id'] === $task->id && $i['isPreview'] === true && $i['daysUntil'] === 2
         ));
-    }
-
-    public function test_agenda_exam_and_homework_preview_the_same_way(): void
-    {
-        $user = $this->actingUser(['deadline_preview_enabled' => true, 'deadline_preview_days' => 3]);
-        $weekStart = $this->weekStartFor($user);
-        $date = $weekStart->copy()->addDays(5);
-        $entry = AgendaEntry::factory()->for($user)->exam()->create(['date' => $date->toDateString(), 'title' => 'Mathe-Prüfung']);
-
-        $items = Livewire::test(Schedule::class)->instance()->deadlineItems;
-
-        $onDay = $items->get($date->toDateString(), collect());
-        $this->assertTrue($onDay->contains(fn (array $i) => $i['id'] === $entry->id && $i['kind'] === 'agenda' && ! $i['isPreview']));
-
-        $previewDay = $items->get($date->copy()->subDays(3)->toDateString(), collect());
-        $this->assertTrue($previewDay->contains(fn (array $i) => $i['id'] === $entry->id && $i['isPreview'] === true));
     }
 
     public function test_no_preview_is_shown_when_the_setting_is_disabled(): void
@@ -134,16 +117,6 @@ class ScheduleDeadlineItemsTest extends TestCase
         Livewire::test(Schedule::class)->assertDontSee('Bereits erledigt');
     }
 
-    public function test_an_agenda_entry_done_by_the_user_is_hidden(): void
-    {
-        $user = $this->actingUser();
-        $weekStart = $this->weekStartFor($user);
-        $date = $weekStart->copy()->addDays(1);
-        AgendaEntry::factory()->for($user)->homework()->done()->create(['date' => $date->toDateString(), 'title' => 'Erledigte Hausaufgabe']);
-
-        Livewire::test(Schedule::class)->assertDontSee('Erledigte Hausaufgabe');
-    }
-
     public function test_toggling_a_task_deadline_marks_it_complete(): void
     {
         $user = $this->actingUser();
@@ -152,36 +125,6 @@ class ScheduleDeadlineItemsTest extends TestCase
         Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $task->id);
 
         $this->assertTrue($task->refresh()->is_completed);
-    }
-
-    public function test_toggling_a_homework_derived_task_via_the_deadline_strip_also_completes_the_agenda_entry(): void
-    {
-        $user = $this->actingUser();
-        $entry = AgendaEntry::factory()->for($user)->homework()->create(['date' => now()->toDateString()]);
-        $task = Task::factory()->for($user)->tasks()->create([
-            'deadline' => now()->toDateString(),
-            'agenda_entry_id' => $entry->id,
-        ]);
-
-        Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $task->id);
-
-        $this->assertTrue($task->refresh()->is_completed);
-        $this->assertTrue($entry->fresh()->isDoneFor($user));
-
-        Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $task->id);
-
-        $this->assertFalse($task->refresh()->is_completed);
-        $this->assertFalse($entry->fresh()->isDoneFor($user));
-    }
-
-    public function test_toggling_an_agenda_entry_marks_it_done_for_the_user(): void
-    {
-        $user = $this->actingUser();
-        $entry = AgendaEntry::factory()->for($user)->homework()->create(['date' => now()->toDateString()]);
-
-        Livewire::test(Schedule::class)->call('toggleDeadlineAgendaDone', $entry->id);
-
-        $this->assertTrue($entry->refresh()->isDoneFor($user));
     }
 
     public function test_a_user_cannot_toggle_another_users_task(): void
@@ -196,14 +139,4 @@ class ScheduleDeadlineItemsTest extends TestCase
         Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $other->id);
     }
 
-    public function test_a_user_cannot_toggle_an_agenda_entry_they_cannot_see(): void
-    {
-        $this->actingUser();
-        $other = AgendaEntry::factory()->for(User::factory())->homework()->create(['date' => now()->toDateString()]);
-
-        // Resolved through AgendaEntry::scopeVisibleTo(), same as everywhere else in the app.
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('toggleDeadlineAgendaDone', $other->id);
-    }
 }

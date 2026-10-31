@@ -5,7 +5,6 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ManagesListConceptSettings;
 use App\Livewire\Concerns\ManagesModuleSettings;
 use App\Mcp\McpAbility;
-use App\Models\AgendaEntry;
 use App\Models\CategoryAttribute;
 use App\Models\EventCategory;
 use App\Models\PushSubscription;
@@ -45,7 +44,6 @@ class Settings extends Component
     public int $deadlinePreviewDays = 2;
 
     // Hausaufgaben-Vorschau im Dashboard
-    public bool $homeworkPreviewEnabled = true;
 
     // Planer (automatische Wochenplanung)
     public bool $plannerEnabled = false;
@@ -109,7 +107,6 @@ class Settings extends Component
         $this->pAutostart = $user->pomodoro_autostart ?? false;
         $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
         $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
-        $this->homeworkPreviewEnabled = $user->homework_preview_enabled ?? true;
         $this->plannerEnabled = (bool) $user->planner_enabled;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
@@ -157,7 +154,7 @@ class Settings extends Component
         $this->pAutostart = (bool) $user->pomodoro_autostart;
     }
 
-    /** Immediate-save toggle, like plannerEnabled/homeworkPreviewEnabled — see the "Vorschau auf Termine" card. */
+    /** Immediate-save toggle, like plannerEnabled — see the "Vorschau auf Termine" card. */
     public function toggleDeadlinePreviewEnabled(): void
     {
         $user = auth()->user();
@@ -167,7 +164,7 @@ class Settings extends Component
     }
 
     /**
-     * Autosaves on change. How many days ahead a hard deadline/exam/homework shows an
+     * Autosaves on change. How many days ahead a hard deadline shows an
      * advance-preview entry in the Zeitplan, on top of appearing on its actual date. A soft
      * Wunschtermin never previews (see Task::effectiveIsHard() / Schedule::deadlineItems()) —
      * this only governs how far the preview reaches, not which items are eligible for one.
@@ -303,13 +300,6 @@ class Settings extends Component
         unset($this->headerBadgeRows);
     }
 
-    /** The presence toggle only means something to someone who is in a class. */
-    #[Computed]
-    public function inAnyAgendaSpace(): bool
-    {
-        return auth()->user()->agendaSpaces()->exists();
-    }
-
     /**
      * Turning presence off also clears the last recorded timestamp — opting out
      * means "stop tracking me", not just "stop showing it" (see
@@ -324,16 +314,6 @@ class Settings extends Component
             'show_presence' => $enabled,
             'last_seen_at' => $enabled ? $user->last_seen_at : null,
         ]);
-    }
-
-    /** The dashboard's "bald fällige Hausaufgaben" card — an immediate-save toggle like presence. */
-    public function toggleHomeworkPreviewEnabled(): void
-    {
-        $user = auth()->user();
-        $enabled = ! $user->homework_preview_enabled;
-
-        $user->update(['homework_preview_enabled' => $enabled]);
-        $this->homeworkPreviewEnabled = $enabled;
     }
 
     /** Default off (see CLAUDE.md) — an automatic planner is exactly the kind of thing that can feel intrusive unasked-for, so it opts in rather than lighting up for everyone. */
@@ -687,7 +667,7 @@ class Settings extends Component
         }
 
         return auth()->user()->eventCategories()
-            ->with(['linkedProject', 'linkedGroup', 'linkedAgendaEntry', 'pinnedTasks'])
+            ->with(['linkedProject', 'linkedGroup', 'pinnedTasks'])
             ->find($this->linkingCategoryId);
     }
 
@@ -701,15 +681,6 @@ class Settings extends Component
     public function linkableGroups(): Collection
     {
         return auth()->user()->taskGroups()->ordered()->get();
-    }
-
-    /** Open homework/exam entries this user can see — for picking a single Agenda link. */
-    #[Computed]
-    public function linkableAgendaEntries(): Collection
-    {
-        $user = auth()->user();
-
-        return AgendaEntry::visibleTo($user)->openFor($user)->ordered()->get();
     }
 
     /**
@@ -765,25 +736,6 @@ class Settings extends Component
 
         $category->clearTaskLink();
         $category->update(['task_source' => 'group', 'linked_group_id' => $group->id]);
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToAgendaEntry(int $id, int $agendaEntryId): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-        $entry = AgendaEntry::visibleTo(auth()->user())->findOrFail($agendaEntryId);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'agenda_entry', 'linked_agenda_entry_id' => $entry->id]);
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToAgendaGeneric(int $id): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'agenda_generic']);
         unset($this->linkingCategory);
     }
 

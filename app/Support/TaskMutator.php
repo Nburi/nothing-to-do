@@ -12,8 +12,7 @@ use App\Models\User;
  * already documents once going wrong ("A new invariant added after a feature
  * already exists needs an audit pass over that feature too"): every
  * `is_today` write must also stamp `today_date` (Task::todayDateFor()),
- * every `is_completed` write must sync a linked Agenda entry
- * (Task::syncLinkedAgendaEntry()), and leaving a group must prune it once
+ * and leaving a group must prune it once
  * it's too small (TaskGroup::pruneIfTooSmall()). A second, parallel
  * implementation of this logic is exactly the trap that section warns about.
  */
@@ -61,8 +60,7 @@ class TaskMutator
      * Apply a partial update to $task, honoring the same invariants the REST
      * API's own update() already enforced: today_date follows is_today,
      * an explicit project_id forces list=projects and clears today/group,
-     * a group_id (MCP-only) clears project_id, a completed toggle syncs the
-     * linked Agenda entry, and leaving a group prunes it if it's now too
+     * a group_id (MCP-only) clears project_id, leaving a group prunes it if it's now too
      * small. Only keys present in $data are touched — same "sparse update"
      * contract as the REST API.
      *
@@ -132,10 +130,6 @@ class TaskMutator
         }
 
         $task->update($updates);
-
-        if (array_key_exists('is_completed', $updates)) {
-            $task->syncLinkedAgendaEntry($user, $updates['is_completed']);
-        }
 
         if ($previousGroup !== null && $previousGroup->id !== $task->group_id) {
             $previousGroup->pruneIfTooSmall();

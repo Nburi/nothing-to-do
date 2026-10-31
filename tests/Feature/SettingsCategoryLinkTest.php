@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Settings;
-use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\Task;
@@ -95,29 +94,6 @@ class SettingsCategoryLinkTest extends TestCase
         $category->refresh();
         $this->assertSame('group', $category->task_source);
         $this->assertSame($group->id, $category->linked_group_id);
-    }
-
-    public function test_link_category_to_agenda_entry_sets_the_source(): void
-    {
-        $user = User::factory()->create();
-        $entry = AgendaEntry::factory()->for($user)->homework()->create();
-        $category = EventCategory::factory()->for($user)->pomodoro()->create();
-
-        Livewire::actingAs($user)->test(Settings::class)->call('linkCategoryToAgendaEntry', $category->id, $entry->id);
-
-        $category->refresh();
-        $this->assertSame('agenda_entry', $category->task_source);
-        $this->assertSame($entry->id, $category->linked_agenda_entry_id);
-    }
-
-    public function test_link_category_to_agenda_generic_sets_the_source(): void
-    {
-        $user = User::factory()->create();
-        $category = EventCategory::factory()->for($user)->pomodoro()->create();
-
-        Livewire::actingAs($user)->test(Settings::class)->call('linkCategoryToAgendaGeneric', $category->id);
-
-        $this->assertSame('agenda_generic', $category->refresh()->task_source);
     }
 
     public function test_save_category_link_text_requires_non_empty_text(): void

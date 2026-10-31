@@ -12,8 +12,7 @@ use App\Support\TaskMutator;
 /**
  * A focused completion toggle — same effect as update_task with
  * is_completed=true, but a clearer signal of intent for a model deciding
- * which tool to call, and it also syncs a linked Agenda homework entry the
- * exact same way the app's own checkbox does (Task::syncLinkedAgendaEntry).
+ * which tool to call.
  */
 class CompleteTaskTool extends McpTool
 {

@@ -19,14 +19,14 @@ class DefaultLandingPageRoutingTest extends TestCase
 
     public function test_root_redirects_to_the_chosen_default_page(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'weekplan']);
 
-        $this->actingAs($user)->get('/')->assertRedirect(route('agenda'));
+        $this->actingAs($user)->get('/')->assertRedirect(route('weekplan'));
     }
 
     public function test_root_self_heals_to_the_board_once_the_default_page_is_hidden(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda', 'hidden_modules' => ['agenda']]);
+        $user = User::factory()->create(['default_page' => 'weekplan', 'hidden_modules' => ['weekplan']]);
 
         $this->actingAs($user)->get('/')->assertRedirect(route('app'));
     }

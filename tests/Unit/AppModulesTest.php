@@ -29,9 +29,9 @@ class AppModulesTest extends TestCase
 
     public function test_a_hidden_module_is_not_visible(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda']]);
+        $user = User::factory()->create(['hidden_modules' => ['weekplan']]);
 
-        $this->assertFalse(AppModules::isVisible($user, 'agenda'));
+        $this->assertFalse(AppModules::isVisible($user, 'weekplan'));
         $this->assertTrue(AppModules::isVisible($user, 'schedule'));
     }
 
@@ -44,27 +44,27 @@ class AppModulesTest extends TestCase
         $this->assertSame(count(AppModules::CATALOG), $rows->count());
         $this->assertTrue($rows['crafts']['hidden']);
         $this->assertTrue($rows['progress']['hidden']);
-        $this->assertFalse($rows['agenda']['hidden']);
+        $this->assertFalse($rows['weekplan']['hidden']);
     }
 
     public function test_landing_page_options_always_start_with_the_board_and_exclude_hidden_modules(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda']]);
+        $user = User::factory()->create(['hidden_modules' => ['weekplan']]);
 
         $options = collect(AppModules::landingPageOptions($user));
 
         $this->assertSame('app', $options->first()['key']);
-        $this->assertFalse($options->contains('key', 'agenda'));
+        $this->assertFalse($options->contains('key', 'weekplan'));
         $this->assertTrue($options->contains('key', 'schedule'));
     }
 
     public function test_is_valid_landing_page(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda']]);
+        $user = User::factory()->create(['hidden_modules' => ['weekplan']]);
 
         $this->assertTrue(AppModules::isValidLandingPage($user, 'app'));
         $this->assertTrue(AppModules::isValidLandingPage($user, 'schedule'));
-        $this->assertFalse(AppModules::isValidLandingPage($user, 'agenda'));
+        $this->assertFalse(AppModules::isValidLandingPage($user, 'weekplan'));
         $this->assertFalse(AppModules::isValidLandingPage($user, 'not-a-real-module'));
     }
 }

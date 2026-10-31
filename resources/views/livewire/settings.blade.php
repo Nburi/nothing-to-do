@@ -137,8 +137,8 @@
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Startseite</h3>
             <p class="mb-5 text-sm text-ink-soft leading-relaxed">
-                Diese Seite öffnet sich, wenn du die App startest oder dich anmeldest — z. B. direkt die
-                Agenda statt des Boards. Nur ausgeblendete Bereiche stehen hier nicht zur Wahl.
+                Diese Seite öffnet sich, wenn du die App startest oder dich anmeldest — z. B. direkt den
+                Zeitplan statt des Boards. Nur ausgeblendete Bereiche stehen hier nicht zur Wahl.
             </p>
 
             <div class="flex flex-wrap gap-2 rounded-[0.6rem] bg-paper p-1">
@@ -229,35 +229,6 @@
                     wire:navigate
                     class="flex-none rounded-card border border-line bg-paper px-3.5 py-1.5 text-sm text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
                 >{{ auth()->user()->onboarding_completed_at ? 'Nochmal ansehen' : 'Tutorial starten' }}</a>
-            </div>
-        </div>
-
-        {{-- Hausaufgaben-Vorschau --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-            <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                    <p class="text-sm font-medium text-ink">Hausaufgaben-Vorschau</p>
-                    <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
-                        Zeigt offene Hausaufgaben, die innerhalb der nächsten 3 Wochentage fällig sind, oben im
-                        Dashboard — Wochenenden zählen dabei nicht mit.
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    wire:click="toggleHomeworkPreviewEnabled"
-                    @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
-                        'bg-forest' => $homeworkPreviewEnabled,
-                        'bg-line' => ! $homeworkPreviewEnabled,
-                    ])
-                    aria-label="Hausaufgaben-Vorschau {{ $homeworkPreviewEnabled ? 'deaktivieren' : 'aktivieren' }}"
-                >
-                    <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $homeworkPreviewEnabled,
-                        'left-0.5' => ! $homeworkPreviewEnabled,
-                    ])></span>
-                </button>
             </div>
         </div>
 
@@ -400,39 +371,6 @@
             </div>
         </div>
 
-        {{-- Presence. Lives under "Allgemein" rather than "Benachrichtigungen":
-             it governs what other people see about you, not what the app sends
-             you. Only rendered for someone actually in a class — for everyone
-             else it would be a switch that controls nothing. --}}
-        @if ($this->inAnyAgendaSpace)
-            <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-ink">Online-Status für die Klasse</p>
-                        <p class="mt-0.5 text-xs text-ink-soft">
-                            Mitglieder deiner Klassen sehen, ob du die App gerade offen hast. Aus heisst
-                            aus: dann wird gar nicht erst aufgezeichnet, wann du zuletzt da warst.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        wire:click="toggleShowPresence"
-                        @class([
-                            'relative h-6 w-10 flex-none rounded-full transition',
-                            'bg-forest' => auth()->user()->show_presence,
-                            'bg-line' => ! auth()->user()->show_presence,
-                        ])
-                        aria-label="Online-Status {{ auth()->user()->show_presence ? 'verbergen' : 'zeigen' }}"
-                    >
-                        <span @class([
-                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                            'left-[1.125rem]' => auth()->user()->show_presence,
-                            'left-0.5' => ! auth()->user()->show_presence,
-                        ])></span>
-                    </button>
-                </div>
-            </div>
-        @endif
     </section>
 
     {{-- Zeitplan & Fokus --}}

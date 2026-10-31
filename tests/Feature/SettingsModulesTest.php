@@ -16,16 +16,16 @@ class SettingsModulesTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'agenda');
+        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'weekplan');
 
-        $this->assertSame(['agenda'], $user->fresh()->hidden_modules);
+        $this->assertSame(['weekplan'], $user->fresh()->hidden_modules);
     }
 
     public function test_toggling_a_hidden_module_reveals_it_again(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda']]);
+        $user = User::factory()->create(['hidden_modules' => ['weekplan']]);
 
-        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'agenda');
+        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'weekplan');
 
         $this->assertSame([], $user->fresh()->hidden_modules);
     }
@@ -34,11 +34,11 @@ class SettingsModulesTest extends TestCase
     {
         $user = User::factory()->create(['hidden_modules' => ['crafts']]);
 
-        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'agenda');
+        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'weekplan');
 
         $hidden = $user->fresh()->hidden_modules;
         $this->assertContains('crafts', $hidden);
-        $this->assertContains('agenda', $hidden);
+        $this->assertContains('weekplan', $hidden);
     }
 
     public function test_toggling_an_unknown_key_is_a_no_op(): void
@@ -52,9 +52,9 @@ class SettingsModulesTest extends TestCase
 
     public function test_hiding_the_current_default_page_resets_it_to_the_board(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'weekplan']);
 
-        $component = Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'agenda');
+        $component = Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'weekplan');
 
         $component->assertSet('defaultPage', 'app');
         $this->assertSame('app', $user->fresh()->default_page);
@@ -64,7 +64,7 @@ class SettingsModulesTest extends TestCase
     {
         $user = User::factory()->create(['default_page' => 'schedule']);
 
-        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'agenda');
+        Livewire::actingAs($user)->test(Settings::class)->call('toggleModule', 'weekplan');
 
         $this->assertSame('schedule', $user->fresh()->default_page);
     }
@@ -73,15 +73,15 @@ class SettingsModulesTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $component = Livewire::actingAs($user)->test(Settings::class)->call('setDefaultPage', 'agenda');
+        $component = Livewire::actingAs($user)->test(Settings::class)->call('setDefaultPage', 'weekplan');
 
-        $component->assertSet('defaultPage', 'agenda');
-        $this->assertSame('agenda', $user->fresh()->default_page);
+        $component->assertSet('defaultPage', 'weekplan');
+        $this->assertSame('weekplan', $user->fresh()->default_page);
     }
 
     public function test_set_default_page_accepts_the_board(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'weekplan']);
 
         Livewire::actingAs($user)->test(Settings::class)->call('setDefaultPage', 'app');
 
@@ -90,9 +90,9 @@ class SettingsModulesTest extends TestCase
 
     public function test_set_default_page_rejects_a_hidden_module(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda'], 'default_page' => 'app']);
+        $user = User::factory()->create(['hidden_modules' => ['weekplan'], 'default_page' => 'app']);
 
-        $component = Livewire::actingAs($user)->test(Settings::class)->call('setDefaultPage', 'agenda');
+        $component = Livewire::actingAs($user)->test(Settings::class)->call('setDefaultPage', 'weekplan');
 
         $component->assertSet('defaultPage', 'app');
         $this->assertSame('app', $user->fresh()->default_page);

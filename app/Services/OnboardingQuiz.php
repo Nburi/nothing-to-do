@@ -30,12 +30,6 @@ class OnboardingQuiz
             'modules' => [],
         ],
         [
-            'key' => 'shared_homework',
-            'label' => 'Ich brauche eine geteilte Liste für Hausaufgaben mit meiner Klasse',
-            'concept' => 'simple',
-            'modules' => ['agenda'],
-        ],
-        [
             'key' => 'important_urgent',
             'label' => 'Ich verliere den Überblick, was wichtig UND dringend ist',
             'concept' => 'eisenhower',

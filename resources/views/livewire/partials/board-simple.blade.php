@@ -36,7 +36,6 @@
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
             @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-6', 'interaction' => 'drag'])
 
             @php
                 $simpleActive = $this->simpleTasks->where('is_completed', false)->values();
@@ -111,7 +110,6 @@
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
             @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-4', 'interaction' => 'swipe'])
 
             @php
                 $mobileSimpleActive = $this->simpleTasks->where('is_completed', false)->values();

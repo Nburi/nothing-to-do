@@ -87,7 +87,7 @@
                     @endforeach
                 </div>
 
-                {{-- All-day strip: task deadlines/Wunschtermine + Agenda homework/exams — none of
+                {{-- All-day strip: task deadlines/Wunschtermine — none of
                      these carry a time, so they live above the hour grid rather than on it. --}}
                 @if ($this->deadlineItems->isNotEmpty())
                     <div class="flex border-b border-line">

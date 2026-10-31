@@ -59,7 +59,6 @@
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
             @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-6', 'interaction' => 'drag'])
 
             <div class="grid grid-cols-3 gap-4">
                 @foreach ($columnMeta as $key => $meta)
@@ -95,7 +94,6 @@
             </div>
             @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
             @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-4', 'interaction' => 'swipe'])
 
             <div class="mb-3 grid grid-cols-3 gap-1.5">
                 @foreach ($columnMeta as $key => $meta)

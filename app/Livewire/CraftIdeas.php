@@ -24,7 +24,7 @@ class CraftIdeas extends Component
      * through a global panel to add one — the same reasoning ProjectPage and
      * EmergencyMode already follow with their own inline add forms.
      *
-     * The same form doubles as the edit form (mirrors Agenda's saveEntry()):
+     * The same form doubles as the edit form:
      * $editingId null while capturing, set to an idea's id while editing it.
      */
     public ?int $editingId = null;

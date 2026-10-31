@@ -1,14 +1,11 @@
 {{-- Category task-link sheet — opened from a Pomodoro-enabled category's row in
      Settings (manageCategoryLink). Picks what TaskSuggestor::suggest() prefers
      during that category's focus sessions: specific tasks, a whole project/group,
-     an Agenda entry (or "HAs erledigen" generically), or free text. Mirrors
+     or free text. Mirrors
      edit-sheet.blade.php's modal shape (animate-rise, no leave-transition). --}}
 @php
     $linking = $this->linkingCategory;
-    $topGroup = $linking === null ? null : match ($linking->task_source) {
-        'agenda_entry', 'agenda_generic' => 'agenda',
-        default => $linking->task_source,
-    };
+    $topGroup = $linking?->task_source;
     $pinnedIds = $linking?->pinnedTasks->pluck('id')->all() ?? [];
     $taskCandidates = $linking === null ? collect() : $this->linkTaskCandidates->reject(fn ($t) => in_array($t->id, $pinnedIds, true));
 
@@ -40,7 +37,6 @@
                 <button type="button" wire:click="setCategoryTasksMode({{ $linking->id }})" @click="reveal = 'tasks'" class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $chipClasses($topGroup === 'tasks') }}">Bestimmte Aufgaben</button>
                 <button type="button" @click="reveal = 'project'" class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $chipClasses($topGroup === 'project') }}">Projekt</button>
                 <button type="button" @click="reveal = 'group'" class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $chipClasses($topGroup === 'group') }}">Gruppe</button>
-                <button type="button" @click="reveal = 'agenda'" class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $chipClasses($topGroup === 'agenda') }}">Agenda</button>
                 <button type="button" @click="reveal = 'text'" class="rounded-full px-3 py-1.5 text-xs font-medium transition {{ $chipClasses($topGroup === 'text') }}">Text</button>
             </div>
 
@@ -114,28 +110,6 @@
                         </button>
                     @empty
                         <p class="rounded-card border border-dashed border-line px-3 py-2 text-sm text-ink-faint">Noch keine Gruppen angelegt.</p>
-                    @endforelse
-                </div>
-            </div>
-
-            {{-- Agenda: generic nudge or one specific entry --}}
-            <div x-show="reveal === 'agenda'" style="display: none;">
-                <button type="button" wire:click="linkCategoryToAgendaGeneric({{ $linking->id }})" class="mb-3 flex w-full items-center justify-between gap-2 rounded-card border {{ $rowClasses($linking->task_source === 'agenda_generic') }} px-3 py-2 text-left text-sm font-medium transition">
-                    <span>Alle offenen Hausaufgaben («HAs erledigen»)</span>
-                    @if ($linking->task_source === 'agenda_generic')
-                        <svg class="h-3.5 w-3.5 flex-none text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                    @endif
-                </button>
-
-                <p class="mb-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-faint">Oder ein bestimmter Eintrag</p>
-                <div class="space-y-1">
-                    @forelse ($this->linkableAgendaEntries as $entry)
-                        <button type="button" wire:key="agenda-{{ $entry->id }}" wire:click="linkCategoryToAgendaEntry({{ $linking->id }}, {{ $entry->id }})" class="flex w-full items-center justify-between gap-2 rounded-card border {{ $rowClasses($linking->task_source === 'agenda_entry' && $linking->linked_agenda_entry_id === $entry->id) }} px-3 py-2 text-left text-sm transition">
-                            <span class="min-w-0 flex-1 truncate">{{ $entry->typeLabel() }} · {{ $entry->subject }} · {{ $entry->title }}</span>
-                            <span class="flex-none text-xs text-ink-faint">{{ $entry->dateLabel() }}</span>
-                        </button>
-                    @empty
-                        <p class="rounded-card border border-dashed border-line px-3 py-2 text-sm text-ink-faint">Keine offenen Hausaufgaben oder Prüfungen.</p>
                     @endforelse
                 </div>
             </div>

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AgendaEntry;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
@@ -11,7 +10,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Lets a user drag open Tasks/Todos/Agenda-homework onto a specific day —
+ * Lets a user drag open Tasks/Todos onto a specific day —
  * not a specific calendar block — so the plan survives a Training block
  * being moved, resized, or renamed underneath it. A day's shown "capacity"
  * still comes from real work-session time (that day's Pomodoro-enabled
@@ -34,14 +33,11 @@ class DayPlanner
     /** How many day-columns the board shows. Fixed for v1, not user-configurable. */
     public const HORIZON_DAYS = 14;
 
-    /** A hard deadline is treated as due this many days earlier, for buffer. A soft Wunschtermin/homework date is not. */
+    /** A hard deadline is treated as due this many days earlier, for buffer. A soft Wunschtermin is not. */
     public const DEADLINE_BUFFER_DAYS = 2;
 
     /** Fallback duration (minutes) used only for capacity math when a task has no estimate of its own — never written back to the record. */
     public const DEFAULT_DURATION = ['todos' => 10, 'tasks' => 25, 'projects' => 25];
-
-    /** Same reasoning as DEFAULT_DURATION — homework is typically task-sized, not todo-sized. */
-    public const DEFAULT_HOMEWORK_DURATION = 25;
 
     public const URGENCY_WEIGHT = 1.0;
 
@@ -101,12 +97,8 @@ class DayPlanner
     }
 
     /**
-     * Every active, dated-or-not board/project task with no day yet, plus
-     * open Agenda homework not yet promoted into a task — sorted by
-     * deadline urgency so the most pressing unplaced items sit at the top.
-     * A homework entry already promoted (via an earlier assignment or
-     * TaskBoard::promoteHomeworkToday()) is represented by that task
-     * instead, never listed twice.
+     * Every active, dated-or-not board/project task with no day yet, sorted
+     * by deadline urgency so the most pressing unplaced items sit at the top.
      *
      * @return Collection<int, array{type: string, id: int, title: string, list?: string, subject?: string, duration: int, deadlineOffset: ?int, deadlineDate: ?Carbon, isImportant: bool}>
      */
@@ -124,13 +116,6 @@ class DayPlanner
             ->whereDoesntHave('dayPlan')
             ->get()
             ->each(fn (Task $task) => $items->push(self::itemFromTask($task, $today)));
-
-        $promotedAgendaIds = Task::forUser($user)->active()->whereNotNull('agenda_entry_id')->pluck('agenda_entry_id')->all();
-
-        AgendaEntry::visibleTo($user)->ofType('homework')->openFor($user)
-            ->whereNotIn('id', $promotedAgendaIds)
-            ->get()
-            ->each(fn (AgendaEntry $entry) => $items->push(self::itemFromAgendaEntry($entry, $today)));
 
         return $items->sortBy(fn (array $i) => $i['deadlineOffset'] ?? PHP_INT_MAX)->values();
     }
@@ -154,9 +139,7 @@ class DayPlanner
      * Persists one day's full task order — the destination day of a drag,
      * same "send the whole ordered list" shape TaskBoard::reorder() and the
      * old Planer's reorderBlock() already used. Each entry is a
-     * "task:<id>"/"agenda:<id>" token; an agenda token is promoted to a real
-     * task at this point (not earlier — a rearranged drag never creates a
-     * task it then discards). Since task_id is unique on task_day_plans, an
+     * "task:<id>" token. Since task_id is unique on task_day_plans, an
      * upsert-by-task_id both places and *relocates*: a task already planned
      * for another day is simply moved here, with nothing left behind to
      * clean up on the day it came from.
@@ -173,10 +156,6 @@ class DayPlanner
             ->map(function (string $item) use ($user) {
                 [$type, $id] = array_pad(explode(':', $item, 2), 2, null);
                 $id = (int) $id;
-
-                if ($type === 'agenda') {
-                    return self::resolveOrPromote($user, $id)->id;
-                }
 
                 return $type === 'task' && $user->tasks()->whereKey($id)->exists() ? $id : null;
             })
@@ -213,7 +192,7 @@ class DayPlanner
      * Single-item convenience for the mobile day-picker sheet: append one
      * chip to the end of a day rather than requiring the caller to already
      * know that day's full existing order the way assignDay() does. Same
-     * agenda-token-promotion and upsert-relocates-by-task_id behavior.
+     * upsert-relocates-by-task_id behavior.
      */
     public static function moveToDay(User $user, string $token, string $date): void
     {
@@ -225,7 +204,6 @@ class DayPlanner
         $id = (int) $id;
 
         $taskId = match (true) {
-            $type === 'agenda' => self::resolveOrPromote($user, $id)->id,
             $type === 'task' && $user->tasks()->whereKey($id)->exists() => $id,
             default => null,
         };
@@ -462,7 +440,7 @@ class DayPlanner
      * build (heute/morgen/weekday/d.m./überfällig) — no second
      * date-formatting implementation here. `list` rides along so the chip
      * can show a To-Do/Task/Projekt tag — the Planer board mixes all three
-     * (and homework) in one flat list, unlike the main board where the
+     * in one flat list, unlike the main board where the
      * column itself already says which list a card belongs to.
      */
     private static function itemFromTask(Task $task, Carbon $today): array
@@ -479,29 +457,6 @@ class DayPlanner
             'deadlineOffset' => $info === null ? null : (int) $today->diffInDays($info['effective'], false),
             'deadlineLabel' => $task->effectiveDateLabel(),
             'isImportant' => (bool) $task->is_important,
-        ];
-    }
-
-    /**
-     * `subject` rides along separately from `title` (rather than baked in
-     * as "Subject: Title", the way a *promoted* Task's own title is built
-     * in resolveOrPromote() below) so the chip can show it as its own
-     * coloured tag instead of repeating it inline with the title text.
-     */
-    private static function itemFromAgendaEntry(AgendaEntry $entry, Carbon $today): array
-    {
-        $effective = $entry->date->copy()->subDays(self::DEADLINE_BUFFER_DAYS);
-
-        return [
-            'type' => 'agenda',
-            'id' => $entry->id,
-            'title' => $entry->title,
-            'subject' => $entry->subject,
-            'duration' => $entry->duration_minutes ?? self::DEFAULT_HOMEWORK_DURATION,
-            'hasEstimate' => $entry->duration_minutes !== null,
-            'deadlineOffset' => (int) $today->diffInDays($effective, false),
-            'deadlineLabel' => $entry->dateLabel(),
-            'isImportant' => false,
         ];
     }
 
@@ -532,26 +487,5 @@ class DayPlanner
         }
 
         return $best;
-    }
-
-    /** Reuses an already-promoted Task if one exists (idempotent); otherwise creates one, mirroring TaskBoard::promoteHomeworkToday()'s shape. */
-    private static function resolveOrPromote(User $user, int $agendaEntryId): Task
-    {
-        $existing = Task::forUser($user)->active()->where('agenda_entry_id', $agendaEntryId)->first();
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $entry = AgendaEntry::visibleTo($user)->findOrFail($agendaEntryId);
-
-        return $user->tasks()->create([
-            'title' => "{$entry->subject}: {$entry->title}",
-            'list' => 'tasks',
-            'deadline' => $entry->date,
-            'duration_minutes' => $entry->duration_minutes,
-            'agenda_entry_id' => $entry->id,
-            'sort_order' => 0,
-        ]);
     }
 }

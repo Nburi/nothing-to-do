@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
  * way the user currently sees them, whichever of the four list concepts
  * (App\Services\ListConcepts) is active. This is deliberately NOT a
  * pixel-perfect mirror of TaskBoard's own rendering (grouped-task box
- * pinning, Notfallmodus overlays, homework-preview merging are all out of
+ * pinning, Notfallmodus overlays are all out of
  * scope) — it reproduces the one thing that actually differs per concept:
  * how active board tasks are bucketed. Use list_tasks for a flat, filtered
  * read regardless of concept.

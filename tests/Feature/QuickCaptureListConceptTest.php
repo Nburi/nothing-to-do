@@ -134,7 +134,6 @@ class QuickCaptureListConceptTest extends TestCase
         $this->assertContains('group', $targets);
         $this->assertContains('project', $targets);
         $this->assertContains('craft', $targets);
-        $this->assertContains('agenda', $targets);
     }
 
     public function test_simple_opens_on_the_tasks_target_by_default(): void
@@ -204,7 +203,6 @@ class QuickCaptureListConceptTest extends TestCase
         $this->assertContains('group', $targets);
         $this->assertContains('project', $targets);
         $this->assertContains('craft', $targets);
-        $this->assertContains('agenda', $targets);
     }
 
     public function test_eisenhower_still_opens_on_the_inbox_target_by_default(): void
@@ -274,7 +272,6 @@ class QuickCaptureListConceptTest extends TestCase
         $this->assertContains('group', $targets);
         $this->assertContains('project', $targets);
         $this->assertContains('craft', $targets);
-        $this->assertContains('agenda', $targets);
     }
 
     public function test_kanban_opens_on_the_tasks_target_by_default(): void

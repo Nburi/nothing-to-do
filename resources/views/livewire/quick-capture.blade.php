@@ -13,9 +13,9 @@
         forced: null,
         targets: @js($targets),
         /* Optional fields appear as soon as there is something to attach them to.
-           Agenda is always open: its fields are required, not optional. */
+           Group is always open: its fields are required, not optional. */
         get showExtra() {
-            if ($wire.target === 'agenda' || $wire.target === 'group') return true;
+            if ($wire.target === 'group') return true;
             return this.forced !== null ? this.forced : this.typed.trim().length > 0;
         },
         cycle(dir) {
@@ -62,7 +62,6 @@
                     :placeholder="{
                         project: 'Wie heisst das Projekt?',
                         craft: 'Was möchtest du basteln?',
-                        agenda: 'Was ist aufgegeben?',
                         group: 'Was gehört zur Gruppe?',
                     }[$wire.target] ?? 'Was steht an?'"
                     autocomplete="off"
@@ -96,10 +95,10 @@
                     </button>
                 @endforeach
 
-                {{-- Hidden for Agenda: its fields are required, so there is nothing to fold away. --}}
+                {{-- Hidden for Group: its fields are required, so there is nothing to fold away. --}}
                 <button
                     type="button"
-                    x-show="$wire.target !== 'agenda' && $wire.target !== 'group'"
+                    x-show="$wire.target !== 'group'"
                     @click="forced = !showExtra"
                     class="ml-auto flex items-center gap-1 rounded-card px-1.5 py-1 text-xs text-ink-faint transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
@@ -145,8 +144,8 @@
                     </div>
                 </div>
 
-                {{-- Group: which group and which of its lists. Required, like the
-                     Agenda's fields — a task with no group isn't a group capture. --}}
+                {{-- Group: which group and which of its lists. Required —
+                     a task with no group isn't a group capture. --}}
                 <div x-show="$wire.target === 'group'" style="display: none;" class="flex flex-col gap-3">
                     <div>
                         <span class="mb-1 block text-[11px] font-medium text-ink-faint">Gruppe</span>
@@ -241,86 +240,6 @@
                         class="w-full resize-y rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
                     ></textarea>
                 </div>
-
-                {{-- Agenda: type, Fach and date are all required (mirrors Agenda::save()). --}}
-                <div x-show="$wire.target === 'agenda'" style="display: none;" class="flex flex-col gap-3">
-                    <div class="flex flex-wrap items-center gap-1.5">
-                        @foreach (App\Models\AgendaEntry::TYPES as $value => $label)
-                            <button
-                                type="button"
-                                wire:click="$set('agendaType', '{{ $value }}')"
-                                @class([
-                                    'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
-                                    'border-forest bg-forest text-white' => $agendaType === $value,
-                                    'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $agendaType !== $value,
-                                ])
-                                aria-pressed="{{ $agendaType === $value ? 'true' : 'false' }}"
-                            >{{ $label }}</button>
-                        @endforeach
-
-                        {{-- Who it's for. Only rendered for someone actually in a class;
-                             sits on the same row as the type pills because it's the same
-                             kind of choice, and the panel has no room to spare. --}}
-                        @if ($this->agendaSpaces->isNotEmpty())
-                            <span class="mx-0.5 h-4 w-px flex-none bg-line" aria-hidden="true"></span>
-                            <button
-                                type="button"
-                                wire:click="$set('agendaSpaceId', null)"
-                                @class([
-                                    'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
-                                    'border-forest bg-forest text-white' => $agendaSpaceId === null,
-                                    'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $agendaSpaceId !== null,
-                                ])
-                                aria-pressed="{{ $agendaSpaceId === null ? 'true' : 'false' }}"
-                            >Nur ich</button>
-                            @foreach ($this->agendaSpaces as $space)
-                                <button
-                                    type="button"
-                                    wire:key="qc-space-{{ $space->id }}"
-                                    wire:click="$set('agendaSpaceId', {{ $space->id }})"
-                                    @class([
-                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
-                                        'border-contour bg-contour text-white' => $agendaSpaceId === $space->id,
-                                        'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $agendaSpaceId !== $space->id,
-                                    ])
-                                    aria-pressed="{{ $agendaSpaceId === $space->id ? 'true' : 'false' }}"
-                                >{{ $space->shortName() }}</button>
-                            @endforeach
-                        @endif
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="qc-subject" class="mb-1 block text-[11px] font-medium text-ink-faint">Fach</label>
-                            {{-- A native datalist rather than the Agenda page's full Alpine
-                                 combobox: it autocompletes from the same source with no extra
-                                 markup, and stays invisible until the field is used. --}}
-                            <input
-                                id="qc-subject"
-                                type="text"
-                                wire:model="subject"
-                                list="qc-subject-options"
-                                placeholder="z. B. Mathematik"
-                                autocomplete="off"
-                                class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
-                            />
-                            <datalist id="qc-subject-options">
-                                @foreach ($this->existingSubjects as $s)
-                                    <option value="{{ $s }}"></option>
-                                @endforeach
-                            </datalist>
-                        </div>
-                        <div>
-                            <label for="qc-date" class="mb-1 block text-[11px] font-medium text-ink-faint">Datum</label>
-                            <input id="qc-date" type="date" wire:model="date" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
-                        </div>
-                    </div>
-
-                    {{-- Homework only — an exam is never planner-eligible, mirrors the Agenda page's own form. --}}
-                    <div x-show="$wire.agendaType === 'homework'" style="display: none;" class="max-w-[9rem]">
-                        <label for="qc-agenda-duration" class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer (Min.)</label>
-                        <input id="qc-agenda-duration" type="number" min="1" max="600" step="1" wire:model="duration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0" />
-                    </div>
-                </div>
             </div>
 
             {{-- Footer: errors, the "just captured" confirmation, or the key hints. --}}
@@ -341,12 +260,6 @@
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('whereToBegin')
-                    <span class="text-signal">{{ $message }}</span>
-                @enderror
-                @error('subject')
-                    <span class="text-signal">{{ $message }}</span>
-                @enderror
-                @error('date')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
                 @error('newGroupName')

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A feedback note or support request — one model with a `type` column,
- * mirroring AgendaEntry's homework/exam split. Submitted by any account
+ * (feedback vs. support). Submitted by any account
  * (App\Livewire\SupportCenter), triaged by admins only
  * (App\Livewire\Admin\SupportQueue). The submitter always sees their own
  * status, but never anyone else's. See CLAUDE.md, "Hilfe-Center & Support".

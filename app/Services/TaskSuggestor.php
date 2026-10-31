@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AgendaEntry;
 use App\Models\EventCategory;
 use App\Models\Project;
 use App\Models\Task;
@@ -18,8 +17,7 @@ use App\Models\User;
  *                            category's link, so the next open one wins for
  *                            this occurrence.
  *   3. Category link      → the running session's category's linked
- *                            project/group/pinned tasks/Agenda entry/generic
- *                            homework nudge/free text, if the category has one
+ *                            project/group/pinned tasks/free text, if the category has one
  *                            (see EventCategory::$task_source). Applies on
  *                            every cycle of that session, not just the first.
  *   4. Cycle 1            → a generic nudge to clear the ToDos list.
@@ -37,11 +35,10 @@ class TaskSuggestor
 {
     /**
      * Returns null, or one of:
-     *   ['kind' => 'todos'|'agenda_generic'|'category_text', 'title' => string, 'subtitle' => ?string]
+     *   ['kind' => 'todos'|'category_text', 'title' => string, 'subtitle' => ?string]
      *   ['kind' => 'task', 'title' => string, 'task_id' => int]
      *   ['kind' => 'project', 'title' => string, 'subtitle' => string, 'project_id' => int]
      *   ['kind' => 'category_group', 'title' => string, 'subtitle' => string, 'group_id' => int]
-     *   ['kind' => 'category_agenda', 'title' => string, 'subtitle' => string, 'agenda_entry_id' => int]
      */
     public static function suggest(User $user, int $cycle, int $seedKey, ?EventCategory $category = null, ?Task $linkedTask = null): ?array
     {
@@ -70,7 +67,7 @@ class TaskSuggestor
                 return $linked;
             }
 
-            // Linked source is empty, deleted, or (for agenda_entry) already done — fall through.
+            // Linked source is empty, deleted — fall through.
         }
 
         if ($cycle === 1) {
@@ -104,7 +101,7 @@ class TaskSuggestor
     /**
      * How many active/open items are left in a category's linked source, or
      * null when there is nothing to count (no link, a free-text link, or the
-     * linked project/group/entry was deleted). Used both above (indirectly,
+     * linked project/group was deleted). Used both above (indirectly,
      * via categorySuggestion) and by TaskBoard::linkedSourceNotice() to detect
      * the exact moment a linked list is cleared during a running session.
      */
@@ -114,10 +111,6 @@ class TaskSuggestor
             'project' => $category->linkedProject?->activeTasks()->count(),
             'group' => $category->linkedGroup?->activeTasks()->count(),
             'tasks' => $category->pinnedTasks()->active()->count(),
-            'agenda_entry' => $category->linkedAgendaEntry === null
-                ? null
-                : ($category->linkedAgendaEntry->isDoneFor($user) ? 0 : 1),
-            'agenda_generic' => AgendaEntry::visibleTo($user)->ofType('homework')->openFor($user)->count(),
             default => null, // 'text', or no source set
         };
     }
@@ -152,8 +145,6 @@ class TaskSuggestor
             'project' => self::categoryProjectSuggestion($category),
             'group' => self::categoryGroupSuggestion($category),
             'tasks' => self::categoryPinnedTaskSuggestion($category),
-            'agenda_entry' => self::categoryAgendaEntrySuggestion($category, $user),
-            'agenda_generic' => self::categoryAgendaGenericSuggestion($user),
             'text' => self::categoryTextSuggestion($category),
             default => null,
         };
@@ -215,37 +206,6 @@ class TaskSuggestor
             'kind' => 'task',
             'title' => $next->title,
             'task_id' => $next->id,
-        ];
-    }
-
-    private static function categoryAgendaEntrySuggestion(EventCategory $category, User $user): ?array
-    {
-        $entry = $category->linkedAgendaEntry;
-
-        if ($entry === null || $entry->isDoneFor($user)) {
-            return null;
-        }
-
-        return [
-            'kind' => 'category_agenda',
-            'title' => $entry->title,
-            'subtitle' => $entry->subject,
-            'agenda_entry_id' => $entry->id,
-        ];
-    }
-
-    private static function categoryAgendaGenericSuggestion(User $user): ?array
-    {
-        $open = AgendaEntry::visibleTo($user)->ofType('homework')->openFor($user)->count();
-
-        if ($open === 0) {
-            return null;
-        }
-
-        return [
-            'kind' => 'agenda_generic',
-            'title' => 'Hausaufgaben erledigen',
-            'subtitle' => $open === 1 ? '1 offen' : "{$open} offen",
         ];
     }
 

@@ -33,7 +33,6 @@ class Task extends Model
         'list',
         'project_id',
         'group_id',
-        'agenda_entry_id',
         'emergency_list',
         'is_today',
         'today_date',
@@ -80,37 +79,10 @@ class Task extends Model
         return $this->belongsTo(TaskGroup::class, 'group_id');
     }
 
-    public function agendaEntry(): BelongsTo
-    {
-        return $this->belongsTo(AgendaEntry::class);
-    }
-
     /** Which day this task is planned for, if any (see App\Services\DayPlanner). */
     public function dayPlan(): HasOne
     {
         return $this->hasOne(TaskDayPlan::class);
-    }
-
-    /**
-     * Mirrors this task's completion onto the Agenda homework entry it was
-     * promoted from (see TaskBoard::promoteHomeworkToday()), so finishing the
-     * task also closes the loop in Agenda without a second trip — and
-     * un-completing the task reverses it. A no-op for every ordinary task
-     * (agenda_entry_id null) and for a homework entry that's since been
-     * deleted (nullOnDelete already cleared the column) or moved out of
-     * this user's reach (a left class space).
-     */
-    public function syncLinkedAgendaEntry(User $user, bool $done): void
-    {
-        if ($this->agenda_entry_id === null) {
-            return;
-        }
-
-        $entry = AgendaEntry::query()->visibleTo($user)->find($this->agenda_entry_id);
-
-        if ($entry !== null && $entry->isDoneFor($user) !== $done) {
-            $entry->toggleDoneFor($user);
-        }
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

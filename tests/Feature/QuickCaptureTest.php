@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\QuickCapture;
-use App\Models\AgendaSpace;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -192,44 +191,6 @@ class QuickCaptureTest extends TestCase
         ]);
     }
 
-    public function test_it_captures_an_agenda_entry(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'agenda')
-            ->set('agendaType', 'exam')
-            ->set('subject', '  Mathematik  ')
-            ->set('title', 'Prüfung Kapitel 4')
-            ->set('date', '2026-09-12')
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('agenda_entries', [
-            'user_id' => $user->id,
-            'type' => 'exam',
-            'subject' => 'Mathematik',
-            'title' => 'Prüfung Kapitel 4',
-            'date' => '2026-09-12 00:00:00',
-            'agenda_space_id' => null,
-        ]);
-    }
-
-    public function test_agenda_requires_a_subject_and_a_date(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'agenda')
-            ->set('title', 'Ohne Fach und Datum')
-            ->call('save')
-            ->assertHasErrors(['subject' => 'required', 'date' => 'required']);
-
-        $this->assertDatabaseCount('agenda_entries', 0);
-    }
-
     /** Those same fields must not be demanded of any other target. */
     public function test_other_targets_do_not_require_the_agenda_fields(): void
     {
@@ -242,43 +203,6 @@ class QuickCaptureTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('tasks', ['title' => 'Ganz normale Aufgabe']);
-    }
-
-    /**
-     * Several homework items for one subject on one day is the normal case, so
-     * Fach, date and type survive a save the same way the target does.
-     */
-    public function test_agenda_keeps_subject_date_and_type_after_saving(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'agenda')
-            ->set('agendaType', 'exam')
-            ->set('subject', 'Biologie')
-            ->set('date', '2026-09-12')
-            ->set('title', 'Erster Eintrag')
-            ->call('save')
-            ->assertSet('title', '')
-            ->assertSet('subject', 'Biologie')
-            ->assertSet('date', '2026-09-12')
-            ->assertSet('agendaType', 'exam');
-    }
-
-    public function test_leaving_the_agenda_target_drops_its_fields(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'agenda')
-            ->set('subject', 'Physik')
-            ->set('date', '2026-09-12')
-            ->call('setTarget', 'todos')
-            ->assertSet('subject', '')
-            ->assertSet('date', null)
-            ->assertSet('agendaType', 'homework');
     }
 
     public function test_a_blank_title_is_rejected(): void
@@ -370,17 +294,6 @@ class QuickCaptureTest extends TestCase
             ->test(QuickCapture::class)
             ->dispatch('quick-capture-opened', target: 'craft')
             ->assertSet('target', 'craft');
-    }
-
-    public function test_opening_the_panel_straight_onto_agenda_defaults_the_users_only_class(): void
-    {
-        $user = User::factory()->create();
-        $space = AgendaSpace::factory()->for($user, 'owner')->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->dispatch('quick-capture-opened', target: 'agenda')
-            ->assertSet('agendaSpaceId', $space->id);
     }
 
     public function test_an_unknown_preselected_target_falls_back_to_inbox(): void

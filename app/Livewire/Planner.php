@@ -33,7 +33,7 @@ class Planner extends Component
         return DayPlanner::board(auth()->user());
     }
 
-    /** Every dated-or-not task/homework with no day yet. */
+    /** Every dated-or-not task with no day yet. */
     #[Computed]
     public function backlog(): Collection
     {
@@ -50,8 +50,7 @@ class Planner extends Component
     /**
      * Persists one day's full order — the destination of a drag, the same
      * "send the whole ordered list" shape TaskBoard::reorder() uses. Each
-     * entry is a "task:<id>" or "agenda:<id>" token (see
-     * DayPlanner::assignDay() for how an agenda token gets promoted).
+     * entry is a "task:<id>" token (see DayPlanner::assignDay()).
      * Ownership of every id is verified inside the service, item by item.
      *
      * @param  array<int, string>  $items
