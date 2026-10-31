@@ -37,7 +37,7 @@ class DayPlanner
     public const DEADLINE_BUFFER_DAYS = 2;
 
     /** Fallback duration (minutes) used only for capacity math when a task has no estimate of its own — never written back to the record. */
-    public const DEFAULT_DURATION = ['todos' => 10, 'tasks' => 25, 'projects' => 25];
+    public const DEFAULT_DURATION = ['todos' => 10, 'tasks' => 25];
 
     public const URGENCY_WEIGHT = 1.0;
 
@@ -97,7 +97,7 @@ class DayPlanner
     }
 
     /**
-     * Every active, dated-or-not board/project task with no day yet, sorted
+     * Every active, dated-or-not board task with no day yet, sorted
      * by deadline urgency so the most pressing unplaced items sit at the top.
      *
      * @return Collection<int, array{type: string, id: int, title: string, list?: string, subject?: string, duration: int, deadlineOffset: ?int, deadlineDate: ?Carbon, isImportant: bool}>
@@ -112,7 +112,7 @@ class DayPlanner
         $items = collect();
 
         Task::forUser($user)->active()
-            ->whereIn('list', ['todos', 'tasks', 'projects'])
+            ->whereIn('list', ['todos', 'tasks'])
             ->whereDoesntHave('dayPlan')
             ->get()
             ->each(fn (Task $task) => $items->push(self::itemFromTask($task, $today)));
@@ -333,13 +333,9 @@ class DayPlanner
      * which calls this same helper once a minute with $date = today itself.
      *
      * Mirrors TaskBoard::setToday()'s own is_today/today_date pairing
-     * (Task::todayDateFor()) and its isInbox()/isInProject() guard exactly
-     * (onBoard() = project_id IS NULL covers the Project half; list=inbox
-     * is excluded explicitly since nothing stops a stray id ending up here
-     * even though backlog() itself never offers an Inbox task to plan) — a
-     * Project-owned task never surfaces on the board's Today zone, so
-     * silently flagging one here would inflate ProgressStats' streak with a
-     * task nobody can see or complete (see CLAUDE.md §7 Task-Gruppen).
+     * (Task::todayDateFor()) and its isInbox() guard: list=inbox is excluded
+     * explicitly since nothing stops a stray id ending up here even though
+     * backlog() itself never offers an Inbox task to plan.
      *
      * No dedup column needed the way the push-notification commands need
      * one: is_today=false IS the idempotency guard, since nothing in this
@@ -365,7 +361,7 @@ class DayPlanner
         Task::query()
             ->forUser($user)
             ->active()
-            ->onBoard()
+            
             ->where('list', '!=', 'inbox')
             ->whereIn('id', $ids)
             ->where('is_today', false)

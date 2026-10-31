@@ -21,7 +21,6 @@ use Laravel\Sanctum\HasApiTokens;
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
     'notify_event_start', 'notify_pomo_start', 'notify_break_start', 'notify_event_upcoming',
     'timezone_offset', 'timezone_auto_dst',
-    'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
     'daily_task_goal',
@@ -66,18 +65,6 @@ class User extends Authenticatable
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
-    }
-
-    /** @return HasMany<Project, $this> */
-    public function projects(): HasMany
-    {
-        return $this->hasMany(Project::class);
-    }
-
-    /** @return HasMany<TaskGroup, $this> */
-    public function taskGroups(): HasMany
-    {
-        return $this->hasMany(TaskGroup::class);
     }
 
     /** @return HasMany<ScheduleEvent, $this> */
@@ -252,17 +239,6 @@ class User extends Authenticatable
             $minutes < 2880 => 'vor '.intdiv($minutes, 60).' Std',
             default => 'vor '.intdiv($minutes, 1440).' Tagen',
         };
-    }
-
-    /** The project currently in "emergency mode", or null if not active. */
-    public function emergencyProject(): BelongsTo
-    {
-        return $this->belongsTo(Project::class, 'emergency_project_id');
-    }
-
-    public function isInEmergencyMode(): bool
-    {
-        return $this->emergency_project_id !== null;
     }
 
     /** The Pomodoro rhythm (minutes / count) driving each category's focus timer. */

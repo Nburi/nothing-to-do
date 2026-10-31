@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * A concept-agnostic reorder: writes `sort_order` sequentially for the given
  * ids, which every list concept's own ordering ties back to eventually
- * (Task::scopeBoardOrdered()/scopeGroupOrdered()). Deliberately simpler than
+ * (Task::scopeBoardOrdered()). Deliberately simpler than
  * mirroring each concept's own zone-based reorder endpoint (three_things'
  * list+today zones, simple's today/other zones, eisenhower's quadrant axes,
  * kanban's columns) — those each also flip other fields (is_today, list) as
@@ -28,7 +28,7 @@ class SetTaskOrderTool extends McpTool
     public function description(): string
     {
         return 'Set the manual sort order for a list of tasks — pass their ids in the order you want them '
-            .'to appear. Does not change any other field (list, project, today-flag); use update_task for that.';
+            .'to appear. Does not change any other field (list, today-flag); use update_task for that.';
     }
 
     public function inputSchema(): array

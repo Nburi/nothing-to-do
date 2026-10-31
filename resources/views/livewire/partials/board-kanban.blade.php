@@ -29,10 +29,9 @@
     gesture that already exists needs a real reason to stay, and there
     wasn't one once actually compared side by side.
 
-    Companion features (Notfallmodus, Zeitplan/focus timer,
-    Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
-    requirement 6 — the same top-of-page furniture as board-three-things.php
-    renders here unchanged.
+    The Zeitplan/focus-timer strip stays concept-agnostic per
+    PLAN_LIST_CONCEPTS.md §2 requirement 6 — the same top-of-page furniture
+    as board-three-things.php renders here unchanged.
 --}}
 @php
     $columnMeta = [
@@ -57,7 +56,6 @@
             <div class="mb-6">
                 @include('livewire.partials.schedule-strip')
             </div>
-            @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
 
             <div class="grid grid-cols-3 gap-4">
                 @foreach ($columnMeta as $key => $meta)
@@ -91,7 +89,6 @@
             <div class="mb-4">
                 @include('livewire.partials.schedule-strip')
             </div>
-            @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
 
             <div class="mb-3 grid grid-cols-3 gap-1.5">
                 @foreach ($columnMeta as $key => $meta)
@@ -138,5 +135,3 @@
     {{-- ════════════════ EDIT SHEET ════════════════ --}}
     @include('livewire.partials.edit-sheet')
 
-    {{-- ════════════════ PROJECT PICKER (mobile long-press) ════════════════ --}}
-    @include('livewire.partials.project-picker-sheet')

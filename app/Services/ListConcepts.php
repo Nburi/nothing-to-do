@@ -137,7 +137,7 @@ class ListConcepts
         return Task::query()
             ->forUser($user)
             ->active()
-            ->onBoard()
+            
             ->boardOrdered()
             ->limit($limit)
             ->get(['id', 'title', 'list', 'is_important', 'is_today', 'deadline', 'due_date']);

@@ -625,20 +625,8 @@ class Settings extends Component
         }
 
         return auth()->user()->eventCategories()
-            ->with(['linkedProject', 'linkedGroup', 'pinnedTasks'])
+            ->with(['pinnedTasks'])
             ->find($this->linkingCategoryId);
-    }
-
-    #[Computed]
-    public function linkableProjects(): Collection
-    {
-        return auth()->user()->projects()->ordered()->get();
-    }
-
-    #[Computed]
-    public function linkableGroups(): Collection
-    {
-        return auth()->user()->taskGroups()->ordered()->get();
     }
 
     /**
@@ -651,7 +639,7 @@ class Settings extends Component
     public function linkTaskCandidates(): Collection
     {
         $user = auth()->user();
-        $query = Task::forUser($user)->active()->onBoard();
+        $query = Task::forUser($user)->active();
 
         if ($this->linkTaskSearch !== '') {
             return $query->where('title', 'like', '%'.$this->linkTaskSearch.'%')->boardOrdered()->get();
@@ -674,26 +662,6 @@ class Settings extends Component
     public function clearCategoryLink(int $id): void
     {
         auth()->user()->eventCategories()->findOrFail($id)->clearTaskLink();
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToProject(int $id, int $projectId): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-        $project = auth()->user()->projects()->findOrFail($projectId);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'project', 'linked_project_id' => $project->id]);
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToGroup(int $id, int $groupId): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-        $group = auth()->user()->taskGroups()->findOrFail($groupId);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'group', 'linked_group_id' => $group->id]);
         unset($this->linkingCategory);
     }
 

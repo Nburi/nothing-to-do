@@ -172,8 +172,8 @@ class HelpEditor extends Component
     // ── Article editor ───────────────────────────────────────────────────
 
     /**
-     * Creates a blank draft immediately and opens it — mirrors ProjectPage's
-     * "empty projects open straight into the editor" shape.
+     * Creates a blank draft immediately and opens it — opens straight into the
+     * editor, so there is nothing to name first.
      */
     public function createArticle(?int $categoryId): void
     {

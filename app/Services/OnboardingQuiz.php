@@ -33,7 +33,7 @@ class OnboardingQuiz
             'key' => 'important_urgent',
             'label' => 'Ich verliere den Überblick, was wichtig UND dringend ist',
             'concept' => 'eisenhower',
-            'modules' => ['emergency'],
+            'modules' => [],
         ],
         [
             'key' => 'mixed_sizes',

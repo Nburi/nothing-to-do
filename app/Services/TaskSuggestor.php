@@ -3,27 +3,24 @@
 namespace App\Services;
 
 use App\Models\EventCategory;
-use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 
 /**
  * Picks "what to work on" for a Pomodoro work session. Tiered:
  *
- *   1. Notfallmodus       → the active emergency project's next step, if any.
  *   2. Event task link    → the running session's *own* schedule entry has one
  *                            or more tasks bound directly to it (ScheduleEvent
  *                            ::linkedTasks) — more specific than its
  *                            category's link, so the next open one wins for
  *                            this occurrence.
  *   3. Category link      → the running session's category's linked
- *                            project/group/pinned tasks/free text, if the category has one
+ *                            pinned tasks/free text, if the category has one
  *                            (see EventCategory::$task_source). Applies on
  *                            every cycle of that session, not just the first.
  *   4. Cycle 1            → a generic nudge to clear the ToDos list.
  *   5. Any cycle          → the top active "today" task (board order).
- *   6. Fallback           → a project's next task or another active
- *                            todos/tasks-list task, picked deterministically
+ *   6. Fallback           → another active todos/tasks-list task, picked deterministically
  *                            (stable across the header ring's 5s poll) from
  *                            a seed tied to the session + cycle.
  *
@@ -37,21 +34,9 @@ class TaskSuggestor
      * Returns null, or one of:
      *   ['kind' => 'todos'|'category_text', 'title' => string, 'subtitle' => ?string]
      *   ['kind' => 'task', 'title' => string, 'task_id' => int]
-     *   ['kind' => 'project', 'title' => string, 'subtitle' => string, 'project_id' => int]
-     *   ['kind' => 'category_group', 'title' => string, 'subtitle' => string, 'group_id' => int]
      */
     public static function suggest(User $user, int $cycle, int $seedKey, ?EventCategory $category = null, ?Task $linkedTask = null): ?array
     {
-        if ($user->emergency_project_id !== null) {
-            $emergency = self::emergencySuggestion($user);
-
-            if ($emergency !== null) {
-                return $emergency;
-            }
-
-            // Nothing left in the emergency project — fall through to normal tiers.
-        }
-
         if ($linkedTask !== null && ! $linkedTask->is_completed) {
             return [
                 'kind' => 'task',
@@ -82,7 +67,7 @@ class TaskSuggestor
             }
         }
 
-        $todayTask = Task::forUser($user)->active()->onBoard()
+        $todayTask = Task::forUser($user)->active()
             ->where('is_today', true)
             ->boardOrdered()
             ->first();
@@ -100,98 +85,26 @@ class TaskSuggestor
 
     /**
      * How many active/open items are left in a category's linked source, or
-     * null when there is nothing to count (no link, a free-text link, or the
-     * linked project/group was deleted). Used both above (indirectly,
+     * null when there is nothing to count (no link, or a free-text link). Used both above (indirectly,
      * via categorySuggestion) and by TaskBoard::linkedSourceNotice() to detect
      * the exact moment a linked list is cleared during a running session.
      */
     public static function linkedSourceRemainingCount(EventCategory $category, User $user): ?int
     {
         return match ($category->task_source) {
-            'project' => $category->linkedProject?->activeTasks()->count(),
-            'group' => $category->linkedGroup?->activeTasks()->count(),
             'tasks' => $category->pinnedTasks()->active()->count(),
             default => null, // 'text', or no source set
         };
-    }
-
-    /** The next un-done step in the active emergency project's arranged sequence, if any is left. */
-    private static function emergencySuggestion(User $user): ?array
-    {
-        $project = Project::forUser($user)->find($user->emergency_project_id);
-
-        if ($project === null) {
-            return null;
-        }
-
-        $next = $project->tasks()->active()->orderBy('sort_order')->orderBy('created_at')->first();
-
-        if ($next === null) {
-            return null;
-        }
-
-        return [
-            'kind' => 'emergency',
-            'title' => $next->title,
-            'subtitle' => $project->name,
-            'task_id' => $next->id,
-        ];
     }
 
     /** Dispatches to the one branch matching the category's current task_source. */
     private static function categorySuggestion(EventCategory $category, User $user): ?array
     {
         return match ($category->task_source) {
-            'project' => self::categoryProjectSuggestion($category),
-            'group' => self::categoryGroupSuggestion($category),
             'tasks' => self::categoryPinnedTaskSuggestion($category),
             'text' => self::categoryTextSuggestion($category),
             default => null,
         };
-    }
-
-    private static function categoryProjectSuggestion(EventCategory $category): ?array
-    {
-        $project = $category->linkedProject;
-
-        if ($project === null) {
-            return null;
-        }
-
-        $next = $project->activeTasks->first();
-
-        if ($next === null) {
-            return null;
-        }
-
-        return [
-            'kind' => 'project',
-            'title' => $project->name,
-            'subtitle' => $next->title,
-            'project_id' => $project->id,
-        ];
-    }
-
-    private static function categoryGroupSuggestion(EventCategory $category): ?array
-    {
-        $group = $category->linkedGroup;
-
-        if ($group === null) {
-            return null;
-        }
-
-        $next = $group->activeTasks->first();
-
-        if ($next === null) {
-            return null;
-        }
-
-        return [
-            'kind' => 'category_group',
-            'title' => $group->name,
-            'subtitle' => $next->title,
-            'group_id' => $group->id,
-        ];
     }
 
     private static function categoryPinnedTaskSuggestion(EventCategory $category): ?array
@@ -223,23 +136,10 @@ class TaskSuggestor
         ];
     }
 
-    /** A stable-per-(session,cycle) pick between a project's next task and another task. */
+    /** A stable-per-(session,cycle) pick among the user's other open tasks. */
     private static function randomFallback(User $user, int $seedKey, int $cycle): ?array
     {
         $candidates = [];
-
-        foreach (Project::forUser($user)->ordered()->with('activeTasks')->get() as $project) {
-            $next = $project->activeTasks->first();
-
-            if ($next !== null) {
-                $candidates[] = [
-                    'kind' => 'project',
-                    'title' => $project->name,
-                    'subtitle' => $next->title,
-                    'project_id' => $project->id,
-                ];
-            }
-        }
 
         $otherTasks = Task::forUser($user)->active()
             ->whereIn('list', ['todos', 'tasks'])

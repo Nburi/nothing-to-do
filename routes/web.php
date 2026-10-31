@@ -7,13 +7,10 @@ use App\Livewire\Admin\ErrorLog;
 use App\Livewire\Admin\HelpEditor;
 use App\Livewire\Admin\SupportQueue;
 use App\Livewire\CraftIdeas;
-use App\Livewire\EmergencyMode;
-use App\Livewire\GroupPage;
 use App\Livewire\Help;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
 use App\Livewire\Progress;
-use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\SupportCenter;
@@ -56,18 +53,6 @@ Route::get('/sitemap.xml', function () {
 Route::get('/app', TaskBoard::class)
     ->middleware('auth')
     ->name('app');
-
-Route::get('/app/projects/{project}', ProjectPage::class)
-    ->middleware('auth')
-    ->name('project.show');
-
-Route::get('/app/groups/{group}', GroupPage::class)
-    ->middleware('auth')
-    ->name('group.show');
-
-Route::get('/app/emergency', EmergencyMode::class)
-    ->middleware('auth')
-    ->name('emergency');
 
 Route::get('/app/schedule', Schedule::class)
     ->middleware('auth')

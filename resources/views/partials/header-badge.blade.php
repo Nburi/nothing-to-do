@@ -5,7 +5,7 @@
     this partial never has to render an empty/zero state itself.
 
     Colour: every badge except 'streak' uses its catalog 'tone' at a flat
-    "soft" strength ('ink' = neutral border, 'signal' = the Notfall/warning
+    "soft" strength ('ink' = neutral border, 'signal' = the warning
     tint used everywhere else that badge appears). 'streak' uses its own
     --ember-* fire gradient (app.css) instead — a deliberate exception to
     the four-tone Topografie palette, since a flame that never turns
@@ -49,10 +49,6 @@
 
         @case('goal')
             <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><circle cx="10" cy="10" r="3.5"/><circle cx="10" cy="10" r="0.75" fill="currentColor" stroke="none"/></svg>
-            @break
-
-        @case('emergency')
-            <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14" r="1" fill="currentColor"/></svg>
             @break
 
         @case('crafts')

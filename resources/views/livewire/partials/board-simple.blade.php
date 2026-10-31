@@ -18,15 +18,9 @@
     second way to move a card in/out of the zone, same as 3-Things' own
     Heute area doesn't stop a card from also being swiped.
 
-    Companion features (Notfallmodus, Zeitplan/focus timer,
-    Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
-    requirement 6 — the same top-of-page furniture as board-three-things.php
-    renders here unchanged. What does NOT carry over is the *per-list*
-    pinning those features do inside a 3-Things column (emergency tasks
-    numbered per list, task-group boxes per list) — Simple has no per-list
-    buckets for them to pin into. Emergency mode's own banner + arrange
-    screen and a group's own dashboard remain fully reachable and functional;
-    they just don't get a second, column-shaped rendering here.
+    The Zeitplan/focus-timer strip stays concept-agnostic per
+    PLAN_LIST_CONCEPTS.md §2 requirement 6 — the same top-of-page furniture
+    as board-three-things.php renders here unchanged.
 --}}
     {{-- ════════════════ DESKTOP (≥ md) ════════════════ --}}
     <div class="hidden md:block">
@@ -34,7 +28,6 @@
             <div class="mb-6">
                 @include('livewire.partials.schedule-strip')
             </div>
-            @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
 
             @php
                 $simpleActive = $this->simpleTasks->where('is_completed', false)->values();
@@ -107,7 +100,6 @@
             <div class="mb-4">
                 @include('livewire.partials.schedule-strip')
             </div>
-            @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
 
             @php
                 $mobileSimpleActive = $this->simpleTasks->where('is_completed', false)->values();
@@ -173,5 +165,3 @@
     {{-- ════════════════ EDIT SHEET ════════════════ --}}
     @include('livewire.partials.edit-sheet')
 
-    {{-- ════════════════ PROJECT PICKER (mobile long-press) ════════════════ --}}
-    @include('livewire.partials.project-picker-sheet')

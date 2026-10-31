@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Partial update — rename, reschedule, toggle important/completed, move
- * between lists/project/group, flag for today. Prefer complete_task/
+ * between lists, flag for today. Prefer complete_task/
  * reopen_task for a plain completion toggle (they're more specific about
  * intent); this tool is for everything else, and can also toggle
  * is_completed directly if that's more convenient for a batch of changes.
@@ -30,8 +30,7 @@ class UpdateTaskTool extends McpTool
 
     public function description(): string
     {
-        return 'Update fields on an existing task. Only the fields you pass are changed. Setting '
-            .'project_id clears group_id (and vice versa) — a task can belong to at most one of the two.';
+        return 'Update fields on an existing task. Only the fields you pass are changed.';
     }
 
     public function inputSchema(): array
@@ -42,8 +41,6 @@ class UpdateTaskTool extends McpTool
                 'id' => ['type' => 'integer'],
                 'title' => ['type' => 'string'],
                 'list' => ['type' => 'string', 'enum' => Task::LISTS],
-                'project_id' => ['type' => ['integer', 'null']],
-                'group_id' => ['type' => ['integer', 'null']],
                 'deadline' => ['type' => ['string', 'null'], 'format' => 'date'],
                 'due_date' => ['type' => ['string', 'null'], 'format' => 'date'],
                 'notes' => ['type' => ['string', 'null']],
@@ -78,8 +75,6 @@ class UpdateTaskTool extends McpTool
             'is_completed' => ['sometimes', 'boolean'],
             'is_today' => ['sometimes', 'boolean'],
             'list' => ['sometimes', Rule::in(Task::LISTS)],
-            'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $user->id)],
-            'group_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_groups', 'id')->where('user_id', $user->id)],
         ])->validate();
 
         $task = TaskMutator::applyUpdate($task, $user, $data);

@@ -1,6 +1,6 @@
 {{--
     The "Mehr" feature-navigation links — Zeitplan/Wochenplan/
-    Planer/Bastelideen/Notfall. Shared by two places: the standalone
+    Planer/Bastelideen. Shared by two places: the standalone
     desktop "Mehr" dropdown panel (layouts/app.blade.php, sm and up) and the
     mobile-only section folded into the avatar menu (same file, below sm) —
     extracted here so the two can never drift apart, the same "shared partial"
@@ -26,7 +26,6 @@
     $mehrShowScheduleNav = \App\Services\AppModules::isVisible(auth()->user(), 'schedule');
     $mehrShowWeekplanNav = \App\Services\AppModules::isVisible(auth()->user(), 'weekplan');
     $mehrShowCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
-    $mehrShowEmergencyNav = \App\Services\AppModules::isVisible(auth()->user(), 'emergency') || auth()->user()->isInEmergencyMode();
     $mehrLinkIndex = 0;
     // An arrow function (fn) captures $mehrLinkIndex by value, not by
     // reference — ++ inside one would mutate only the closure's own copy,
@@ -82,31 +81,5 @@
 ]) @if(request()->routeIs('crafts')) aria-current="page" @endif>
     <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
     Bastelideen
-</a>
-@endif
-{{-- Notfall is always listed here (not conditionally hidden from the menu) —
-     an "Aktiv" badge communicates the running state instead of the item's
-     presence/absence. Still wrapped in $mehrShowEmergencyNav, which itself
-     stays true whenever an emergency is actually running, regardless of the
-     module toggle. --}}
-@if ($mehrShowEmergencyNav)
-<a href="{{ route('emergency') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
-    'flex items-center justify-between gap-2 px-4 py-2 text-sm transition hover:bg-paper',
-    'header-menu-fan-in' => $stagger,
-    'bg-signal-soft font-medium text-signal hover:brightness-95' => auth()->user()->isInEmergencyMode(),
-    'bg-paper font-medium text-ink' => !auth()->user()->isInEmergencyMode() && request()->routeIs('emergency'),
-    'text-ink-soft hover:text-ink' => !auth()->user()->isInEmergencyMode() && !request()->routeIs('emergency'),
-]) @if(request()->routeIs('emergency')) aria-current="page" @endif>
-    <span class="flex items-center gap-2">
-        <svg class="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="10" cy="14" r="1" fill="currentColor"/>
-        </svg>
-        Notfall
-    </span>
-    @if (auth()->user()->isInEmergencyMode())
-        <span class="rounded-full bg-signal px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">Aktiv</span>
-    @endif
 </a>
 @endif

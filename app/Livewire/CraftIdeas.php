@@ -21,8 +21,8 @@ class CraftIdeas extends Component
     /**
      * In-context capture. The app-wide QuickCapture panel can create ideas from
      * anywhere, but a page that is entirely about ideas shouldn't send you
-     * through a global panel to add one — the same reasoning ProjectPage and
-     * EmergencyMode already follow with their own inline add forms.
+     * through a global panel to add one — the same reasoning as any
+     * other page built around one kind of thing.
      *
      * The same form doubles as the edit form:
      * $editingId null while capturing, set to an idea's id while editing it.

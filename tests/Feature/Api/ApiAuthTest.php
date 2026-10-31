@@ -16,7 +16,6 @@ class ApiAuthTest extends TestCase
     {
         $this->getJson('/api/tasks')->assertUnauthorized();
         $this->getJson('/api/me')->assertUnauthorized();
-        $this->getJson('/api/projects')->assertUnauthorized();
         $this->getJson('/api/schedule-events')->assertUnauthorized();
     }
 

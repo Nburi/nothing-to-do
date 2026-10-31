@@ -25,8 +25,7 @@ class ListTasksTool extends McpTool
     public function description(): string
     {
         return 'List this user\'s tasks (to-dos, tasks, and inbox items), with optional filters. '
-            .'Only active (uncompleted) board tasks are returned by default — pass project_id or '
-            .'group_id to see tasks inside a project/group, or completed=true to include finished ones.';
+            .'Only active (uncompleted) tasks are returned by default — pass completed=true to include finished ones.';
     }
 
     public function inputSchema(): array
@@ -35,8 +34,6 @@ class ListTasksTool extends McpTool
             'type' => 'object',
             'properties' => [
                 'list' => ['type' => 'string', 'enum' => Task::LISTS, 'description' => 'Filter to one board list.'],
-                'project_id' => ['type' => 'integer', 'description' => 'Only tasks inside this project.'],
-                'group_id' => ['type' => 'integer', 'description' => 'Only tasks inside this task group.'],
                 'is_today' => ['type' => 'boolean', 'description' => 'Only tasks flagged for today.'],
                 'is_important' => ['type' => 'boolean'],
                 'completed' => ['type' => 'boolean', 'description' => 'Include completed tasks too. Default false.'],
@@ -55,8 +52,6 @@ class ListTasksTool extends McpTool
     {
         $data = Validator::make($arguments, [
             'list' => ['sometimes', Rule::in(Task::LISTS)],
-            'project_id' => ['sometimes', 'integer'],
-            'group_id' => ['sometimes', 'integer'],
             'is_today' => ['sometimes', 'boolean'],
             'is_important' => ['sometimes', 'boolean'],
             'completed' => ['sometimes', 'boolean'],
@@ -65,14 +60,6 @@ class ListTasksTool extends McpTool
         ])->validate();
 
         $query = $user->tasks()->newQuery();
-
-        if (isset($data['project_id'])) {
-            $query->where('project_id', $data['project_id']);
-        } elseif (isset($data['group_id'])) {
-            $query->where('group_id', $data['group_id']);
-        } else {
-            $query->onBoard();
-        }
 
         if (isset($data['list'])) {
             $query->inList($data['list']);

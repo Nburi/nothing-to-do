@@ -64,34 +64,6 @@ class QuickCaptureDurationTest extends TestCase
         $this->assertNull(Task::where('title', 'Irgendwas')->first()->duration_minutes);
     }
 
-    public function test_duration_is_captured_for_a_group_task(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'group')
-            ->set('newGroupName', 'Vortrag')
-            ->set('title', 'Folien vorbereiten')
-            ->set('duration', 60)
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $this->assertSame(60, Task::where('title', 'Folien vorbereiten')->first()->duration_minutes);
-    }
-
-    public function test_duration_is_cleared_when_switching_to_a_non_task_target(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'tasks')
-            ->set('duration', 45)
-            ->call('setTarget', 'project')
-            ->assertSet('duration', null);
-    }
-
     public function test_an_out_of_range_duration_is_rejected(): void
     {
         $user = User::factory()->create();

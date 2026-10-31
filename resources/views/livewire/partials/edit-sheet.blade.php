@@ -1,4 +1,4 @@
-{{-- Shared inline edit sheet (TaskBoard + ProjectPage via the ManagesTasks trait). --}}
+{{-- Shared inline edit sheet (TaskBoard via the ManagesTasks trait). --}}
 @if ($editingId)
     <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Aufgabe bearbeiten">
         <div class="absolute inset-0 bg-ink/40" wire:click="cancelEdit"></div>
@@ -12,7 +12,7 @@
                     @error('editTitle') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- List selector: Inbox / To-Dos / Tasks / Projekte --}}
+                {{-- List selector: Inbox / To-Dos / Tasks --}}
                 <div
                     x-data="{
                         open: false,
@@ -21,7 +21,6 @@
                             { value: 'inbox',    label: 'Inbox' },
                             { value: 'todos',    label: 'To-Dos' },
                             { value: 'tasks',    label: 'Tasks' },
-                            { value: 'projects', label: 'Projekte' },
                         ],
                         get label() { return this.options.find(o => o.value === this.list)?.label ?? 'Inbox'; },
                     }"
@@ -72,167 +71,6 @@
                     </div>
                     @error('editList') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
-
-                {{-- Project selector — only when Projekte is the chosen list and projects exist --}}
-                @if ($this->editableProjects->isNotEmpty())
-                    <div x-show="$wire.editList === 'projects'" style="display: none;">
-                        <label class="mb-1 block text-xs font-medium text-ink-soft">Projekt</label>
-                        <div
-                            x-data="{
-                                open: false,
-                                projectId: $wire.entangle('editProjectId'),
-                                projects: @js($this->editableProjects->map(fn($p) => ['id' => $p->id, 'name' => $p->name])->values()),
-                                get selectedLabel() {
-                                    if (!this.projectId) return 'Kein Projekt';
-                                    const p = this.projects.find(p => p.id == this.projectId);
-                                    return p ? p.name : 'Kein Projekt';
-                                },
-                            }"
-                            class="relative"
-                        >
-                            <button
-                                type="button"
-                                @click.stop="open = !open"
-                                @click.outside="open = false"
-                                @keydown.escape.window="open = false"
-                                :aria-expanded="open"
-                                aria-haspopup="listbox"
-                                class="flex w-full items-center gap-2 rounded-card border border-line bg-paper px-3 py-2 text-sm transition hover:border-ink-faint/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-                                :class="projectId ? 'text-ink' : 'text-ink-soft'"
-                            >
-                                <span x-text="selectedLabel" class="min-w-0 flex-1 text-left"></span>
-                                <svg class="h-3.5 w-3.5 flex-none text-ink-faint transition-transform duration-150" :class="open && 'rotate-180'" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                                    <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </button>
-
-                            <div
-                                x-show="open"
-                                x-transition:enter="transition ease-out duration-100"
-                                x-transition:enter-start="opacity-0 scale-95"
-                                x-transition:enter-end="opacity-100 scale-100"
-                                x-transition:leave="transition ease-in duration-75"
-                                x-transition:leave-start="opacity-100 scale-100"
-                                x-transition:leave-end="opacity-0 scale-95"
-                                class="absolute inset-x-0 top-full z-20 mt-1 max-h-52 origin-top overflow-y-auto rounded-card border border-line bg-surface p-1 shadow-map"
-                                role="listbox"
-                                style="display: none;"
-                            >
-                                <button
-                                    type="button"
-                                    @click="projectId = ''; open = false"
-                                    role="option"
-                                    :aria-selected="!projectId"
-                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
-                                    :class="!projectId ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
-                                >
-                                    <span>Kein Projekt</span>
-                                    <svg x-show="!projectId" class="ml-auto h-3 w-3 flex-none text-forest" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                                        <path d="M2 6 4.5 8.5 10 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                </button>
-                                <template x-for="p in projects" :key="p.id">
-                                    <button
-                                        type="button"
-                                        @click="projectId = p.id; open = false"
-                                        role="option"
-                                        :aria-selected="projectId == p.id"
-                                        class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
-                                        :class="projectId == p.id ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
-                                    >
-                                        <span x-text="p.name" class="min-w-0 flex-1 truncate"></span>
-                                        <svg x-show="projectId == p.id" class="ml-auto h-3 w-3 flex-none text-forest" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                                            <path d="M2 6 4.5 8.5 10 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                        @error('editProjectId') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
-                    </div>
-                @endif
-
-                {{-- Group selector — board lists only (a project task can't also be
-                     grouped). This is the touch path into a group: phones have no
-                     drag-onto-a-group-box gesture. Keyed on the group count so a
-                     group created since first mount actually shows up (see the
-                     frozen-x-data trap in CLAUDE.md §10). --}}
-                @if ($this->editableGroups->isNotEmpty())
-                    <div x-show="$wire.editList !== 'projects'" wire:key="edit-group-field-{{ $this->editableGroups->count() }}">
-                        <label class="mb-1 block text-xs font-medium text-ink-soft">Gruppe</label>
-                        <div
-                            x-data="{
-                                open: false,
-                                groupId: $wire.entangle('editGroupId'),
-                                groups: @js($this->editableGroups->map(fn($g) => ['id' => $g->id, 'name' => $g->name])->values()),
-                                get selectedLabel() {
-                                    if (! this.groupId) return 'Keine Gruppe';
-                                    return this.groups.find(g => g.id == this.groupId)?.name ?? 'Keine Gruppe';
-                                },
-                            }"
-                            class="relative"
-                        >
-                            <button
-                                type="button"
-                                @click.stop="open = !open"
-                                @click.outside="open = false"
-                                @keydown.escape.window="open = false"
-                                :aria-expanded="open"
-                                aria-haspopup="listbox"
-                                class="flex w-full items-center gap-2 rounded-card border border-line bg-paper px-3 py-2 text-sm transition hover:border-ink-faint/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
-                                :class="groupId ? 'text-ink' : 'text-ink-soft'"
-                            >
-                                <span x-text="selectedLabel" class="min-w-0 flex-1 truncate text-left"></span>
-                                <svg class="h-3.5 w-3.5 flex-none text-ink-faint transition-transform duration-150" :class="open && 'rotate-180'" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                                    <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </button>
-
-                            <div
-                                x-show="open"
-                                x-transition:enter="transition ease-out duration-100"
-                                x-transition:enter-start="opacity-0 scale-95"
-                                x-transition:enter-end="opacity-100 scale-100"
-                                x-transition:leave="transition ease-in duration-75"
-                                x-transition:leave-start="opacity-100 scale-100"
-                                x-transition:leave-end="opacity-0 scale-95"
-                                class="absolute inset-x-0 top-full z-20 mt-1 max-h-52 origin-top overflow-y-auto rounded-card border border-line bg-surface p-1 shadow-map"
-                                role="listbox"
-                                style="display: none;"
-                            >
-                                <button
-                                    type="button"
-                                    @click="groupId = ''; open = false"
-                                    role="option"
-                                    :aria-selected="!groupId"
-                                    class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
-                                    :class="!groupId ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
-                                >
-                                    <span>Keine Gruppe</span>
-                                    <svg x-show="!groupId" class="ml-auto h-3 w-3 flex-none text-forest" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                                        <path d="M2 6 4.5 8.5 10 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                </button>
-                                <template x-for="g in groups" :key="g.id">
-                                    <button
-                                        type="button"
-                                        @click="groupId = g.id; open = false"
-                                        role="option"
-                                        :aria-selected="groupId == g.id"
-                                        class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
-                                        :class="groupId == g.id ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
-                                    >
-                                        <span x-text="g.name" class="min-w-0 flex-1 truncate"></span>
-                                        <svg x-show="groupId == g.id" class="ml-auto h-3 w-3 flex-none text-forest" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                                            <path d="M2 6 4.5 8.5 10 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                        @error('editGroupId') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
-                    </div>
-                @endif
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>

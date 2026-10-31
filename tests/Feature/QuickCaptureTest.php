@@ -134,26 +134,6 @@ class QuickCaptureTest extends TestCase
         $this->assertStringContainsString('<u>unterstrichen</u>', $html);
     }
 
-    public function test_it_captures_a_project(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'project')
-            ->set('title', 'Saisonplanung OL')
-            ->set('deadline', '2026-10-15')
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('projects', [
-            'user_id' => $user->id,
-            'name' => 'Saisonplanung OL',
-            'deadline' => '2026-10-15 00:00:00',
-        ]);
-        $this->assertDatabaseCount('tasks', 0);
-    }
-
     public function test_it_captures_a_craft_idea_with_where_to_begin(): void
     {
         $user = User::factory()->create();
@@ -241,12 +221,9 @@ class QuickCaptureTest extends TestCase
             ->test(QuickCapture::class)
             ->set('dueDate', '2026-08-28')
             ->set('notes', 'Material besorgen')
-            ->set('whereToBegin', 'Material besorgen')
-            ->call('setTarget', 'project')
+            ->call('setTarget', 'craft')
             ->assertSet('dueDate', null)
             ->assertSet('notes', '')
-            ->assertSet('whereToBegin', '')
-            ->call('setTarget', 'craft')
             ->assertSet('deadline', null);
     }
 

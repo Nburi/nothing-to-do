@@ -18,7 +18,7 @@
     (see plannerClassifyDay in app.js) the instant a chip is picked up, so
     no round trip is needed just to show which days are available.
     The small tag above the title tells items apart at a glance on a board
-    that mixes To-Dos, Tasks and Projekt-tasks in one flat list. A plain
+    that mixes To-Dos and Tasks in one flat list. A plain
     task's tag is neutral, since To-Do/Task/Projekt aren't a
     meaningful/urgent/important distinction the way a deadline or the star
     is — just which list it lives in.
@@ -29,7 +29,7 @@
     $fixedWidth = $fixedWidth ?? null;
     $subject = $subject ?? null;
     $list = $list ?? null;
-    $listLabel = ['todos' => 'To-Do', 'tasks' => 'Task', 'projects' => 'Projekt'][$list] ?? null;
+    $listLabel = ['todos' => 'To-Do', 'tasks' => 'Task'][$list] ?? null;
 @endphp
 <div
     data-chip

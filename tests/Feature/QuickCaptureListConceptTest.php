@@ -39,7 +39,7 @@ class QuickCaptureListConceptTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)->test(QuickCapture::class)
-            ->call('resetPanel', null, null, true)
+            ->call('resetPanel', null, true)
             ->assertSet('important', true);
     }
 
@@ -49,7 +49,7 @@ class QuickCaptureListConceptTest extends TestCase
         $date = now()->addDays(4)->toDateString();
 
         Livewire::actingAs($user)->test(QuickCapture::class)
-            ->call('resetPanel', null, null, true, $date)
+            ->call('resetPanel', null, true, $date)
             ->assertSet('dueDate', $date);
     }
 
@@ -58,7 +58,7 @@ class QuickCaptureListConceptTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)->test(QuickCapture::class)
-            ->call('resetPanel', null, null, true, null)
+            ->call('resetPanel', null, true, null)
             ->assertSet('dueDate', null);
     }
 
@@ -67,7 +67,7 @@ class QuickCaptureListConceptTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)->test(QuickCapture::class)
-            ->call('resetPanel', null, null, true)
+            ->call('resetPanel', null, true)
             ->set('title', 'Crisis-quadrant capture')
             ->call('save');
 
@@ -93,7 +93,7 @@ class QuickCaptureListConceptTest extends TestCase
         $user = User::factory()->create();
 
         Livewire::actingAs($user)->test(QuickCapture::class)
-            ->call('resetPanel', null, null, true)
+            ->call('resetPanel', null, true)
             ->set('title', 'First')
             ->call('save')
             ->assertSet('important', false);
@@ -131,8 +131,6 @@ class QuickCaptureListConceptTest extends TestCase
 
         $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
 
-        $this->assertContains('group', $targets);
-        $this->assertContains('project', $targets);
         $this->assertContains('craft', $targets);
     }
 
@@ -200,8 +198,6 @@ class QuickCaptureListConceptTest extends TestCase
 
         $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
 
-        $this->assertContains('group', $targets);
-        $this->assertContains('project', $targets);
         $this->assertContains('craft', $targets);
     }
 
@@ -269,8 +265,6 @@ class QuickCaptureListConceptTest extends TestCase
 
         $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
 
-        $this->assertContains('group', $targets);
-        $this->assertContains('project', $targets);
         $this->assertContains('craft', $targets);
     }
 

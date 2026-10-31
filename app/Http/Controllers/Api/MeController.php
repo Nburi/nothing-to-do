@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,11 +28,10 @@ class MeController extends Controller
             'timezone_auto_dst' => (bool) $user->timezone_auto_dst,
             'local_now' => $user->localNow()->toIso8601String(),
             'counts' => [
-                'inbox' => Task::forUser($user)->onBoard()->inList('inbox')->active()->count(),
-                'todos' => Task::forUser($user)->onBoard()->inList('todos')->active()->count(),
-                'tasks' => Task::forUser($user)->onBoard()->inList('tasks')->active()->count(),
-                'today' => Task::forUser($user)->onBoard()->active()->where('is_today', true)->count(),
-                'projects' => Project::forUser($user)->count(),
+                'inbox' => Task::forUser($user)->inList('inbox')->active()->count(),
+                'todos' => Task::forUser($user)->inList('todos')->active()->count(),
+                'tasks' => Task::forUser($user)->inList('tasks')->active()->count(),
+                'today' => Task::forUser($user)->active()->where('is_today', true)->count(),
             ],
         ]);
     }

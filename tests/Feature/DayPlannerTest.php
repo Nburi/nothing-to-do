@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\EventCategory;
-use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
@@ -326,17 +325,6 @@ class DayPlannerTest extends TestCase
         $this->assertTrue($task->is_today);
         $this->assertSame($originalTodayDate, $task->today_date->toDateString());
         $this->assertFalse($task->isTodayFromPlanner()); // day-plan now points elsewhere
-    }
-
-    public function test_promote_if_today_never_flags_a_project_owned_task(): void
-    {
-        $user = $this->plannerUser();
-        $project = Project::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id]);
-
-        DayPlanner::assignDay($user, now()->toDateString(), ["task:{$task->id}"]);
-
-        $this->assertFalse($task->fresh()->is_today);
     }
 
     public function test_promote_if_today_never_flags_an_inbox_task(): void

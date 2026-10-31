@@ -4,7 +4,6 @@ namespace Tests\Unit\Services;
 
 use App\Models\CraftIdea;
 use App\Models\EventCategory;
-use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
@@ -35,7 +34,6 @@ class HeaderBadgesTest extends TestCase
         $this->assertFalse($rows['today']['enabled']);
         $this->assertFalse($rows['schedule']['enabled']);
         $this->assertFalse($rows['goal']['enabled']);
-        $this->assertFalse($rows['emergency']['enabled']);
         $this->assertFalse($rows['crafts']['enabled']);
     }
 
@@ -217,19 +215,6 @@ class HeaderBadgesTest extends TestCase
         $user = $this->userWith(['emergency']);
 
         $this->assertSame([], HeaderBadges::visibleFor($user));
-    }
-
-    public function test_emergency_badge_shows_the_active_projects_progress(): void
-    {
-        $user = $this->userWith(['emergency']);
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->tasks()->create(['project_id' => $project->id]);
-        Task::factory()->for($user)->tasks()->completed()->create(['project_id' => $project->id]);
-        $user->update(['emergency_project_id' => $project->id]);
-
-        $badge = HeaderBadges::visibleFor($user->fresh())[0];
-
-        $this->assertSame('1/2', $badge['text']);
     }
 
     // ── crafts ──────────────────────────────────────────────────────

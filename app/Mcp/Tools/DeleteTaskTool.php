@@ -6,7 +6,6 @@ use App\Mcp\Exceptions\McpToolExecutionException;
 use App\Mcp\McpAbility;
 use App\Mcp\McpTool;
 use App\Mcp\Tools\Concerns\ResolvesOwnedModel;
-use App\Models\TaskGroup;
 use App\Models\User;
 
 /**
@@ -76,15 +75,10 @@ class DeleteTaskTool extends McpTool
             );
         }
 
-        $group = $task->group;
         $deletedId = $task->id;
         $deletedTitle = $task->title;
 
         $task->delete();
-
-        if ($group instanceof TaskGroup) {
-            $group->pruneIfTooSmall();
-        }
 
         return ['deleted' => true, 'id' => $deletedId, 'title' => $deletedTitle];
     }

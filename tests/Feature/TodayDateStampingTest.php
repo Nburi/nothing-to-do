@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\ProjectPage;
 use App\Livewire\TaskBoard;
 use App\Models\Project;
 use App\Models\Task;
@@ -119,30 +118,6 @@ class TodayDateStampingTest extends TestCase
 
     // ── Leaving Today via project assignment / edit sheet ────────────────
 
-    public function test_dragging_onto_a_project_card_clears_the_date(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-14')->create();
-
-        Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('assignTaskToProject', $task->id, $project->id);
-
-        $this->assertNull($task->fresh()->today_date);
-    }
-
-    public function test_project_pages_assign_to_project_clears_the_date(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-14')->create();
-
-        Livewire::actingAs($user)->test(ProjectPage::class, ['project' => $project])
-            ->call('assignToProject', $task->id);
-
-        $this->assertNull($task->fresh()->today_date);
-    }
-
     public function test_edit_sheet_moving_a_task_to_the_inbox_clears_the_date(): void
     {
         $user = User::factory()->create();
@@ -152,21 +127,6 @@ class TodayDateStampingTest extends TestCase
             ->call('startEdit', $task->id)
             ->set('editTitle', $task->title)
             ->set('editList', 'inbox')
-            ->call('saveEdit');
-
-        $this->assertNull($task->fresh()->today_date);
-    }
-
-    public function test_edit_sheet_assigning_a_project_clears_the_date(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-14')->create();
-
-        Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('startEdit', $task->id)
-            ->set('editTitle', $task->title)
-            ->set('editProjectId', $project->id)
             ->call('saveEdit');
 
         $this->assertNull($task->fresh()->today_date);
@@ -196,18 +156,6 @@ class TodayDateStampingTest extends TestCase
         $this->patchJson("/api/tasks/{$task->id}", ['is_today' => true])->assertOk();
 
         $this->assertSame('2026-08-14', $task->fresh()->today_date->toDateString());
-    }
-
-    public function test_api_update_clears_the_date_when_assigning_a_project(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->todos()->todayOn('2026-08-14')->create();
-        Sanctum::actingAs($user);
-
-        $this->patchJson("/api/tasks/{$task->id}", ['project_id' => $project->id])->assertOk();
-
-        $this->assertNull($task->fresh()->today_date);
     }
 
     // ── API: POST /api/tasks/reorder ─────────────────────────────────────

@@ -3,9 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\TaskBoard;
-use App\Models\Project;
 use App\Models\Task;
-use App\Models\TaskGroup;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,29 +40,6 @@ class SimpleBoardTest extends TestCase
             ->assertSee('Todo item')
             ->assertSee('Task item')
             ->assertSee('Standalone project-list item');
-    }
-
-    public function test_simple_tasks_excludes_tasks_assigned_to_a_real_project(): void
-    {
-        $user = $this->simpleUser();
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id, 'title' => 'In a real project']);
-
-        Livewire::actingAs($user)->test(TaskBoard::class)->assertDontSee('In a real project');
-    }
-
-    public function test_simple_tasks_excludes_grouped_tasks_unless_important_or_today(): void
-    {
-        $user = $this->simpleUser();
-        $group = TaskGroup::factory()->for($user)->create();
-        Task::factory()->for($user)->todos()->create(['group_id' => $group->id, 'title' => 'Plain grouped task']);
-        Task::factory()->for($user)->todos()->important()->create(['group_id' => $group->id, 'title' => 'Important grouped task']);
-        Task::factory()->for($user)->todos()->today()->create(['group_id' => $group->id, 'title' => 'Today-flagged grouped task']);
-
-        Livewire::actingAs($user)->test(TaskBoard::class)
-            ->assertDontSee('Plain grouped task')
-            ->assertSee('Important grouped task')
-            ->assertSee('Today-flagged grouped task');
     }
 
     public function test_simple_tasks_excludes_completed_tasks_outside_the_visibility_window(): void

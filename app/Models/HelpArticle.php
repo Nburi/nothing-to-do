@@ -63,8 +63,7 @@ class HelpArticle extends Model
      * renderer (see App\Support\Markdown\Markdown) — full GitHub-flavoured
      * Markdown (headings, links, tables, autolinks, strikethrough, task
      * lists) plus the ++underline++ extension, same as every other Markdown
-     * field in the app (Task::renderNotesMarkdown, TaskGroup::renderNotes,
-     * ProjectPage::brainstormHtml).
+     * field in the app (Task::renderNotesMarkdown).
      *
      * A GFM task list renders its checkboxes with a hardcoded `disabled`
      * attribute — CommonMark has no notion of an interactive reader. Since a

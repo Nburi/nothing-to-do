@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\TaskBoard;
 use App\Models\Task;
-use App\Models\TaskGroup;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -108,18 +107,6 @@ class EisenhowerBoardTest extends TestCase
         ]);
 
         Livewire::actingAs($user)->test(TaskBoard::class)->assertDontSee('Long done');
-    }
-
-    public function test_grouped_tasks_are_excluded_unless_important_or_today(): void
-    {
-        $user = $this->eisenhowerUser();
-        $group = TaskGroup::factory()->for($user)->create();
-        Task::factory()->for($user)->tasks()->create(['group_id' => $group->id, 'title' => 'Plain grouped task']);
-        Task::factory()->for($user)->tasks()->important()->create(['group_id' => $group->id, 'title' => 'Important grouped task']);
-
-        Livewire::actingAs($user)->test(TaskBoard::class)
-            ->assertDontSee('Plain grouped task')
-            ->assertSee('Important grouped task');
     }
 
     public function test_renders_cleanly_with_no_tasks_at_all(): void

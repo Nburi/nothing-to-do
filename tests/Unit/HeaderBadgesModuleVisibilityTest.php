@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use App\Models\CraftIdea;
-use App\Models\Project;
 use App\Models\User;
 use App\Services\HeaderBadges;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,24 +22,6 @@ class HeaderBadgesModuleVisibilityTest extends TestCase
         $user->update(['hidden_modules' => ['crafts']]);
 
         $this->assertFalse(collect(HeaderBadges::visibleFor($user->refresh()))->contains('key', 'crafts'));
-    }
-
-    public function test_the_emergency_badge_still_shows_while_an_emergency_is_active_even_if_hidden(): void
-    {
-        // The emergency badge is opt-in (not in HeaderBadges::DEFAULT_ENABLED),
-        // so it must be explicitly enabled here — otherwise the "not shown"
-        // outcome would be indistinguishable from the module-hiding this test
-        // is actually about.
-        $user = User::factory()->create([
-            'hidden_modules' => ['emergency'],
-            'header_badges' => [['key' => 'emergency', 'enabled' => true]],
-        ]);
-        $project = Project::factory()->for($user)->create();
-        $user->update(['emergency_project_id' => $project->id]);
-
-        $badges = collect(HeaderBadges::visibleFor($user));
-
-        $this->assertTrue($badges->contains('key', 'emergency'));
     }
 
     public function test_a_hidden_crafts_module_drops_the_crafts_badge_even_when_it_has_content(): void

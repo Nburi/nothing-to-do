@@ -26,7 +26,7 @@ class SetModuleVisibilityTool extends McpTool
     public function description(): string
     {
         return 'Show or hide one of the app\'s optional feature modules (schedule, weekplan, '
-            .'crafts, emergency, progress). The board and settings can never be hidden. Hiding '
+            .'crafts, progress). The board and settings can never be hidden. Hiding '
             .'the user\'s current default landing page resets it back to the board automatically.';
     }
 

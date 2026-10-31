@@ -15,8 +15,8 @@ use App\Models\User;
  * module visible" / "what modules exist" instead of re-deriving it.
  *
  * The Board (route 'app') and Settings are never in this catalog — they're
- * the app's core surface (Quick Capture's default target, the only place
- * Inbox/Projects/Groups live) and always the safe fallback, so hiding them
+ * the app's core surface (Quick Capture's default target, the place
+ * the Inbox lives) and always the safe fallback, so hiding them
  * would strand the user with no way back in.
  *
  * A feature that ships its own dedicated on/off toggle (e.g. one gated
@@ -49,11 +49,6 @@ class AppModules
             'label' => 'Bastelideen',
             'description' => 'Die Liste für „was mache ich, wenn mir langweilig ist".',
             'route' => 'crafts',
-        ],
-        'emergency' => [
-            'label' => 'Notfallmodus',
-            'description' => 'Ein Projekt kurzfristig priorisieren, wenn es fast fällig ist.',
-            'route' => 'emergency',
         ],
         'progress' => [
             'label' => 'Fortschritt',

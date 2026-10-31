@@ -67,7 +67,7 @@ class SendProgressReminders extends Command
         }
 
         // Same filter as TaskBoard::today() — active board tasks flagged for today.
-        $open = Task::query()->forUser($user)->active()->onBoard()->where('is_today', true)->count();
+        $open = Task::query()->forUser($user)->active()->where('is_today', true)->count();
 
         if ($open === 0) {
             return false;

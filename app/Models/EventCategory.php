@@ -28,8 +28,6 @@ class EventCategory extends Model
         'pomodoro_enabled',
         'sort_order',
         'task_source',
-        'linked_project_id',
-        'linked_group_id',
         'linked_text',
     ];
 
@@ -71,16 +69,6 @@ class EventCategory extends Model
         return $this->hasMany(CategoryAttribute::class, 'event_category_id')->ordered();
     }
 
-    public function linkedProject(): BelongsTo
-    {
-        return $this->belongsTo(Project::class, 'linked_project_id');
-    }
-
-    public function linkedGroup(): BelongsTo
-    {
-        return $this->belongsTo(TaskGroup::class, 'linked_group_id');
-    }
-
     /** Individually pinned tasks for task_source = 'tasks', in suggestion order. */
     public function pinnedTasks(): BelongsToMany
     {
@@ -93,8 +81,6 @@ class EventCategory extends Model
     public function taskSourceLabel(): ?string
     {
         return match ($this->task_source) {
-            'project' => $this->linkedProject?->name,
-            'group' => $this->linkedGroup?->name,
             'tasks' => match ($count = $this->pinnedTasks()->count()) {
                 0 => 'Keine Aufgabe ausgewählt',
                 1 => '1 Aufgabe',
@@ -114,8 +100,6 @@ class EventCategory extends Model
     public function taskSourceFinishedMessage(): ?string
     {
         return match ($this->task_source) {
-            'project' => $this->linkedProject !== null ? "{$this->linkedProject->name} ist fertig." : null,
-            'group' => $this->linkedGroup !== null ? "{$this->linkedGroup->name} ist fertig." : null,
             'tasks' => 'Die ausgewählten Aufgaben sind fertig.',
             default => null,
         };
@@ -124,7 +108,7 @@ class EventCategory extends Model
     /**
      * Clears every linked_ column and every pinned task regardless of the
      * target task_source — called before setting a new source so switching
-     * target (e.g. project -> text) never leaves a stale FK or leftover pins
+     * target (e.g. pinned tasks -> text) never leaves a stale FK or leftover pins
      * behind.
      */
     public function clearTaskLink(): void
@@ -132,8 +116,6 @@ class EventCategory extends Model
         $this->pinnedTasks()->detach();
         $this->update([
             'task_source' => null,
-            'linked_project_id' => null,
-            'linked_group_id' => null,
             'linked_text' => null,
         ]);
     }

@@ -3,9 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\EventCategory;
-use App\Models\Project;
 use App\Models\Task;
-use App\Models\TaskGroup;
 use App\Models\User;
 use App\Services\TaskSuggestor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,20 +79,6 @@ class TaskSuggestorTest extends TestCase
         $this->assertNull(TaskSuggestor::suggest($user, cycle: 2, seedKey: 1));
     }
 
-    public function test_fallback_suggests_a_projects_next_task_when_todos_and_today_are_empty(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $next = Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Kapitel 1', 'sort_order' => 0]);
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Kapitel 2', 'sort_order' => 1]);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 5, seedKey: 1);
-
-        $this->assertSame('project', $suggestion['kind']);
-        $this->assertSame($project->id, $suggestion['project_id']);
-        $this->assertSame('Kapitel 1', $suggestion['subtitle']);
-    }
-
     public function test_fallback_suggests_another_task_from_todos_or_tasks_lists(): void
     {
         $user = User::factory()->create();
@@ -134,36 +118,6 @@ class TaskSuggestorTest extends TestCase
     }
 
     // ── Category task links ──────────────────────────────────────────
-
-    public function test_category_link_to_project_suggests_its_next_task_over_a_today_task(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Kapitel 1', 'sort_order' => 0]);
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Kapitel 2', 'sort_order' => 1]);
-        Task::factory()->for($user)->today()->create(); // would otherwise win
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'project', 'linked_project_id' => $project->id]);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 3, seedKey: 1, category: $category);
-
-        $this->assertSame('project', $suggestion['kind']);
-        $this->assertSame($project->id, $suggestion['project_id']);
-        $this->assertSame('Kapitel 1', $suggestion['subtitle']);
-    }
-
-    public function test_category_link_to_group_suggests_its_next_task(): void
-    {
-        $user = User::factory()->create();
-        $group = TaskGroup::factory()->for($user)->create(['name' => 'Referat']);
-        Task::factory()->for($user)->for($group, 'group')->create(['list' => 'todos', 'title' => 'Folien bauen', 'sort_order' => 0]);
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'group', 'linked_group_id' => $group->id]);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category);
-
-        $this->assertSame('category_group', $suggestion['kind']);
-        $this->assertSame($group->id, $suggestion['group_id']);
-        $this->assertSame('Folien bauen', $suggestion['subtitle']);
-    }
 
     public function test_category_link_to_pinned_tasks_suggests_them_in_pivot_order(): void
     {
@@ -216,19 +170,6 @@ class TaskSuggestorTest extends TestCase
         $this->assertSame('category_text', $suggestion['kind']);
     }
 
-    public function test_category_link_falls_through_to_generic_logic_once_its_source_is_empty(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(); // no tasks in it
-        $today = Task::factory()->for($user)->today()->create();
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'project', 'linked_project_id' => $project->id]);
-
-        $suggestion = TaskSuggestor::suggest($user, cycle: 2, seedKey: 1, category: $category);
-
-        $this->assertSame('task', $suggestion['kind']);
-        $this->assertSame($today->id, $suggestion['task_id']);
-    }
-
     public function test_category_link_falls_through_when_no_category_is_passed(): void
     {
         $user = User::factory()->create();
@@ -239,28 +180,14 @@ class TaskSuggestorTest extends TestCase
         $this->assertSame($today->id, $suggestion['task_id']);
     }
 
-    public function test_emergency_mode_still_outranks_a_category_link(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $emergencyTask = Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'sort_order' => 0]);
-        $user->update(['emergency_project_id' => $project->id]);
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'text', 'linked_text' => 'Sollte nicht erscheinen']);
-
-        $suggestion = TaskSuggestor::suggest($user->fresh(), cycle: 1, seedKey: 1, category: $category);
-
-        $this->assertSame('emergency', $suggestion['kind']);
-        $this->assertSame($emergencyTask->id, $suggestion['task_id']);
-    }
-
     public function test_linked_source_remaining_count_reflects_each_source_type(): void
     {
         $user = User::factory()->create();
 
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects']);
-        $projectCategory = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'project', 'linked_project_id' => $project->id]);
-        $this->assertSame(1, TaskSuggestor::linkedSourceRemainingCount($projectCategory, $user));
+        $task = Task::factory()->for($user)->todos()->create();
+        $pinnedCategory = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'tasks']);
+        $pinnedCategory->pinnedTasks()->attach($task->id, ['sort_order' => 0]);
+        $this->assertSame(1, TaskSuggestor::linkedSourceRemainingCount($pinnedCategory, $user));
 
         $textCategory = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'text', 'linked_text' => 'x']);
         $this->assertNull(TaskSuggestor::linkedSourceRemainingCount($textCategory, $user));
@@ -283,9 +210,7 @@ class TaskSuggestorTest extends TestCase
     {
         $user = User::factory()->create();
         $eventTask = Task::factory()->for($user)->todos()->create(['title' => 'Testlauf mit Tempowechseln']);
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Sollte nicht erscheinen']);
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'project', 'linked_project_id' => $project->id]);
+        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'text', 'linked_text' => 'Sollte nicht erscheinen']);
 
         $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category, linkedTask: $eventTask);
 
@@ -297,27 +222,12 @@ class TaskSuggestorTest extends TestCase
     {
         $user = User::factory()->create();
         $eventTask = Task::factory()->for($user)->todos()->completed()->create();
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Kapitel 1']);
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'project', 'linked_project_id' => $project->id]);
+        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'text', 'linked_text' => 'Zimmer aufräumen']);
 
         $suggestion = TaskSuggestor::suggest($user, cycle: 1, seedKey: 1, category: $category, linkedTask: $eventTask);
 
-        $this->assertSame('project', $suggestion['kind']);
-        $this->assertSame($project->id, $suggestion['project_id']);
+        $this->assertSame('category_text', $suggestion['kind']);
+        $this->assertSame('Zimmer aufräumen', $suggestion['title']);
     }
 
-    public function test_emergency_mode_still_outranks_an_event_linked_task(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $emergencyTask = Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'sort_order' => 0]);
-        $user->update(['emergency_project_id' => $project->id]);
-        $eventTask = Task::factory()->for($user)->todos()->create();
-
-        $suggestion = TaskSuggestor::suggest($user->fresh(), cycle: 1, seedKey: 1, linkedTask: $eventTask);
-
-        $this->assertSame('emergency', $suggestion['kind']);
-        $this->assertSame($emergencyTask->id, $suggestion['task_id']);
-    }
 }

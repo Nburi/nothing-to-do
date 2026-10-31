@@ -1,7 +1,6 @@
 {{--
     One day's worth of deadline chips for the Zeitplan's all-day strip. Shows the first 2, then
-    (mirroring the "N weitere · Alle anzeigen" disclosure used elsewhere — Notfallmodus,
-    Bastelideen) a client-only Alpine toggle for the rest, so a busy day never blows out the row
+    (mirroring the "N weitere · Alle anzeigen" disclosure used elsewhere — Bastelideen) a client-only Alpine toggle for the rest, so a busy day never blows out the row
     height for the whole week.
 --}}
 @php

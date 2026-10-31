@@ -44,7 +44,6 @@ class HeaderBadges
         'today' => ['label' => 'Heute offen', 'route' => 'app', 'tone' => 'ink'],
         'schedule' => ['label' => 'Zeitplan', 'route' => 'schedule', 'tone' => 'ink'],
         'goal' => ['label' => 'Tagesziel', 'route' => 'progress', 'tone' => 'ink'],
-        'emergency' => ['label' => 'Notfall', 'route' => 'emergency', 'tone' => 'signal'],
         'crafts' => ['label' => 'Bastelideen', 'route' => 'crafts', 'tone' => 'ink'],
     ];
 
@@ -106,7 +105,6 @@ class HeaderBadges
      */
     private const MODULE_FOR_BADGE = [
         'schedule' => 'schedule',
-        'emergency' => 'emergency',
         'crafts' => 'crafts',
     ];
 
@@ -114,8 +112,7 @@ class HeaderBadges
      * The enabled rows, in order, resolved to header content — a row is
      * dropped entirely (not shown as empty/zero) when its resolver finds
      * nothing to point at right now, or when the user has hidden the module
-     * it links to (see MODULE_FOR_BADGE — Notfall is the one exception,
-     * since it must stay reachable while actually active).
+     * it links to (see MODULE_FOR_BADGE).
      *
      * @return list<array{key: string, label: string, route: string, tone: string, icon: string, text: string, title: string, href: string}>
      */
@@ -130,10 +127,7 @@ class HeaderBadges
 
             $moduleKey = self::MODULE_FOR_BADGE[$row['key']] ?? null;
 
-            if ($moduleKey !== null
-                && ! AppModules::isVisible($user, $moduleKey)
-                && ! ($moduleKey === 'emergency' && $user->isInEmergencyMode())
-            ) {
+            if ($moduleKey !== null && ! AppModules::isVisible($user, $moduleKey)) {
                 continue;
             }
 
@@ -157,7 +151,6 @@ class HeaderBadges
             'today' => self::todayBadge($user),
             'schedule' => self::scheduleBadge($user),
             'goal' => self::goalBadge($user),
-            'emergency' => self::emergencyBadge($user),
             'crafts' => self::craftsBadge($user),
             default => null,
         };
@@ -182,7 +175,7 @@ class HeaderBadges
 
     private static function todayBadge(User $user): ?array
     {
-        $open = Task::forUser($user)->active()->onBoard()->where('is_today', true)->count();
+        $open = Task::forUser($user)->active()->where('is_today', true)->count();
 
         if ($open <= 0) {
             return null;
@@ -235,22 +228,6 @@ class HeaderBadges
 
         return self::badge('goal', $done.'/'.$goal,
             "$done von $goal Aufgaben heute erledigt — Fortschritt ansehen");
-    }
-
-    private static function emergencyBadge(User $user): ?array
-    {
-        $project = $user->emergencyProject;
-
-        if ($project === null) {
-            return null;
-        }
-
-        $open = $project->activeTasks()->count();
-        $done = $project->tasks()->where('is_completed', true)->count();
-        $total = $open + $done;
-
-        return self::badge('emergency', "$done/$total",
-            "Notfallmodus „{$project->name}“ — $done von $total Aufgaben erledigt");
     }
 
     /**

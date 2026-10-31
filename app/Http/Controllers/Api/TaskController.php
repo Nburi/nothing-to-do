@@ -19,27 +19,19 @@ class TaskController extends Controller
     }
 
     /**
-     * List tasks. Filters: list=inbox|todos|tasks|projects, project_id, today=1,
-     * completed=1 (include completed tasks alongside active ones). By default
-     * only active tasks are returned and project-assigned tasks are excluded
-     * unless project_id is given explicitly.
+     * List tasks. Filters: list=inbox|todos|tasks, today=1, completed=1
+     * (include completed tasks alongside active ones). By default only active
+     * tasks are returned.
      */
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
             'list' => ['sometimes', Rule::in(Task::LISTS)],
-            'project_id' => ['sometimes', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
             'today' => ['sometimes', 'boolean'],
             'completed' => ['sometimes', 'boolean'],
         ]);
 
         $query = $request->user()->tasks()->newQuery();
-
-        if (isset($data['project_id'])) {
-            $query->where('project_id', $data['project_id']);
-        } else {
-            $query->onBoard();
-        }
 
         if (isset($data['list'])) {
             $query->inList($data['list']);
@@ -68,7 +60,6 @@ class TaskController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'list' => ['sometimes', Rule::in(Task::BOARD_LISTS)],
-            'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
             'deadline' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -83,7 +74,7 @@ class TaskController extends Controller
     /**
      * Partial update — covers every board mutation the native app exposes on a
      * task: rename, reschedule, toggle important/completed, move between
-     * lists, focus for today, and assign to / release from a project.
+     * lists and focus for today.
      */
     public function update(Request $request, int $id): JsonResponse
     {
@@ -98,7 +89,6 @@ class TaskController extends Controller
             'is_completed' => ['sometimes', 'boolean'],
             'is_today' => ['sometimes', 'boolean'],
             'list' => ['sometimes', Rule::in(Task::LISTS)],
-            'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
         ]);
 
         $task = TaskMutator::applyUpdate($task, $request->user(), $data);
@@ -121,14 +111,14 @@ class TaskController extends Controller
     public function reorder(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'list' => ['required', Rule::in([...Task::BOARD_LISTS, 'projects'])],
+            'list' => ['required', Rule::in(Task::BOARD_LISTS)],
             'today' => ['sometimes', 'boolean'],
             'ids' => ['required', 'array'],
             'ids.*' => ['integer'],
         ]);
 
         $list = $data['list'];
-        $today = in_array($list, ['inbox', 'projects'], true) ? false : ($data['today'] ?? false);
+        $today = $list === 'inbox' ? false : ($data['today'] ?? false);
         $targetDate = $today ? $request->user()->localToday() : null;
 
         foreach (array_values($data['ids']) as $position => $id) {
@@ -144,10 +134,6 @@ class TaskController extends Controller
                 'today_date' => $task->todayDateFor($today, $targetDate),
                 'sort_order' => $position,
             ];
-
-            if ($list === 'projects') {
-                $updates['project_id'] = null;
-            }
 
             $task->update($updates);
         }

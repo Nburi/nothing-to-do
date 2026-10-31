@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,7 +19,6 @@ class ModuleNavVisibilityTest extends TestCase
         $response->assertSee('Zeitplan');
         $response->assertSee('Wochenplan &amp; Ferien', false);
         $response->assertSee('Bastelideen');
-        $response->assertSee('Notfall');
         $response->assertSee('Fortschritt');
     }
 
@@ -51,12 +49,4 @@ class ModuleNavVisibilityTest extends TestCase
         $this->actingAs($user)->get(route('app'))->assertDontSee('Weitere Funktionen');
     }
 
-    public function test_notfall_stays_reachable_while_actually_active_even_if_hidden(): void
-    {
-        $user = User::factory()->create(['hidden_modules' => ['emergency']]);
-        $project = Project::factory()->for($user)->create();
-        $user->update(['emergency_project_id' => $project->id]);
-
-        $this->actingAs($user)->get(route('app'))->assertSee('Notfall');
-    }
 }

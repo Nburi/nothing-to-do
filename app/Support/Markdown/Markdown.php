@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 
 /**
  * The one safe Markdown renderer for every user-authored Markdown field in
- * this app — task/quick-capture notes, group notes, project brainstorming,
+ * this app — task/quick-capture notes,
  * and Hilfe-Center articles. Full GitHub-flavoured Markdown (Str::markdown
  * wraps League CommonMark's GithubFlavoredMarkdownConverter: headings,
  * links, tables, autolinks, strikethrough, task lists) plus this app's own

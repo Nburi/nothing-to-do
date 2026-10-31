@@ -11,8 +11,6 @@ use App\Mcp\Tools\GetProgressTool;
 use App\Mcp\Tools\GetSettingsTool;
 use App\Mcp\Tools\GetTaskTool;
 use App\Mcp\Tools\ListCategoriesTool;
-use App\Mcp\Tools\ListProjectsTool;
-use App\Mcp\Tools\ListTaskGroupsTool;
 use App\Mcp\Tools\ListTasksTool;
 use App\Mcp\Tools\ReopenTaskTool;
 use App\Mcp\Tools\SetDefaultLandingPageTool;
@@ -43,8 +41,6 @@ class McpServer
             new ListTasksTool,
             new GetBoardTool,
             new GetTaskTool,
-            new ListProjectsTool,
-            new ListTaskGroupsTool,
             new ListCategoriesTool,
             new GetProgressTool,
             new GetSettingsTool,

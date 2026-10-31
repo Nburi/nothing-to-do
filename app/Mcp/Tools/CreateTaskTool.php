@@ -20,8 +20,7 @@ class CreateTaskTool extends McpTool
 
     public function description(): string
     {
-        return 'Add a new task. Give it a project_id OR a group_id to file it straight into that project/'
-            .'group instead of the board (the two are mutually exclusive — project_id wins if both are given).';
+        return 'Add a new task to the Inbox, or straight into one of the board lists.';
     }
 
     public function inputSchema(): array
@@ -31,13 +30,11 @@ class CreateTaskTool extends McpTool
             'properties' => [
                 'title' => ['type' => 'string', 'description' => 'Required, max 255 characters.'],
                 'list' => ['type' => 'string', 'enum' => Task::BOARD_LISTS, 'description' => 'Default "inbox".'],
-                'project_id' => ['type' => 'integer'],
-                'group_id' => ['type' => 'integer'],
                 'deadline' => ['type' => 'string', 'format' => 'date', 'description' => 'Hard, externally-imposed date (YYYY-MM-DD).'],
                 'due_date' => ['type' => 'string', 'format' => 'date', 'description' => 'Soft, self-imposed date (YYYY-MM-DD).'],
                 'notes' => ['type' => 'string', 'description' => 'Markdown source, max 5000 characters.'],
                 'is_important' => ['type' => 'boolean'],
-                'is_today' => ['type' => 'boolean', 'description' => 'Flag for today. Only takes effect for a todos/tasks-list task with no project.'],
+                'is_today' => ['type' => 'boolean', 'description' => 'Flag for today. Only takes effect for a todos/tasks-list task.'],
             ],
             'required' => ['title'],
         ];
@@ -58,8 +55,6 @@ class CreateTaskTool extends McpTool
         $data = Validator::make($arguments, [
             'title' => ['required', 'string', 'max:255'],
             'list' => ['sometimes', Rule::in(Task::BOARD_LISTS)],
-            'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $user->id)],
-            'group_id' => ['sometimes', 'nullable', 'integer', Rule::exists('task_groups', 'id')->where('user_id', $user->id)],
             'deadline' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['sometimes', 'nullable', 'date'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
@@ -69,7 +64,7 @@ class CreateTaskTool extends McpTool
 
         $task = $user->tasks()->create(TaskMutator::attributesForCreate($data));
 
-        if (($data['is_today'] ?? false) && in_array($task->list, Task::TODAY_LISTS, true) && $task->project_id === null) {
+        if (($data['is_today'] ?? false) && in_array($task->list, Task::TODAY_LISTS, true)) {
             $task->update([
                 'is_today' => true,
                 'today_date' => $task->todayDateFor(true, $user->localToday()),

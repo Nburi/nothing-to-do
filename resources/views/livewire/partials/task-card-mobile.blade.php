@@ -26,7 +26,7 @@
 
 <div
     wire:key="m-task-{{ $task->id }}"
-    @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
+    @unless($task->is_completed) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
     class="relative select-none"
     x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}', wireMethod: '{{ $wireMethod }}' })"
 >
@@ -75,10 +75,6 @@
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
     >
-        @isset($orderNumber)
-            <span class="tnum mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full border border-line text-[10px] text-ink-soft" aria-hidden="true">{{ $orderNumber }}</span>
-        @endisset
-
         <button
             type="button"
             wire:click.stop="toggleComplete({{ $task->id }})"
@@ -199,7 +195,7 @@
 
             {{-- Inline drag handle + edit + delete actions (always visible on mobile) --}}
             <div class="flex flex-none items-center gap-0.5">
-                @unless($task->is_completed || isset($orderNumber))
+                @unless($task->is_completed)
                     {{-- Reorder handle: dragging is scoped to this icon so it never fights
                          swipeCard's horizontal-swipe/long-press gestures on the rest of the card. --}}
                     <button

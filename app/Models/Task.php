@@ -16,13 +16,13 @@ class Task extends Model
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
 
-    /** The board lists. Tasks in the 'projects' list live inside a Project. */
-    public const LISTS = ['inbox', 'todos', 'tasks', 'projects'];
+    /** The board lists. */
+    public const LISTS = ['inbox', 'todos', 'tasks'];
 
     /** Lists offered as quick-add / drag targets on the main board. */
     public const BOARD_LISTS = ['inbox', 'todos', 'tasks'];
 
-    /** Lists that support a Today focus area. Inbox & projects deliberately do not. */
+    /** Lists that support a Today focus area. Inbox deliberately does not. */
     public const TODAY_LISTS = ['todos', 'tasks'];
 
     /** Urgency window in days for the soft "due soon" sort bucket. */
@@ -31,9 +31,6 @@ class Task extends Model
     protected $fillable = [
         'title',
         'list',
-        'project_id',
-        'group_id',
-        'emergency_list',
         'is_today',
         'today_date',
         'is_important',
@@ -69,16 +66,6 @@ class Task extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function project(): BelongsTo
-    {
-        return $this->belongsTo(Project::class);
-    }
-
-    public function group(): BelongsTo
-    {
-        return $this->belongsTo(TaskGroup::class, 'group_id');
-    }
-
     /** Which day this task is planned for, if any (see App\Services\DayPlanner). */
     public function dayPlan(): HasOne
     {
@@ -92,12 +79,6 @@ class Task extends Model
         return $query->where('user_id', $user->id);
     }
 
-    /** Tasks that live on the main board (Inbox/To-Dos/Tasks), not inside a project. */
-    public function scopeOnBoard(Builder $query): Builder
-    {
-        return $query->whereNull('project_id');
-    }
-
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_completed', false);
@@ -106,24 +87,6 @@ class Task extends Model
     public function scopeInList(Builder $query, string $list): Builder
     {
         return $query->where('list', $list);
-    }
-
-    /** Tasks bundled into one task group. */
-    public function scopeInGroup(Builder $query, int $groupId): Builder
-    {
-        return $query->where('group_id', $groupId);
-    }
-
-    /** Tasks that stand on their own — not bundled into any group. */
-    public function scopeUngrouped(Builder $query): Builder
-    {
-        return $query->whereNull('group_id');
-    }
-
-    /** The board column (inbox/todos/tasks) a project task surfaces under during emergency mode. */
-    public function scopeInEmergencyList(Builder $query, string $list): Builder
-    {
-        return $query->where('emergency_list', $list);
     }
 
     /**
@@ -143,28 +106,6 @@ class Task extends Model
                 [$threshold]
             )
             ->orderByRaw('COALESCE(deadline, due_date) IS NULL') // dated before undated
-            ->orderByRaw('COALESCE(deadline, due_date)')
-            ->orderBy('sort_order')
-            ->orderBy('created_at');
-    }
-
-    /**
-     * Order inside a task group: due-soon first, then dated before undated,
-     * then the manual order. Deliberately identical to boardOrdered() *minus*
-     * the leading `is_important` sort — inside a group the star is a marker
-     * only and must not pull a task to the top (an explicit product decision).
-     */
-    public function scopeGroupOrdered(Builder $query): Builder
-    {
-        $threshold = self::today()->addDays(self::URGENCY_DAYS)->toDateString();
-
-        return $query
-            ->orderByRaw(
-                'CASE WHEN COALESCE(deadline, due_date) IS NOT NULL '
-                .'AND COALESCE(deadline, due_date) <= ? THEN 0 ELSE 1 END',
-                [$threshold]
-            )
-            ->orderByRaw('COALESCE(deadline, due_date) IS NULL')
             ->orderByRaw('COALESCE(deadline, due_date)')
             ->orderBy('sort_order')
             ->orderBy('created_at');
@@ -221,16 +162,6 @@ class Task extends Model
     public function isUrgencyLocked(): bool
     {
         return $this->deadline !== null;
-    }
-
-    public function isInProject(): bool
-    {
-        return $this->project_id !== null;
-    }
-
-    public function isInGroup(): bool
-    {
-        return $this->group_id !== null;
     }
 
     /**

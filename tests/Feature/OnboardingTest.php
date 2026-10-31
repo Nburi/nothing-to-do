@@ -205,6 +205,5 @@ class OnboardingTest extends TestCase
         $this->assertSame(1, substr_count($html, e(AppModules::CATALOG['weekplan']['description'])));
         $this->assertSame(1, substr_count($html, e(AppModules::CATALOG['crafts']['description'])));
         $this->assertSame(2, substr_count($html, e(AppModules::CATALOG['schedule']['description'])));
-        $this->assertSame(2, substr_count($html, e(AppModules::CATALOG['emergency']['description'])));
     }
 }
