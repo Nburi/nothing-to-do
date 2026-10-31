@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AgendaEntry;
 use App\Models\TaskSession;
+use App\Models\Reminder;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -67,6 +68,14 @@ class DataExport
                     'date' => $p->planned_date->toDateString(),
                     'minutes' => $p->minutes,
                     'done' => $p->isDone(),
+                ])->all(),
+            'reminders' => $user->reminders()->orderBy('remind_on')->orderBy('id')->get()
+                ->map(fn (Reminder $r) => [
+                    'title' => $r->title,
+                    'remind_on' => $r->remind_on->toDateString(),
+                    'notify_evening_before' => $r->notify_evening_before,
+                    'notify_on_day' => $r->notify_on_day,
+                    'acknowledged' => $r->isAcknowledged(),
                 ])->all(),
             'projects' => $user->projects()->orderBy('id')->get()
                 ->map(fn (Model $p) => Arr::only($p->toArray(), ['id', 'name', 'brainstorm', 'external_url', 'created_at']))->all(),

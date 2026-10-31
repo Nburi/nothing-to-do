@@ -6,6 +6,7 @@ use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Services\AppModules;
 use App\Services\ListConcepts;
+use App\Services\Reminders;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -29,7 +30,7 @@ class QuickCapture extends Component
      * are also the task `list` value they write; the last two go to entirely
      * different tables, which is why this isn't just Task::BOARD_LISTS.
      */
-    public const TARGETS = ['inbox', 'todos', 'tasks', 'group', 'project', 'craft', 'agenda'];
+    public const TARGETS = ['inbox', 'todos', 'tasks', 'reminder', 'group', 'project', 'craft', 'agenda'];
 
     /** Targets that create a Task — the value doubles as the `list` column. */
     public const TASK_TARGETS = ['inbox', 'todos', 'tasks'];
@@ -79,6 +80,14 @@ class QuickCapture extends Component
     public string $subject = '';
 
     public ?string $date = null;
+
+    /**
+     * Reminder target ("Nicht vergessen", see App\Services\Reminders): which pushes it gets. The day
+     * itself reuses $date, like the Agenda — it is reset when the target changes to anything else.
+     */
+    public bool $reminderEvening = true;
+
+    public bool $reminderOnDay = true;
 
     /** Null = "nur ich"; a space id = the whole class sees it. Agenda target only. */
     public ?int $agendaSpaceId = null;
@@ -185,6 +194,7 @@ class QuickCapture extends Component
         return match ($target) {
             'todos' => 'To-Do',
             'tasks' => 'Task',
+            'reminder' => 'Erinnerung',
             'group' => 'Gruppe',
             'project' => 'Projekt',
             'craft' => 'Bastelidee',
@@ -203,6 +213,35 @@ class QuickCapture extends Component
             ->distinct()
             ->orderBy('subject')
             ->pluck('subject');
+    }
+
+    /**
+     * The quick day choices of the reminder target: tomorrow, the day after and then the next
+     * five days by weekday name — the way "Mittwoch" is actually said. Today is deliberately not
+     * offered as a chip (a reminder for right now is a task); the date field still accepts it.
+     *
+     * @return list<array{date: string, label: string}>
+     */
+    #[Computed]
+    public function reminderDays(): array
+    {
+        $today = auth()->user()->localToday();
+        $wd = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+        $days = [];
+
+        for ($i = 1; $i <= 7; $i++) {
+            $day = $today->copy()->addDays($i);
+            $days[] = [
+                'date' => $day->toDateString(),
+                'label' => match ($i) {
+                    1 => 'Morgen',
+                    2 => 'Übermorgen',
+                    default => $wd[$day->dayOfWeek],
+                },
+            ];
+        }
+
+        return $days;
     }
 
     /** The task groups a captured task can be filed into. */
@@ -272,9 +311,21 @@ class QuickCapture extends Component
             $this->deadline = null;
         }
 
+        // The date field is shared by the Agenda and the reminder target; any other target drops it.
+        if (! in_array($target, ['agenda', 'reminder'], true)) {
+            $this->date = null;
+        }
+
+        if ($target === 'reminder') {
+            $tomorrow = auth()->user()->localToday()->addDay()->toDateString();
+
+            if ($this->date === null || $this->date < auth()->user()->localToday()->toDateString()) {
+                $this->date = $tomorrow;
+            }
+        }
+
         if ($target !== 'agenda') {
             $this->subject = '';
-            $this->date = null;
             $this->agendaType = 'homework';
             $this->agendaSpaceId = null;
         } else {
@@ -306,7 +357,7 @@ class QuickCapture extends Component
     #[On('quick-capture-opened')]
     public function resetPanel(?string $target = null, ?int $groupId = null, ?bool $important = null, ?string $dueDate = null, ?string $title = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'agendaType', 'subject', 'date', 'agendaSpaceId', 'groupId', 'newGroupName', 'groupList', 'reminderEvening', 'reminderOnDay']);
         $this->resetValidation();
 
         // reset() restores 'target' to its bare class-declared default
@@ -331,6 +382,10 @@ class QuickCapture extends Component
         // Trimmed and capped like the field's own validation would.
         if ($title !== null && trim($title) !== '') {
             $this->title = mb_substr(trim($title), 0, 255);
+        }
+
+        if ($this->target === 'reminder') {
+            $this->date = auth()->user()->localToday()->addDay()->toDateString();
         }
 
         // Opened straight onto the agenda target (e.g. Agenda's own page-matching
@@ -381,6 +436,14 @@ class QuickCapture extends Component
             $rules['agendaSpaceId'] = ['nullable', 'integer', Rule::in($this->agendaSpaces->pluck('id'))];
         }
 
+        // A reminder needs its day (never in the past) and is a little shorter than a task title.
+        if ($this->target === 'reminder') {
+            $rules['title'] = ['required', 'string', 'max:'.Reminders::TITLE_MAX];
+            $rules['date'] = ['required', 'date_format:Y-m-d', 'after_or_equal:'.auth()->user()->localToday()->toDateString()];
+            $rules['reminderEvening'] = ['boolean'];
+            $rules['reminderOnDay'] = ['boolean'];
+        }
+
         // A group capture needs a group: either an existing one, or a name for a
         // new one. Requiring one of the two is what keeps empty shells from
         // being created — a group's reason to exist is the tasks in it.
@@ -395,6 +458,24 @@ class QuickCapture extends Component
         $user = auth()->user();
         $title = $this->title;
         $notes = trim($this->notes);
+
+        if ($this->target === 'reminder') {
+            $reminder = Reminders::create($user, [
+                'title' => $title,
+                'remind_on' => $this->date,
+                'notify_evening_before' => $this->reminderEvening,
+                'notify_on_day' => $this->reminderOnDay,
+            ]);
+
+            // Day and the two switches survive, like the Agenda's Fach: writing down the shoes and the
+            // water bottle for the same Wednesday is the normal case.
+            $this->captured = ['title' => $title, 'label' => 'Erinnerung · '.$reminder->dateLabel($user->localToday())];
+            $this->reset(['title']);
+            $this->dispatch('captured');
+            $this->dispatch('reminders-changed');
+
+            return;
+        }
 
         if ($this->target === 'group') {
             $group = $this->groupId !== null
@@ -486,7 +567,6 @@ class QuickCapture extends Component
     {
         return [
             'title.required' => 'Ohne Titel geht es nicht.',
-            'title.max' => 'Höchstens 255 Zeichen.',
             'deadline.date' => 'Das ist kein gültiges Datum.',
             'dueDate.date' => 'Das ist kein gültiges Datum.',
             'notes.max' => 'Das ist zu lang — höchstens 5000 Zeichen.',
@@ -495,6 +575,9 @@ class QuickCapture extends Component
             'subject.max' => 'Das Fach ist zu lang — höchstens 100 Zeichen.',
             'date.required' => 'Für die Agenda fehlt noch das Datum.',
             'date.date' => 'Das ist kein gültiges Datum.',
+            'date.after_or_equal' => 'Das liegt schon in der Vergangenheit.',
+            'date.date_format' => 'Das ist kein gültiges Datum.',
+            'title.max' => 'Zu lang — höchstens :max Zeichen.',
             'newGroupName.required' => 'Wähle eine Gruppe oder gib einer neuen einen Namen.',
             'newGroupName.max' => 'Der Gruppenname ist zu lang — höchstens 255 Zeichen.',
         ];

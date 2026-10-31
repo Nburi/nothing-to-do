@@ -87,6 +87,13 @@ class Settings extends Component
 
     public string $dayPreviewNotificationTime = '07:30';
 
+    /** "Nicht vergessen" push times — see App\Services\Reminders. */
+    public string $reminderEveningTime = '19:00';
+
+    public string $reminderMorningTime = '07:00';
+
+    public bool $reminderSmartTiming = true;
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -142,6 +149,9 @@ class Settings extends Component
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
         $this->notifyDayPreview = (bool) $user->notify_day_preview;
         $this->dayPreviewNotificationTime = $user->day_preview_notification_time ?? '07:30';
+        $this->reminderEveningTime = $user->reminder_evening_time ?? '19:00';
+        $this->reminderMorningTime = $user->reminder_morning_time ?? '07:00';
+        $this->reminderSmartTiming = (bool) ($user->reminder_smart_timing ?? true);
     }
 
     /** Autosaves on change — see the "Erledigte Aufgaben" card. */
@@ -332,6 +342,28 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['day_preview_notification_time' => $data['dayPreviewNotificationTime']]);
+    }
+
+    /** The two clock times of the reminder pushes; saves on change, no submit button (like the other time fields here). */
+    public function saveReminderTimes(): void
+    {
+        $data = $this->validate([
+            'reminderEveningTime' => ['required', 'date_format:H:i'],
+            'reminderMorningTime' => ['required', 'date_format:H:i'],
+        ]);
+
+        auth()->user()->update([
+            'reminder_evening_time' => $data['reminderEveningTime'],
+            'reminder_morning_time' => $data['reminderMorningTime'],
+        ]);
+    }
+
+    /** Lets today's reminder arrive before the first block's departure instead of at a fixed time — see Reminders::onDayDueMinute(). */
+    public function toggleReminderSmartTiming(): void
+    {
+        $user = auth()->user();
+        $user->update(['reminder_smart_timing' => ! $user->reminder_smart_timing]);
+        $this->reminderSmartTiming = (bool) $user->reminder_smart_timing;
     }
 
     // ── Header badges ─────────────────────────────────────────────────

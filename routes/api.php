@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ScheduleEventController;
+use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TaskSplitController;
 use App\Http\Controllers\Api\TaskGroupController;
@@ -44,6 +45,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/tasks/{task}/split', [TaskSplitController::class, 'update']);
     Route::delete('/tasks/{task}/split', [TaskSplitController::class, 'destroy']);
     Route::patch('/task-sessions/{session}', [TaskSplitController::class, 'part']);
+
+    Route::get('/reminders', [ReminderController::class, 'index']);
+    Route::post('/reminders', [ReminderController::class, 'store']);
+    Route::get('/reminders/{reminder}', [ReminderController::class, 'show']);
+    Route::patch('/reminders/{reminder}', [ReminderController::class, 'update']);
+    Route::delete('/reminders/{reminder}', [ReminderController::class, 'destroy']);
 
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::post('/projects', [ProjectController::class, 'store']);

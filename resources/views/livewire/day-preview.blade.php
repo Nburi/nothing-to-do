@@ -157,6 +157,28 @@
                 </a>
             @endif
 
+            @if ($this->reminders)
+                {{-- "Nicht vergessen": opens the list instead of navigating — the sheet is global, not a page. --}}
+                <button type="button" @click="Livewire.dispatch('open-reminders')" class="block w-full rounded-card border border-line bg-surface p-3.5 text-left shadow-map transition hover:border-ink-faint/50">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Nicht vergessen</p>
+                    <div class="mt-1.5">
+                        @foreach ($this->reminders['items'] as $item)
+                            <div class="flex items-center gap-2 border-b border-line py-1.5 last:border-b-0">
+                                <span class="flex h-5 w-5 flex-none items-center justify-center rounded-[7px] bg-overprint">
+                                    <svg class="h-2.5 w-2.5 text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5l-1.5 2.75L11.5 8.5H4"/></svg>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-[11.5px] font-medium text-ink">{{ $item['title'] }}</span>
+                                    <span class="block text-[10px] text-ink-soft">{{ $item['when'] }}</span>
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                    @if ($this->reminders['hasMore'])
+                        <p class="mt-1 text-[11px] text-ink-soft">+{{ $this->reminders['moreCount'] }} weitere</p>
+                    @endif
+                </button>
+            @endif
             @if ($this->agenda)
                 <a href="{{ route('agenda') }}" wire:navigate class="block rounded-card border border-line bg-surface p-3.5 shadow-map transition hover:border-ink-faint/50">
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Agenda</p>

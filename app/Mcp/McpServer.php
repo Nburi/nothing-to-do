@@ -85,6 +85,10 @@ use App\Mcp\Tools\GetWeekReviewTool;
 use App\Mcp\Tools\GetPlannerTool;
 use App\Mcp\Tools\GetEmergencyModeTool;
 use App\Mcp\Tools\ListCraftIdeasTool;
+use App\Mcp\Tools\ListRemindersTool;
+use App\Mcp\Tools\CreateReminderTool;
+use App\Mcp\Tools\UpdateReminderTool;
+use App\Mcp\Tools\DeleteReminderTool;
 use App\Mcp\Tools\RescheduleOverdueTasksTool;
 use App\Mcp\Tools\PlanTaskTool;
 use App\Mcp\Tools\SetTaskPartDoneTool;
@@ -149,6 +153,7 @@ class McpServer
             new GetPlannerTool,
             new GetEmergencyModeTool,
             new ListCraftIdeasTool,
+            new ListRemindersTool,
             new SearchHelpTool,
             new ReadHelpArticleTool,
             new ListMySupportRequestsTool,
@@ -200,11 +205,14 @@ class McpServer
             new ArrangeEmergencyTasksTool,
             new CreateCraftIdeaTool,
             new UpdateCraftIdeaTool,
+            new CreateReminderTool,
+            new UpdateReminderTool,
             new UpdateSettingsTool,
             new SubmitSupportRequestTool,
             // Delete
             new DeleteTaskTool,
             new DeleteCraftIdeaTool,
+            new DeleteReminderTool,
             new DeleteScheduleEventTool,
             new DeleteEventTemplateTool,
             new DeleteCategoryTool,

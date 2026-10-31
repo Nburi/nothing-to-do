@@ -995,3 +995,28 @@
 .split-pop {
     animation: split-pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* "Nicht vergessen" signature moment ("Eingepackt"): ticking a reminder off folds its
+   chip into a check mark — the chip settles from slightly wide, the check's stroke
+   draws itself. Plain CSS outside any @layer (a class only Blade templates mention
+   would be tree-shaken otherwise); reduced motion is handled by the global
+   animation-collapse rule. */
+@keyframes reminder-fold-in {
+    0% { transform: scaleX(1.4); opacity: 0.2; }
+    100% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes reminder-check-draw {
+    from { stroke-dashoffset: 16; }
+    to { stroke-dashoffset: 0; }
+}
+
+.reminder-fold {
+    transform-origin: left center;
+    animation: reminder-fold-in 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reminder-fold path {
+    stroke-dasharray: 16;
+    animation: reminder-check-draw 380ms ease-out 140ms both;
+}

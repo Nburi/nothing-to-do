@@ -1064,6 +1064,64 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- "Nicht vergessen": when reminder pushes arrive. Which push a reminder gets is chosen per reminder. --}}
+        <div class="mt-5 space-y-3 border-t border-line pt-5">
+            <div>
+                <p class="text-sm font-medium text-ink">Erinnerungen („Nicht vergessen“)</p>
+                <p class="text-xs text-ink-soft">
+                    Wann sie dich erreichen. Ob eine Erinnerung am Vorabend und/oder am Tag selbst kommt, legst du bei der Erinnerung selbst fest.
+                </p>
+            </div>
+            <div class="grid max-w-sm grid-cols-2 gap-3">
+                <div>
+                    <label for="reminderEveningTime" class="mb-1.5 block text-xs font-medium text-ink">Am Vorabend um</label>
+                    <input
+                        id="reminderEveningTime"
+                        type="time"
+                        wire:model="reminderEveningTime"
+                        wire:change="saveReminderTimes"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    />
+                    @error('reminderEveningTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="reminderMorningTime" class="mb-1.5 block text-xs font-medium text-ink">Am Tag spätestens um</label>
+                    <input
+                        id="reminderMorningTime"
+                        type="time"
+                        wire:model="reminderMorningTime"
+                        wire:change="saveReminderTimes"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    />
+                    @error('reminderMorningTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            <div class="flex items-center justify-between gap-3 py-1">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Rechtzeitig vor dem Losgehen</p>
+                    <p class="text-xs text-ink-soft">
+                        Beginnt dein erster Block früher als diese Uhrzeit, kommt die Erinnerung davor — mit Weg-/Pufferzeit und 30 Minuten Vorlauf, aber nie vor 05:00.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleReminderSmartTiming"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $reminderSmartTiming,
+                        'bg-line' => ! $reminderSmartTiming,
+                    ])
+                    aria-label="Erinnerung vor dem Losgehen {{ $reminderSmartTiming ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
+                        'left-[1.125rem]' => $reminderSmartTiming,
+                        'left-0.5' => ! $reminderSmartTiming,
+                    ])></span>
+                </button>
+            </div>
+        </div>
     </div>
     </section>
 

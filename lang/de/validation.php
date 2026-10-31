@@ -215,6 +215,8 @@ return [
         'dailyReminderTime' => 'Uhrzeit',
         'dailyTaskGoal' => 'Tagesziel',
         'dayPreviewNotificationTime' => 'Uhrzeit',
+        'reminderEveningTime' => 'Uhrzeit am Vorabend',
+        'reminderMorningTime' => 'Uhrzeit am Tag',
         'deadline' => 'Deadline',
         'deadlinePreviewDays' => 'Vorschau-Tage',
         'dueDate' => 'Wunschtermin',

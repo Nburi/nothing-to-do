@@ -395,6 +395,8 @@
             @if (auth()->user()->planner_enabled)
                 <livewire:split-task-sheet />
             @endif
+            {{-- "Nicht vergessen": the list behind the chips above the Zeitstrahl, opened with Livewire.dispatch('open-reminders'). --}}
+            <livewire:reminder-sheet />
 
             {{-- "Here's what's new" toast — see App\Livewire\FeatureAnnouncementToast.
                  Mounted once here, same reasoning as the celebration overlay below:

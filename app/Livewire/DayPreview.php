@@ -105,6 +105,12 @@ class DayPreview extends Component
     }
 
     #[Computed]
+    public function reminders(): ?array
+    {
+        return DayPreviewData::reminders(auth()->user());
+    }
+
+    #[Computed]
     public function agenda(): ?array
     {
         return DayPreviewData::agenda(auth()->user());
