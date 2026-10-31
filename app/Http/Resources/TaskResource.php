@@ -30,6 +30,13 @@ class TaskResource extends JsonResource
             'is_overdue' => $this->isOverdue(),
             'is_urgent' => $this->isUrgent(),
             'is_completed' => $this->is_completed,
+            // Parts of a task split across days (Planer "Aufteilen"); only present when the relation is loaded.
+            'sessions' => $this->whenLoaded('sessions', fn () => $this->sessions->map(fn ($s) => [
+                'id' => $s->id,
+                'date' => $s->planned_date->toDateString(),
+                'minutes' => $s->minutes,
+                'done' => $s->isDone(),
+            ])->values()),
             'completed_at' => $this->completed_at?->toIso8601String(),
             'sort_order' => $this->sort_order,
             'created_at' => $this->created_at->toIso8601String(),

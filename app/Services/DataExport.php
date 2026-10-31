@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AgendaEntry;
+use App\Models\TaskSession;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -59,6 +60,14 @@ class DataExport
             'settings' => Arr::only($user->toArray(), self::SETTINGS),
             'tasks' => $user->tasks()->orderBy('id')->get()
                 ->map(fn (Model $t) => Arr::only($t->toArray(), self::TASK))->all(),
+            // The days a task was split across (Planer "Aufteilen"), one row per part.
+            'task_parts' => TaskSession::query()->whereHas('task', fn ($q) => $q->forUser($user))->orderBy('task_id')->orderBy('planned_date')->get()
+                ->map(fn (TaskSession $p) => [
+                    'task_id' => $p->task_id,
+                    'date' => $p->planned_date->toDateString(),
+                    'minutes' => $p->minutes,
+                    'done' => $p->isDone(),
+                ])->all(),
             'projects' => $user->projects()->orderBy('id')->get()
                 ->map(fn (Model $p) => Arr::only($p->toArray(), ['id', 'name', 'brainstorm', 'external_url', 'created_at']))->all(),
             'task_groups' => $user->taskGroups()->with('notes')->orderBy('id')->get()

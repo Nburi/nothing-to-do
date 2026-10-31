@@ -59,9 +59,20 @@ trait PlannerToolDefaults
     {
         $taskId = $ref['task_id'] ?? null;
         $entryId = $ref['agenda_entry_id'] ?? null;
+        $sessionId = $ref['session_id'] ?? null;
 
-        if (($taskId === null) === ($entryId === null)) {
-            throw new McpToolExecutionException('Give exactly one of task_id or agenda_entry_id.');
+        if (count(array_filter([$taskId, $entryId, $sessionId], fn ($v) => $v !== null)) !== 1) {
+            throw new McpToolExecutionException('Give exactly one of task_id, agenda_entry_id or session_id.');
+        }
+
+        if ($sessionId !== null) {
+            $part = \App\Models\TaskSession::query()->open()->whereHas('task', fn ($q) => $q->forUser($user)->active())->find((int) $sessionId);
+
+            if ($part === null) {
+                throw new McpToolExecutionException("No open task part with id {$sessionId} found for this account.");
+            }
+
+            return 'session:'.$part->id;
         }
 
         if ($taskId !== null) {
@@ -94,6 +105,8 @@ trait PlannerToolDefaults
         return array_filter([
             'type' => $item['type'],
             'id' => $item['id'],
+            'task_id' => $item['taskId'] ?? null,
+            'part' => $item['partLabel'] ?? null,
             'title' => $item['title'],
             'list' => $item['list'] ?? null,
             'subject' => $item['subject'] ?? null,

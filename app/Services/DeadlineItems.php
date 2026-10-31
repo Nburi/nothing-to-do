@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
+use App\Models\TaskSession;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -87,7 +88,7 @@ class DeadlineItems
         // both this and its own deadline chip on two different dates at once — "fällig Freitag,
         // aber ich hab mir Mittwoch dafür reserviert" is genuinely useful, not a duplicate.
         TaskDayPlan::query()
-            ->whereHas('task', fn ($q) => $q->forUser($user)->active())
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active()->whereDoesntHave('sessions'))
             ->with('task')
             ->get()
             ->each(fn (TaskDayPlan $plan) => $items->push([
@@ -98,6 +99,26 @@ class DeadlineItems
                 'date' => $plan->planned_date->copy(),
                 'isPreview' => false,
             ]));
+
+        // A split task's parts (Planer "Aufteilen"): one chip per open part on its own day. The
+        // chip's tick-off marks that part, not the whole task — see ManagesDeadlineItems.
+        TaskSession::query()->open()
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active())
+            ->with('task.sessions')
+            ->get()
+            ->each(function (TaskSession $part) use ($items) {
+                $position = $part->task->sessions->search(fn (TaskSession $s) => $s->id === $part->id);
+
+                $items->push([
+                    'kind' => 'task',
+                    'subtype' => 'planned',
+                    'id' => $part->task_id,
+                    'sessionId' => $part->id,
+                    'title' => $part->task->title.' · Teil '.(($position === false ? 0 : $position) + 1).'/'.$part->task->sessions->count(),
+                    'date' => $part->planned_date->copy(),
+                    'isPreview' => false,
+                ]);
+            });
 
         return $items
             ->filter(fn (array $item) => $item['date']->between($start->copy()->startOfDay(), $end->copy()->endOfDay()))

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
@@ -105,6 +106,41 @@ class Task extends Model
     public function dayPlan(): HasOne
     {
         return $this->hasOne(TaskDayPlan::class);
+    }
+
+    /** The parts of this task when it was split across several days (see App\Services\DayPlanner::saveSplit()), earliest first. */
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(TaskSession::class)->orderBy('planned_date');
+    }
+
+    /**
+     * Where a split task stands, derived from its parts: how many are done,
+     * which one is next, and whether every part is finished (the cue for the
+     * "Aufgabe abhaken?" offer). Null for an ordinary, unsplit task. Reads the
+     * loaded relation, so list queries eager-load `sessions` once instead of
+     * paying a query per card.
+     *
+     * @return array{total: int, done: int, position: int, next: ?TaskSession, allDone: bool}|null
+     */
+    public function sessionProgress(): ?array
+    {
+        $sessions = $this->sessions;
+
+        if ($sessions->isEmpty()) {
+            return null;
+        }
+
+        $done = $sessions->filter(fn (TaskSession $s) => $s->isDone())->count();
+        $next = $sessions->first(fn (TaskSession $s) => ! $s->isDone());
+
+        return [
+            'total' => $sessions->count(),
+            'done' => $done,
+            'position' => min($done + 1, $sessions->count()),
+            'next' => $next,
+            'allDone' => $next === null,
+        ];
     }
 
     /**

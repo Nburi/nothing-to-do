@@ -21,7 +21,8 @@ class PlanTaskTool extends McpTool
     {
         return 'Plan one task (task_id) or one open homework entry (agenda_entry_id — it becomes a real task when '
             .'placed) for a day, appended to the end of that day. A task already planned elsewhere moves. Planning '
-            .'for today also flags it "Heute". A task lives on at most one day. For a whole day\'s order use set_day_plan.';
+            .'for today also flags it "Heute". A task lives on at most one day — unless it was split (split_task): then pass '
+            .'session_id to move that single part to another day. For a whole day\'s order use set_day_plan.';
     }
 
     public function inputSchema(): array
@@ -31,6 +32,7 @@ class PlanTaskTool extends McpTool
             'properties' => [
                 'task_id' => ['type' => 'integer'],
                 'agenda_entry_id' => ['type' => 'integer', 'description' => 'Open homework instead of a task.'],
+                'session_id' => ['type' => 'integer', 'description' => 'One open part of a split task instead of a task.'],
                 'date' => ['type' => 'string', 'format' => 'date', 'description' => 'Today … today+'.(DayPlanner::HORIZON_DAYS - 1).' days.'],
             ],
             'required' => ['date'],

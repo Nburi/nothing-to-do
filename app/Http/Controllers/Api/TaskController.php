@@ -60,7 +60,7 @@ class TaskController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        return (new TaskResource($this->userTask($request, $id)))->response();
+        return (new TaskResource($this->userTask($request, $id)->load('sessions')))->response();
     }
 
     public function store(Request $request): JsonResponse

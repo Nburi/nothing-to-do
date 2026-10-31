@@ -87,6 +87,9 @@ use App\Mcp\Tools\GetEmergencyModeTool;
 use App\Mcp\Tools\ListCraftIdeasTool;
 use App\Mcp\Tools\RescheduleOverdueTasksTool;
 use App\Mcp\Tools\PlanTaskTool;
+use App\Mcp\Tools\SetTaskPartDoneTool;
+use App\Mcp\Tools\SplitTaskTool;
+use App\Mcp\Tools\UnsplitTaskTool;
 use App\Mcp\Tools\SetDayPlanTool;
 use App\Mcp\Tools\UnplanTaskTool;
 use App\Mcp\Tools\AutoPlanBacklogTool;
@@ -185,6 +188,9 @@ class McpServer
             new SetDayFrameTool,
             new RescheduleOverdueTasksTool,
             new PlanTaskTool,
+            new SplitTaskTool,
+            new UnsplitTaskTool,
+            new SetTaskPartDoneTool,
             new SetDayPlanTool,
             new UnplanTaskTool,
             new AutoPlanBacklogTool,

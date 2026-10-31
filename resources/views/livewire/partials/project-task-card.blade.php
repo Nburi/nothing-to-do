@@ -78,6 +78,13 @@
                 </span>
             @endif
 
+            {{-- Split across days (Planer): a read-only marker here — this whole block is one button, so the
+                 interactive pill the board cards use can't nest inside it. Change it from the edit sheet. --}}
+            @if (auth()->user()->planner_enabled && ! $task->is_completed && ($sessionProgress = $task->sessionProgress()))
+                <span class="tnum mt-1 block text-[11px] font-medium text-forest">
+                    {{ $sessionProgress['allDone'] ? 'Alle '.$sessionProgress['total'].' Teile erledigt' : 'Teil '.$sessionProgress['position'].'/'.$sessionProgress['total'].' · '.$sessionProgress['next']->planned_date->isoFormat('dd D.M.') }}
+                </span>
+            @endif
             @if (!$task->is_completed && ($preview = $task->notesPreview()))
                 <span class="mt-1 block truncate text-[11px] text-ink-faint" title="{{ $preview }}">{{ $preview }}</span>
             @endif

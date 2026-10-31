@@ -390,6 +390,12 @@
             <livewire:quick-capture />
             <livewire:command-palette />
 
+            {{-- "Aufteilen": spread a task over several days. Mounted once, opened from any page
+                 via Livewire.dispatch('open-split-sheet', { taskId }). Only exists with the Planer on. --}}
+            @if (auth()->user()->planner_enabled)
+                <livewire:split-task-sheet />
+            @endif
+
             {{-- "Here's what's new" toast — see App\Livewire\FeatureAnnouncementToast.
                  Mounted once here, same reasoning as the celebration overlay below:
                  an unseen announcement has to appear no matter which page is the

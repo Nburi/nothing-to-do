@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -106,6 +107,32 @@ class Planner extends Component
         $task = auth()->user()->tasks()->findOrFail($taskId);
 
         DayPlanner::unassignTask($task);
+        $this->refreshComputeds();
+    }
+
+    /** The "×" on a placed part of a split task: only that part goes, the others stay (see DayPlanner::removeSession()). */
+    public function removeSession(int $sessionId): void
+    {
+        DayPlanner::removeSession(auth()->user(), $sessionId);
+        $this->refreshComputeds();
+    }
+
+    /** The check on a part's chip: ticks that part off. Never completes the task itself. */
+    public function completeSession(int $sessionId): void
+    {
+        $result = DayPlanner::completeSession(auth()->user(), $sessionId);
+
+        if ($result !== null && $result['celebration'] !== null) {
+            $this->dispatch('celebrate', kind: $result['celebration']['kind'], label: $result['celebration']['label']);
+        }
+
+        $this->refreshComputeds();
+    }
+
+    /** The split sheet saved or ticked something — this page's computeds are stale. */
+    #[On('plan-changed')]
+    public function refreshAfterPlanChange(): void
+    {
         $this->refreshComputeds();
     }
 

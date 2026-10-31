@@ -81,6 +81,8 @@
             </div>
         </div>
 
+        @include('livewire.partials.task-session-pill', ['task' => $task])
+
         @if (!$task->is_completed)
             @if ($label = $task->effectiveDateLabel())
                 <button
