@@ -70,24 +70,13 @@ class MobileHeaderMenuTest extends TestCase
     public function test_the_avatar_menus_funktionen_section_disappears_with_every_module_hidden(): void
     {
         $user = User::factory()->create(['hidden_modules' => [
-            'prepare', 'schedule', 'weekplan', 'agenda', 'crafts', 'emergency',
+            'schedule', 'weekplan', 'crafts', 'emergency',
         ]]);
 
         $response = $this->actingAs($user)->get(route('app'));
 
         $response->assertDontSee('Weitere Funktionen');
         $response->assertDontSee('header-menu-fan-in', false);
-    }
-
-    public function test_the_emergency_dot_moves_to_the_avatar_button_on_mobile_while_active(): void
-    {
-        $user = User::factory()->create();
-        $project = \App\Models\Project::factory()->for($user)->create();
-        $user->update(['emergency_project_id' => $project->id]);
-
-        $response = $this->actingAs($user)->get(route('app'));
-
-        $response->assertSee('absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-signal ring-2 ring-paper sm:hidden', false);
     }
 
     public function test_the_emergency_dot_is_absent_from_the_avatar_button_when_not_in_emergency_mode(): void

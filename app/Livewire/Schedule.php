@@ -3,7 +3,6 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesSchedule;
-use App\Models\AgendaEntry;
 use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
@@ -105,13 +104,12 @@ class Schedule extends Component
     }
 
     /**
-     * Task deadlines/Wunschtermine and Agenda homework/exams for the visible week, grouped by
+     * Task deadlines/Wunschtermine for the visible week, grouped by
      * Y-m-d — the "all-day" strip above the hour grid, since none of these carry a time. Each
      * source item contributes one entry on its actual date, plus (only for a *hard* date — a task
-     * deadline, or any Agenda entry, never a soft Wunschtermin) a second, `isPreview` entry
+     * deadline, never a soft Wunschtermin) a second, `isPreview` entry
      * `deadline_preview_days` earlier, when that setting is enabled — see
-     * Settings::saveDeadlinePreview(). Completed/done items are excluded entirely (Task::active(),
-     * AgendaEntry::openFor()), consistent with how Board and Agenda hide finished work.
+     * Settings::saveDeadlinePreview(). Completed/done items are excluded entirely (Task::active()), consistent with how the Board hides finished work.
      */
     #[Computed]
     public function deadlineItems(): Collection
@@ -153,27 +151,6 @@ class Schedule extends Component
                 }
             });
 
-        AgendaEntry::visibleTo($user)->openFor($user)->get()
-            ->each(function (AgendaEntry $entry) use ($items, $previewEnabled, $previewDays) {
-                $base = [
-                    'kind' => 'agenda',
-                    'subtype' => $entry->type,
-                    'id' => $entry->id,
-                    'title' => $entry->title,
-                    'subject' => $entry->subject,
-                ];
-
-                $items->push($base + ['date' => $entry->date->copy(), 'isPreview' => false]);
-
-                if ($previewEnabled && $previewDays > 0) {
-                    $items->push($base + [
-                        'date' => $entry->date->copy()->subDays($previewDays),
-                        'isPreview' => true,
-                        'daysUntil' => $previewDays,
-                    ]);
-                }
-            });
-
         return $items
             ->filter(fn (array $item) => $item['date']->between($weekStart, $weekEnd))
             ->sortBy('title')
@@ -191,8 +168,7 @@ class Schedule extends Component
     /**
      * Ticks a task off straight from the Zeitplan strip. Deliberately duplicates
      * ManagesTasks::toggleComplete() rather than pulling in the whole trait (its edit-sheet state
-     * isn't needed here) — the same small-duplication call already made between
-     * Task::effectiveDateLabel() and AgendaEntry::dateLabel().
+     * isn't needed here) — the same small-duplication call is acceptable here.
      */
     public function toggleDeadlineTaskDone(int $id): void
     {
@@ -207,17 +183,9 @@ class Schedule extends Component
             'completed_at' => $done ? now() : null,
         ]);
 
-        $task->syncLinkedAgendaEntry($user, $done);
-
         if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
             $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
         }
-    }
-
-    /** Ticks an Agenda entry off for this person only — see AgendaEntry::toggleDoneFor(). */
-    public function toggleDeadlineAgendaDone(int $id): void
-    {
-        AgendaEntry::visibleTo(auth()->user())->findOrFail($id)->toggleDoneFor(auth()->user());
     }
 
     public function prevWeek(): void

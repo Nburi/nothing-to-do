@@ -11,7 +11,7 @@ use Livewire\Component;
  * Read-only "how did your day go" page — everything here is derived from
  * ProgressStats, which itself is derived from tasks.completed_at. No writes
  * happen on this page; the daily goal is edited in Settings, and completion
- * itself happens on the board/project page/Zeitplan strip.
+ * itself happens on the board/Zeitplan strip.
  */
 #[Layout('layouts.app')]
 class Progress extends Component

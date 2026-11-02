@@ -44,7 +44,7 @@
         }"
         class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm"
     >
-        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'prepare' => 'Vorbereitung', 'progress' => 'Fortschritt', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
+        @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'progress' => 'Fortschritt', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
             <a
                 href="#{{ $id }}"
                 :aria-current="active === '{{ $id }}' ? 'true' : null"
@@ -137,8 +137,8 @@
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Startseite</h3>
             <p class="mb-5 text-sm text-ink-soft leading-relaxed">
-                Diese Seite öffnet sich, wenn du die App startest oder dich anmeldest — z. B. direkt die
-                Agenda statt des Boards. Nur ausgeblendete Bereiche stehen hier nicht zur Wahl.
+                Diese Seite öffnet sich, wenn du die App startest oder dich anmeldest — z. B. direkt den
+                Zeitplan statt des Boards. Nur ausgeblendete Bereiche stehen hier nicht zur Wahl.
             </p>
 
             <div class="flex flex-wrap gap-2 rounded-[0.6rem] bg-paper p-1">
@@ -229,35 +229,6 @@
                     wire:navigate
                     class="flex-none rounded-card border border-line bg-paper px-3.5 py-1.5 text-sm text-ink-soft transition hover:border-ink-faint/60 hover:text-ink"
                 >{{ auth()->user()->onboarding_completed_at ? 'Nochmal ansehen' : 'Tutorial starten' }}</a>
-            </div>
-        </div>
-
-        {{-- Hausaufgaben-Vorschau --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-            <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                    <p class="text-sm font-medium text-ink">Hausaufgaben-Vorschau</p>
-                    <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
-                        Zeigt offene Hausaufgaben, die innerhalb der nächsten 3 Wochentage fällig sind, oben im
-                        Dashboard — Wochenenden zählen dabei nicht mit.
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    wire:click="toggleHomeworkPreviewEnabled"
-                    @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
-                        'bg-forest' => $homeworkPreviewEnabled,
-                        'bg-line' => ! $homeworkPreviewEnabled,
-                    ])
-                    aria-label="Hausaufgaben-Vorschau {{ $homeworkPreviewEnabled ? 'deaktivieren' : 'aktivieren' }}"
-                >
-                    <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $homeworkPreviewEnabled,
-                        'left-0.5' => ! $homeworkPreviewEnabled,
-                    ])></span>
-                </button>
             </div>
         </div>
 
@@ -400,39 +371,6 @@
             </div>
         </div>
 
-        {{-- Presence. Lives under "Allgemein" rather than "Benachrichtigungen":
-             it governs what other people see about you, not what the app sends
-             you. Only rendered for someone actually in a class — for everyone
-             else it would be a switch that controls nothing. --}}
-        @if ($this->inAnyAgendaSpace)
-            <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-ink">Online-Status für die Klasse</p>
-                        <p class="mt-0.5 text-xs text-ink-soft">
-                            Mitglieder deiner Klassen sehen, ob du die App gerade offen hast. Aus heisst
-                            aus: dann wird gar nicht erst aufgezeichnet, wann du zuletzt da warst.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        wire:click="toggleShowPresence"
-                        @class([
-                            'relative h-6 w-10 flex-none rounded-full transition',
-                            'bg-forest' => auth()->user()->show_presence,
-                            'bg-line' => ! auth()->user()->show_presence,
-                        ])
-                        aria-label="Online-Status {{ auth()->user()->show_presence ? 'verbergen' : 'zeigen' }}"
-                    >
-                        <span @class([
-                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                            'left-[1.125rem]' => auth()->user()->show_presence,
-                            'left-0.5' => ! auth()->user()->show_presence,
-                        ])></span>
-                    </button>
-                </div>
-            </div>
-        @endif
     </section>
 
     {{-- Zeitplan & Fokus --}}
@@ -661,76 +599,6 @@
                     @error('deadlinePreviewDays') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
             @endif
-        </div>
-    </section>
-
-    {{-- Vorbereitung --}}
-    <section id="prepare" class="scroll-mt-28 space-y-5">
-        <h2 class="text-lg font-medium tracking-tight text-ink">Vorbereitung</h2>
-
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-        <h3 class="mb-1 text-base font-medium text-ink">Wann bereitest du dich vor?</h3>
-        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
-            Morgens planst du den bereits laufenden Tag, abends den nächsten — bestimmt, worauf
-            „Vorbereiten" im Header zielt.
-        </p>
-
-        <div class="inline-flex rounded-card border border-line bg-paper p-0.5">
-            @foreach (['morning' => 'Morgens · für heute', 'evening' => 'Abends · für morgen'] as $value => $label)
-                <button
-                    type="button"
-                    wire:click="setPrepareTimeOfDay('{{ $value }}')"
-                    @class([
-                        'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                        'bg-forest text-white shadow-sm' => $prepareTimeOfDay === $value,
-                        'text-ink-soft hover:text-ink' => $prepareTimeOfDay !== $value,
-                    ])
-                >{{ $label }}</button>
-            @endforeach
-        </div>
-        </div>
-
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-        <h3 class="mb-1 text-base font-medium text-ink">Erinnerung</h3>
-        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
-            Ein Stups, falls du deine Vorbereitung noch nicht gemacht hast.
-        </p>
-
-        <div class="inline-flex rounded-card border border-line bg-paper p-0.5">
-            @foreach (['off' => 'Aus', 'automatic' => 'Automatisch', 'fixed' => 'Feste Zeit'] as $value => $label)
-                <button
-                    type="button"
-                    wire:click="setPrepareReminderMode('{{ $value }}')"
-                    @class([
-                        'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                        'bg-forest text-white shadow-sm' => $prepareReminderMode === $value,
-                        'text-ink-soft hover:text-ink' => $prepareReminderMode !== $value,
-                    ])
-                >{{ $label }}</button>
-            @endforeach
-        </div>
-
-        @if ($prepareReminderMode === 'automatic')
-            <p class="mt-4 text-sm leading-relaxed text-ink-soft">
-                Ein Banner im Board fragt nach, sobald du die App
-                {{ $prepareTimeOfDay === 'morning' ? 'morgens' : 'abends' }} öffnest und noch nicht
-                vorbereitet hast. Hast du die App nicht geöffnet, kommt um
-                <span class="font-medium text-ink">{{ $prepareTimeOfDay === 'morning' ? '10:00' : '21:00' }}</span>
-                eine Push-Erinnerung.
-            </p>
-        @elseif ($prepareReminderMode === 'fixed')
-            <div class="mt-4 max-w-[10rem]">
-                <label for="prepareReminderTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
-                <input
-                    id="prepareReminderTime"
-                    type="time"
-                    wire:model="prepareReminderTime"
-                    wire:change="savePrepareReminderTime"
-                    class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
-                />
-                @error('prepareReminderTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
-            </div>
-        @endif
         </div>
     </section>
 

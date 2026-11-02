@@ -23,7 +23,7 @@ use Illuminate\Console\Command;
  * Runs every minute (see bootstrap/app.php). Both dedup columns are "already
  * sent today", not an exact-minute match, so a delayed/missed cron tick still
  * fires on the next run instead of losing the notification — same pattern as
- * every other reminder command in this app (see SendPrepareReminders).
+ * every other reminder command in this app.
  */
 class SendProgressReminders extends Command
 {
@@ -67,7 +67,7 @@ class SendProgressReminders extends Command
         }
 
         // Same filter as TaskBoard::today() — active board tasks flagged for today.
-        $open = Task::query()->forUser($user)->active()->onBoard()->where('is_today', true)->count();
+        $open = Task::query()->forUser($user)->active()->where('is_today', true)->count();
 
         if ($open === 0) {
             return false;

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Commands;
 
-use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
 use App\Models\User;
@@ -84,19 +83,6 @@ class PromoteDayPlansToTodayTest extends TestCase
         $this->artisan('app:promote-day-plans-to-today')->assertSuccessful();
 
         $this->assertSame($firstStamp, $task->fresh()->today_date->toDateString());
-    }
-
-    public function test_a_project_owned_tasks_day_plan_is_never_promoted(): void
-    {
-        Carbon::setTestNow('2026-08-16 08:00:00');
-        $user = $this->plannerUser();
-        $project = Project::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->create(['list' => 'projects', 'project_id' => $project->id]);
-        $this->planFor($task, '2026-08-16');
-
-        $this->artisan('app:promote-day-plans-to-today')->assertSuccessful();
-
-        $this->assertFalse($task->fresh()->is_today);
     }
 
     public function test_users_with_the_planner_disabled_are_skipped(): void

@@ -6,10 +6,7 @@ use App\Mcp\Exceptions\McpToolExecutionException;
 use App\Mcp\Exceptions\McpUnknownToolException;
 use App\Mcp\McpAbility;
 use App\Mcp\McpServer;
-use App\Models\AgendaEntry;
-use App\Models\Project;
 use App\Models\Task;
-use App\Models\TaskGroup;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -41,15 +38,13 @@ class McpToolsTest extends TestCase
         $full = $this->can([McpAbility::READ, McpAbility::WRITE, McpAbility::DELETE]);
 
         $before = collect($this->server->availableTools($user, $full))->map->name();
-        $this->assertContains('list_agenda_entries', $before);
-        $this->assertContains('create_agenda_entry', $before);
+        $this->assertContains('get_progress', $before);
 
-        $user->update(['hidden_modules' => ['agenda']]);
+        $user->update(['hidden_modules' => ['progress']]);
         $user->refresh();
 
         $after = collect($this->server->availableTools($user, $full))->map->name();
-        $this->assertNotContains('list_agenda_entries', $after);
-        $this->assertNotContains('create_agenda_entry', $after);
+        $this->assertNotContains('get_progress', $after);
         // Nothing else was affected by hiding just one module.
         $this->assertContains('list_tasks', $after);
     }
@@ -173,69 +168,6 @@ class McpToolsTest extends TestCase
 
     // ── Writes ──────────────────────────────────────────────────────────
 
-    public function test_create_task_into_a_group(): void
-    {
-        $user = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-        $group = TaskGroup::factory()->for($user)->create();
-        // A group needs 2+ tasks to survive — seed one so pruneIfTooSmall doesn't dissolve it later.
-        Task::factory()->for($user)->create(['group_id' => $group->id]);
-
-        $result = $this->server->call($user, $write, 'create_task', [
-            'title' => 'Neue Aufgabe',
-            'group_id' => $group->id,
-        ]);
-
-        $this->assertSame($group->id, $result['group_id']);
-        $this->assertDatabaseHas('tasks', ['title' => 'Neue Aufgabe', 'group_id' => $group->id]);
-    }
-
-    public function test_create_task_rejects_a_group_belonging_to_another_user(): void
-    {
-        $user = User::factory()->create();
-        $stranger = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-        $foreignGroup = TaskGroup::factory()->for($stranger)->create();
-
-        $this->expectException(ValidationException::class);
-
-        $this->server->call($user, $write, 'create_task', [
-            'title' => 'x',
-            'group_id' => $foreignGroup->id,
-        ]);
-    }
-
-    public function test_complete_task_syncs_a_linked_agenda_entry(): void
-    {
-        $user = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-        $entry = AgendaEntry::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->todos()->create(['agenda_entry_id' => $entry->id]);
-
-        $this->server->call($user, $write, 'complete_task', ['id' => $task->id]);
-
-        $this->assertTrue($entry->fresh()->isDoneFor($user));
-    }
-
-    public function test_update_task_moving_to_a_project_clears_group_and_prunes_it(): void
-    {
-        $user = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-        $group = TaskGroup::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->create(['group_id' => $group->id]);
-        // Only one task in the group — moving it out should dissolve the group.
-        $project = Project::factory()->for($user)->create();
-
-        $result = $this->server->call($user, $write, 'update_task', [
-            'id' => $task->id,
-            'project_id' => $project->id,
-        ]);
-
-        $this->assertSame($project->id, $result['project_id']);
-        $this->assertNull($result['group_id']);
-        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
-    }
-
     public function test_set_task_order_writes_sort_order_and_skips_foreign_ids(): void
     {
         $user = User::factory()->create();
@@ -266,11 +198,11 @@ class McpToolsTest extends TestCase
 
     public function test_set_module_visibility_resets_default_page_when_hiding_it(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'crafts']);
         $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
 
         $result = $this->server->call($user, $write, 'set_module_visibility', [
-            'module' => 'agenda',
+            'module' => 'crafts',
             'hidden' => true,
         ]);
 
@@ -286,22 +218,6 @@ class McpToolsTest extends TestCase
         $this->expectException(McpToolExecutionException::class);
 
         $this->server->call($user, $write, 'set_default_landing_page', ['page' => 'agenda']);
-    }
-
-    public function test_create_agenda_entry_is_always_private(): void
-    {
-        $user = User::factory()->create();
-        $write = $this->can([McpAbility::READ, McpAbility::WRITE]);
-
-        $result = $this->server->call($user, $write, 'create_agenda_entry', [
-            'type' => 'homework',
-            'subject' => 'Mathematik',
-            'title' => 'Aufgaben S. 12',
-            'date' => now()->addDay()->toDateString(),
-        ]);
-
-        $this->assertFalse($result['is_shared']);
-        $this->assertDatabaseHas('agenda_entries', ['id' => $result['id'], 'agenda_space_id' => null]);
     }
 
     // ── Delete ──────────────────────────────────────────────────────────
@@ -322,12 +238,11 @@ class McpToolsTest extends TestCase
         $this->assertDatabaseHas('tasks', ['id' => $task->id]);
     }
 
-    public function test_delete_task_succeeds_with_the_exact_title_and_prunes_its_group(): void
+    public function test_delete_task_succeeds_with_the_exact_title(): void
     {
         $user = User::factory()->create();
         $delete = $this->can([McpAbility::READ, McpAbility::WRITE, McpAbility::DELETE]);
-        $group = TaskGroup::factory()->for($user)->create();
-        $task = Task::factory()->for($user)->create(['title' => 'Weg damit', 'group_id' => $group->id]);
+        $task = Task::factory()->for($user)->create(['title' => 'Weg damit']);
 
         $result = $this->server->call($user, $delete, 'delete_task', [
             'id' => $task->id,
@@ -336,7 +251,6 @@ class McpToolsTest extends TestCase
 
         $this->assertTrue($result['deleted']);
         $this->assertDatabaseMissing('tasks', ['id' => $task->id]);
-        $this->assertDatabaseMissing('task_groups', ['id' => $group->id]);
     }
 
     public function test_delete_task_is_scoped_to_the_owner(): void

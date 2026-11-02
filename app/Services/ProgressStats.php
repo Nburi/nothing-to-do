@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
  * need. Every day-bucket uses the user's local CALENDAR day (localToday()),
  * never User::completedWindowStart() — that's a different, board-only concept
  * (which completed task *cards* still show), not "which day did this happen
- * on". Deliberately scoped to Task only: Agenda/CraftIdea completions don't
+ * on". Deliberately scoped to Task only: CraftIdea completions don't
  * feed the streak, this is specifically "did you do your to-dos".
  */
 class ProgressStats

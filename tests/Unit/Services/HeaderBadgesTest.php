@@ -2,10 +2,8 @@
 
 namespace Tests\Unit\Services;
 
-use App\Models\AgendaEntry;
 use App\Models\CraftIdea;
 use App\Models\EventCategory;
-use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
@@ -26,18 +24,16 @@ class HeaderBadgesTest extends TestCase
 
     // ── preferenceRowsFor ────────────────────────────────────────────
 
-    public function test_a_never_customised_user_defaults_to_streak_and_agenda_enabled_only(): void
+    public function test_a_never_customised_user_defaults_to_streak_enabled_only(): void
     {
         $user = User::factory()->create(['header_badges' => null]);
 
         $rows = collect(HeaderBadges::preferenceRowsFor($user))->keyBy('key');
 
         $this->assertTrue($rows['streak']['enabled']);
-        $this->assertTrue($rows['agenda']['enabled']);
         $this->assertFalse($rows['today']['enabled']);
         $this->assertFalse($rows['schedule']['enabled']);
         $this->assertFalse($rows['goal']['enabled']);
-        $this->assertFalse($rows['emergency']['enabled']);
         $this->assertFalse($rows['crafts']['enabled']);
     }
 
@@ -74,9 +70,6 @@ class HeaderBadgesTest extends TestCase
         $rows = collect(HeaderBadges::preferenceRowsFor($user))->keyBy('key');
 
         $this->assertTrue($rows['streak']['enabled']);
-        // Never silently reactivated inside an already-customised list, even
-        // though 'agenda' is on by default for a never-customised user.
-        $this->assertFalse($rows['agenda']['enabled']);
         $this->assertFalse($rows['today']['enabled']);
     }
 
@@ -100,24 +93,6 @@ class HeaderBadgesTest extends TestCase
         $user = User::factory()->create(['header_badges' => null]);
 
         $this->assertSame([], HeaderBadges::visibleFor($user));
-    }
-
-    public function test_visible_for_respects_the_stored_order(): void
-    {
-        Carbon::setTestNow('2026-08-24 10:00:00');
-        $user = User::factory()->create([
-            'timezone_offset' => 0,
-            'header_badges' => [
-                ['key' => 'agenda', 'enabled' => true],
-                ['key' => 'streak', 'enabled' => true],
-            ],
-        ]);
-        AgendaEntry::factory()->for($user)->homework()->create();
-        $this->seedStreakOfOneDay($user, '2026-08-24');
-
-        $keys = collect(HeaderBadges::visibleFor($user))->pluck('key');
-
-        $this->assertSame(['agenda', 'streak'], $keys->all());
     }
 
     // ── streak ──────────────────────────────────────────────────────
@@ -150,18 +125,6 @@ class HeaderBadgesTest extends TestCase
         $user = $this->userWith(['agenda']);
 
         $this->assertSame([], HeaderBadges::visibleFor($user));
-    }
-
-    public function test_agenda_badge_counts_open_homework_and_exams_together(): void
-    {
-        $user = $this->userWith(['agenda']);
-        AgendaEntry::factory()->for($user)->homework()->create();
-        AgendaEntry::factory()->for($user)->exam()->create();
-        AgendaEntry::factory()->for($user)->homework()->done()->create(); // already done — excluded
-
-        $badge = HeaderBadges::visibleFor($user)[0];
-
-        $this->assertSame('2', $badge['text']);
     }
 
     // ── today ───────────────────────────────────────────────────────
@@ -252,19 +215,6 @@ class HeaderBadgesTest extends TestCase
         $user = $this->userWith(['emergency']);
 
         $this->assertSame([], HeaderBadges::visibleFor($user));
-    }
-
-    public function test_emergency_badge_shows_the_active_projects_progress(): void
-    {
-        $user = $this->userWith(['emergency']);
-        $project = Project::factory()->for($user)->create();
-        Task::factory()->for($user)->tasks()->create(['project_id' => $project->id]);
-        Task::factory()->for($user)->tasks()->completed()->create(['project_id' => $project->id]);
-        $user->update(['emergency_project_id' => $project->id]);
-
-        $badge = HeaderBadges::visibleFor($user->fresh())[0];
-
-        $this->assertSame('1/2', $badge['text']);
     }
 
     // ── crafts ──────────────────────────────────────────────────────

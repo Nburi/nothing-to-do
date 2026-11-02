@@ -8,13 +8,13 @@
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
 
         <title>nothing-to-do - Drei Listen, ein ruhiger Kopf</title>
-        <meta name="description" content="Erfasse alles in der Inbox, sortiere in To-Dos, Tasks und Projekte, und sieh nur, was heute zählt. Mit Zeitplan, Fokus-Timer und Erinnerungen für den ganzen Tag.">
+        <meta name="description" content="Erfasse alles in der Inbox, sortiere in To-Dos und Tasks, und sieh nur, was heute zählt. Mit Zeitplan, Fokus-Timer und Erinnerungen für den ganzen Tag.">
         <link rel="canonical" href="{{ url('/') }}">
         <meta property="og:type" content="website">
         <meta property="og:locale" content="de_CH">
         <meta property="og:url" content="{{ url('/') }}">
         <meta property="og:title" content="nothing-to-do - Drei Listen, ein ruhiger Kopf">
-        <meta property="og:description" content="Erfasse alles in der Inbox, sortiere in To-Dos, Tasks und Projekte, und sieh nur, was heute zählt. Mit Zeitplan, Fokus-Timer und Erinnerungen für den ganzen Tag.">
+        <meta property="og:description" content="Erfasse alles in der Inbox, sortiere in To-Dos und Tasks, und sieh nur, was heute zählt. Mit Zeitplan, Fokus-Timer und Erinnerungen für den ganzen Tag.">
         <meta property="og:image" content="{{ asset('icons/icon-512.png') }}">
         <meta name="twitter:card" content="summary">
 
@@ -102,7 +102,7 @@
             {{-- The 3 Things --}}
             <section class="reveal border-t border-line bg-surface/40">
                 <div class="mx-auto max-w-3xl px-5 py-16 sm:px-8 md:py-24">
-                    <h2 class="text-2xl font-medium tracking-tight sm:text-3xl">Sortiert nach Form, nicht nach Projekt.</h2>
+                    <h2 class="text-2xl font-medium tracking-tight sm:text-3xl">Sortiert nach Form, nicht nach Thema.</h2>
                     <p class="mt-3 max-w-xl text-ink-soft">Jede Aufgabe ist eine von drei Sorten. Das hält die Übersicht klein und die Entscheidung leicht.</p>
 
                     <div class="mt-10 divide-y divide-line border-y border-line">
@@ -122,10 +122,10 @@
                 </div>
             </section>
 
-            {{-- Beyond the 3 lists: Projects, Schedule/Pomodoro, evening prep, installable+push --}}
+            {{-- Beyond the 3 lists: Schedule/Pomodoro, installable+push --}}
             <section class="mx-auto max-w-6xl px-5 py-16 sm:px-8 md:py-24">
                 <h2 class="reveal text-2xl font-medium tracking-tight sm:text-3xl">Nicht nur eine Liste für heute.</h2>
-                <p class="reveal mt-3 max-w-xl text-ink-soft">Grössere Vorhaben, dein Tagesplan und Erinnerungen gehören genauso dazu wie die drei Listen.</p>
+                <p class="reveal mt-3 max-w-xl text-ink-soft">Dein Tagesplan und Erinnerungen gehören genauso dazu wie die Listen.</p>
 
                 <div class="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
                     {{-- Zeitplan & Fokus-Timer (wide) --}}
@@ -147,7 +147,7 @@
                     </div>
 
                     {{-- Installable + push notifications (tall) --}}
-                    <div class="reveal flex flex-col rounded-card border border-line bg-surface p-6 md:row-span-2" style="transition-delay: 80ms;">
+                    <div class="reveal flex flex-col rounded-card border border-line bg-surface p-6" style="transition-delay: 80ms;">
                         <h3 class="text-base font-medium tracking-tight">Installierbar. Erinnert dich, auch wenn nichts offen ist</h3>
                         <p class="mt-2 text-sm text-ink-soft">Als App auf dem Homescreen, mit Benachrichtigungen, die ankommen, selbst wenn der Tab längst zu ist.</p>
                         <div class="mt-5 flex flex-1 items-center justify-center" aria-hidden="true">
@@ -158,38 +158,8 @@
                                         <x-logo class="h-3 w-3 text-forest" />
                                         <span class="text-[10px] font-medium text-ink">nothing-to-do</span>
                                     </div>
-                                    <p class="mt-1 text-[10px] leading-snug text-ink-soft">Zeit für „Vorbereitung für morgen“.</p>
+                                    <p class="mt-1 text-[10px] leading-snug text-ink-soft">Zeit für deine nächste Fokus-Session.</p>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Projects --}}
-                    <div class="reveal rounded-card border border-line bg-surface p-6" style="transition-delay: 160ms;">
-                        <h3 class="text-base font-medium tracking-tight">Grössere Vorhaben bleiben nicht liegen</h3>
-                        <p class="mt-2 text-sm text-ink-soft">Ein Projekt bündelt alle Aufgaben dazu, mit Fortschrittsanzeige und einem Notfallmodus fürs Aufholen.</p>
-                        <div class="mt-5 rounded-[7px] border border-line bg-paper/60 p-3" aria-hidden="true">
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="text-[11px] font-medium text-ink">Vortrag Physik</span>
-                                <span class="flex-none rounded bg-signal-soft px-1.5 py-px text-[9px] font-medium text-signal">Notfall</span>
-                            </div>
-                            <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line">
-                                <div class="h-full w-2/3 rounded-full bg-forest"></div>
-                            </div>
-                            <p class="mt-1.5 text-[10px] text-ink-faint">4 von 6 erledigt</p>
-                        </div>
-                    </div>
-
-                    {{-- Evening prep ritual --}}
-                    <div class="reveal rounded-card border border-line bg-surface p-6" style="transition-delay: 240ms;">
-                        <h3 class="text-base font-medium tracking-tight">In drei Schritten bereit für morgen</h3>
-                        <p class="mt-2 text-sm text-ink-soft">Inbox leeren, morgen planen, Zeitplan setzen: ein kurzes Abendritual, dann ist der Kopf wirklich frei.</p>
-                        <div class="relative mt-5 h-14" aria-hidden="true">
-                            <div class="absolute inset-x-4 top-3 h-10 rotate-2 rounded-[8px] border border-line bg-paper/70"></div>
-                            <div class="absolute inset-x-2 top-1.5 h-10 -rotate-1 rounded-[8px] border border-line bg-paper/90"></div>
-                            <div class="absolute inset-x-0 top-0 flex h-10 items-center justify-between rounded-[8px] border border-line bg-surface px-3 shadow-map">
-                                <span class="text-[11px] text-ink">Rechnung bezahlen</span>
-                                <span class="text-[10px] text-forest">→ morgen</span>
                             </div>
                         </div>
                     </div>

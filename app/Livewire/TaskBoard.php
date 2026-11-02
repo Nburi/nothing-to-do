@@ -3,11 +3,8 @@
 namespace App\Livewire;
 
 use App\Livewire\Concerns\ManagesTasks;
-use App\Models\AgendaEntry;
-use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
-use App\Models\TaskGroup;
 use App\Services\AppModules;
 use App\Services\ListConcepts;
 use App\Services\PomodoroSessionService;
@@ -23,13 +20,8 @@ class TaskBoard extends Component
 {
     use ManagesTasks;
 
-    /** Active mobile page: inbox | todos | tasks | today | projects. */
+    /** Active mobile page: inbox | todos | tasks | today. */
     public string $mobileTab = 'inbox';
-
-    /** The just-created group whose inline name field is open, if any. */
-    public ?int $namingGroupId = null;
-
-    public string $groupNameDraft = '';
 
     /**
      * "Eisenhower" concept's "Krisenring" signature moment — ids already
@@ -56,7 +48,7 @@ class TaskBoard extends Component
     {
         $tab = request()->query('tab');
 
-        if (in_array($tab, ['inbox', 'todos', 'tasks', 'today', 'projects'], true)) {
+        if (in_array($tab, ['inbox', 'todos', 'tasks', 'today'], true)) {
             $this->mobileTab = $tab;
         }
 
@@ -123,18 +115,8 @@ class TaskBoard extends Component
 
         return Task::query()
             ->forUser(auth()->user())
-            ->onBoard()
             ->inList($list)
             ->with('dayPlan')
-            // A grouped task lives inside its group's box, not loose in the
-            // column — unless it's flagged important or for today. Those two are
-            // explicit "this one matters now" signals and outrank the bundling,
-            // so they show up as ordinary cards (see CLAUDE.md §7 Task-Gruppen).
-            ->where(function ($q) {
-                $q->whereNull('group_id')
-                    ->orWhere('is_important', true)
-                    ->orWhere('is_today', true);
-            })
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -199,7 +181,6 @@ class TaskBoard extends Component
         return Task::query()
             ->forUser(auth()->user())
             ->active()
-            ->onBoard()
             ->where('is_today', true)
             ->with('dayPlan')
             ->boardOrdered()
@@ -207,25 +188,11 @@ class TaskBoard extends Component
     }
 
     /**
-     * Standalone tasks placed in the Projects column but not inside any project.
-     * These are on-board tasks (project_id IS NULL) with list = 'projects'.
-     *
-     * @return Collection<int, Task>
-     */
-    #[Computed]
-    public function projectTasks(): Collection
-    {
-        return $this->boardTasks('projects');
-    }
-
-    /**
      * "Simple" concept's one flat list: every active on-board task across
-     * every `list` value (Inbox/To-Dos/Tasks/standalone-Projekte), ignoring
+     * every `list` value (Inbox/To-Dos/Tasks), ignoring
      * `list` for display entirely — see ListConcepts/PLAN_LIST_CONCEPTS.md §3.
      * Identical filter shape to boardTasks() (recently-completed visibility
-     * window, grouped tasks hidden unless important/today — a grouped task's
-     * home is its Group page, exactly as a 3-Things column already treats it
-     * when no group box is around to surface it) minus the `inList()` call,
+     * window) minus the `inList()` call,
      * so nothing about which tasks are visible changes, only that every list
      * is merged into one instead of three.
      *
@@ -238,13 +205,7 @@ class TaskBoard extends Component
 
         return Task::query()
             ->forUser(auth()->user())
-            ->onBoard()
             ->with('dayPlan')
-            ->where(function ($q) {
-                $q->whereNull('group_id')
-                    ->orWhere('is_important', true)
-                    ->orWhere('is_today', true);
-            })
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -266,10 +227,7 @@ class TaskBoard extends Component
      * PLAN_LIST_CONCEPTS.md §1/§3.
      *
      * Fetches once with the identical filter shape as boardTasks() (same
-     * completed-visibility window, same grouped-task-hidden-unless-
-     * important-or-today rule — a grouped task's home is its Group page,
-     * exactly as a 3-Things column already treats it when no group box is
-     * around to surface it) minus the `inList()` call, then buckets the
+     * completed-visibility window) minus the `inList()` call, then buckets the
      * ACTIVE tasks into the four quadrants in PHP — is_important/isUrgent()
      * are plain flags/methods, not worth four separate queries.
      * boardOrdered()'s own tie-breakers (due-soonest, then manual order)
@@ -290,13 +248,7 @@ class TaskBoard extends Component
 
         $tasks = Task::query()
             ->forUser(auth()->user())
-            ->onBoard()
             ->with('dayPlan')
-            ->where(function ($q) {
-                $q->whereNull('group_id')
-                    ->orWhere('is_important', true)
-                    ->orWhere('is_today', true);
-            })
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -332,10 +284,7 @@ class TaskBoard extends Component
      * No new axis data at all — see ListConcepts and PLAN_LIST_CONCEPTS.md §1/§3.
      *
      * Identical filter shape to boardTasks()/eisenhowerQuadrants() (same
-     * completed-visibility window, same grouped-task-hidden-unless-important-
-     * or-today rule — a grouped task's home is its Group page, exactly as a
-     * 3-Things column already treats it when no group box is around to
-     * surface it) minus the `inList()` call, then bucketed in PHP —
+     * completed-visibility window) minus the `inList()` call, then bucketed in PHP —
      * is_completed/is_today are plain flags, not worth three separate queries.
      * boardOrdered()'s own tie-breakers already give a sensible in-column
      * order for free, preserved by the bucketing (Collection filters keep
@@ -350,13 +299,7 @@ class TaskBoard extends Component
 
         $tasks = Task::query()
             ->forUser(auth()->user())
-            ->onBoard()
             ->with('dayPlan')
-            ->where(function ($q) {
-                $q->whereNull('group_id')
-                    ->orWhere('is_important', true)
-                    ->orWhere('is_today', true);
-            })
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -373,150 +316,6 @@ class TaskBoard extends Component
             'in_progress' => $tasks->where('is_completed', false)->where('is_today', true)->values(),
             'done' => $tasks->where('is_completed', true)->values(),
         ];
-    }
-
-    /**
-     * The user's task groups with their working set — one query for the cards,
-     * one for the completed counts, regardless of how many groups there are.
-     *
-     * @return Collection<int, TaskGroup>
-     */
-    #[Computed]
-    public function taskGroups(): Collection
-    {
-        return TaskGroup::query()
-            ->forUser(auth()->user())
-            ->ordered()
-            ->withCount(['tasks as done_count' => fn ($q) => $q->where('is_completed', true)])
-            ->with('activeTasks')
-            ->get();
-    }
-
-    /**
-     * The group boxes to render inside one board column.
-     *
-     * A group appears in To-Dos and in Tasks whenever it has open work there,
-     * previewing its next two entries. A group with no open board work at all
-     * (everything still in its own inbox, or everything done) would otherwise
-     * be invisible on the board — so it gets one compact box in the Tasks
-     * column instead, which is the difference between "tucked away" and "lost".
-     *
-     * @return Collection<int, array{group: TaskGroup, preview: Collection<int, Task>, more: int, done: int, total: int, inbox: int, compact: bool}>
-     */
-    public function groupBoxesFor(string $list): Collection
-    {
-        // The Inbox column never shows group boxes: a group's own inbox is
-        // triage that belongs inside the group, and mixing it into the board's
-        // inbox would put two different kinds of "unsorted" in one pile.
-        if ($list === 'inbox') {
-            return collect();
-        }
-
-        return $this->taskGroups
-            ->map(function (TaskGroup $group) use ($list) {
-                $active = $group->activeTasks;
-                $inList = $active->where('list', $list)->values();
-                $hasBoardWork = $active->whereIn('list', ['todos', 'tasks'])->isNotEmpty();
-
-                // The compact fallback lives in Tasks and only for groups that
-                // have nothing to show in either working column.
-                $compact = ! $hasBoardWork;
-
-                if ($compact && $list !== 'tasks') {
-                    return null;
-                }
-
-                if (! $compact && $inList->isEmpty()) {
-                    return null;
-                }
-
-                // Important / today tasks already render as ordinary cards in
-                // this column, so previewing them again would just duplicate.
-                $previewable = $inList->where('is_important', false)->where('is_today', false)->values();
-
-                return [
-                    'group' => $group,
-                    'preview' => $previewable->take(2),
-                    'more' => max($inList->count() - $previewable->take(2)->count(), 0),
-                    'done' => (int) $group->done_count,
-                    'total' => $active->count() + (int) $group->done_count,
-                    'inbox' => $active->where('list', 'inbox')->count(),
-                    'compact' => $compact,
-                ];
-            })
-            ->filter()
-            ->values();
-    }
-
-    /** The project currently in "emergency mode", or null if not active. */
-    #[Computed]
-    public function emergencyProject(): ?Project
-    {
-        $id = auth()->user()->emergency_project_id;
-
-        return $id ? auth()->user()->projects()->find($id) : null;
-    }
-
-    /**
-     * All of the emergency project's active tasks, in the sequence order set
-     * up on the arrange screen — sliced per board column below. Empty when
-     * emergency mode isn't active.
-     *
-     * @return Collection<int, Task>
-     */
-    #[Computed]
-    public function emergencyActiveTasks(): Collection
-    {
-        $project = $this->emergencyProject;
-
-        if ($project === null) {
-            return collect();
-        }
-
-        return $project->tasks()->active()->orderBy('sort_order')->orderBy('created_at')->get();
-    }
-
-    /** Emergency-project tasks tagged for one board column, in sequence order. */
-    public function emergencyTasksFor(string $list): Collection
-    {
-        return $this->emergencyActiveTasks->where('emergency_list', $list)->values();
-    }
-
-    /** Progress + "what's next" for the dashboard banner — null when not active. */
-    #[Computed]
-    public function emergencyProgress(): ?array
-    {
-        $project = $this->emergencyProject;
-
-        if ($project === null) {
-            return null;
-        }
-
-        $active = $this->emergencyActiveTasks;
-        $done = $project->tasks()->where('is_completed', true)->count();
-
-        return [
-            'done' => $done,
-            'total' => $done + $active->count(),
-            'next' => $active->first(),
-        ];
-    }
-
-    /**
-     * Projects with their working set: every active task (ordered) for the
-     * card preview + open count, plus a completed count for the progress label.
-     *
-     * @return Collection<int, Project>
-     */
-    #[Computed]
-    public function projects(): Collection
-    {
-        return Project::query()
-            ->forUser(auth()->user())
-            ->ordered()
-            ->withCount(['tasks as done_count' => fn ($q) => $q->where('is_completed', true)])
-            ->with('activeTasks')
-            ->get();
     }
 
     /** Today's timeline events (recurring series materialised on read). */
@@ -645,211 +444,15 @@ class TaskBoard extends Component
         $this->focusSession?->update(['pomodoro_linked_notified' => true]);
     }
 
-    /**
-     * The automatic-reminder in-app banner: only in "automatic" reminder
-     * mode, only during the relevant half of the day for the user's
-     * morning/evening setting, only if today's Vorbereitung isn't done yet,
-     * and only if it hasn't already been dismissed today. "fixed" mode has no
-     * in-app banner — it's push-only, exactly at the chosen time.
-     */
-    #[Computed]
-    public function showPreparePrompt(): bool
-    {
-        $user = auth()->user();
-
-        return $user->prepare_reminder_mode === 'automatic'
-            && ! $user->hasPreparedToday()
-            && $user->prepare_prompt_dismissed_on?->toDateString() !== $user->localToday()->toDateString()
-            && $user->isWithinPrepareWindow();
-    }
-
-    /** Hides the banner for the rest of the user's local day — reappears tomorrow if still relevant. */
-    public function dismissPreparePrompt(): void
-    {
-        auth()->user()->update(['prepare_prompt_dismissed_on' => auth()->user()->localToday()->toDateString()]);
-    }
-
-    /**
-     * Open homework due within the next few weekdays — empty (not just hidden) when the setting
-     * is off, so the partial's `isNotEmpty()` check covers both "off" and "nothing due" the same way.
-     * Also empty whenever the Agenda module itself is hidden (Settings' "Module" card) — this strip
-     * is a satellite view of Agenda, and it links straight back to a page the user just decluttered
-     * away, so it has to disappear with it.
-     */
-    #[Computed]
-    public function homeworkPreview(): Collection
-    {
-        $user = auth()->user();
-
-        if (! $user->homework_preview_enabled || ! AppModules::isVisible($user, 'agenda')) {
-            return collect();
-        }
-
-        return AgendaEntry::homeworkPreviewFor($user);
-    }
-
-    /**
-     * Homework entries already pulled into today's focus (an active task with
-     * a matching agenda_entry_id exists) — lets the preview strip mark a card
-     * "already in Today" instead of inviting a duplicate drag/swipe. One
-     * query, read alongside homeworkPreview() rather than per-card.
-     */
-    #[Computed]
-    public function promotedHomeworkEntryIds(): array
-    {
-        return Task::query()
-            ->forUser(auth()->user())
-            ->active()
-            ->whereNotNull('agenda_entry_id')
-            ->pluck('agenda_entry_id')
-            ->all();
-    }
-
-    /**
-     * Marks a previewed homework entry done for this person — it then drops
-     * out of the preview on its own. If it's already been dragged/swiped
-     * into today's focus, routes through toggleComplete() on the linked
-     * task instead of touching the entry a second time, so the two stay in
-     * sync (completion side effects like celebrations included) no matter
-     * which checkbox you actually tap — without this, ticking the entry
-     * done here while its promoted task sits open elsewhere on the board
-     * would leave a stale, seemingly-forgotten task behind.
-     */
-    public function toggleHomeworkPreviewDone(int $id): void
-    {
-        $user = auth()->user();
-        $entry = AgendaEntry::visibleTo($user)->findOrFail($id);
-
-        $task = Task::query()
-            ->forUser($user)
-            ->where('agenda_entry_id', $entry->id)
-            ->orderBy('is_completed') // active (not yet done) first
-            ->orderByDesc('updated_at')
-            ->first();
-
-        if ($task) {
-            $this->toggleComplete($task->id);
-
-            return;
-        }
-
-        $entry->toggleDoneFor($user);
-    }
-
-    /**
-     * Drag (desktop) or swipe-up (mobile) a homework preview card into
-     * today's focus. Reuses an already-active linked task if one exists
-     * (dragging the same homework twice just re-confirms it, never
-     * duplicates); otherwise spins up a new task carrying the homework's
-     * title, subject, due date and note along with it, so acting on it
-     * doesn't mean re-typing what it already says in the Agenda.
-     *
-     * $list is either 'todos'/'tasks' (a real desktop drop zone) or the
-     * mobile swipe's fixed 'today' sentinel — anything that isn't a genuine
-     * Today list falls back to 'tasks', the closer-sized default for a piece
-     * of schoolwork.
-     */
-    public function promoteHomeworkToday(int $agendaEntryId, string $list): void
-    {
-        $user = auth()->user();
-        $entry = AgendaEntry::query()->visibleTo($user)->findOrFail($agendaEntryId);
-        $targetList = in_array($list, Task::TODAY_LISTS, true) ? $list : 'tasks';
-
-        $existing = Task::query()
-            ->forUser($user)
-            ->active()
-            ->where('agenda_entry_id', $entry->id)
-            ->first();
-
-        if ($existing) {
-            $existing->update([
-                'list' => $targetList,
-                'is_today' => true,
-                'today_date' => $existing->todayDateFor(true, $user->localToday()),
-            ]);
-
-            return;
-        }
-
-        $user->tasks()->create([
-            'title' => "{$entry->subject}: {$entry->title}",
-            'list' => $targetList,
-            'is_today' => true,
-            'today_date' => $user->localToday(),
-            'deadline' => $entry->date,
-            'notes' => $this->agendaNoteForTask($entry->notes),
-            'agenda_entry_id' => $entry->id,
-            'sort_order' => 0,
-        ]);
-    }
-
-    /**
-     * The reverse of promoteHomeworkToday(): drag a homework-derived task
-     * card back onto the "Bald fällige Hausaufgaben" strip to undo the
-     * promotion. Deletes the task — the Agenda entry itself is never
-     * touched, so it simply becomes open and re-promotable again, exactly
-     * as if it had never been dragged in. A no-op for an ordinary task
-     * (guards against the destination accepting anything that isn't
-     * actually agenda-linked, in case the client-side gate is ever wrong).
-     */
-    public function removeHomeworkFromToday(int $id): void
-    {
-        $task = $this->userTask($id);
-
-        if ($task->agenda_entry_id === null) {
-            return;
-        }
-
-        $this->deleteTask($task->id);
-    }
-
-    /**
-     * Agenda notes are plain text (see AgendaEntry::notesPreview()); Task
-     * notes are Markdown source rendered on the card/edit sheet. Escaping
-     * just a leading list/heading marker stops a note like "- Seite 12"
-     * from silently turning into an actual bullet once it's living on a
-     * task, without mangling the far more common case of ordinary prose.
-     */
-    private function agendaNoteForTask(?string $notes): ?string
-    {
-        $notes = trim((string) $notes);
-
-        if ($notes === '') {
-            return null;
-        }
-
-        return preg_replace('/^([-*+#]|\d+[.)])(\s)/', '\\\\$1$2', $notes);
-    }
-
-    /** Ends emergency mode — the project and its task order are left exactly as arranged. */
-    public function endEmergencyMode(): void
-    {
-        auth()->user()->update(['emergency_project_id' => null]);
-    }
-
-    /**
-     * Active-task counts only — completed tasks don't inflate the badges.
-     * Includes the emergency project's tasks pinned into each column, since
-     * those are genuinely visible there too.
-     */
+    /** Active-task counts only — completed tasks don't inflate the badges. */
     #[Computed]
     public function counts(): array
     {
-        // Grouped tasks count towards the column they surface in, whether they
-        // show as an ordinary card or inside their group's box.
-        $grouped = fn (string $list) => $this->taskGroups
-            ->sum(fn (TaskGroup $g) => $g->activeTasks
-                ->where('list', $list)
-                ->where('is_important', false)
-                ->where('is_today', false)
-                ->count());
-
         return [
-            'inbox' => $this->inbox->where('is_completed', false)->count() + $this->emergencyTasksFor('inbox')->count(),
-            'todos' => $this->todosAll->where('is_completed', false)->count() + $this->emergencyTasksFor('todos')->count() + $grouped('todos'),
-            'tasks' => $this->tasksAll->where('is_completed', false)->count() + $this->emergencyTasksFor('tasks')->count() + $grouped('tasks'),
+            'inbox' => $this->inbox->where('is_completed', false)->count(),
+            'todos' => $this->todosAll->where('is_completed', false)->count(),
+            'tasks' => $this->tasksAll->where('is_completed', false)->count(),
             'today' => $this->today->count(),
-            'projects' => $this->projects->count() + $this->projectTasks->where('is_completed', false)->count(),
         ];
     }
 
@@ -857,174 +460,19 @@ class TaskBoard extends Component
 
     public function setMobileTab(string $tab): void
     {
-        if (! in_array($tab, ['inbox', 'todos', 'tasks', 'today', 'projects'], true)) {
+        if (! in_array($tab, ['inbox', 'todos', 'tasks', 'today'], true)) {
             return;
         }
 
         $this->mobileTab = $tab;
     }
 
-    /**
-     * Desktop drag & drop: a board task card dropped onto a project card.
-     * Moves the task into that project (and off the board / out of Today).
-     */
-    public function assignTaskToProject(int $taskId, int $projectId): void
-    {
-        $task = $this->userTask($taskId);
-        $project = auth()->user()->projects()->findOrFail($projectId);
-        $oldGroup = $task->group; // a task belongs to a project or a group, never both
-
-        $task->update([
-            'project_id' => $project->id,
-            'group_id' => null,
-            'list' => 'projects',
-            'is_today' => false,
-            'today_date' => null,
-        ]);
-
-        $oldGroup?->pruneIfTooSmall();
-    }
-
-    /**
-     * Desktop drag & drop: one task card held over another for ~350 ms and
-     * dropped there (see boardSortable's grouping arm in app.js). Bundles both
-     * into a fresh group and opens its inline name field — the group exists
-     * immediately, naming it is the next, optional step, so the gesture never
-     * blocks on a dialog.
-     *
-     * The dragged task adopts the target's list: that's the column the user
-     * dropped it in, and anything else would silently move the card back.
-     */
-    public function groupTasks(int $taskId, int $targetTaskId): void
-    {
-        if ($taskId === $targetTaskId) {
-            return;
-        }
-
-        $task = $this->userTask($taskId);
-        $target = $this->userTask($targetTaskId);
-
-        // A task belongs to a project or to a group, never both.
-        if ($task->isInProject() || $target->isInProject()) {
-            return;
-        }
-
-        // Captured before the merge — the dragged task may already have
-        // belonged to a different group, which this join then leaves behind.
-        $oldGroup = $task->group;
-
-        // Dropped onto a card that is already grouped? Then this is simply
-        // "add to that group" — no reason to make the user undo one first.
-        $group = $target->group ?? auth()->user()->taskGroups()->create([
-            'name' => TaskGroup::DEFAULT_NAME,
-            'sort_order' => 0,
-        ]);
-
-        $target->update(['group_id' => $group->id]);
-        $task->update(['group_id' => $group->id, 'list' => $target->list]);
-
-        if ($oldGroup !== null && $oldGroup->id !== $group->id) {
-            $oldGroup->pruneIfTooSmall();
-        }
-
-        // Only a brand-new group opens its name field; adding to an existing
-        // one shouldn't ask for a name it already has.
-        if ($group->wasRecentlyCreated) {
-            $this->namingGroupId = $group->id;
-            $this->groupNameDraft = '';
-        }
-    }
-
-    /** Drop onto an existing group box — the task keeps its list, so an inbox task lands in the group's inbox. */
-    public function assignTaskToGroup(int $taskId, int $groupId): void
-    {
-        $task = $this->userTask($taskId);
-        $group = auth()->user()->taskGroups()->findOrFail($groupId);
-
-        if ($task->isInProject()) {
-            return;
-        }
-
-        $oldGroup = $task->group;
-
-        $task->update(['group_id' => $group->id]);
-
-        if ($oldGroup !== null && $oldGroup->id !== $group->id) {
-            $oldGroup->pruneIfTooSmall();
-        }
-    }
-
-    /**
-     * Desktop drag & drop: a card dragged out of its group's box and dropped
-     * onto a plain board column (see groupDropZone's onEnd in app.js, which
-     * also calls reorder() for the new position). Releases the task and, if
-     * that leaves the group with one task or none, dissolves it — a bundle of
-     * one is not a group.
-     */
-    public function ungroupTask(int $taskId): void
-    {
-        $task = $this->userTask($taskId);
-        $group = $task->group;
-
-        if ($group === null) {
-            return;
-        }
-
-        $task->update(['group_id' => null]);
-        $group->pruneIfTooSmall();
-    }
-
-    /** Save the inline name of a freshly created group. Empty simply keeps the default. */
-    public function saveGroupName(): void
-    {
-        if ($this->namingGroupId === null) {
-            return;
-        }
-
-        $this->groupNameDraft = trim($this->groupNameDraft);
-
-        $this->validate(
-            ['groupNameDraft' => ['nullable', 'string', 'max:255']],
-            ['groupNameDraft.max' => 'Höchstens 255 Zeichen.'],
-        );
-
-        if ($this->groupNameDraft !== '') {
-            auth()->user()->taskGroups()->find($this->namingGroupId)
-                ?->update(['name' => $this->groupNameDraft]);
-        }
-
-        $this->stopNamingGroup();
-    }
-
-    public function stopNamingGroup(): void
-    {
-        $this->reset(['namingGroupId', 'groupNameDraft']);
-    }
-
-    /**
-     * Long-press "Neues Projekt" entry: creates a project named after the task,
-     * then deletes the task — it's replaced by the project, not duplicated.
-     */
-    public function createProjectFromTask(int $taskId): void
-    {
-        $task = $this->userTask($taskId);
-        $group = $task->group;
-
-        auth()->user()->projects()->create([
-            'name' => $task->title,
-            'sort_order' => 0,
-        ]);
-
-        $task->delete();
-        $group?->pruneIfTooSmall();
-    }
-
-    /** Set/clear the Today focus. Inbox & project tasks can never be Today. */
+    /** Set/clear the Today focus. Inbox tasks can never be Today. */
     public function setToday(int $id, bool $value): void
     {
         $task = $this->userTask($id);
 
-        if ($task->isInbox() || $task->isInProject()) {
+        if ($task->isInbox()) {
             return;
         }
 
@@ -1044,13 +492,12 @@ class TaskBoard extends Component
      */
     public function reorder(string $list, bool $today, array $ids): void
     {
-        // Board columns + standalone project list are valid drag targets.
-        if (! in_array($list, [...Task::BOARD_LISTS, 'projects'], true)) {
+        if (! in_array($list, Task::BOARD_LISTS, true)) {
             return;
         }
 
-        // Inbox and project list have no Today area.
-        $today = in_array($list, ['inbox', 'projects'], true) ? false : $today;
+        // Inbox has no Today area.
+        $today = $list === 'inbox' ? false : $today;
         $targetDate = $today ? auth()->user()->localToday() : null;
 
         foreach (array_values($ids) as $position => $id) {
@@ -1066,11 +513,6 @@ class TaskBoard extends Component
                 'today_date' => $task->todayDateFor($today, $targetDate),
                 'sort_order' => $position,
             ];
-
-            // Moving into the standalone project list clears the project assignment.
-            if ($list === 'projects') {
-                $updates['project_id'] = null;
-            }
 
             $task->update($updates);
         }
@@ -1222,7 +664,7 @@ class TaskBoard extends Component
      * reorderKanban() (desktop drag, below) build on.
      *
      * Reuses ManagesTasks::toggleComplete() verbatim for the is_completed
-     * axis — celebration/streak/Agenda-sync side effects included, exactly
+     * axis — celebration/streak side effects included, exactly
      * as the checkbox already on every card triggers — but only when the
      * task's current completion state doesn't already match the destination,
      * so reordering within an already-correct column (see reorderKanban())

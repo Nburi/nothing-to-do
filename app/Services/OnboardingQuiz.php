@@ -30,16 +30,10 @@ class OnboardingQuiz
             'modules' => [],
         ],
         [
-            'key' => 'shared_homework',
-            'label' => 'Ich brauche eine geteilte Liste für Hausaufgaben mit meiner Klasse',
-            'concept' => 'simple',
-            'modules' => ['agenda'],
-        ],
-        [
             'key' => 'important_urgent',
             'label' => 'Ich verliere den Überblick, was wichtig UND dringend ist',
             'concept' => 'eisenhower',
-            'modules' => ['emergency'],
+            'modules' => [],
         ],
         [
             'key' => 'mixed_sizes',
@@ -57,7 +51,7 @@ class OnboardingQuiz
             'key' => 'plan_the_day',
             'label' => 'Ich will meinen ganzen Tag durchplanen — Termine, Fokuszeit, alles',
             'concept' => 'kanban',
-            'modules' => ['schedule', 'weekplan', 'prepare'],
+            'modules' => ['schedule', 'weekplan'],
         ],
         [
             'key' => 'bored',

@@ -125,12 +125,7 @@ window.currentPushSubscription = async function () {
  */
 window.boardSortable = function (el, wire, handle = null) {
     if (el._sortable) return el._sortable;
-    // A Today zone additionally accepts a drop from the homework preview
-    // strip (see homeworkDragSource below); every other board column stays
-    // 'board'-only, so this never opens Inbox/plain Todos/Tasks to it.
-    const group = el.dataset.today === 'true'
-        ? { name: 'board', put: ['board', 'homework-preview'] }
-        : 'board';
+    const group = 'board';
     el._sortable = Sortable.create(el, {
         group,
         animation: 160,
@@ -140,34 +135,14 @@ window.boardSortable = function (el, wire, handle = null) {
         handle: handle ?? undefined,
         delay: 60,
         delayOnTouchOnly: true,
-        ...sortableGroupBands(),
-        // Mark the page as dragging so project cards can show a drop affordance,
-        // and start watching the pointer for the group band (see groupZone.track).
-        onStart: (evt) => {
+        // Mark the page as dragging so drop affordances can show up.
+        onStart: () => {
             document.body.classList.add('dragging-task');
-            groupZone.startTracking(evt.item);
         },
-        // Hovering the middle band of another card arms "drop here to group
-        // these two" and — critically — blocks Sortable's own reorder shift
-        // for as long as the pointer stays there (see groupZone below).
-        onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
         onEnd: (evt) => {
             document.body.classList.remove('dragging-task');
-            const armedId = groupZone.disarm();
-            groupZone.stopTracking();
-            const draggedId = evt.item.dataset.id;
-
-            // An armed grouping wins over the ordinary reorder: the server moves
-            // the task itself, so persisting the destination's order here too
-            // would fight it with a stale picture of the column.
-            if (armedId && draggedId && armedId !== draggedId) {
-                wire.groupTasks(parseInt(draggedId, 10), parseInt(armedId, 10));
-                return;
-            }
-
             const to = evt.to;
-            // A drop onto a project card or group box lands in a zone with no
-            // data-list; those zones' own onAdd handles it. Only persist real columns.
+            // Only persist real columns (a zone without data-list is not one).
             if (to.dataset.list === undefined) return;
             const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
             wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
@@ -185,19 +160,13 @@ window.boardSortable = function (el, wire, handle = null) {
  * Simple's own reorder must never touch `list` (see reorderSimple()'s
  * docblock), only `is_today`.
  *
- * Mirrors boardSortable's own group computation: only the Heute zone
- * (`data-today="true"`) accepts a drop from the homework-preview strip (see
- * homeworkDragSource below) — exactly like a 3-Things column's Today area —
- * so a homework card promoted here always lands in Simple's Heute zone, never
- * its rest zone. Both zones share the plain 'board' group name so a task can
- * be dragged between them (in or out of Today), the same as a 3-Things
- * column's own two zones do.
+ * Both zones share the plain 'board' group name so a task can be dragged
+ * between them (in or out of Today), the same as a 3-Things column's own two
+ * zones do.
  */
 window.simpleListSortable = function (el, wire, handle = null) {
     if (el._sortable) return el._sortable;
-    const group = el.dataset.today === 'true'
-        ? { name: 'board', put: ['board', 'homework-preview'] }
-        : 'board';
+    const group = 'board';
     el._sortable = Sortable.create(el, {
         group,
         animation: 160,
@@ -228,11 +197,8 @@ window.simpleListSortable = function (el, wire, handle = null) {
  * `data-urgent`, both on the DESTINATION container, same shape as
  * boardSortable's own data-list/data-today read.
  *
- * Deliberately its own small instance rather than boardSortable: this
- * concept has no task-grouping gesture on its grid (grouping stays reachable
- * via the group's own page / the edit sheet / QuickCapture, exactly as for
- * every concept), so it skips sortableGroupBands()/groupZone entirely, and
- * its onEnd writes two flags instead of a list/today pair.
+ * Deliberately its own small instance rather than boardSortable: its onEnd
+ * writes two flags instead of a list/today pair.
  *
  * The urgency axis (column) is one-way-lockable: a task with a hard
  * `deadline` has its urgency permanently decided by that deadline
@@ -320,361 +286,7 @@ window.kanbanColumnSortable = function (el, wire, handle = null) {
 };
 
 /**
- * Desktop drag source AND drop target for the dashboard's "Bald fällige
- * Hausaufgaben" strip — two opposite gestures sharing one small Sortable
- * instance:
- *
- * OUT: drag a homework card into a Today zone to pull it into today's focus
- * (see TaskBoard::promoteHomeworkToday()). Deliberately its own instance
- * rather than folding into boardSortable: this list holds AgendaEntry ids,
- * not Task ids, and must never be reorderable or feed wire.reorder() the
- * way a real board zone does.
- *
- * IN: drag a homework-DERIVED task card back onto the strip to undo that —
- * see TaskBoard::removeHomeworkFromToday(). `put` only accepts a dragged
- * element carrying `data-homework="true"` (set on the task card only when
- * task.agenda_entry_id is non-null, see task-card.blade.php) — an ordinary
- * task dropped here bounces back like anywhere else it isn't welcome.
- *
- * onEnd fires on the ORIGIN instance (this one) with evt.to telling us where
- * the card landed — the exact same pattern boardSortable's own onEnd already
- * relies on for "dropped onto a project card" (see its `to.dataset.list ===
- * undefined` guard above). Only a Today zone's `put` allowlist (above)
- * accepts this group at all, so evt.to is either back here (rejected drop,
- * evt.to === el) or a genuine Today zone.
- */
-window.homeworkDragSource = function (el, wire) {
-    if (el._sortable) return el._sortable;
-    el._sortable = Sortable.create(el, {
-        group: {
-            name: 'homework-preview',
-            put: (to, from, dragEl) => dragEl.dataset.homework === 'true',
-        },
-        sort: false,
-        // An already-promoted card has no data-id (see the Blade partial) —
-        // without this, Sortable would still let you pick it up, and the
-        // onEnd below would remove it from the DOM with no wire call to
-        // bring it back until an unrelated re-render happened to.
-        draggable: '[data-id]',
-        animation: 160,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        ghostClass: 'board-ghost',
-        chosenClass: 'board-chosen',
-        delay: 60,
-        delayOnTouchOnly: true,
-        onAdd: (evt) => {
-            // A homework-linked task card landed here from a board zone —
-            // undo the promotion. The server re-render is the real state
-            // (the strip's own card goes back to normal), so don't leave
-            // the raw task card sitting inside this AgendaEntry-shaped list.
-            const taskId = evt.item.dataset.id;
-            evt.item.remove();
-            if (taskId) wire.removeHomeworkFromToday(parseInt(taskId, 10));
-        },
-        onEnd: (evt) => {
-            const to = evt.to;
-            if (to === el || to.dataset.today !== 'true') return;
-            const entryId = evt.item.dataset.id;
-            // The server re-render is the real state (either back in the
-            // strip, un-promoted, or showing its "already in Today" badge) —
-            // don't leave the raw card sitting inside a Task-shaped zone
-            // until that response arrives.
-            evt.item.remove();
-            if (entryId) wire.promoteHomeworkToday(parseInt(entryId, 10), to.dataset.list);
-        },
-    });
-    return el._sortable;
-};
-
-/**
- * A small label that follows the cursor while a card is armed for grouping
- * (see groupZone below). Deliberately NOT just a ring around the target
- * card: while dragging, the card being carried — or the browser's own
- * native drag-image snapshot — sits right on top of whatever is under the
- * cursor, which is exactly where a ring on the target would be. A label
- * pinned to the cursor itself is the one thing guaranteed to render above
- * that, in every browser.
- */
-const groupArmLabel = (() => {
-    let el = null;
-    const ensure = () => {
-        if (el) return el;
-        el = document.createElement('div');
-        el.className = 'group-arm-label';
-        el.setAttribute('aria-hidden', 'true');
-        document.body.appendChild(el);
-        return el;
-    };
-    return {
-        show(text, x, y) {
-            const node = ensure();
-            node.textContent = text;
-            node.style.left = `${x}px`;
-            node.style.top = `${y}px`;
-            node.style.display = 'block';
-        },
-        move(x, y) {
-            if (el) { el.style.left = `${x}px`; el.style.top = `${y}px`; }
-        },
-        hide() {
-            if (el) el.style.display = 'none';
-        },
-    };
-})();
-
-/**
- * "Hover the middle of another card to group with it" — the desktop gesture
- * for creating a task group (see TaskBoard::groupTasks).
- *
- * Each card is split into three vertical bands: the top and bottom quarters
- * are ordinary reorder territory (SortableJS shifts siblings immediately,
- * same as always), the middle half is the group band. Returning `false`
- * from Sortable's onMove while the pointer sits in that middle band tells
- * Sortable not to touch the DOM at all — the hovered card stays exactly
- * where it is, no gap opens, nothing "slips away" — so the only way to see
- * a sibling move is to be in a reorder band, and the only way to arm a
- * group is to NOT be moving anything. The two states can never be
- * ambiguous. Arming is instant (no dwell timer): the band boundary itself
- * is the commitment, the same way crossing a card's own vertical midline
- * already decides above/below during a plain reorder.
- *
- * The armed card gets .group-arm (an indent + forest bracket, see app.css) —
- * a secondary cue that helps once the drag image is small enough to peek
- * past, but the cursor label above is the reliable indicator, since the
- * carried card (or the browser's own drag-image snapshot) usually sits
- * right on top of the card underneath it.
- */
-/**
- * Sortable's `invertedSwapThreshold`, mirrored here so groupZone's own band
- * math can't drift from the one Sortable actually reorders by. 0.5 means the
- * outer quarter at each end is a reorder band and the middle half is the
- * group band — see GROUP_BAND_FRACTION below and the sortableGroupBands()
- * options both zones spread into their config.
- */
-const INVERTED_SWAP_THRESHOLD = 0.5;
-
-/** Fraction of a card's height taken by ONE reorder band, at each end. */
-const GROUP_BAND_FRACTION = INVERTED_SWAP_THRESHOLD / 2;
-
-/**
- * The Sortable options that make the three bands real.
- *
- * `invertSwap: true` is the load-bearing one, and the whole reason the
- * earlier version of this gesture did not work. With Sortable's default
- * (`invertSwap: false`, `swapThreshold: 1`) the swap zone is the *entire*
- * card — see _getSwapDirection in sortablejs: the regular branch tests
- * `mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2`, which
- * with swapThreshold 1 is simply "anywhere inside the target". So the
- * hovered card is reordered out from under the cursor the instant the
- * pointer touches its leading edge, long before the pointer can reach the
- * middle. No onMove guard can rescue that, because by the time the pointer
- * is in the middle band the card that was there has already moved.
- *
- * `invertSwap: true` switches to the inverted branch, which swaps only in
- * the outer `invertedSwapThreshold / 2` of each end and returns 0 —
- * literally "no swap" — everywhere in between. Sortable itself then holds
- * the card still in the middle band, so it stays put under the cursor and
- * can be grouped onto. The direction it returns in the outer bands is
- * `mouseOnAxis > mid ? 1 : -1`: the top band inserts the dragged card
- * *before* the target (order it above), the bottom band after it.
- */
-const sortableGroupBands = () => ({
-    invertSwap: true,
-    invertedSwapThreshold: INVERTED_SWAP_THRESHOLD,
-});
-
-const groupZone = {
-    el: null,
-    draggedEl: null,
-    lastX: 0,
-    lastY: 0,
-
-    /** True when `y` sits in the middle (group) band of `rect`. */
-    isGroupBand(rect, y) {
-        const band = rect.height * GROUP_BAND_FRACTION;
-        return y > rect.top + band && y < rect.bottom - band;
-    },
-
-    /**
-     * Arming is driven from here — a pointer listener of our own — and
-     * deliberately NOT from Sortable's `onMove`.
-     *
-     * `onMove` looks like the natural hook, and it is a trap: Sortable's
-     * `_onDragOver` bails at `if (direction === 0 || sibling === target)
-     * return completed(false);` *before* it ever calls `_onMove`. Since
-     * `invertSwap` makes the middle band return direction 0 by design, the
-     * one region where grouping must arm is exactly the region where
-     * `onMove` is guaranteed never to fire. Arming there is unreachable.
-     *
-     * So we track the pointer ourselves for the duration of the drag
-     * (`dragover` covers desktop's native HTML5 drag, `pointermove`/
-     * `touchmove` the touch + forceFallback paths) and resolve the hovered
-     * card with elementFromPoint. Independent of Sortable's internals, and
-     * it works the same in every drag mode.
-     */
-    track(x, y) {
-        this.lastX = x;
-        this.lastY = y;
-        groupArmLabel.move(x, y);
-
-        const under = document.elementFromPoint(x, y);
-        const card = under ? under.closest('[data-id]') : null;
-
-        // The dragged card itself stays in the DOM as the placeholder; it is
-        // never its own drop target.
-        if (!card || card === this.draggedEl || !card.dataset.id) {
-            this.reset();
-            return;
-        }
-
-        if (!this.isGroupBand(card.getBoundingClientRect(), y)) {
-            this.reset();
-            return;
-        }
-
-        if (card !== this.el) {
-            this.reset();
-            this.el = card;
-            card.classList.add('group-arm');
-            const title = card.dataset.title;
-            groupArmLabel.show(title ? `Gruppieren mit „${title}“` : 'Gruppieren', x, y);
-        }
-    },
-
-    /** Bound once so add/removeEventListener see the same reference. */
-    _onPointer: null,
-
-    startTracking(draggedEl) {
-        this.draggedEl = draggedEl ?? null;
-        if (!this._onPointer) {
-            this._onPointer = (event) => {
-                const point = event.touches?.[0] ?? event;
-                if (point && typeof point.clientX === 'number' && (point.clientX || point.clientY)) {
-                    this.track(point.clientX, point.clientY);
-                }
-            };
-        }
-        document.addEventListener('dragover', this._onPointer, true);
-        document.addEventListener('pointermove', this._onPointer, true);
-        document.addEventListener('touchmove', this._onPointer, true);
-    },
-
-    stopTracking() {
-        if (this._onPointer) {
-            document.removeEventListener('dragover', this._onPointer, true);
-            document.removeEventListener('pointermove', this._onPointer, true);
-            document.removeEventListener('touchmove', this._onPointer, true);
-        }
-        this.draggedEl = null;
-    },
-
-    /**
-     * Sortable's `onMove`, kept purely as a safety net: `invertSwap` already
-     * returns 0 across the middle band, so this normally never even runs
-     * there. It only matters in the edge cases that reach `_onMove` anyway
-     * (a cross-list drop, `differentLevel`), where a reorder must still not
-     * happen while a group is armed. Pure predicate — no state changes.
-     */
-    consider(related, relatedRect, originalEvent) {
-        const point = originalEvent?.touches?.[0] ?? originalEvent;
-
-        if (!related?.dataset?.id || !relatedRect || !point || typeof point.clientY !== 'number') {
-            return true;
-        }
-
-        return !this.isGroupBand(relatedRect, point.clientY);
-    },
-
-    /** Clear any highlight, keeping nothing armed. */
-    reset() {
-        if (this.el) this.el.classList.remove('group-arm');
-        this.el = null;
-        groupArmLabel.hide();
-    },
-
-    /** Read out whatever was armed at drop time, then clean up. */
-    disarm() {
-        const id = this.el ? this.el.dataset.id : null;
-        this.reset();
-        return id;
-    },
-};
-
-/**
- * A group box, both as a drop target and as a source: dropping a card here
- * (from anywhere) assigns it to the group and keeps its list — an Inbox card
- * lands in that group's Inbox. Dragging a card OUT of the box (to a plain
- * board column) releases it again, the reverse gesture.
- *
- * `sort: false` — the box only ever previews up to two tasks (never the full
- * group), so reordering within that partial view isn't meaningful; the true
- * order is only set from inside the group's own dashboard.
- *
- * `handle` mirrors boardSortable's: mobile restricts the drag start to the
- * card's grip icon (its body is already claimed by swipeCard's gestures),
- * desktop leaves the whole card draggable.
- */
-window.groupDropZone = function (el, wire, handle = null) {
-    if (el._sortable) return el._sortable;
-    el._sortable = Sortable.create(el, {
-        group: 'board',
-        animation: 160,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        ghostClass: 'board-ghost',
-        chosenClass: 'board-chosen',
-        handle: handle ?? undefined,
-        sort: false,
-        draggable: '[data-id]',
-        delay: 60,
-        delayOnTouchOnly: true,
-        ...sortableGroupBands(),
-        onStart: (evt) => {
-            document.body.classList.add('dragging-task');
-            groupZone.startTracking(evt.item);
-        },
-        onMove: (evt, originalEvent) => groupZone.consider(evt.related, evt.relatedRect, originalEvent ?? evt.originalEvent),
-        onAdd: (evt) => {
-            const taskId = evt.item.dataset.id;
-            const groupId = el.dataset.groupId;
-            evt.item.remove(); // the server decides what the box shows next
-            if (taskId && groupId) {
-                wire.assignTaskToGroup(parseInt(taskId, 10), parseInt(groupId, 10));
-            }
-        },
-        onEnd: (evt) => {
-            document.body.classList.remove('dragging-task');
-            const armedId = groupZone.disarm();
-            groupZone.stopTracking();
-            const taskId = evt.item.dataset.id;
-
-            // Held over the group band of another card on the way out: merge
-            // into that card's group (or a fresh one) instead — same as
-            // boardSortable's own onEnd, and takes priority over a plain drop.
-            if (armedId && taskId && armedId !== taskId) {
-                wire.groupTasks(parseInt(taskId, 10), parseInt(armedId, 10));
-                return;
-            }
-
-            const to = evt.to;
-            if (to === el) return; // dropped back into the same box — nothing changed
-
-            // Any other receiving zone (a project card, another group's box,
-            // the "new project" zone) already fully handles the move via its
-            // own onAdd, including releasing this box's group membership —
-            // only a plain board column has no such handler of its own.
-            if (to.dataset.list === undefined) return;
-            if (!taskId) return;
-
-            const ids = Array.from(to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
-            wire.reorder(to.dataset.list, to.dataset.today === 'true', ids);
-            wire.ungroupTask(parseInt(taskId, 10));
-        },
-    });
-    return el._sortable;
-};
-
-/**
- * Planer day-board — drag a task/homework chip onto a day (see
+ * Planer day-board — drag a task chip onto a day (see
  * App\Services\DayPlanner, App\Livewire\Planner). One Sortable instance per
  * day-column plus the backlog rail, all sharing **one** group name — a chip
  * can move between any of them — except a touch-driven drag is confined to
@@ -823,9 +435,8 @@ window.plannerDaySortable = function (el, wire) {
 
 /**
  * Mobile tap → day-picker sheet. Touch drag across a 14-day horizontal
- * board fights the very scroll it needs — the same "move into a container
- * you can't see" problem this app already solves with a sheet for
- * groups/projects (see project-picker-sheet.blade.php's own docblock) — so
+ * board fights the very scroll it needs — a "move into a container
+ * you can't see" problem — so
  * touch gets this as the way to move a chip *between* days. Within one day,
  * plannerDaySortable's own touch-drag (via the dedicated handle) still
  * handles reordering, since that never needs to scroll.
@@ -880,35 +491,9 @@ window.plannerTap = function (el, wire) {
 };
 
 /**
- * Drag & drop for the emergency-mode arrange screen — a single, isolated
- * list (its own group name, never 'board') so it can never accept a drop
- * from, or be dragged into, the main board's columns. On drop we persist
- * the whole list's order in one shot, same as boardSortable.
- */
-window.emergencySortable = function (el, wire) {
-    if (el._sortable) return el._sortable;
-    el._sortable = Sortable.create(el, {
-        group: 'emergency-sequence',
-        animation: 160,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        ghostClass: 'board-ghost',
-        chosenClass: 'board-chosen',
-        handle: '[data-id] > span:first-child',
-        delay: 60,
-        delayOnTouchOnly: true,
-        onEnd: (evt) => {
-            const ids = Array.from(evt.to.querySelectorAll('[data-id]')).map((n) => n.dataset.id);
-            wire.reorderTasks(ids);
-        },
-    });
-    return el._sortable;
-};
-
-/**
  * Drag & drop for Settings' "Header-Badges" list — every catalog badge (not
  * just the enabled ones), reordering persists the whole list at once via
- * Settings::reorderHeaderBadges(). A dedicated, isolated group name, same
- * reasoning as emergencySortable above.
+ * Settings::reorderHeaderBadges(). A dedicated, isolated group name.
  */
 window.headerBadgesSortable = function (el, wire) {
     if (el._sortable) return el._sortable;
@@ -930,59 +515,12 @@ window.headerBadgesSortable = function (el, wire) {
 };
 
 /**
- * A project card as a drop target: receive-only member of the 'board' group.
- * Dropping a task here assigns it to the project (server is the source of truth),
- * so we pull the moved node straight back out and let Livewire re-render.
- */
-window.projectDropZone = function (el, wire) {
-    if (el._sortable) return el._sortable;
-    el._sortable = Sortable.create(el, {
-        group: { name: 'board', pull: false, put: true },
-        sort: false,
-        draggable: '[data-id]', // nothing inside is draggable; the card stays a link
-        onAdd: (evt) => {
-            const taskId = evt.item.dataset.id;
-            const projectId = el.dataset.projectId;
-            evt.item.remove(); // don't leave the card visually holding the task
-            if (taskId && projectId) {
-                wire.assignTaskToProject(parseInt(taskId, 10), parseInt(projectId, 10));
-            }
-        },
-    });
-    return el._sortable;
-};
-
-/**
- * The "drop here for a new project" zone at the top of the desktop Projekte
- * column — only visually shown while dragging (see body.dragging-task in the
- * Blade), but always mounted so Sortable can accept a drop the moment one
- * starts. Desktop's drag-and-drop equivalent of the mobile long-press ->
- * "Neues Projekt mit diesem Namen" entry: same createProjectFromTask() action.
- */
-window.newProjectDropZone = function (el, wire) {
-    if (el._sortable) return el._sortable;
-    el._sortable = Sortable.create(el, {
-        group: { name: 'board', pull: false, put: true },
-        sort: false,
-        draggable: '[data-id]',
-        onAdd: (evt) => {
-            const taskId = evt.item.dataset.id;
-            evt.item.remove();
-            if (taskId) {
-                wire.createProjectFromTask(parseInt(taskId, 10));
-            }
-        },
-    });
-    return el._sortable;
-};
-
-/**
  * Streak flame ignition, part 1 — tracking where a "mark done" click
  * actually happened, for the flying-spark flourish below. Every place a
- * task/agenda entry can be completed by a click is a <button> carrying a
+ * task can be completed by a click is a <button> carrying a
  * wire:click(.modifier)* attribute whose value starts with one of these
  * three action names (ManagesTasks::toggleComplete, or the Zeitplan
- * deadline strip's own toggleDeadlineTaskDone/toggleDeadlineAgendaDone —
+ * deadline strip's own toggleDeadlineTaskDone —
  * see CLAUDE.md's Schedule "All-day strip" section). Checked by scanning
  * the clicked button's own attributes rather than a CSS attribute
  * selector, since Livewire's dot-modifiers (.stop, .prevent, ...) change
@@ -996,13 +534,13 @@ window.newProjectDropZone = function (el, wire) {
  * of completing it), so only the coordinates are kept, never the element.
  *
  * Registered on the CAPTURE phase (the trailing `true`), not bubble —
- * board/project task cards use wire:click.stop on this exact button
+ * board task cards use wire:click.stop on this exact button
  * (task-card.blade.php), and .stop calls stopPropagation() during the
  * bubble phase. A bubble-phase listener on `document` would never see
  * those clicks at all; capture runs first, before .stop has a chance to
  * cut the event off.
  */
-const COMPLETION_ACTIONS = /^(toggleComplete|toggleDeadlineTaskDone|toggleDeadlineAgendaDone)\(/;
+const COMPLETION_ACTIONS = /^(toggleComplete|toggleDeadlineTaskDone)\(/;
 let lastCompletionOrigin = null;
 document.addEventListener('click', (e) => {
     const button = e.target.closest('button');
@@ -1115,7 +653,7 @@ document.addEventListener('livewire:init', () => {
      * streak badge actually catches fire the instant today's streak is
      * extended: 'celebrate' already fires exactly on that moment (a perfect
      * day, or a fresh streak record) from every place a task can be
-     * completed (board, project page, Zeitplan strip), same dispatch this
+     * completed (board, Zeitplan strip), same dispatch this
      * app's existing celebration overlay listens to.
      *
      * Two layered flourishes, in priority order:
@@ -1180,8 +718,6 @@ document.addEventListener('alpine:init', () => {
         get active() { return this.cat !== null || this.title !== null; },
         clear() { this.cat = null; this.title = null; this.color = null; },
     });
-    /** Which task id (if any) the mobile long-press project-picker sheet is open for. */
-    window.Alpine.store('projectPicker', { taskId: null });
     /** The Planer's mobile tap-to-assign day-picker sheet — see plannerTap in this file. */
     window.Alpine.store('plannerDayPicker', {
         open: false,
@@ -1200,7 +736,7 @@ document.addEventListener('alpine:init', () => {
      * ProgressStats::celebrationFor() (daily goal reached, new all-time daily
      * record, a perfect day — every today-task cleared — or a new all-time
      * streak record) via a 'celebrate' browser event dispatched from wherever
-     * a task was just completed (board, project page, or the Zeitplan
+     * a task was just completed (board or the Zeitplan
      * deadline strip — see the overlay mounted once in layouts/app.blade.php).
      * Auto-hides itself; there is nothing to confirm or dismiss, unlike a dialog.
      *
@@ -1255,7 +791,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.store('quickCapture', {
         open: false,
         returnFocusTo: null,
-        show(trigger = null, target = null, groupId = null, extra = {}) {
+        show(trigger = null, target = null, extra = {}) {
             if (this.open) return;
             this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
             this.open = true;
@@ -1264,17 +800,16 @@ document.addEventListener('alpine:init', () => {
             // about the page — opens on exactly the same chip the "+" would.
             const defaults = document.body.dataset;
             target = target ?? defaults.captureTarget ?? null;
-            groupId = groupId ?? (defaults.captureGroup ? parseInt(defaults.captureGroup, 10) : null);
             // Wipe whatever the last session left behind (title, dates, the
             // confirmation line, validation errors) — the round trip lands
             // while the panel is still animating in. `target` lets a page whose
             // subject matches one of the chips open straight on that chip;
             // null means the usual Inbox default. `extra` carries anything a
-            // specific trigger wants pre-filled beyond target/groupId — e.g. the
+            // specific trigger wants pre-filled beyond target — e.g. the
             // "Eisenhower" concept's quadrant "+" passing { important, dueDate }
             // (see partials/board-eisenhower.blade.php) — spread straight into
             // the same event so QuickCapture::resetPanel() picks it up by name.
-            window.Livewire?.dispatch('quick-capture-opened', { target, groupId, ...extra });
+            window.Livewire?.dispatch('quick-capture-opened', { target, ...extra });
             // Alpine.nextTick, not requestAnimationFrame: the panel's x-show has an
             // x-transition, so Alpine doesn't flip it off display:none synchronously —
             // nextTick is Alpine's own "wait until my DOM updates are flushed" API,
@@ -1293,8 +828,7 @@ document.addEventListener('alpine:init', () => {
     });
     /**
      * onboarding — step position for the new-user tutorial (App\Livewire\Onboarding).
-     * The slides themselves are static content, not server data, so unlike
-     * `prepare` this needs no seeded-order bookkeeping: init() only ever sets
+     * The slides themselves are static content, not server data, so it needs no seeded-order bookkeeping: init() only ever sets
      * `total` (the slide count, read out of the Blade view so the two can
      * never drift), which is harmless to re-apply on every Livewire re-render
      * the module-visibility step's toggles cause — it never touches `step`.
@@ -1342,9 +876,6 @@ document.addEventListener('alpine:init', () => {
         sx: 0,
         sy: 0,
         threshold: 72,
-        longPressTimer: null,
-        longPressFired: false,
-        longPressMs: 500,
 
         init() {
             const w = this.$el.offsetWidth || 320;
@@ -1372,18 +903,6 @@ document.addEventListener('alpine:init', () => {
             this.sy = e.clientY;
             this.dragging = true;
             this.locked = null;
-            this.longPressFired = false;
-            clearTimeout(this.longPressTimer);
-            // A hold with no directional lock opens the project-picker sheet —
-            // both swipe axes already have jobs, so long-press is the only free
-            // gesture left for a quick "assign to project" on mobile.
-            this.longPressTimer = setTimeout(() => {
-                if (!this.dragging || this.locked !== null) return;
-                this.longPressFired = true;
-                this.dragging = false;
-                this.dx = 0;
-                this.$store.projectPicker.taskId = this.id;
-            }, this.longPressMs);
         },
 
         move(e) {
@@ -1394,11 +913,9 @@ document.addEventListener('alpine:init', () => {
             if (this.locked === null) {
                 if (Math.abs(dx) > Math.abs(dy) + 6) {
                     this.locked = 'h';
-                    clearTimeout(this.longPressTimer);
                 } else if (Math.abs(dy) > Math.abs(dx) + 6) {
                     this.locked = 'v';
                     this.dragging = false;
-                    clearTimeout(this.longPressTimer);
                     return;
                 } else return;
             }
@@ -1418,11 +935,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         up() {
-            clearTimeout(this.longPressTimer);
-            if (this.longPressFired) {
-                this.longPressFired = false;
-                return;
-            }
             if (!this.dragging && this.locked !== 'h') {
                 this.spring();
                 return;
@@ -1454,393 +966,6 @@ document.addEventListener('alpine:init', () => {
             setTimeout(() => {
                 this.$wire[this.wireMethod](this.id, intent);
             }, 150);
-        },
-    }));
-
-    /**
-     * homeworkSwipeCard — mobile's equivalent of homeworkDragSource: swipe a
-     * homework preview card UP to pull it into today's focus.
-     *
-     * Deliberately vertical, and deliberately its own small component rather
-     * than reusing swipeCard above: the homework strip scrolls HORIZONTALLY
-     * (overflow-x-auto), so a horizontal swipe-to-act gesture on a card
-     * inside it would fight the strip's own native scroll on every touch.
-     * Vertical is the one axis nothing else in this strip is already using.
-     * Same lock-on-dominant-axis / resist-the-dead-side / spring-back shape
-     * as swipeCard, just read on dy instead of dx.
-     */
-    window.Alpine.data('homeworkSwipeCard', (cfg = {}) => ({
-        id: cfg.id,
-        dy: 0,
-        dragging: false,
-        flying: false,
-        locked: null,
-        sx: 0,
-        sy: 0,
-        threshold: 56,
-
-        get progress() {
-            return Math.min(Math.abs(this.dy) / this.threshold, 1);
-        },
-        get reached() {
-            return this.dy < 0 && Math.abs(this.dy) >= this.threshold;
-        },
-
-        down(e) {
-            if (e.pointerType === 'mouse' || this.flying) return;
-            this.sx = e.clientX;
-            this.sy = e.clientY;
-            this.dragging = true;
-            this.locked = null;
-        },
-
-        move(e) {
-            if (!this.dragging) return;
-            const dx = e.clientX - this.sx;
-            const dy = e.clientY - this.sy;
-
-            if (this.locked === null) {
-                if (Math.abs(dy) > Math.abs(dx) + 6) {
-                    this.locked = 'v';
-                } else if (Math.abs(dx) > Math.abs(dy) + 6) {
-                    // Horizontal — the strip's own native scroll wins, not us.
-                    this.locked = 'h';
-                    this.dragging = false;
-                    return;
-                } else return;
-            }
-
-            if (this.locked === 'v') {
-                if (e.cancelable) e.preventDefault();
-                if (dy > 0) {
-                    this.dy = dy * 0.18; // downward — dead side, resist, never commit
-                    return;
-                }
-                const abs = Math.abs(dy);
-                const max = this.threshold * 1.6;
-                this.dy = -(abs <= max ? abs : max + (abs - max) * 0.22);
-            }
-        },
-
-        up() {
-            if (!this.dragging && this.locked !== 'v') {
-                this.dy = 0;
-                return;
-            }
-            const commit = this.locked === 'v' && this.reached;
-            this.dragging = false;
-            this.locked = null;
-            if (commit) {
-                this.flying = true;
-                this.dy = -140;
-                setTimeout(() => {
-                    this.$wire.promoteHomeworkToday(this.id, 'today');
-                }, 150);
-            } else {
-                this.dy = 0;
-            }
-        },
-    }));
-
-    /**
-     * prepare store — the ordered id queues driving the "Vorbereitung für
-     * morgen" swipe-stack (see prepareSwipeCard below). Seeded once per page
-     * mount from the server's computed task lists; from then on ordering/
-     * phase/"später" requeueing is entirely client-side, so a phase emptying
-     * out never needs a Livewire round trip. Re-seeded fresh on every
-     * wire:navigate visit — that's what makes deferred order genuinely
-     * session-local. Step 3 (schedule) has no queue of its own — it's the
-     * open-ended Zeitplan timeline, so it only ever advances to 'done' via an
-     * explicit "Später planen"/"Fertig" tap (goDone()), never automatically.
-     */
-    window.Alpine.store('prepare', {
-        phase: 'inbox', // 'inbox' | 'review' | 'schedule' | 'done'
-        inboxOrder: [],
-        reviewOrder: [],
-        inboxTotal: 0,
-        reviewTotal: 0,
-        flaggedCount: 0, // tasks swiped right ("für morgen") during phase 2 — the Done screen's tally
-        seeded: false,
-
-        // Livewire re-morphs the component root on every action, which re-runs
-        // this element's x-init — without a guard that would silently wipe the
-        // client-tracked order (and any "später" requeues) after every single
-        // swipe. Alpine also auto-calls a store's init() once with no arguments
-        // as soon as the store is registered, before x-init ever runs — that
-        // call is distinguished by cfg.inbox being undefined and ignored too.
-        init(cfg = {}) {
-            if (this.seeded || cfg.inbox === undefined) return;
-            this.seeded = true;
-            this.inboxOrder = [...(cfg.inbox ?? [])];
-            this.reviewOrder = [...(cfg.review ?? [])];
-            this.inboxTotal = this.inboxOrder.length;
-            this.reviewTotal = this.reviewOrder.length;
-            this.flaggedCount = 0;
-            // Steps 1–2 skip forward when their queue is already empty; step 3
-            // is always visited (it's open-ended, never auto-skipped) — it's
-            // the floor this never falls past on init.
-            this.phase = this.inboxOrder.length
-                ? 'inbox'
-                : (this.reviewOrder.length ? 'review' : 'schedule');
-        },
-
-        order(phase) {
-            return phase === 'inbox' ? this.inboxOrder : this.reviewOrder;
-        },
-        stackIndexOf(phase, id) {
-            return this.order(phase).indexOf(id);
-        },
-
-        /** Commit or skip: gone from this session for good. */
-        remove(phase, id) {
-            const arr = this.order(phase);
-            const i = arr.indexOf(id);
-            if (i !== -1) arr.splice(i, 1);
-            this.advanceIfEmpty();
-        },
-
-        /** "später": move to the back of the same phase's queue. */
-        requeue(phase, id) {
-            const arr = this.order(phase);
-            const i = arr.indexOf(id);
-            if (i !== -1) {
-                arr.splice(i, 1);
-                arr.push(id);
-            }
-        },
-
-        /** Bridges phase 1 → phase 2: a task just sorted into Todos/Tasks becomes reviewable this same session. */
-        enqueueReview(id) {
-            if (!this.reviewOrder.includes(id)) {
-                this.reviewOrder.push(id);
-                this.reviewTotal++;
-            }
-        },
-
-        advanceIfEmpty() {
-            if (this.phase === 'inbox' && this.inboxOrder.length === 0) {
-                this.phase = this.reviewOrder.length ? 'review' : 'schedule';
-            } else if (this.phase === 'review' && this.reviewOrder.length === 0) {
-                this.phase = 'schedule';
-            }
-        },
-
-        /** Manual, explicit advance out of the open-ended schedule step — "Später planen" and "Fertig" both just move on. */
-        goDone() {
-            this.phase = 'done';
-        },
-
-        get stepIndex() {
-            return { inbox: 0, review: 1, schedule: 2, done: 3 }[this.phase] ?? 0;
-        },
-
-        get remainingLabel() {
-            if (this.phase === 'inbox') return `${this.inboxOrder.length} von ${this.inboxTotal}`;
-            if (this.phase === 'review') return `${this.reviewOrder.length} von ${this.reviewTotal}`;
-            return '';
-        },
-    });
-
-    /**
-     * prepareSwipeCard — 4-directional swipe for the "Vorbereitung für
-     * morgen" triage stack (steps 1–2). Same pointer handling / threshold /
-     * resistance / dead-side-damping math as swipeCard above, generalised
-     * from one axis (dx) to two (dx and dy): the first move past a small
-     * deadzone locks the gesture to the horizontal or vertical axis, exactly
-     * like swipeCard already does — the difference here is the vertical axis
-     * drives an action instead of ceding to page scroll (there is no
-     * scrolling list of cards to protect).
-     *
-     * Each configured direction resolves via a `kind`:
-     *   'commit'  — fly off screen, then call the configured $wire method (if
-     *               any) and remove the card from its queue for good.
-     *   'defer'   — "später": continue off the same edge, but only requeue
-     *               it at the back of the same queue — no $wire call at all.
-     *   'popover' — mirrors swipeCard's existing 'menu' intent: must reach
-     *               threshold, then springs back and opens the inline
-     *               deadline popover without advancing or removing the card.
-     *   null / unconfigured — dead side, resists and never commits, exactly
-     *               like swipeCard's unconfigured sides.
-     *
-     * Desktop fast-path: arrow keys (← → ↓ ↑) resolve the top card exactly
-     * like a completed drag — see key() below — so a mouse user never has to
-     * reach for the button row at all.
-     *
-     * cfg: { id, phase, deadline, dueDate, right, left, down, up }
-     * each direction is null or { kind, wire?, args? }
-     */
-    window.Alpine.data('prepareSwipeCard', (cfg = {}) => ({
-        id: cfg.id,
-        phase: cfg.phase,
-        dirs: {
-            right: cfg.right ?? null,
-            left: cfg.left ?? null,
-            down: cfg.down ?? null,
-            up: cfg.up ?? null,
-        },
-        dx: 0,
-        dy: 0,
-        dragging: false,
-        flying: false,
-        locked: null,
-        dateOpen: false,
-        deadline: cfg.deadline ?? '',
-        dueDate: cfg.dueDate ?? '',
-        sx: 0,
-        sy: 0,
-        thresholdH: 72,
-        thresholdV: 72,
-
-        init() {
-            this.thresholdH = Math.max(64, Math.round((this.$el.offsetWidth || 320) * 0.38));
-            this.thresholdV = Math.max(64, Math.round((this.$el.offsetHeight || 220) * 0.38));
-        },
-
-        get stackIndex() {
-            return this.$store.prepare.stackIndexOf(this.phase, this.id);
-        },
-        get isTop() {
-            return this.stackIndex === 0;
-        },
-        /** Outer stack position (peek offset/scale) — the live drag transform lives on the inner face card instead, so reveal panels (siblings of the face card) stay put while it slides. */
-        get stackStyle() {
-            const i = this.stackIndex;
-            if (i < 0 || i > 2) return 'display: none';
-            if (i === 0) return 'z-index: 3;';
-            const offset = i * 10;
-            const scale = 1 - i * 0.045;
-            return `transform: translateY(${offset}px) scale(${scale}); z-index: ${3 - i}; pointer-events: none;`;
-        },
-
-        get progress() {
-            if (this.dx !== 0) return Math.min(Math.abs(this.dx) / this.thresholdH, 1);
-            if (this.dy !== 0) return Math.min(Math.abs(this.dy) / this.thresholdV, 1);
-            return 0;
-        },
-        get dir() {
-            if (this.dx !== 0) return this.dx > 0 ? 'right' : 'left';
-            if (this.dy !== 0) return this.dy > 0 ? 'down' : 'up';
-            return null;
-        },
-        get reached() {
-            if (this.dx !== 0) return Math.abs(this.dx) >= this.thresholdH;
-            if (this.dy !== 0) return Math.abs(this.dy) >= this.thresholdV;
-            return false;
-        },
-
-        down(e) {
-            if (e.pointerType === 'mouse' || this.flying || this.dateOpen || !this.isTop) return;
-            this.sx = e.clientX;
-            this.sy = e.clientY;
-            this.dragging = true;
-            this.locked = null;
-        },
-
-        move(e) {
-            if (!this.dragging) return;
-            const dx = e.clientX - this.sx;
-            const dy = e.clientY - this.sy;
-
-            if (this.locked === null) {
-                if (Math.abs(dx) > Math.abs(dy) + 6) this.locked = 'h';
-                else if (Math.abs(dy) > Math.abs(dx) + 6) this.locked = 'v';
-                else return;
-            }
-
-            if (e.cancelable) e.preventDefault();
-
-            if (this.locked === 'h') {
-                const dir = dx > 0 ? 'right' : 'left';
-                if (!this.dirs[dir]) { this.dx = dx * 0.18; return; }
-                const sign = Math.sign(dx);
-                const abs = Math.abs(dx);
-                const max = this.thresholdH * 1.6;
-                this.dx = sign * (abs <= max ? abs : max + (abs - max) * 0.22);
-            } else {
-                const dir = dy > 0 ? 'down' : 'up';
-                if (!this.dirs[dir]) { this.dy = dy * 0.18; return; }
-                const sign = Math.sign(dy);
-                const abs = Math.abs(dy);
-                const max = this.thresholdV * 1.6;
-                this.dy = sign * (abs <= max ? abs : max + (abs - max) * 0.22);
-            }
-        },
-
-        up() {
-            if (!this.dragging) return;
-            this.dragging = false;
-            this.locked = null;
-            const dir = this.dir;
-            const cfgDir = dir ? this.dirs[dir] : null;
-            const commit = this.reached && cfgDir;
-            if (commit) this.resolve(dir, cfgDir);
-            else this.spring();
-        },
-
-        spring() {
-            this.dx = 0;
-            this.dy = 0;
-        },
-
-        /** Button fallback: synthesise a past-threshold gesture and resolve it exactly like a completed swipe. */
-        trigger(dirName) {
-            if (!this.isTop || this.flying || this.dateOpen) return;
-            const cfgDir = this.dirs[dirName];
-            if (!cfgDir) return;
-            if (dirName === 'right') this.dx = this.thresholdH;
-            else if (dirName === 'left') this.dx = -this.thresholdH;
-            else if (dirName === 'down') this.dy = this.thresholdV;
-            else if (dirName === 'up') this.dy = -this.thresholdV;
-            this.resolve(dirName, cfgDir);
-        },
-
-        /**
-         * Desktop keyboard fast-path: focus the card (tab or click) then use
-         * arrow keys — same resolution as a completed drag or a button tap.
-         * A key with no configured direction (e.g. ArrowUp on an inbox card)
-         * is simply ignored, exactly like a dead-side drag never commits.
-         */
-        key(e) {
-            const map = { ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up' };
-            const dirName = map[e.key];
-            if (!dirName) return;
-            e.preventDefault();
-            this.trigger(dirName);
-        },
-
-        resolve(dirName, cfgDir) {
-            if (cfgDir.kind === 'popover') {
-                this.spring();
-                this.dateOpen = true;
-                return;
-            }
-
-            if (cfgDir.kind === 'defer') {
-                this.flying = true;
-                this.dy = (this.$el.offsetHeight || 220) + 60;
-                setTimeout(() => {
-                    this.$store.prepare.requeue(this.phase, this.id);
-                    this.flying = false;
-                    this.dx = 0;
-                    this.dy = 0;
-                }, 180);
-                return;
-            }
-
-            // 'commit' — right/left only in this feature.
-            if (this.phase === 'review' && dirName === 'right') this.$store.prepare.flaggedCount++;
-            this.flying = true;
-            const w = this.$el.offsetWidth || 320;
-            this.dx = dirName === 'right' ? w + 24 : -(w + 24);
-            setTimeout(() => {
-                if (cfgDir.wire) this.$wire[cfgDir.wire](...(cfgDir.args ?? []));
-                if (this.phase === 'inbox') this.$store.prepare.enqueueReview(this.id);
-                this.$store.prepare.remove(this.phase, this.id);
-            }, 150);
-        },
-
-        quickSetDate() {
-            this.$wire.quickSetDates(this.id, this.deadline || null, this.dueDate || null);
         },
     }));
 
@@ -2115,7 +1240,7 @@ document.addEventListener('alpine:init', () => {
 });
 
 /**
- * Presence heartbeat — what makes "online" in a class agenda mean *using the
+ * Presence heartbeat — what makes "online" mean *using the
  * app*, not *left a tab open on Tuesday*.
  *
  * Polling rather than websockets on purpose: real presence channels would mean

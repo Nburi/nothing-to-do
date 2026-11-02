@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
  * bootstrap/app.php) and, per Planer user, gathers every day-plan whose
  * planned_date is today-or-earlier and hands the task ids to
  * DayPlanner::promoteIfToday(), which does the real is_today=false /
- * Inbox/Project filtering and write.
+ * Inbox filtering and write.
  *
  * `<=`, not `=` — the same "a missed tick catches up on the next run" shape
  * every other command in this app uses (see SendProgressReminders), except

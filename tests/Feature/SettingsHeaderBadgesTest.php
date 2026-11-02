@@ -20,7 +20,6 @@ class SettingsHeaderBadgesTest extends TestCase
         $rows = Livewire::actingAs($user)->test(Settings::class)->get('headerBadgeRows');
 
         $this->assertTrue($rows->firstWhere('key', 'streak')['enabled']);
-        $this->assertTrue($rows->firstWhere('key', 'agenda')['enabled']);
         $this->assertFalse($rows->firstWhere('key', 'today')['enabled']);
     }
 
@@ -46,20 +45,19 @@ class SettingsHeaderBadgesTest extends TestCase
         Livewire::actingAs($user)->test(Settings::class)->call('toggleHeaderBadge', 'today');
 
         $rows = collect($user->fresh()->header_badges)->keyBy('key');
-        // 'agenda' was on by default and must still be on.
-        $this->assertTrue($rows['agenda']['enabled']);
+        // 'streak' was on by default and must still be on.
+        $this->assertTrue($rows['streak']['enabled']);
     }
 
     public function test_reorder_header_badges_persists_the_new_order_and_keeps_enabled_flags(): void
     {
         $user = User::factory()->create();
-        $newOrder = ['emergency', 'goal', 'schedule', 'today', 'agenda', 'streak', 'crafts'];
+        $newOrder = ['goal', 'schedule', 'today', 'streak', 'crafts'];
 
         Livewire::actingAs($user)->test(Settings::class)->call('reorderHeaderBadges', $newOrder);
 
         $stored = collect($user->fresh()->header_badges);
         $this->assertSame($newOrder, $stored->pluck('key')->all());
-        $this->assertTrue($stored->firstWhere('key', 'agenda')['enabled']);
         $this->assertTrue($stored->firstWhere('key', 'streak')['enabled']);
         $this->assertFalse($stored->firstWhere('key', 'today')['enabled']);
     }

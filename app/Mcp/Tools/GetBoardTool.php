@@ -13,9 +13,8 @@ use Illuminate\Support\Collection;
  * A simplified, concept-aware projection of the board — read tasks the same
  * way the user currently sees them, whichever of the four list concepts
  * (App\Services\ListConcepts) is active. This is deliberately NOT a
- * pixel-perfect mirror of TaskBoard's own rendering (grouped-task box
- * pinning, Notfallmodus overlays, homework-preview merging are all out of
- * scope) — it reproduces the one thing that actually differs per concept:
+ * pixel-perfect mirror of TaskBoard's own rendering (overlays and
+ * pinning are out of scope) — it reproduces the one thing that actually differs per concept:
  * how active board tasks are bucketed. Use list_tasks for a flat, filtered
  * read regardless of concept.
  */
@@ -60,7 +59,7 @@ class GetBoardTool extends McpTool
 
     private function baseActive(User $user)
     {
-        return $user->tasks()->onBoard()->active();
+        return $user->tasks()->active();
     }
 
     private function resolve(Collection $tasks): array
@@ -104,7 +103,7 @@ class GetBoardTool extends McpTool
     private function kanban(User $user): array
     {
         $active = $this->baseActive($user)->boardOrdered()->get();
-        $done = $user->tasks()->onBoard()->where('is_completed', true)
+        $done = $user->tasks()->where('is_completed', true)
             ->orderByDesc('completed_at')->limit(50)->get();
 
         return [

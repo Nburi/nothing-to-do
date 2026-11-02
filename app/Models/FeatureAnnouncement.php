@@ -12,8 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * An admin-authored "here's what's new" entry (see CLAUDE.md, Feature-Ankündigungen).
  * Shown once per user, in App\Livewire\FeatureAnnouncementToast, until they dismiss
  * it — "seen" lives in the feature_announcement_dismissals pivot, one row per
- * (announcement, person), the same shape agenda_entry_completions already uses for
- * "done" on a shared Agenda entry.
+ * (announcement, person).
  */
 class FeatureAnnouncement extends Model
 {

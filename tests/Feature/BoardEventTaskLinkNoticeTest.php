@@ -97,9 +97,9 @@ class BoardEventTaskLinkNoticeTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $project = \App\Models\Project::factory()->for($user)->create();
-        Task::factory()->for($user)->for($project)->create(['list' => 'projects', 'title' => 'Kategorie-Vorschlag']);
-        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'project', 'linked_project_id' => $project->id]);
+        $categoryTask = Task::factory()->for($user)->tasks()->create(['title' => 'Kategorie-Vorschlag']);
+        $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'tasks']);
+        $category->pinnedTasks()->attach($categoryTask->id, ['sort_order' => 0]);
         $eventTask = Task::factory()->for($user)->todos()->create(['title' => 'Eintrags-Vorschlag']);
         $event = $this->runningSessionFor($user, $category);
         $event->linkedTasks()->attach($eventTask->id, ['sort_order' => 0]);

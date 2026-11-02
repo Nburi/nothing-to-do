@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\EventCategoryController;
 use App\Http\Controllers\Api\EventTemplateController;
 use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Api\MeController;
-use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ScheduleEventController;
 use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
@@ -38,11 +37,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
 
-    Route::get('/projects', [ProjectController::class, 'index']);
-    Route::post('/projects', [ProjectController::class, 'store']);
-    Route::get('/projects/{project}', [ProjectController::class, 'show']);
-    Route::patch('/projects/{project}', [ProjectController::class, 'update']);
-    Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
 
     Route::get('/schedule-events/focus', [ScheduleEventController::class, 'focus']);
     Route::get('/schedule-events', [ScheduleEventController::class, 'index']);

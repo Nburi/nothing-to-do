@@ -7,17 +7,16 @@ use App\Models\User;
 /**
  * The catalog of optional feature pages a user can hide from navigation, plus
  * which page opens by default when the app launches. First step of a wider
- * onboarding/accessibility push (see CLAUDE.md) — a classmate who only cares
- * about the shared class Agenda should be able to declutter everything else
- * and land straight on it. Deliberately built as a stateless catalog (mirrors
+ * onboarding/accessibility push (see CLAUDE.md) — someone who only cares
+ * about a few pages should be able to declutter everything else. Deliberately built as a stateless catalog (mirrors
  * HeaderBadges::CATALOG) rather than a hardcoded enum scattered across the
  * layout, so a later step (a tutorial that should only cover visible modules,
  * an admin-authored feature announcement) has one place to ask "is this
  * module visible" / "what modules exist" instead of re-deriving it.
  *
  * The Board (route 'app') and Settings are never in this catalog — they're
- * the app's core surface (Quick Capture's default target, the only place
- * Inbox/Projects/Groups live) and always the safe fallback, so hiding them
+ * the app's core surface (Quick Capture's default target, the place
+ * the Inbox lives) and always the safe fallback, so hiding them
  * would strand the user with no way back in.
  *
  * A feature that ships its own dedicated on/off toggle (e.g. one gated
@@ -36,11 +35,6 @@ class AppModules
      * @var array<string, array{label: string, description: string, route: string}>
      */
     public const CATALOG = [
-        'prepare' => [
-            'label' => 'Vorbereiten',
-            'description' => 'Der Abend-/Morgen-Ritual-Screen zum Planen des nächsten Tages.',
-            'route' => 'prepare',
-        ],
         'schedule' => [
             'label' => 'Zeitplan',
             'description' => 'Der Tages-/Wochen-Zeitplan mit Terminen, Kategorien und Pomodoro.',
@@ -51,20 +45,10 @@ class AppModules
             'description' => 'Die wiederkehrende Wochenvorlage und das Pausieren einzelner Tage.',
             'route' => 'weekplan',
         ],
-        'agenda' => [
-            'label' => 'Agenda',
-            'description' => 'Hausaufgaben und Prüfungen, privat oder mit einer Klasse geteilt.',
-            'route' => 'agenda',
-        ],
         'crafts' => [
             'label' => 'Bastelideen',
             'description' => 'Die Liste für „was mache ich, wenn mir langweilig ist".',
             'route' => 'crafts',
-        ],
-        'emergency' => [
-            'label' => 'Notfallmodus',
-            'description' => 'Ein Projekt kurzfristig priorisieren, wenn es fast fällig ist.',
-            'route' => 'emergency',
         ],
         'progress' => [
             'label' => 'Fortschritt',

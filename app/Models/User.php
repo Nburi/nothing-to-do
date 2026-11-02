@@ -21,12 +21,8 @@ use Laravel\Sanctum\HasApiTokens;
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
     'notify_event_start', 'notify_pomo_start', 'notify_break_start', 'notify_event_upcoming',
     'timezone_offset', 'timezone_auto_dst',
-    'prepare_time_of_day', 'prepare_reminder_mode', 'prepare_reminder_time',
-    'prepared_on', 'prepare_reminder_sent_on', 'prepare_prompt_dismissed_on',
-    'emergency_project_id',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
-    'homework_preview_enabled',
     'daily_task_goal',
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
     'notify_streak_risk', 'streak_risk_sent_on',
@@ -57,7 +53,6 @@ class User extends Authenticatable
         'is_admin' => false,
         'show_presence' => true,
         'deadline_preview_enabled' => true,
-        'homework_preview_enabled' => true,
         'daily_task_goal' => 5,
         'notify_daily_reminder' => false,
         'daily_reminder_time' => '19:00',
@@ -70,18 +65,6 @@ class User extends Authenticatable
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
-    }
-
-    /** @return HasMany<Project, $this> */
-    public function projects(): HasMany
-    {
-        return $this->hasMany(Project::class);
-    }
-
-    /** @return HasMany<TaskGroup, $this> */
-    public function taskGroups(): HasMany
-    {
-        return $this->hasMany(TaskGroup::class);
     }
 
     /** @return HasMany<ScheduleEvent, $this> */
@@ -114,12 +97,6 @@ class User extends Authenticatable
         return $this->hasMany(SchedulePause::class);
     }
 
-    /** @return HasMany<AgendaEntry, $this> */
-    public function agendaEntries(): HasMany
-    {
-        return $this->hasMany(AgendaEntry::class);
-    }
-
     /** @return HasMany<CraftIdea, $this> */
     public function craftIdeas(): HasMany
     {
@@ -148,41 +125,6 @@ class User extends Authenticatable
     public function supportRequests(): HasMany
     {
         return $this->hasMany(SupportRequest::class);
-    }
-
-    /** Shared class/group agendas this user belongs to (a class, a study group, …). */
-    public function agendaSpaces(): BelongsToMany
-    {
-        return $this->belongsToMany(AgendaSpace::class)->withTimestamps();
-    }
-
-    /** @return HasMany<AgendaSpace, $this> */
-    public function ownedAgendaSpaces(): HasMany
-    {
-        return $this->hasMany(AgendaSpace::class, 'owner_id');
-    }
-
-    /**
-     * Hands ownership of every class/group agenda this user owns to the next
-     * longest-standing member — the same rule ManagesAgendaSpaces::leaveSpace()
-     * already applies when someone leaves a space deliberately. Must run
-     * before the row itself is deleted (see ProfileController::destroy()):
-     * agenda_spaces.owner_id has cascadeOnDelete, so without this, deleting an
-     * owner's account would silently delete the whole shared space — and with
-     * it every other member's access — instead of just handing it off. A space
-     * with no other member left is deliberately untouched here: the same
-     * cascade then deletes it, matching leaveSpace()'s own "last member out"
-     * branch exactly.
-     */
-    public function reassignOwnedAgendaSpaces(): void
-    {
-        $this->ownedAgendaSpaces->each(function (AgendaSpace $space) {
-            $successor = $space->nextOwnerCandidate(excludingUserId: $this->id);
-
-            if ($successor !== null) {
-                $space->update(['owner_id' => $successor->id]);
-            }
-        });
     }
 
     // ── Welcome back ──────────────────────────────────────────────────
@@ -299,17 +241,6 @@ class User extends Authenticatable
         };
     }
 
-    /** The project currently in "emergency mode", or null if not active. */
-    public function emergencyProject(): BelongsTo
-    {
-        return $this->belongsTo(Project::class, 'emergency_project_id');
-    }
-
-    public function isInEmergencyMode(): bool
-    {
-        return $this->emergency_project_id !== null;
-    }
-
     /** The Pomodoro rhythm (minutes / count) driving each category's focus timer. */
     public function pomodoro(): array
     {
@@ -388,54 +319,6 @@ class User extends Authenticatable
     }
 
     /**
-     * The day the "Vorbereitung" ritual (`PrepareTomorrow`) plans for:
-     * "morning" mode plans the already-running today, "evening" (default)
-     * plans tomorrow.
-     */
-    public function prepareTargetDate(): Carbon
-    {
-        return $this->prepare_time_of_day === 'morning'
-            ? $this->localToday()
-            : $this->localToday()->addDay();
-    }
-
-    /** True once `PrepareTomorrow::finish()` has stamped today (the user's local day) as done. */
-    public function hasPreparedToday(): bool
-    {
-        return $this->prepared_on?->toDateString() === $this->localToday()->toDateString();
-    }
-
-    /**
-     * True during the half of the day an "automatic" reminder is relevant:
-     * before noon for "morning" mode, from noon on for "evening" mode. Drives
-     * the in-app banner on the board — it's deliberately a loose half-day
-     * window, not a specific time, since "automatic" means "whenever you
-     * happen to open the app", unlike "fixed" mode's exact time.
-     */
-    public function isWithinPrepareWindow(): bool
-    {
-        $hour = $this->localNow()->hour;
-
-        return $this->prepare_time_of_day === 'morning' ? $hour < 12 : $hour >= 12;
-    }
-
-    /**
-     * HH:MM the daily push reminder should fire, or null if reminders are
-     * off. "fixed" mode uses the user's own chosen time; "automatic" mode has
-     * no user-chosen time (it's driven by opening the app instead) so this is
-     * only its fallback — a single "last call" push if the app was never
-     * opened during the relevant half of the day.
-     */
-    public function prepareReminderDueTime(): ?string
-    {
-        return match ($this->prepare_reminder_mode) {
-            'fixed' => $this->prepare_reminder_time,
-            'automatic' => $this->prepare_time_of_day === 'morning' ? '10:00' : '21:00',
-            default => null,
-        };
-    }
-
-    /**
      * How many tasks completed in one local calendar day counts as "hit the daily
      * goal" — drives the progress ring and the "goal reached" celebration (see
      * ProgressStats::celebrationFor()).
@@ -447,7 +330,7 @@ class User extends Authenticatable
 
     /**
      * Fixed "last call" time for the streak-at-risk push — deliberately not
-     * user-configurable (mirrors prepareReminderDueTime()'s 'automatic' fallback):
+     * user-configurable:
      * one plain warning shortly before midnight, not another field to tune.
      */
     public const STREAK_RISK_DUE_TIME = '21:00';
@@ -485,8 +368,7 @@ class User extends Authenticatable
 
     /**
      * Re-stamped on every run, not just the first — finishing and skipping
-     * both count as "seen it" (mirrors PrepareTomorrow::finish()'s
-     * either-button-counts shape), and a later replay from Settings just
+     * both count as "seen it", and a later replay from Settings just
      * moves the timestamp forward so it doubles as "last viewed on".
      */
     public function markOnboardingSeen(): void
@@ -509,14 +391,10 @@ class User extends Authenticatable
             'notify_pomo_start' => 'boolean',
             'notify_break_start' => 'boolean',
             'notify_event_upcoming' => 'boolean',
-            'prepared_on' => 'date',
-            'prepare_reminder_sent_on' => 'date',
-            'prepare_prompt_dismissed_on' => 'date',
             'last_seen_at' => 'datetime',
             'show_presence' => 'boolean',
             'deadline_preview_enabled' => 'boolean',
             'deadline_preview_days' => 'integer',
-            'homework_preview_enabled' => 'boolean',
             'daily_task_goal' => 'integer',
             'notify_daily_reminder' => 'boolean',
             'daily_reminder_sent_on' => 'date',

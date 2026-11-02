@@ -6,17 +6,11 @@ use App\Livewire\Admin\AnnouncementEditor;
 use App\Livewire\Admin\ErrorLog;
 use App\Livewire\Admin\HelpEditor;
 use App\Livewire\Admin\SupportQueue;
-use App\Livewire\Agenda;
 use App\Livewire\CraftIdeas;
-use App\Livewire\EmergencyMode;
-use App\Livewire\GroupPage;
 use App\Livewire\Help;
-use App\Livewire\JoinAgendaSpace;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
-use App\Livewire\PrepareTomorrow;
 use App\Livewire\Progress;
-use App\Livewire\ProjectPage;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\SupportCenter;
@@ -60,18 +54,6 @@ Route::get('/app', TaskBoard::class)
     ->middleware('auth')
     ->name('app');
 
-Route::get('/app/projects/{project}', ProjectPage::class)
-    ->middleware('auth')
-    ->name('project.show');
-
-Route::get('/app/groups/{group}', GroupPage::class)
-    ->middleware('auth')
-    ->name('group.show');
-
-Route::get('/app/emergency', EmergencyMode::class)
-    ->middleware('auth')
-    ->name('emergency');
-
 Route::get('/app/schedule', Schedule::class)
     ->middleware('auth')
     ->name('schedule');
@@ -83,10 +65,6 @@ Route::get('/app/weekplan', WeekPlan::class)
 Route::get('/app/planner', Planner::class)
     ->middleware('auth')
     ->name('planner');
-
-Route::get('/app/prepare', PrepareTomorrow::class)
-    ->middleware('auth')
-    ->name('prepare');
 
 Route::get('/app/settings', Settings::class)
     ->middleware('auth')
@@ -126,18 +104,6 @@ Route::get('/app/help/support', SupportCenter::class)
 Route::get('/app/help/{article?}', Help::class)
     ->middleware('auth')
     ->name('help');
-
-Route::get('/app/agenda', Agenda::class)
-    ->middleware('auth')
-    ->name('agenda');
-
-// Invite link into a shared class agenda. Auth-gated: a guest is sent to login
-// and lands back here afterwards (see RegisteredUserController — registration
-// honours the intended URL too, since "classmate without an account clicks the
-// link" is the normal way people join).
-Route::get('/app/agenda/join/{code}', JoinAgendaSpace::class)
-    ->middleware('auth')
-    ->name('agenda.join');
 
 Route::get('/app/crafts', CraftIdeas::class)
     ->middleware('auth')

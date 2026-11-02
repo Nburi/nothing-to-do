@@ -26,17 +26,9 @@
          window.eisenhowerQuadrantSortable (app.js) and
          TaskBoard::reorderEisenhower().
 
-    Deliberately NOT built this session (see TODO.md): dragging a homework-
-    preview card straight onto a quadrant (desktop), and drag-to-group onto
-    another card within the grid — both remain reachable through their
-    normal paths (the strip's own mobile swipe-to-promote; the group's own
-    page / edit sheet / QuickCapture's group target), just not as a quadrant
-    gesture in this first pass.
-
-    Companion features (Vorbereitung, Notfallmodus, Zeitplan/focus timer,
-    Hausaufgaben-Vorschau) stay concept-agnostic per PLAN_LIST_CONCEPTS.md §2
-    requirement 6 — the same top-of-page furniture as board-three-things.php
-    renders here unchanged.
+    The Zeitplan/focus-timer strip stays concept-agnostic per
+    PLAN_LIST_CONCEPTS.md §2 requirement 6 — the same top-of-page furniture
+    as board-three-things.php renders here unchanged.
 
     Signature moment — "der Krisenring": the instant a task genuinely lands
     in "Wichtig & Dringend" (drag, star-tap, a date change, or a fresh
@@ -84,9 +76,6 @@
             <div class="mb-6">
                 @include('livewire.partials.schedule-strip')
             </div>
-            @include('livewire.partials.emergency-banner', ['spacing' => 'mb-6'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-6'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-6', 'interaction' => 'drag'])
 
             <div class="grid grid-cols-2 gap-4">
                 @foreach ($quadrantMeta as $key => $meta)
@@ -99,7 +88,7 @@
                             <button
                                 type="button"
                                 x-data
-                                @click="$store.quickCapture.show($event.currentTarget, 'tasks', null, { important: @js($meta['important']), dueDate: @js($meta['urgent'] ? $urgentDueDate : null) })"
+                                @click="$store.quickCapture.show($event.currentTarget, 'tasks', { important: @js($meta['important']), dueDate: @js($meta['urgent'] ? $urgentDueDate : null) })"
                                 class="grid h-6 w-6 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                                 aria-label="Aufgabe für {{ $meta['label'] }} erfassen"
                             >
@@ -172,9 +161,6 @@
             <div class="mb-4">
                 @include('livewire.partials.schedule-strip')
             </div>
-            @include('livewire.partials.emergency-banner', ['spacing' => 'mb-4'])
-            @include('livewire.partials.prepare-prompt', ['spacing' => 'mb-4'])
-            @include('livewire.partials.homework-preview-strip', ['spacing' => 'mb-4', 'interaction' => 'swipe'])
 
             <div class="mb-3 grid grid-cols-2 gap-1.5">
                 @foreach ($quadrantMeta as $key => $meta)
@@ -199,7 +185,7 @@
                         <button
                             type="button"
                             x-data
-                            @click="$store.quickCapture.show($event.currentTarget, 'tasks', null, { important: @js($meta['important']), dueDate: @js($meta['urgent'] ? $urgentDueDate : null) })"
+                            @click="$store.quickCapture.show($event.currentTarget, 'tasks', { important: @js($meta['important']), dueDate: @js($meta['urgent'] ? $urgentDueDate : null) })"
                             class="inline-flex items-center gap-1 rounded-card px-2 py-1 text-xs font-medium text-ink-faint transition hover:bg-paper hover:text-ink"
                             aria-label="Aufgabe für {{ $meta['label'] }} erfassen"
                         >
@@ -256,5 +242,3 @@
     {{-- ════════════════ EDIT SHEET ════════════════ --}}
     @include('livewire.partials.edit-sheet')
 
-    {{-- ════════════════ PROJECT PICKER (mobile long-press) ════════════════ --}}
-    @include('livewire.partials.project-picker-sheet')

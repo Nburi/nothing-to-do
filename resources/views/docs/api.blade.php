@@ -5,7 +5,6 @@
             'conventions' => 'Konventionen',
             'me' => 'Account',
             'tasks' => 'Tasks',
-            'projects' => 'Projects',
             'schedule' => 'Zeitplan',
             'categories' => 'Kategorien',
             'templates' => 'Vorlagen',
@@ -71,7 +70,7 @@
             <div class="space-y-4 text-sm">
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /me</p>
-                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus/Autostart, Benachrichtigungs-Einstellungen, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today/projects).</p>
+                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus/Autostart, Benachrichtigungs-Einstellungen, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today).</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /me</p>
@@ -96,17 +95,15 @@
         {{-- Tasks --}}
         <section id="tasks" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-1 text-base font-medium text-ink">Tasks</h2>
-            <p class="mb-4 text-sm text-ink-soft">Inbox, To-Dos, Tasks und die eigenständigen Projekt-Tasks — jede Karte auf dem Board.</p>
+            <p class="mb-4 text-sm text-ink-soft">Inbox, To-Dos und Tasks — jede Karte auf dem Board.</p>
 
             <div class="space-y-4 text-sm">
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /tasks</p>
                     <p class="mt-1 text-ink-soft">
-                        Query-Parameter: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (inbox/todos/tasks/projects),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>,
+                        Query-Parameter: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (inbox/todos/tasks),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">today=1</code> (nur Today-Fokus),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">completed=1</code> (auch erledigte einschliessen).
-                        Ohne <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code> werden Projekt-Tasks ausgeschlossen (wie das Board).
                     </p>
                 </div>
                 <div>
@@ -117,7 +114,6 @@
                     <p class="mt-1 text-ink-soft">
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code> (required),
                         optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Default <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">inbox</code>),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (freier Markdown-Text),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_important</code>.
@@ -133,10 +129,9 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_completed</code> (abhaken),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_important</code> (markieren),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_today</code> (Today-Fokus, nur für To-Dos/Tasks ausserhalb eines Projekts),
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_today</code> (Today-Fokus, nur für To-Dos/Tasks),
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> zum Entfernen),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Spalte wechseln),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">project_id</code> (einem Projekt zuweisen; <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> gibt den Task zurück in die Inbox).
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Spalte wechseln).
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X PATCH {{ $apiBase }}/tasks/42 \
   -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
@@ -152,40 +147,6 @@
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">today</code>,
                         <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">ids</code> (vollständige, geordnete ID-Liste der Zielzone).
                     </p>
-                </div>
-            </div>
-        </section>
-
-        {{-- Projects --}}
-        <section id="projects" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
-            <h2 class="mb-1 text-base font-medium text-ink">Projects</h2>
-            <p class="mb-4 text-sm text-ink-soft">Die Projekte-Spalte und ihre Projektseiten.</p>
-
-            <div class="space-y-4 text-sm">
-                <div>
-                    <p class="font-mono text-xs text-overprint">GET /projects</p>
-                    <p class="mt-1 text-ink-soft">Mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">done_count</code> und der geordneten <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">active_tasks</code>-Vorschau je Projekt.</p>
-                </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">GET /projects/{id}</p>
-                    <p class="mt-1 text-ink-soft">Mit vollständiger <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>-Liste (aktiv + kürzlich erledigt).</p>
-                </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">POST /projects</p>
-                    <p class="mt-1 text-ink-soft"><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code> (required), optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>.</p>
-                </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">PATCH /projects/{id}</p>
-                    <p class="mt-1 text-ink-soft">
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">external_url</code> (Jira/GitHub/Linear-Link),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">brainstorm</code> (Markdown-Notizen).
-                    </p>
-                </div>
-                <div>
-                    <p class="font-mono text-xs text-overprint">DELETE /projects/{id}</p>
-                    <p class="mt-1 text-ink-soft">Aktive Tasks wandern zurück in die Inbox, wie in der App.</p>
                 </div>
             </div>
         </section>

@@ -11,7 +11,7 @@ use Livewire\Component;
 
 /**
  * Submit feedback/support requests and see the status of your own past
- * ones — mirrors Agenda's single-page "form + list" shape. See CLAUDE.md,
+ * ones — a single-page "form + list" shape. See CLAUDE.md,
  * "Hilfe-Center & Support".
  */
 #[Layout('layouts.app')]

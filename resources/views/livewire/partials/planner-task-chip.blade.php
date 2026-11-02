@@ -17,22 +17,11 @@
     data-duration/data-deadline-offset feed the client-side tier wave
     (see plannerClassifyDay in app.js) the instant a chip is picked up, so
     no round trip is needed just to show which days are available.
-    data-subject rides along too, purely for the mobile day-picker sheet's
-    header (plannerChipInfo() in app.js) — that sheet reads `.chip-title`
-    straight off the DOM rather than going through Livewire again, and
-    since $title below is now just the entry's own title (the subject
-    moved into its own tag), the sheet needs a separate way to reconstruct
-    "Subject: Title" for its heading.
-
-    The small tag above the title is what tells items apart at a glance on
-    a board that otherwise mixes To-Dos, Tasks, Projekt-tasks and homework
-    in one flat list — a `type=agenda` chip only ever exists here (once
-    placed on a day it's promoted into a real Task, see
-    DayPlanner::resolveOrPromote()), so it's the one case worth its own
-    colour: `forest`, matching the same "Hausaufgabe" tone the Agenda page
-    already uses. A plain task's tag is neutral instead, since To-Do/Task/
-    Projekt aren't a meaningful/urgent/important distinction the way a
-    deadline or the star is — just which list it lives in.
+    The small tag above the title tells items apart at a glance on a board
+    that mixes To-Dos and Tasks in one flat list. A plain
+    task's tag is neutral, since To-Do/Task/Projekt aren't a
+    meaningful/urgent/important distinction the way a deadline or the star
+    is — just which list it lives in.
 --}}
 @php
     $deadlineOffset = $deadlineOffset ?? null;
@@ -40,7 +29,7 @@
     $fixedWidth = $fixedWidth ?? null;
     $subject = $subject ?? null;
     $list = $list ?? null;
-    $listLabel = ['todos' => 'To-Do', 'tasks' => 'Task', 'projects' => 'Projekt'][$list] ?? null;
+    $listLabel = ['todos' => 'To-Do', 'tasks' => 'Task'][$list] ?? null;
 @endphp
 <div
     data-chip

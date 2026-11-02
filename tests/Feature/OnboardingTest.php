@@ -49,11 +49,11 @@ class OnboardingTest extends TestCase
 
     public function test_finishing_stamps_onboarding_completed_and_redirects_to_the_default_page(): void
     {
-        $user = User::factory()->create(['default_page' => 'agenda']);
+        $user = User::factory()->create(['default_page' => 'weekplan']);
 
         Livewire::actingAs($user)->test(Onboarding::class)
             ->call('finish')
-            ->assertRedirect(route('agenda'));
+            ->assertRedirect(route('weekplan'));
 
         $fresh = $user->fresh();
         $this->assertFalse($fresh->needsOnboarding());
@@ -85,9 +85,9 @@ class OnboardingTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Livewire::actingAs($user)->test(Onboarding::class)->call('toggleModule', 'agenda');
+        Livewire::actingAs($user)->test(Onboarding::class)->call('toggleModule', 'weekplan');
 
-        $this->assertSame(['agenda'], $user->fresh()->hidden_modules);
+        $this->assertSame(['weekplan'], $user->fresh()->hidden_modules);
     }
 
     public function test_setting_the_default_page_from_inside_the_tutorial_persists(): void
@@ -137,7 +137,7 @@ class OnboardingTest extends TestCase
         $result = OnboardingQuiz::resolve(['plan_the_day', 'in_progress_done', 'mixed_sizes']);
 
         $this->assertSame('kanban', $result['concept']);
-        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'prepare', 'progress'], $result['modules']);
+        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'progress'], $result['modules']);
     }
 
     public function test_resolve_breaks_a_tie_in_favor_of_whichever_concept_appears_first_in_the_catalog(): void
@@ -151,10 +151,10 @@ class OnboardingTest extends TestCase
 
     public function test_resolve_unions_modules_across_every_checked_answer_without_duplicates(): void
     {
-        // "shared_homework" and "plan_the_day" both vote for a concept; only modules matter here.
-        $result = OnboardingQuiz::resolve(['shared_homework', 'mixed_sizes', 'stay_consistent']);
+        // "mixed_sizes" and "stay_consistent" both add the progress module; only modules matter here.
+        $result = OnboardingQuiz::resolve(['plan_the_day', 'mixed_sizes', 'stay_consistent']);
 
-        $this->assertEqualsCanonicalizing(['agenda', 'progress'], $result['modules']);
+        $this->assertEqualsCanonicalizing(['schedule', 'weekplan', 'progress'], $result['modules']);
     }
 
     // ── Applying the quiz (App\Livewire\Onboarding::applyQuizAnswers) ──
@@ -193,7 +193,7 @@ class OnboardingTest extends TestCase
 
     public function test_hidden_modules_get_no_feature_step_while_visible_ones_still_do(): void
     {
-        $user = User::factory()->create(['hidden_modules' => ['agenda', 'crafts']]);
+        $user = User::factory()->create(['hidden_modules' => ['weekplan', 'crafts']]);
 
         $html = Livewire::actingAs($user)->test(Onboarding::class)->html();
 
@@ -202,9 +202,8 @@ class OnboardingTest extends TestCase
         // dedicated feature step below — a hidden module never gets that second slide.
         // e() mirrors Blade's own {{ }} escaping (some descriptions contain a literal
         // `"`, which Blade renders as `&quot;`).
-        $this->assertSame(1, substr_count($html, e(AppModules::CATALOG['agenda']['description'])));
+        $this->assertSame(1, substr_count($html, e(AppModules::CATALOG['weekplan']['description'])));
         $this->assertSame(1, substr_count($html, e(AppModules::CATALOG['crafts']['description'])));
         $this->assertSame(2, substr_count($html, e(AppModules::CATALOG['schedule']['description'])));
-        $this->assertSame(2, substr_count($html, e(AppModules::CATALOG['emergency']['description'])));
     }
 }

@@ -5,7 +5,6 @@ namespace App\Livewire;
 use App\Livewire\Concerns\ManagesListConceptSettings;
 use App\Livewire\Concerns\ManagesModuleSettings;
 use App\Mcp\McpAbility;
-use App\Models\AgendaEntry;
 use App\Models\CategoryAttribute;
 use App\Models\EventCategory;
 use App\Models\PushSubscription;
@@ -45,7 +44,6 @@ class Settings extends Component
     public int $deadlinePreviewDays = 2;
 
     // Hausaufgaben-Vorschau im Dashboard
-    public bool $homeworkPreviewEnabled = true;
 
     // Planer (automatische Wochenplanung)
     public bool $plannerEnabled = false;
@@ -54,13 +52,6 @@ class Settings extends Component
     public float $timezoneOffset = 0;
 
     public bool $timezoneAutoDst = false;
-
-    // Vorbereitung
-    public string $prepareTimeOfDay = 'evening';
-
-    public string $prepareReminderMode = 'off';
-
-    public ?string $prepareReminderTime = null;
 
     // Fortschritt
     public int $dailyTaskGoal = 5;
@@ -109,13 +100,9 @@ class Settings extends Component
         $this->pAutostart = $user->pomodoro_autostart ?? false;
         $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
         $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
-        $this->homeworkPreviewEnabled = $user->homework_preview_enabled ?? true;
         $this->plannerEnabled = (bool) $user->planner_enabled;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
-        $this->prepareTimeOfDay = $user->prepare_time_of_day ?? 'evening';
-        $this->prepareReminderMode = $user->prepare_reminder_mode ?? 'off';
-        $this->prepareReminderTime = $user->prepare_reminder_time;
         $this->dailyTaskGoal = $user->dailyTaskGoal();
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
@@ -157,7 +144,7 @@ class Settings extends Component
         $this->pAutostart = (bool) $user->pomodoro_autostart;
     }
 
-    /** Immediate-save toggle, like plannerEnabled/homeworkPreviewEnabled — see the "Vorschau auf Termine" card. */
+    /** Immediate-save toggle, like plannerEnabled — see the "Vorschau auf Termine" card. */
     public function toggleDeadlinePreviewEnabled(): void
     {
         $user = auth()->user();
@@ -167,7 +154,7 @@ class Settings extends Component
     }
 
     /**
-     * Autosaves on change. How many days ahead a hard deadline/exam/homework shows an
+     * Autosaves on change. How many days ahead a hard deadline shows an
      * advance-preview entry in the Zeitplan, on top of appearing on its actual date. A soft
      * Wunschtermin never previews (see Task::effectiveIsHard() / Schedule::deadlineItems()) —
      * this only governs how far the preview reaches, not which items are eligible for one.
@@ -179,38 +166,6 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['deadline_preview_days' => $data['deadlinePreviewDays']]);
-    }
-
-    /** Which day the Vorbereitung ritual targets — an immediate-save choice, like a category's colour swatch. */
-    public function setPrepareTimeOfDay(string $value): void
-    {
-        if (! in_array($value, ['morning', 'evening'], true)) {
-            return;
-        }
-
-        $this->prepareTimeOfDay = $value;
-        auth()->user()->update(['prepare_time_of_day' => $value]);
-    }
-
-    /** off | automatic | fixed — also an immediate-save choice. */
-    public function setPrepareReminderMode(string $value): void
-    {
-        if (! in_array($value, ['off', 'automatic', 'fixed'], true)) {
-            return;
-        }
-
-        $this->prepareReminderMode = $value;
-        auth()->user()->update(['prepare_reminder_mode' => $value]);
-    }
-
-    /** Only relevant in "fixed" reminder mode — saves on change, no separate submit button. */
-    public function savePrepareReminderTime(): void
-    {
-        $data = $this->validate([
-            'prepareReminderTime' => ['nullable', 'date_format:H:i'],
-        ]);
-
-        auth()->user()->update(['prepare_reminder_time' => $data['prepareReminderTime']]);
     }
 
     /** Autosaves on change. How many tasks completed in one day counts as "hit the daily goal" — drives the progress ring and one of the two celebrations. */
@@ -231,7 +186,7 @@ class Settings extends Component
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
     }
 
-    /** Only relevant while the reminder above is on — saves on change, no separate submit button (mirrors savePrepareReminderTime). */
+    /** Only relevant while the reminder above is on — saves on change, no separate submit button. */
     public function saveDailyReminderTime(): void
     {
         $data = $this->validate([
@@ -303,13 +258,6 @@ class Settings extends Component
         unset($this->headerBadgeRows);
     }
 
-    /** The presence toggle only means something to someone who is in a class. */
-    #[Computed]
-    public function inAnyAgendaSpace(): bool
-    {
-        return auth()->user()->agendaSpaces()->exists();
-    }
-
     /**
      * Turning presence off also clears the last recorded timestamp — opting out
      * means "stop tracking me", not just "stop showing it" (see
@@ -324,16 +272,6 @@ class Settings extends Component
             'show_presence' => $enabled,
             'last_seen_at' => $enabled ? $user->last_seen_at : null,
         ]);
-    }
-
-    /** The dashboard's "bald fällige Hausaufgaben" card — an immediate-save toggle like presence. */
-    public function toggleHomeworkPreviewEnabled(): void
-    {
-        $user = auth()->user();
-        $enabled = ! $user->homework_preview_enabled;
-
-        $user->update(['homework_preview_enabled' => $enabled]);
-        $this->homeworkPreviewEnabled = $enabled;
     }
 
     /** Default off (see CLAUDE.md) — an automatic planner is exactly the kind of thing that can feel intrusive unasked-for, so it opts in rather than lighting up for everyone. */
@@ -687,29 +625,8 @@ class Settings extends Component
         }
 
         return auth()->user()->eventCategories()
-            ->with(['linkedProject', 'linkedGroup', 'linkedAgendaEntry', 'pinnedTasks'])
+            ->with(['pinnedTasks'])
             ->find($this->linkingCategoryId);
-    }
-
-    #[Computed]
-    public function linkableProjects(): Collection
-    {
-        return auth()->user()->projects()->ordered()->get();
-    }
-
-    #[Computed]
-    public function linkableGroups(): Collection
-    {
-        return auth()->user()->taskGroups()->ordered()->get();
-    }
-
-    /** Open homework/exam entries this user can see — for picking a single Agenda link. */
-    #[Computed]
-    public function linkableAgendaEntries(): Collection
-    {
-        $user = auth()->user();
-
-        return AgendaEntry::visibleTo($user)->openFor($user)->ordered()->get();
     }
 
     /**
@@ -722,7 +639,7 @@ class Settings extends Component
     public function linkTaskCandidates(): Collection
     {
         $user = auth()->user();
-        $query = Task::forUser($user)->active()->onBoard();
+        $query = Task::forUser($user)->active();
 
         if ($this->linkTaskSearch !== '') {
             return $query->where('title', 'like', '%'.$this->linkTaskSearch.'%')->boardOrdered()->get();
@@ -745,45 +662,6 @@ class Settings extends Component
     public function clearCategoryLink(int $id): void
     {
         auth()->user()->eventCategories()->findOrFail($id)->clearTaskLink();
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToProject(int $id, int $projectId): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-        $project = auth()->user()->projects()->findOrFail($projectId);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'project', 'linked_project_id' => $project->id]);
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToGroup(int $id, int $groupId): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-        $group = auth()->user()->taskGroups()->findOrFail($groupId);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'group', 'linked_group_id' => $group->id]);
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToAgendaEntry(int $id, int $agendaEntryId): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-        $entry = AgendaEntry::visibleTo(auth()->user())->findOrFail($agendaEntryId);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'agenda_entry', 'linked_agenda_entry_id' => $entry->id]);
-        unset($this->linkingCategory);
-    }
-
-    public function linkCategoryToAgendaGeneric(int $id): void
-    {
-        $category = auth()->user()->eventCategories()->findOrFail($id);
-
-        $category->clearTaskLink();
-        $category->update(['task_source' => 'agenda_generic']);
         unset($this->linkingCategory);
     }
 

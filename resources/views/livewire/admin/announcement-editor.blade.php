@@ -10,7 +10,7 @@
         Nutzer als kleiner Hinweis — bis sie ihn wegklicken, danach nie wieder.
     </p>
 
-    {{-- Form — one form doubles as create and edit, same pattern as the Agenda page. --}}
+    {{-- Form — one form doubles as create and edit. --}}
     <div class="mb-8 rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <h2 class="mb-5 text-base font-medium text-ink">{{ $editingId ? 'Ankündigung bearbeiten' : 'Neue Ankündigung' }}</h2>
 

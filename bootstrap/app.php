@@ -46,7 +46,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:advance-pomodoro-phases')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-event-start-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-event-upcoming-notifications')->everyMinute()->withoutOverlapping();
-        $schedule->command('app:send-prepare-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-progress-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('app:promote-day-plans-to-today')->everyMinute()->withoutOverlapping();
         $schedule->command('app:prune-error-occurrences')->daily()->withoutOverlapping();

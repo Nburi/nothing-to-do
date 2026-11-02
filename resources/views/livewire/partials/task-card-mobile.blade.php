@@ -26,7 +26,7 @@
 
 <div
     wire:key="m-task-{{ $task->id }}"
-    @unless($task->is_completed || isset($orderNumber)) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
+    @unless($task->is_completed) data-id="{{ $task->id }}" data-title="{{ $task->title }}" @endunless
     class="relative select-none"
     x-data="swipeCard({ id: {{ $task->id }}, right: '{{ $rightIntent }}', left: '{{ $leftIntent }}', wireMethod: '{{ $wireMethod }}' })"
 >
@@ -75,10 +75,6 @@
         :style="'transform: translateX(' + dx + 'px)'"
         @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up()" @pointercancel="up()"
     >
-        @isset($orderNumber)
-            <span class="tnum mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full border border-line text-[10px] text-ink-soft" aria-hidden="true">{{ $orderNumber }}</span>
-        @endisset
-
         <button
             type="button"
             wire:click.stop="toggleComplete({{ $task->id }})"
@@ -131,9 +127,6 @@
                                 'font-medium text-ink' => !$task->is_completed && $task->is_important,
                                 'text-ink' => !$task->is_completed && !$task->is_important,
                             ])>
-                                @if ($task->agenda_entry_id)
-                                    <svg class="-mt-0.5 mr-1 inline h-3 w-3 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H13l3 3v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 16V7"/><path d="M13 4v3h3"/></svg>
-                                @endif
                                 {{ $task->title }}
                             </span>
                         </button>
@@ -202,7 +195,7 @@
 
             {{-- Inline drag handle + edit + delete actions (always visible on mobile) --}}
             <div class="flex flex-none items-center gap-0.5">
-                @unless($task->is_completed || isset($orderNumber))
+                @unless($task->is_completed)
                     {{-- Reorder handle: dragging is scoped to this icon so it never fights
                          swipeCard's horizontal-swipe/long-press gestures on the rest of the card. --}}
                     <button

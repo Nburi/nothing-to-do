@@ -1,20 +1,8 @@
 {{-- A board column. Variables: $list, $title, $count, $rest (active non-today tasks),
      $completed (recently completed tasks, optional), and optionally
-     $hasToday + $today (active today tasks) for the To-Dos / Tasks columns.
-     $emergencyProject + $emergencyTasks (optional): while emergency mode is
-     active, that project's tasks for this column are pinned above (numbered,
-     read-only — reorder happens on the arrange screen), independently-important
-     tasks stay visible right below them, and the rest of the column collapses
-     behind a disclosure so nothing is lost, just tucked out of the way. Today
-     is deliberately left untouched — it's already an explicit, deliberate flag. --}}
+     $hasToday + $today (active today tasks) for the To-Dos / Tasks columns. --}}
 @php
-    $emergencyProject = $emergencyProject ?? null;
-    $emergencyTasks = $emergencyTasks ?? collect();
-    $groupBoxes = $groupBoxes ?? collect();
-    $importantRest = $emergencyProject ? $rest->where('is_important', true)->values() : collect();
-    $normalRest = $emergencyProject ? $rest->where('is_important', false)->values() : $rest;
-    $columnTrulyEmpty = $emergencyTasks->isEmpty() && $importantRest->isEmpty() && $normalRest->isEmpty()
-        && (($completed ?? collect())->isEmpty()) && $groupBoxes->isEmpty();
+    $columnTrulyEmpty = $rest->isEmpty() && (($completed ?? collect())->isEmpty());
 @endphp
 <section class="flex min-h-[55vh] flex-col">
     <header class="mb-3 flex items-center justify-between px-1">
@@ -45,58 +33,14 @@
         </div>
     @endif
 
-    @if ($emergencyProject)
-        @if ($emergencyTasks->isNotEmpty())
-            <div class="mb-2.5 rounded-card border border-signal/25 bg-signal-soft/40 p-2">
-                <p class="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-signal">
-                    <svg class="h-3 w-3" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
-                    {{ $emergencyProject->name }}
-                </p>
-                <div class="flex flex-col gap-2">
-                    @foreach ($emergencyTasks as $i => $task)
-                        @include('livewire.partials.task-card', ['task' => $task, 'orderNumber' => $i + 1])
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        @if ($importantRest->isNotEmpty())
-            <div class="mb-2.5">
-                <p class="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-overprint">Wichtig</p>
-                <div class="flex flex-col gap-2">
-                    @foreach ($importantRest as $task)
-                        @include('livewire.partials.task-card', ['task' => $task])
-                    @endforeach
-                </div>
-            </div>
-        @endif
-    @endif
-
-    {{-- Task groups with open work in this column — above the loose cards, since
-         a bundle is a bigger unit than a single task. --}}
-    @foreach ($groupBoxes as $box)
-        @include('livewire.partials.task-group-box', ['box' => $box, 'mobile' => false])
-    @endforeach
-
-    <div x-data="{ showAll: {{ $emergencyProject ? 'false' : 'true' }} }" class="flex flex-1 flex-col">
-        @if ($emergencyProject && $normalRest->isNotEmpty())
-            <button
-                type="button"
-                x-show="!showAll"
-                @click="showAll = true"
-                class="mb-2 px-1 py-1 text-left text-xs text-ink-faint transition hover:text-ink-soft"
-            >{{ $normalRest->count() }} {{ $normalRest->count() === 1 ? 'weitere Aufgabe' : 'weitere Aufgaben' }} ausgeblendet · Alle anzeigen</button>
-        @endif
-
-        {{-- Sortable zone: active non-today tasks only (no completed tasks inside here). --}}
+    {{-- Sortable zone: active non-today tasks only (no completed tasks inside here). --}}
+    <div class="flex flex-1 flex-col">
         <div
-            x-show="showAll"
             class="flex flex-1 flex-col gap-2"
             data-list="{{ $list }}" data-today="false"
-            x-init="window.boardSortable($el, $wire)"
-            style="{{ $emergencyProject ? 'display:none' : '' }}"
+            x-data x-init="window.boardSortable($el, $wire)"
         >
-            @foreach ($normalRest as $task)
+            @foreach ($rest as $task)
                 @include('livewire.partials.task-card', ['task' => $task])
             @endforeach
 
@@ -109,7 +53,7 @@
                     </svg>
                     <p class="max-w-[22ch] text-xs leading-relaxed text-ink-faint">{{ $empty }}</p>
                 </div>
-            @elseif ($normalRest->isEmpty())
+            @elseif ($rest->isEmpty())
                 <p class="px-1 py-2 text-xs text-ink-faint">Hierher ziehen, um Aufgaben hinzuzufügen.</p>
             @endif
         </div>

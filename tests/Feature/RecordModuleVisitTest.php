@@ -69,12 +69,12 @@ class RecordModuleVisitTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get(route('agenda'))->assertOk();
-        $this->actingAs($user)->get(route('agenda'))->assertOk();
+        $this->actingAs($user)->get(route('weekplan'))->assertOk();
+        $this->actingAs($user)->get(route('weekplan'))->assertOk();
 
         $this->assertSame(1, ModuleVisit::query()
             ->where('user_id', $user->id)
-            ->where('module_key', 'agenda')
+            ->where('module_key', 'weekplan')
             ->count());
     }
 
@@ -94,7 +94,7 @@ class RecordModuleVisitTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->get(route('schedule'))->assertOk();
-        $this->actingAs($user)->get(route('agenda'))->assertOk();
+        $this->actingAs($user)->get(route('weekplan'))->assertOk();
 
         $this->assertSame(2, ModuleVisit::query()->where('user_id', $user->id)->count());
     }

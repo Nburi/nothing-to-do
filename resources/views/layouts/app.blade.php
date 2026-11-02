@@ -27,32 +27,21 @@
         // and those pages have their own prominent add buttons anyway, so the global
         // capture is a utility action there and belongs in the header.
         $showCaptureFab = request()->routeIs('app')
-            || request()->routeIs('crafts')
-            || request()->routeIs('agenda');
+            || request()->routeIs('crafts');
 
         // The panel opens on Inbox by default. On a page that is about one specific
         // kind of thing, opening it there should mean that thing — otherwise the
-        // button sitting on the Bastelideen page quietly files an Inbox task, and
-        // the one on Agenda promises an entry it wouldn't create.
+        // button sitting on the Bastelideen page quietly files an Inbox task.
         $captureTarget = match (true) {
             request()->routeIs('crafts') => 'craft',
-            request()->routeIs('agenda') => 'agenda',
-            request()->routeIs('group.show') => 'group',
             default => null,
         };
-
-        // On a group's own dashboard, "that thing" is not just "a group" but this
-        // one — otherwise the panel would open asking for a name for a new group
-        // while standing inside an existing one.
-        $captureGroup = request()->routeIs('group.show') ? request()->route('group') : null;
-        $captureGroupId = $captureGroup instanceof \App\Models\TaskGroup ? $captureGroup->id : null;
     @endphp
     {{-- The capture defaults live on <body> so the keyboard shortcut (N, handled
          globally in app.js) opens the same chip the page's own "+" would. --}}
     <body
         class="min-h-[100dvh] bg-paper font-sans text-ink antialiased"
         @if ($captureTarget) data-capture-target="{{ $captureTarget }}" @endif
-        @if ($captureGroupId) data-capture-group="{{ $captureGroupId }}" @endif
     >
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">
             Zum Inhalt springen
@@ -72,32 +61,25 @@
 
                     @auth
                         @php
-                            $featuresActive = request()->routeIs(['prepare', 'schedule', 'weekplan', 'planner', 'agenda', 'emergency', 'crafts']);
+                            $featuresActive = request()->routeIs(['schedule', 'weekplan', 'planner', 'crafts']);
                             $currentStreak = \App\Services\ProgressStats::currentStreak(auth()->user());
                             $streakTier = \App\Services\ProgressStats::streakTier($currentStreak);
 
                             // Which "Mehr" entries this user actually gets — Settings' "Module"
-                            // card (App\Services\AppModules). Notfall stays reachable while an
-                            // emergency is actually running even if the user hid it earlier —
-                            // hiding a module must never strand them mid-emergency with no way
-                            // to see or end it. When every entry ends up hidden, the whole
+                            // card (App\Services\AppModules). When every entry ends up hidden, the whole
                             // "Mehr" button disappears rather than opening onto an empty panel.
-                            $showPrepareNav = \App\Services\AppModules::isVisible(auth()->user(), 'prepare');
                             $showScheduleNav = \App\Services\AppModules::isVisible(auth()->user(), 'schedule');
                             $showWeekplanNav = \App\Services\AppModules::isVisible(auth()->user(), 'weekplan');
-                            $showAgendaNav = \App\Services\AppModules::isVisible(auth()->user(), 'agenda');
                             $showCraftsNav = \App\Services\AppModules::isVisible(auth()->user(), 'crafts');
-                            $showEmergencyNav = \App\Services\AppModules::isVisible(auth()->user(), 'emergency') || auth()->user()->isInEmergencyMode();
                             $showProgressNav = \App\Services\AppModules::isVisible(auth()->user(), 'progress');
-                            $anyMehrNavVisible = $showPrepareNav || $showScheduleNav || $showWeekplanNav || $showAgendaNav || $showCraftsNav || $showEmergencyNav;
+                            $anyMehrNavVisible = $showScheduleNav || $showWeekplanNav || $showCraftsNav;
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
                              shortcuts (Settings' "Header-Badges" card). Each one only takes up
                              space once it actually has something to show — no sad 0/empty state
                              — and disappears entirely otherwise. overflow-x-auto is the safety
-                             net for a wide selection on a narrow phone (same pattern as the
-                             homework preview strip). See App\Services\HeaderBadges. --}}
+                             net for a wide selection on a narrow phone . See App\Services\HeaderBadges. --}}
                         @php $headerBadges = \App\Services\HeaderBadges::visibleFor(auth()->user()); @endphp
                         @if (count($headerBadges) > 0)
                             {{-- max-w-[45vw]: bumped up from the original 38vw now that the
@@ -115,7 +97,7 @@
                         @endif
 
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills
-                             (Vorbereiten/Zeitplan/Agenda/Notfall), styled like the avatar
+                             (Zeitplan), styled like the avatar
                              menu below so it reads as native to the app rather than a
                              second, differently-built dropdown. Bastelideen is in here too:
                              it never had a header pill of its own before, but it's exactly
@@ -151,9 +133,6 @@
                                     <rect x="11" y="11" width="6" height="6" rx="1.5"/>
                                 </svg>
                                 <span>Mehr</span>
-                                @if (auth()->user()->isInEmergencyMode())
-                                    <span class="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true"></span>
-                                @endif
                             </button>
 
                             <div
@@ -201,14 +180,6 @@
                             >
                                 <span class="relative grid h-7 w-7 place-items-center rounded-full bg-forest-soft text-[12px] font-medium text-forest">
                                     {{ Str::of(auth()->user()->name)->trim()->substr(0, 1)->upper() }}
-                                    {{-- Mobile only: the "Mehr" button's own emergency dot
-                                         (desktop, sm and up) has no home once that button hides
-                                         on mobile — this is a safety-relevant ambient signal
-                                         (you should see you're in an emergency even with the
-                                         menu closed), so it moves here instead of disappearing. --}}
-                                    @if (auth()->user()->isInEmergencyMode())
-                                        <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-signal ring-2 ring-paper sm:hidden" aria-hidden="true"></span>
-                                    @endif
                                 </span>
                                 <span class="hidden sm:inline">{{ Str::of(auth()->user()->name)->before(' ') }}</span>
                             </button>
@@ -323,7 +294,7 @@
 
             {{-- Milestone celebration overlay — mounted once here (not inside any one
                  Livewire component) so it fires no matter which page a task gets
-                 completed from (board, project page, Zeitplan strip). See the
+                 completed from (board, Zeitplan strip). See the
                  'celebration' Alpine store in app.js and ProgressStats::celebrationFor(). --}}
             <div
                 x-data

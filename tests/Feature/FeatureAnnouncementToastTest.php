@@ -116,10 +116,10 @@ class FeatureAnnouncementToastTest extends TestCase
     public function test_an_announcement_with_a_related_module_links_to_it_and_dismisses_on_click(): void
     {
         $user = User::factory()->create();
-        $announcement = $this->published(['related_module' => 'agenda']);
+        $announcement = $this->published(['related_module' => 'crafts']);
 
         Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
-            ->assertSee('Agenda ansehen')
+            ->assertSee('Bastelideen ansehen')
             ->call('dismiss', $announcement->id);
 
         $this->assertTrue($announcement->isDismissedBy($user));
@@ -197,10 +197,10 @@ class FeatureAnnouncementToastTest extends TestCase
     public function test_a_module_link_with_a_highlight_selector_carries_it_as_a_query_param(): void
     {
         $user = User::factory()->create();
-        $this->published(['related_module' => 'agenda', 'highlight_selector' => '#agenda-spaces']);
+        $this->published(['related_module' => 'crafts', 'highlight_selector' => '#some-card']);
 
         Livewire::actingAs($user)->test(FeatureAnnouncementToast::class)
-            ->assertSeeHtml('highlight=%23agenda-spaces');
+            ->assertSeeHtml('highlight=%23some-card');
     }
 
     public function test_nothing_renders_when_the_queue_is_empty(): void

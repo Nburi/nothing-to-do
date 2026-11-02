@@ -226,9 +226,9 @@
                 <h1 class="text-xl font-medium tracking-tight text-ink">{{ $conceptTitles[$this->listConcept] ?? $currentConceptRow['label'] }}</h1>
                 <div class="mx-auto max-w-sm space-y-3 text-left text-sm leading-relaxed text-ink-soft">
                     @if ($this->listConcept === 'three_things')
-                        <p>Bleibt eine Aufgabe klein und in einem Rutsch erledigt → <span class="font-medium text-ink">To-Do</span>. Braucht sie mehr Zeit oder Konzentration, bleibt aber ein einzelner Schritt → <span class="font-medium text-ink">Task</span>. Hat sie mehrere Teilschritte und ist nicht dringend → <span class="font-medium text-ink">Project</span> mit eigener Seite.</p>
+                        <p>Bleibt eine Aufgabe klein und in einem Rutsch erledigt → <span class="font-medium text-ink">To-Do</span>. Braucht sie mehr Zeit oder Konzentration, bleibt aber ein einzelner Schritt → <span class="font-medium text-ink">Task</span>.</p>
                     @elseif ($this->listConcept === 'kanban')
-                        <p>Jede Karte hat einen Status — <span class="font-medium text-ink">Offen</span>, <span class="font-medium text-ink">In Arbeit</span> oder <span class="font-medium text-ink">Erledigt</span>. Die Grösse einer Aufgabe (To-Do/Task/Project) bleibt dabei bestehen — nur der Status ändert sich, wenn du eine Karte in die nächste Spalte ziehst.</p>
+                        <p>Jede Karte hat einen Status — <span class="font-medium text-ink">Offen</span>, <span class="font-medium text-ink">In Arbeit</span> oder <span class="font-medium text-ink">Erledigt</span>. Die Grösse einer Aufgabe (To-Do/Task) bleibt dabei bestehen — nur der Status ändert sich, wenn du eine Karte in die nächste Spalte ziehst.</p>
                     @elseif ($this->listConcept === 'eisenhower')
                         <p>„Wichtig" setzt du per Tipp auf den Titel, eine <span class="font-medium text-ink">Frist</span> per Tipp aufs Datum. Beides zusammen landet im Feld „Sofort", keins von beidem im Feld „Später".</p>
                     @elseif ($this->listConcept === 'simple')
@@ -254,23 +254,14 @@
                 >
                     <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-forest-soft">
                         @switch ($moduleKey)
-                            @case ('prepare')
-                                <svg class="h-7 w-7 text-forest" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9m-9 4h12m-12 4h6"/></svg>
-                                @break
                             @case ('schedule')
                                 <svg class="h-7 w-7 text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
                                 @break
                             @case ('weekplan')
                                 <svg class="h-7 w-7 text-forest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                                 @break
-                            @case ('agenda')
-                                <svg class="h-7 w-7 text-forest" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h6l2 2v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M12 3v2h2"/><path d="M7.5 10h5M7.5 13h3.5"/></svg>
-                                @break
                             @case ('crafts')
                                 <svg class="h-7 w-7 text-forest" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V11.5a5 5 0 0 0-3-9Z"/><path d="M8 17h4"/><path d="M8.5 14.5h3"/></svg>
-                                @break
-                            @case ('emergency')
-                                <svg class="h-7 w-7 text-forest" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14" r="1" fill="currentColor"/></svg>
                                 @break
                             @case ('progress')
                                 <x-flame-icon class="h-7 w-7 text-forest" />

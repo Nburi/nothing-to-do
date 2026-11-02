@@ -19,7 +19,6 @@ class QuickCaptureModuleVisibilityTest extends TestCase
         $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
 
         $this->assertContains('craft', $targets);
-        $this->assertContains('agenda', $targets);
     }
 
     public function test_hiding_a_module_removes_its_capture_target(): void
@@ -29,7 +28,6 @@ class QuickCaptureModuleVisibilityTest extends TestCase
         $targets = Livewire::actingAs($user)->test(QuickCapture::class)->get('availableTargets');
 
         $this->assertNotContains('craft', $targets);
-        $this->assertContains('agenda', $targets);
     }
 
     public function test_setting_a_hidden_target_is_ignored(): void

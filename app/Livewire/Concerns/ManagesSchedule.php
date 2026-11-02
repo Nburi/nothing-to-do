@@ -160,7 +160,7 @@ trait ManagesSchedule
     {
         $user = auth()->user();
         $pickedIds = collect($this->eventLinkedTasks)->pluck('id')->all();
-        $query = Task::forUser($user)->active()->onBoard()->whereNotIn('id', $pickedIds);
+        $query = Task::forUser($user)->active()->whereNotIn('id', $pickedIds);
 
         if ($this->eventTaskSearch !== '') {
             return $query->where('title', 'like', '%'.$this->eventTaskSearch.'%')->boardOrdered()->get();

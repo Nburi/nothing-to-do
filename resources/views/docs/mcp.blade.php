@@ -24,7 +24,7 @@
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <p class="text-sm leading-relaxed text-ink-soft">
                 Ein <span class="font-medium text-ink">Model Context Protocol</span>-Server, damit ein KI-Assistent
-                (z. B. Claude) deine Aufgaben, Agenda, Kategorien und Einstellungen lesen und organisieren kann —
+                (z. B. Claude) deine Aufgaben, Kategorien und Einstellungen lesen und organisieren kann —
                 immer für genau deinen Account, nie global. Ein Endpunkt, JSON-RPC 2.0 über HTTP (Streamable HTTP,
                 Protokollversion <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">2025-06-18</code>):
             </p>
@@ -59,7 +59,7 @@
             <ul class="mt-3 space-y-2 text-sm leading-relaxed text-ink-soft">
                 <li>
                     <span class="font-medium text-ink">Modul-Sichtbarkeit.</span> Blendest du in den Einstellungen
-                    ein Modul aus (z. B. Agenda), verschwinden die zugehörigen Werkzeuge beim nächsten Aufruf
+                    ein Modul aus (z. B. Zeitplan), verschwinden die zugehörigen Werkzeuge beim nächsten Aufruf
                     einfach — nicht als Fehler, sondern spurlos, genau wie sie aus der Navigation verschwinden.
                 </li>
                 <li>

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\QuickCapture;
-use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,65 +62,6 @@ class QuickCaptureDurationTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertNull(Task::where('title', 'Irgendwas')->first()->duration_minutes);
-    }
-
-    public function test_duration_is_captured_for_a_group_task(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'group')
-            ->set('newGroupName', 'Vortrag')
-            ->set('title', 'Folien vorbereiten')
-            ->set('duration', 60)
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $this->assertSame(60, Task::where('title', 'Folien vorbereiten')->first()->duration_minutes);
-    }
-
-    public function test_duration_is_captured_for_homework_but_not_exams(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'agenda')
-            ->set('agendaType', 'homework')
-            ->set('subject', 'Bio')
-            ->set('title', 'Zellatmung')
-            ->set('date', now()->addDay()->toDateString())
-            ->set('duration', 25)
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $this->assertSame(25, AgendaEntry::where('title', 'Zellatmung')->first()->duration_minutes);
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'agenda')
-            ->set('agendaType', 'exam')
-            ->set('subject', 'Bio')
-            ->set('title', 'Prüfung Zellatmung')
-            ->set('date', now()->addWeek()->toDateString())
-            ->set('duration', 25) // stale/ignored value, the field isn't even shown for an exam
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $this->assertNull(AgendaEntry::where('title', 'Prüfung Zellatmung')->first()->duration_minutes);
-    }
-
-    public function test_duration_is_cleared_when_switching_to_a_non_task_target(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->test(QuickCapture::class)
-            ->call('setTarget', 'tasks')
-            ->set('duration', 45)
-            ->call('setTarget', 'project')
-            ->assertSet('duration', null);
     }
 
     public function test_an_out_of_range_duration_is_rejected(): void

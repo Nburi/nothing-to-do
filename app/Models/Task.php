@@ -16,13 +16,13 @@ class Task extends Model
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
 
-    /** The board lists. Tasks in the 'projects' list live inside a Project. */
-    public const LISTS = ['inbox', 'todos', 'tasks', 'projects'];
+    /** The board lists. */
+    public const LISTS = ['inbox', 'todos', 'tasks'];
 
     /** Lists offered as quick-add / drag targets on the main board. */
     public const BOARD_LISTS = ['inbox', 'todos', 'tasks'];
 
-    /** Lists that support a Today focus area. Inbox & projects deliberately do not. */
+    /** Lists that support a Today focus area. Inbox deliberately does not. */
     public const TODAY_LISTS = ['todos', 'tasks'];
 
     /** Urgency window in days for the soft "due soon" sort bucket. */
@@ -31,10 +31,6 @@ class Task extends Model
     protected $fillable = [
         'title',
         'list',
-        'project_id',
-        'group_id',
-        'agenda_entry_id',
-        'emergency_list',
         'is_today',
         'today_date',
         'is_important',
@@ -70,47 +66,10 @@ class Task extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function project(): BelongsTo
-    {
-        return $this->belongsTo(Project::class);
-    }
-
-    public function group(): BelongsTo
-    {
-        return $this->belongsTo(TaskGroup::class, 'group_id');
-    }
-
-    public function agendaEntry(): BelongsTo
-    {
-        return $this->belongsTo(AgendaEntry::class);
-    }
-
     /** Which day this task is planned for, if any (see App\Services\DayPlanner). */
     public function dayPlan(): HasOne
     {
         return $this->hasOne(TaskDayPlan::class);
-    }
-
-    /**
-     * Mirrors this task's completion onto the Agenda homework entry it was
-     * promoted from (see TaskBoard::promoteHomeworkToday()), so finishing the
-     * task also closes the loop in Agenda without a second trip — and
-     * un-completing the task reverses it. A no-op for every ordinary task
-     * (agenda_entry_id null) and for a homework entry that's since been
-     * deleted (nullOnDelete already cleared the column) or moved out of
-     * this user's reach (a left class space).
-     */
-    public function syncLinkedAgendaEntry(User $user, bool $done): void
-    {
-        if ($this->agenda_entry_id === null) {
-            return;
-        }
-
-        $entry = AgendaEntry::query()->visibleTo($user)->find($this->agenda_entry_id);
-
-        if ($entry !== null && $entry->isDoneFor($user) !== $done) {
-            $entry->toggleDoneFor($user);
-        }
     }
 
     // ── Scopes ────────────────────────────────────────────────────────
@@ -118,12 +77,6 @@ class Task extends Model
     public function scopeForUser(Builder $query, User $user): Builder
     {
         return $query->where('user_id', $user->id);
-    }
-
-    /** Tasks that live on the main board (Inbox/To-Dos/Tasks), not inside a project. */
-    public function scopeOnBoard(Builder $query): Builder
-    {
-        return $query->whereNull('project_id');
     }
 
     public function scopeActive(Builder $query): Builder
@@ -134,24 +87,6 @@ class Task extends Model
     public function scopeInList(Builder $query, string $list): Builder
     {
         return $query->where('list', $list);
-    }
-
-    /** Tasks bundled into one task group. */
-    public function scopeInGroup(Builder $query, int $groupId): Builder
-    {
-        return $query->where('group_id', $groupId);
-    }
-
-    /** Tasks that stand on their own — not bundled into any group. */
-    public function scopeUngrouped(Builder $query): Builder
-    {
-        return $query->whereNull('group_id');
-    }
-
-    /** The board column (inbox/todos/tasks) a project task surfaces under during emergency mode. */
-    public function scopeInEmergencyList(Builder $query, string $list): Builder
-    {
-        return $query->where('emergency_list', $list);
     }
 
     /**
@@ -171,28 +106,6 @@ class Task extends Model
                 [$threshold]
             )
             ->orderByRaw('COALESCE(deadline, due_date) IS NULL') // dated before undated
-            ->orderByRaw('COALESCE(deadline, due_date)')
-            ->orderBy('sort_order')
-            ->orderBy('created_at');
-    }
-
-    /**
-     * Order inside a task group: due-soon first, then dated before undated,
-     * then the manual order. Deliberately identical to boardOrdered() *minus*
-     * the leading `is_important` sort — inside a group the star is a marker
-     * only and must not pull a task to the top (an explicit product decision).
-     */
-    public function scopeGroupOrdered(Builder $query): Builder
-    {
-        $threshold = self::today()->addDays(self::URGENCY_DAYS)->toDateString();
-
-        return $query
-            ->orderByRaw(
-                'CASE WHEN COALESCE(deadline, due_date) IS NOT NULL '
-                .'AND COALESCE(deadline, due_date) <= ? THEN 0 ELSE 1 END',
-                [$threshold]
-            )
-            ->orderByRaw('COALESCE(deadline, due_date) IS NULL')
             ->orderByRaw('COALESCE(deadline, due_date)')
             ->orderBy('sort_order')
             ->orderBy('created_at');
@@ -251,16 +164,6 @@ class Task extends Model
         return $this->deadline !== null;
     }
 
-    public function isInProject(): bool
-    {
-        return $this->project_id !== null;
-    }
-
-    public function isInGroup(): bool
-    {
-        return $this->group_id !== null;
-    }
-
     /**
      * The `today_date` value to write alongside a new `is_today`, read from
      * this task's CURRENT (not-yet-saved) state — so every one of the several
@@ -269,8 +172,7 @@ class Task extends Model
      *
      * Stamps `$targetDate` only when actually ENTERING today (is_today was
      * false); leaves an already-true flag's date untouched, so reordering
-     * within the Today zone — or PrepareTomorrow re-touching something
-     * already flagged — doesn't silently re-date an old leftover task to
+     * within the Today zone — doesn't silently re-date an old leftover task to
      * "now"; always clears to null when leaving. See ProgressStats for what
      * this date is used for (it's never read by board display logic).
      */
