@@ -5,7 +5,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 ## Refactor: next up (phase 0)
 - [ ] 0.5 Tooling check: `tailwindcss ^3` next to `@tailwindcss/vite ^4` in package.json. Verify `npm run build`, align versions.
 - [ ] 0.1 Spike: iOS Shortcut on home Wi-Fi → authenticated URL → Web Push to the installed web app (needs Niels' iPhone).
-- [ ] 0.2 Spike: slot, session and capacity engine as a pure PHP service with fixture weeks (DST, holiday, one-off move, pomodoro vs non-pomodoro categories).
+- [x] 0.2 Spike (`feature/engine-spike`): engine in `app/Planning`, 63 fixture tests green. Ten decisions E1–E10 in `docs/spikes/0.2-engine.md` wait for Niels.
 - [ ] 0.3 Spike: migration dry run on a copy of production (needs a production DB dump from Niels).
 
 ## Open questions for Niels
