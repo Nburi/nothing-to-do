@@ -9,8 +9,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [ ] 0.3 Spike: migration dry run on a copy of production (needs a production DB dump from Niels).
 
 ## Open questions for Niels
-- [ ] Outside pomodoro blocks, does the idle board still suggest work? (assumed: yes; capacity counts only pomodoro blocks)
-- [ ] Long break after every fourth session, counter reset per day? (assumed: yes)
+None right now. Answered 2026-11-06: no work suggestions outside pomodoro blocks; long break after every fourth session, counted per day.
 
 ## Known issues carried over
 - No `lang/` directory yet, so validation messages are English (fixed by G6 in the refactor).

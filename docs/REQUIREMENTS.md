@@ -44,12 +44,13 @@ Origin tags: `PROMPT` = Niels' words, `CODEBASE` = carried over from the old app
 ## 3. Sessions (pomodoro engine)
 
 1. A session is **25 minutes** of work.
-2. After a session: **5 minute** break; every **fourth** break is **15 minutes**.
+2. After a session: **5 minute** break; every **fourth** break is **15 minutes** (counted per day).
 3. A task not finished when the session ends **continues in the next session** (same task, no new pick).
 4. Task marked done with **≥ 5 minutes** left: the next suggested task starts **inside the same session**.
 5. Task marked done with **< 5 minutes** left: the **break starts immediately**; the next session gets a fresh 25 minutes.
 6. Pause and resume are possible; a session is stored on the server, so a reload or the other device shows the running session.
-7. Sessions are planned into blocks of pomodoro categories (section 4). Starting a session manually outside such a block is allowed. *(Open: whether the idle board suggests work at all outside pomodoro blocks — current assumption: yes, it suggests, but capacity planning counts only pomodoro blocks.)*
+7. Sessions are planned into blocks of pomodoro categories (section 4). **Outside those blocks the idle board suggests no work** (decided 2026-11-06): no "Start here" card; the start strip shows when the next pomodoro block begins, and in free time an idea from Later may be offered (R6). Starting a session manually from any task stays possible.
+8. The long break counter (every fourth session) resets each day.
 
 ## 4. Categories, areas and capacity
 

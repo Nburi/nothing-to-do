@@ -50,7 +50,7 @@ then a drawer). Features are identical on both devices; only the layout differs.
 
 ## Sessions (pomodoro)
 - A session is always **25 minutes** of work, followed by a **5 minute** break; every fourth break is
-  **15 minutes**.
+  **15 minutes** (counted per day).
 - A task not finished within a session simply **continues in the next session**.
 - Finishing a task with **5 minutes or more** left: the next suggested task starts inside the same
   session.
@@ -68,7 +68,8 @@ then a drawer). Features are identical on both devices; only the layout differs.
   suggested inside its blocks (e.g. Deep work suggests School and Own projects, Training suggests
   nothing).
 - **Capacity** of a day = the number of 25 minute sessions in its pomodoro blocks. Time outside
-  those blocks is free time: ideas may be offered there, and "Keep it mine" applies.
+  those blocks is free time: **no work is suggested there**, only ideas from Later may be offered, and
+  "Keep it mine" applies.
 
 ## Ordering without a priority field
 Every task has a size and may have a **hard deadline** (real) and a **soft deadline** ("finished by",

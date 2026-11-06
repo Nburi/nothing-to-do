@@ -199,9 +199,9 @@ Sharing and shared spaces (Agenda spaces were removed on purpose) · calendar sy
 export branch exists) · Garmin body battery pre-filling the battery check-in · learned durations ·
 natural language week edits · Apple Watch complication and widgets · email to inbox.
 
-## 8. Open questions
+## 8. Answered questions (2026-11-06)
 
-| # | Question | Working assumption until answered |
+| # | Question | Answer |
 |---|---|---|
-| Q1 | Outside pomodoro blocks, does the idle board still suggest work? | Yes, it suggests; capacity planning counts only pomodoro blocks; starting a session manually is always allowed. |
-| Q2 | Is the long break after every fourth session, counted per day? | Yes, the counter resets each day. |
+| Q1 | Outside pomodoro blocks, does the idle board still suggest work? | **No.** Outside pomodoro blocks there is no work suggestion; the strip shows the next block, free time may show a Later idea. Starting a session manually stays possible. |
+| Q2 | Is the long break after every fourth session, counted per day? | **Yes**, the counter resets each day. |

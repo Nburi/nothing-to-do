@@ -20,13 +20,14 @@ Runs with the existing PHPUnit setup: `php artisan test` (or `composer test`). N
 | A7 | R5 | Soft deadline: first miss rolls over, second miss moves the item to Later. | `php artisan test --filter=SoftSlipTest` | offen |
 | A8 | R3 | Capture saves a 400 character title, rejects an empty one with a German message, refuses a token without the capture ability. | `php artisan test --filter=CaptureTest` | offen |
 | A9 | R3 | Sorting moves an item to To-do, Task or Later and applies the default size. | `php artisan test --filter=InboxSortTest` | offen |
+| A19 | R9 | Outside pomodoro blocks the idle board offers no work suggestion; the next block's start time is shown instead; a manual start still works. | `php artisan test --filter=NoSuggestionOutsideBlocksTest` | offen |
 | A10 | R6 | Ideas are offered only in free time outside pomodoro blocks and when deadline work is covered; a "mine" slot offers nothing. | `php artisan test --filter=IdeaSuggestionTest` | offen |
 | A11 | R7 | Every action in the registry has a desktop and a mobile entry point, in board and session mode. | `php artisan test --filter=ActionParityTest` | offen |
 | A12 | R8 | Old-schema fixtures migrate with equal row counts; deadline becomes hard, due date becomes soft; rollback restores. | `php artisan test --filter=MigrationRehearsalTest` | offen |
 | A13 | R2 | The nudge is sent once per evening, not after the reset is done, not on paused days. | `php artisan test --filter=NudgeSchedulerTest` | offen |
 | A14 | all | No endpoint returns another user's items. | `php artisan test --filter=AuthorizationTest` | offen |
 | A15 | R1 | A started session is stored on the server; a reload or the other device shows the focus view; Done returns the board with the next suggestion; Done twice is harmless. | `php artisan test --filter=SessionModeTest` | offen |
-| A16 | R9 | 25 / 5 cycle, 15 min after every fourth session; an unfinished task carries over to the next session. | `php artisan test --filter=PomodoroCycleTest` | offen |
+| A16 | R9 | 25 / 5 cycle, 15 min after every fourth session (counter resets daily); an unfinished task carries over to the next session. | `php artisan test --filter=PomodoroCycleTest` | offen |
 | A17 | R9 | Done with ≥ 5 min left starts the next task in the same session; with < 5 min left the break starts at once and the next session is a fresh 25 min. | `php artisan test --filter=SessionEarlyFinishTest` | offen |
 | A18 | R10 | Categories and areas are user-defined; a category only suggests its linked areas; deleting an area unlinks it without losing tasks. | `php artisan test --filter=CategoryAreaLinkTest` | offen |
 
