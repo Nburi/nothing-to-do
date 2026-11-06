@@ -12,7 +12,7 @@ use League\CommonMark\Util\HtmlElement;
 final class UnderlineRenderer implements NodeRendererInterface
 {
     /**
-     * @param Underline $node
+     * @param  Underline  $node
      *
      * {@inheritDoc}
      *

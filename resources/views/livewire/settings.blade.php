@@ -917,6 +917,8 @@
                             @php $abilities = $token->abilities ?? []; @endphp
                             @if (in_array('*', $abilities, true))
                                 <span class="rounded-full bg-signal-soft px-2 py-0.5 text-[11px] font-medium text-signal">Alle Rechte (alt)</span>
+                            @elseif (\App\Support\NarrowAbility::onlyNarrow($abilities))
+                                <span class="rounded-full bg-forest-soft px-2 py-0.5 text-[11px] font-medium text-forest">Nur Ankunft melden</span>
                             @else
                                 <span class="rounded-full bg-line px-2 py-0.5 text-[11px] font-medium text-ink-soft">Lesen</span>
                                 @if (in_array('mcp:write', $abilities, true))

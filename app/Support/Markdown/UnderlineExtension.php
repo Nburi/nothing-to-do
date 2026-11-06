@@ -12,7 +12,7 @@ final class UnderlineExtension implements ExtensionInterface
 {
     public function register(EnvironmentBuilderInterface $environment): void
     {
-        $environment->addDelimiterProcessor(new UnderlineDelimiterProcessor());
-        $environment->addRenderer(Underline::class, new UnderlineRenderer());
+        $environment->addDelimiterProcessor(new UnderlineDelimiterProcessor);
+        $environment->addRenderer(Underline::class, new UnderlineRenderer);
     }
 }

@@ -37,7 +37,7 @@ final class UnderlineDelimiterProcessor implements CacheableDelimiterProcessorIn
 
     public function process(AbstractStringContainer $opener, AbstractStringContainer $closer, int $delimiterUse): void
     {
-        $underline = new Underline();
+        $underline = new Underline;
 
         $tmp = $opener->next();
         while ($tmp !== null && $tmp !== $closer) {

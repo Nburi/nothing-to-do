@@ -29,6 +29,6 @@ class Markdown
         return Str::markdown($text, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
-        ], [new UnderlineExtension()]);
+        ], [new UnderlineExtension]);
     }
 }
