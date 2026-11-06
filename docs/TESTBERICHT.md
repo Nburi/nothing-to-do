@@ -55,7 +55,7 @@ screenshot comes out, Claude **stops and tells Niels**, and the affected rows mo
 | Nr | Klasse | Anforderung | Was du tust | Ergebnis |
 |---|---|---|---|---|
 | C1 | MUSS | Signature | Start a session on a tired evening and watch the first second. Does the board folding away feel like relief, or like a jump? | offen |
-| C2 | MUSS | R2 | On your iPhone leave and rejoin the home Wi-Fi five times. Does the nudge arrive before you pick up the phone? | offen |
+| C2 | MUSS | R2 | On your iPhone leave and rejoin the home Wi-Fi five times. Does the nudge arrive before you pick up the phone? Setup and evening table: `docs/spikes/0.1-arrival.md`. | offen (Server bereit, Spike 0.1) |
 | C3 | MUSS | R8 | Open your own account on a copy of production. Is anything missing or changed? | offen |
 | C4 | MUSS | R1 | Use it for two weeks of evenings. Count the evenings you started without scrolling first. | offen |
 | C5 | MUSS | R1 | Open it on a low battery evening. Do the two quick to-dos help you get going, or annoy you? | offen |
