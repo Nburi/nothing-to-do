@@ -8,15 +8,17 @@ a reason) based on real command output or a real look at the app.
 ## A. Automatisch
 
 Runs with the existing PHPUnit setup: `php artisan test` (or `composer test`). Nothing new to install.
+The engine tests live in `tests/Unit/Planning`; their commands use the file path because the old UI
+also has a `PomodoroCycleTest` and a `SchedulePauseTest` (retired with the old screens, risk C11).
 
 | Nr | Anforderung | Prüfung | Befehl | Ergebnis |
 |---|---|---|---|---|
 | A1 | R1 | Battery low returns two quick to-dos, then a shrunk task; mid returns the deadline task first. | `php artisan test --filter=PickEngineTest` | offen |
-| A2 | R5 | Hard deadline beats soft; equal dates fall back to the smaller size. | `php artisan test --filter=StartByOrderTest` | offen |
-| A3 | R4 | A one-off move changes one date only; the template is untouched. | `php artisan test --filter=WeekExceptionTest` | offen |
-| A4 | R4 | A holiday suppresses template events; one day inside can be switched back on. | `php artisan test --filter=SchedulePauseTest` | offen |
-| A5 | R4 | Block and session counts are correct across the October DST change in Europe/Zurich. | `php artisan test --filter=FreeSlotDstTest` | offen |
-| A6 | R5, R10 | Capacity = 25 min sessions in pomodoro blocks only; load above capacity flags the day. | `php artisan test --filter=LoadForecastTest` | offen |
+| A2 | R5 | Hard deadline beats soft; equal dates fall back to the smaller size. | `php artisan test tests/Unit/Planning/StartByOrderTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
+| A3 | R4 | A one-off move changes one date only; the template is untouched. | `php artisan test tests/Unit/Planning/WeekExceptionTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
+| A4 | R4 | A holiday suppresses template events; one day inside can be switched back on. | `php artisan test tests/Unit/Planning/SchedulePauseTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
+| A5 | R4 | Block and session counts are correct across the October DST change in Europe/Zurich. | `php artisan test tests/Unit/Planning/FreeSlotDstTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
+| A6 | R5, R10 | Capacity = 25 min sessions in pomodoro blocks only; load above capacity flags the day. | `php artisan test tests/Unit/Planning/LoadForecastTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A7 | R5 | Soft deadline: first miss rolls over, second miss moves the item to Later. | `php artisan test --filter=SoftSlipTest` | offen |
 | A8 | R3 | Capture saves a 400 character title, rejects an empty one with a German message, refuses a token without the capture ability. | `php artisan test --filter=CaptureTest` | offen |
 | A9 | R3 | Sorting moves an item to To-do, Task or Later and applies the default size. | `php artisan test --filter=InboxSortTest` | offen |
@@ -27,8 +29,8 @@ Runs with the existing PHPUnit setup: `php artisan test` (or `composer test`). N
 | A13 | R2 | The nudge is sent once per evening, not after the reset is done, not on paused days. | `php artisan test --filter=NudgeSchedulerTest` | offen |
 | A14 | all | No endpoint returns another user's items. | `php artisan test --filter=AuthorizationTest` | offen |
 | A15 | R1 | A started session is stored on the server; a reload or the other device shows the focus view; Done returns the board with the next suggestion; Done twice is harmless. | `php artisan test --filter=SessionModeTest` | offen |
-| A16 | R9 | 25 / 5 cycle, 15 min after every fourth session (counter resets daily); an unfinished task carries over to the next session. | `php artisan test --filter=PomodoroCycleTest` | offen |
-| A17 | R9 | Done with ≥ 5 min left starts the next task in the same session; with < 5 min left the break starts at once and the next session is a fresh 25 min. | `php artisan test --filter=SessionEarlyFinishTest` | offen |
+| A16 | R9 | 25 / 5 cycle, 15 min after every fourth session (counter resets daily); an unfinished task carries over to the next session. | `php artisan test tests/Unit/Planning/PomodoroCycleTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
+| A17 | R9 | Done with ≥ 5 min left starts the next task in the same session; with < 5 min left the break starts at once and the next session is a fresh 25 min. | `php artisan test tests/Unit/Planning/SessionEarlyFinishTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A18 | R10 | Categories and areas are user-defined; a category only suggests its linked areas; deleting an area unlinks it without losing tasks. | `php artisan test --filter=CategoryAreaLinkTest` | offen |
 
 ## B. Claude prüft visuell
