@@ -1,51 +1,91 @@
 # nothing-to-do — Concept
 
-> Draft. Written together with Niels, to be corrected.
+> Rewritten for the refactor on 2026-11-06, together with Niels. The full plan (designs, risks,
+> phases, tests) is in [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md); the contract the build is
+> checked against is [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## The idea
-An app to **prioritize and plan your personal work and to-dos**, so you can plan your day and be more
-productive. Items are sorted by size and shape (see [3-THINGS.md](3-THINGS.md)), and — if you want — you
-pick what fits into today.
+An app for people with **too little time and too many things**. It does not just store tasks. It
+starts the evening for you, shows the whole board while nothing runs, and steps back into a calm
+focus view while you work.
 
-## The problem
-Niels had trouble managing his tasks. Before the app he did not plan at all. Planning tools tend to fail
-for two reasons: planning is an extra step that gets forgotten, and the plan is overloaded and breaks
-by the afternoon. The app has to make planning *happen* and keep the plan realistic.
+## The problem it solves
+Niels is an apprentice and a competitive orienteerer. Three things go wrong on a normal evening:
+
+1. **Time is tight.** He needs to know exactly when to do what, so everything is done before it is
+   too late.
+2. **Starting is the hard part.** Coming home tired or moody, overwhelmed by the list, he ends up
+   scrolling instead of working. What is missing is a quick reset and a clear "start here".
+3. **Ideas get lost.** Ideas (things to do, things to try) arrive at the worst moments, under the
+   shower or on the train, and are gone when there would be time for them.
 
 ## Target audience
-People like the author: busy, with little spare time (e.g. school or work plus competitive sport or
-other commitments), who need to use the few hours they have well.
+People like Niels: school or work plus a demanding hobby, little spare time, a lot to fit in. The
+app must work for **anyone with that time problem**. Nothing in the core may know about
+orienteering, school or any specific hobby. Areas and categories are just names the user chooses.
 
-The app should still stay **as open as possible**. Anything specific to one kind of user (homework,
-training, ...) must be an optional module, never part of the core. The core has to work for a student,
-an apprentice or a freelancer alike.
+## Core loop
+**Arrive → reset → board → session → done → next / free time**
 
-## Two modes
-One data model, two ways of using it. The mode decides which start page and modules are active. Switching
-later must never lose data.
+- **Arrive:** the phone joins the home Wi-Fi, an iPhone Shortcut pings the app, the app sends a
+  nudge. Fallback: a time guess from the week plan.
+- **Reset:** ten minutes to switch off (shower, eat, walk). Skipping is free, no streak.
+- **Battery check-in:** one tap (low, okay, good). It sizes the suggestion.
+- **Board (idle):** the whole board with **one suggested card** and **where to start**
+  ("Start with: exercise 1").
+- **Session (focus):** pressing Start folds the board away. Only the card, its first step and a
+  25 minute timer stay. Sessions follow pomodoro rules (see below).
+- **Done:** the board comes back with the next suggestion. When deadline work is covered and there
+  is real free time, an idea from Later is offered, and the user can always keep the time for
+  themself.
 
-| Mode | For whom | What is different |
+## The two modes of the screen
+| Mode | When | What is on screen |
 |---|---|---|
-| **Plan my day** | People with little time who want to plan their day | Daily plan with limited capacity: you pull items into today and see what fits |
-| **Just a list** | People who only need a to-do list | No daily plan. Prioritizing still works: items are ordered by deadline and importance |
+| **Board** | nothing is running | everything: start strip with time and one suggestion, Inbox, To-dos, Tasks, Later |
+| **Session** | a pomodoro is running | one card, its first step, the timer, a way back to the board (rail or drawer) |
 
-Sorting (To-Dos / Tasks / Later), the Inbox, the important flag and deadlines are the same in both modes.
+Desktop uses the **Werkbank** layout (columns, then a rail), mobile uses **Stapel** (piles on a desk,
+then a drawer). Features are identical on both devices; only the layout differs.
 
-## Core
-Capture → sort (3 Things) → plan the day → get it done.
+## Sessions (pomodoro)
+- A session is always **25 minutes** of work, followed by a **5 minute** break; every fourth break is
+  **15 minutes**.
+- A task not finished within a session simply **continues in the next session**.
+- Finishing a task with **5 minutes or more** left: the next suggested task starts inside the same
+  session.
+- Finishing with **less than 5 minutes** left: the break starts right away, and the next session
+  gets a fresh 25 minutes.
 
-- **Capture:** fast add, everything lands in the Inbox.
-- **Sort:** To-Dos, Tasks, Later.
-- **Plan the day** (mode "Plan my day"): choose today's focus with limited capacity, not an endless list.
-  Idea: a start-of-day view that goes through what is due today, what is left over from yesterday and
-  what is in the Inbox, so planning is what happens when you open the app instead of an extra step.
-- **Get it done:** complete items, focus timer.
+## Time, categories and areas
+- The **week plan** has repeating blocks, one-off changes ("this week only") and pause days
+  (holidays). This carries over from the old app, which is the part that worked best.
+- Every block has a **category** (e.g. School, Training, Deep work). Categories are an **open list
+  the user creates and customises**. A category has a **"pomodoro sessions" switch**; only blocks of
+  such categories count as work time.
+- Tasks have an **area** (e.g. School, Sport, Own projects), also an open, user-defined list.
+- Categories and areas are **separate but linked**: each category chooses which areas may be
+  suggested inside its blocks (e.g. Deep work suggests School and Own projects, Training suggests
+  nothing).
+- **Capacity** of a day = the number of 25 minute sessions in its pomodoro blocks. Time outside
+  those blocks is free time: ideas may be offered there, and "Keep it mine" applies.
+
+## Ordering without a priority field
+Every task has a size and may have a **hard deadline** (real) and a **soft deadline** ("finished by",
+self-set). The app works out a start-by date from the size, orders by it, warns early when a day is
+overloaded, and suggests letting soft deadlines slip first. In a crunch, the user decides: shrink,
+move, drop, or ask for more time.
 
 ## Principles
-- **Planning is a conscious choice with limited capacity**, not a long list.
-- **No auto-filling of free time.** An earlier prototype planned all free time automatically and felt
-  oppressive. Automation only happens when the user triggers it.
-- **Speed over ceremony:** capture and sort in as few clicks as possible.
-- **Quiet:** no streaks, badges or gamification. About one celebration a day is okay.
-- **User data is never lost** — see CLAUDE.md.
-- **Core stays small.** Everything else is a module that can be switched on.
+- **Overview while planning, nothing but the one thing while working.**
+- **The app suggests, the user decides.** No automatic filling of free time; ideas are only offered.
+- **Speed over ceremony:** capture is one gesture, sorting takes about two minutes a day.
+- **Quiet:** no streaks, badges or points. At most one small celebration per day.
+- **Same features everywhere:** nothing exists on only one device.
+- **User data is never lost** (see CLAUDE.md).
+- **Generic core:** nothing hobby-specific in the core.
+
+## Out of scope for the first release
+Sharing and shared spaces, calendar sync / ICS import, Garmin body battery, learned durations,
+natural language week edits, watch complication and widgets, email to inbox. See the "later" list
+in [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md).

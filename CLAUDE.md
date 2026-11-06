@@ -9,6 +9,11 @@ Here I'm building a todo list app. It was once just an app for me, because I had
 | `ERRORS.md`           | Note errors/exceptions here that may recur, and how you fixed them, to prevent recurrence |
 | `3-THINGS.md`         | One of the concepts behind the todo list. Made by me to fix my problems with managing my tasks |
 | `FUNCTIONS.md`        | Document here every feature the app has and how the feature works |
+| `CONVENTIONS.md`      | Binding interaction and style rules (layouts, buttons, capture, tokens, tone). Read before building any UI |
+| `TODO.md`             | Open tasks, open questions and known issues between sessions |
+| `docs/REQUIREMENTS.md` | The contract the refactor is built and tested against (R1–R10, session and capacity rules) |
+| `docs/REFACTOR_PLAN.md` | Decisions, chosen layouts, flows, data migration map, risks and the phases with skills |
+| `docs/TESTBERICHT.md` | Test plan (A automatic, B Claude visual, C Niels); fill in the result column during the build |
 
 The most important files of the global CLAUDE.md are also listed here.
 
@@ -37,3 +42,16 @@ Here I tell you everything about the refactor I'm currently working on. Apply th
 
 ## git
 Create every branch for the refactor from the branch `refactor/refactor` and name it `feature/<shortname>`. Merge it back into `refactor/refactor` only after I have taken a look at it and approved it.
+
+## the plan (approved 2026-11-06)
+The refactor follows the feature-schmiede plan in `docs/REFACTOR_PLAN.md`; the contract is `docs/REQUIREMENTS.md`. In short:
+- **Board while idle, focus during a session.** Desktop = Werkbank layout, mobile = Stapel layout. Same features on both.
+- **Signature moment: "The board folds away"** on Start. Never tidy it away in cleanups.
+- **Sessions are pomodoros:** 25 min, 5 min break, 15 min after every fourth. Unfinished tasks carry over; done with ≥ 5 min left starts the next task, < 5 min left starts the break early.
+- **Categories** (week plan, open list, "pomodoro sessions" switch) define work time and capacity. **Areas** (tasks, open list) stay separate and are linked to categories.
+- **Themes:** the user chooses; Topografie is the default.
+- **Everyone is switched** to the new app on release; all data is migrated.
+- Build phase by phase and respect the gates. Each step that is a feature gets its own `feature/<shortname>` branch.
+
+## visual checks
+Try a real browser check once or twice (see the working recipe in your memory: `php artisan serve` + Vite in the background, Playwright MCP). If you can't get a usable screenshot, stop and tell me what you tried; don't silently replace the check with tests. Record the outcome in `docs/TESTBERICHT.md` section B.
