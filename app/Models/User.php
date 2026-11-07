@@ -79,6 +79,12 @@ class User extends Authenticatable
         return $this->hasMany(EventTemplate::class);
     }
 
+    /** @return HasMany<Area, $this> */
+    public function areas(): HasMany
+    {
+        return $this->hasMany(Area::class);
+    }
+
     /** @return HasMany<EventCategory, $this> */
     public function eventCategories(): HasMany
     {
