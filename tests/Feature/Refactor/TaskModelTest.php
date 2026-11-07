@@ -102,6 +102,17 @@ class TaskModelTest extends TestCase
         $this->assertTrue($task->fresh()->isUrgencyLocked());
     }
 
+    public function test_reads_work_on_an_unsaved_model_filled_through_either_column(): void
+    {
+        $old = Task::factory()->make(['deadline' => '2026-11-10']);
+        $this->assertTrue($old->isUrgencyLocked());
+        $this->assertSame('2026-11-10', $old->effectiveDate()->toDateString());
+
+        $new = Task::factory()->make(['soft_deadline' => '2026-11-12']);
+        $this->assertFalse($new->isUrgencyLocked());
+        $this->assertSame('2026-11-12', $new->effectiveDate()->toDateString());
+    }
+
     public function test_size_is_cast_to_the_engine_enum_and_null_counts_as_short(): void
     {
         $unsized = Task::factory()->create();

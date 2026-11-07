@@ -109,6 +109,21 @@ class Task extends Model
         return $this->belongsTo(Area::class);
     }
 
+    /**
+     * Transition reads (until the old columns are dropped): the mirror in
+     * booted() only runs on save, so an unsaved or freshly filled model can hold
+     * a value on just one side. Prefer the new column, fall back to the old one.
+     */
+    public function hardDeadline(): ?Carbon
+    {
+        return $this->hard_deadline ?? $this->deadline;
+    }
+
+    public function softDeadline(): ?Carbon
+    {
+        return $this->soft_deadline ?? $this->due_date;
+    }
+
     /** G1: a missing size counts as Short. Use `size` itself to tell "not sized yet" apart. */
     public function effectiveSize(): Size
     {
@@ -128,8 +143,8 @@ class Task extends Model
             estimatedSessions: $this->duration_minutes !== null
                 ? (int) ceil($this->duration_minutes / $sessionMinutes)
                 : null,
-            hardDeadline: $this->hard_deadline?->toDateString(),
-            softDeadline: $this->soft_deadline?->toDateString(),
+            hardDeadline: $this->hardDeadline()?->toDateString(),
+            softDeadline: $this->softDeadline()?->toDateString(),
             areaId: $this->area_id,
         );
     }
@@ -190,7 +205,7 @@ class Task extends Model
     /** The date that drives urgency/display: hard deadline takes precedence. */
     public function effectiveDate(): ?Carbon
     {
-        return $this->hard_deadline ?? $this->soft_deadline;
+        return $this->hardDeadline() ?? $this->softDeadline();
     }
 
     /** True when the effective date is today, in the next URGENCY_DAYS, or overdue. */
@@ -229,7 +244,7 @@ class Task extends Model
      */
     public function isUrgencyLocked(): bool
     {
-        return $this->hard_deadline !== null;
+        return $this->hardDeadline() !== null;
     }
 
     /**
