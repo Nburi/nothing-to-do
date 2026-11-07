@@ -31,7 +31,7 @@ also has a `PomodoroCycleTest` and a `SchedulePauseTest` (retired with the old s
 | A15 | R1 | A started session is stored on the server; a reload or the other device shows the focus view; Done returns the board with the next suggestion; Done twice is harmless. | `php artisan test --filter=SessionModeTest` | offen |
 | A16 | R9 | 25 / 5 cycle, 15 min after every fourth session (counter resets daily); an unfinished task carries over to the next session. | `php artisan test tests/Unit/Planning/PomodoroCycleTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A17 | R9 | Done with ≥ 5 min left starts the next task in the same session; with < 5 min left the break starts at once and the next session is a fresh 25 min. | `php artisan test tests/Unit/Planning/SessionEarlyFinishTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
-| A18 | R10 | Categories and areas are user-defined; a category only suggests its linked areas; deleting an area unlinks it without losing tasks. | `php artisan test --filter=CategoryAreaLinkTest` | offen |
+| A18 | R10 | Categories and areas are user-defined; a category only suggests its linked areas; deleting an area unlinks it without losing tasks. | `php artisan test --filter=CategoryAreaLinkTest` | bestanden (Datenebene, Schritt 1.6, 2026-11-07; Vorschläge pro Block folgen mit 1.3) |
 
 ## B. Claude prüft visuell
 
