@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\ArrivalController;
 use App\Http\Controllers\Api\EventCategoryController;
 use App\Http\Controllers\Api\EventTemplateController;
 use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ScheduleEventController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Middleware\RejectNarrowTokens;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,9 +24,15 @@ use Illuminate\Support\Facades\Route;
 | single JSON-RPC (Model Context Protocol) endpoint for AI assistants —
 | see App\Http\Controllers\Api\McpController and /docs/mcp.
 |
+| Single-purpose phone tokens (App\Support\NarrowAbility) only reach their
+| own route; RejectNarrowTokens keeps them out of everything else.
+|
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+// Refactor spike 0.1: the "home Wi-Fi" Shortcut reports an arrival and gets a Web Push.
+Route::middleware(['auth:sanctum', 'throttle:6,1'])->post('/arrival', ArrivalController::class);
+
+Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function () {
     Route::post('/mcp', McpController::class);
 
     Route::get('/me', [MeController::class, 'show']);
@@ -36,7 +44,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}', [TaskController::class, 'show']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
-
 
     Route::get('/schedule-events/focus', [ScheduleEventController::class, 'focus']);
     Route::get('/schedule-events', [ScheduleEventController::class, 'index']);
