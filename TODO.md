@@ -16,7 +16,9 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [x] 1.3 Pick engine: `PickEngine`, `DeadlineFeasibility::startBy()`, `Suggestions` service, `evenings` (battery + Another log), `tasks.first_step`, first `lang/` files. Also the read side of the week plan (`WeekPlanReader`). Notes in `docs/steps/1.3.md`.
 - [x] 1.4 Capacity and crunch: `LoadPlanner`/`Forecast`, `EarlyWarning` (hysteresis, one warning a day, hard only), `SoftSlip` (G2), drop â†’ Later, shrink, hourly `app:run-planning-checks`. Notes in `docs/steps/1.4.md`.
 - [ ] 1.4 follow-up (4.2): push the warning, crunch screen.
-- [ ] 1.2 Week plan (write side: this week only / every week, pauses), 1.5 capture + API parity, 1.8 review.
+- [x] 1.2 Week plan: `WeekPlanEditor` (explicit `ChangeScope`, moves, tombstones, pauses), reader from 1.3, property test against the old screens. Notes in `docs/steps/1.2.md`.
+- [ ] Hotfix for `main`: `ScheduleEvent::scopeVisible()` compares pause dates as strings, so a paused day still shows an occurrence edited in the form (fixed on the refactor in 1.2, see ERRORS.md).
+- [ ] 1.5 capture + API parity, 1.8 review.
 - [ ] 1.7 follow-up: no HTTP/Livewire entry points yet (that's the session view, 3.1) and no API/MCP endpoints (1.5).
 
 ## Open questions for Niels
