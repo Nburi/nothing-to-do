@@ -3,6 +3,9 @@
 .env
 .env.backup
 .env.production
+.env.rehearsal
+/database/rehearsal*.sqlite
+/database/*.sql
 .phpactor.json
 .phpunit.result.cache
 /.codex
