@@ -6,7 +6,6 @@ use App\Livewire\Admin\HelpEditor;
 use App\Models\HelpArticle;
 use App\Models\HelpCategory;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -203,16 +202,12 @@ class AdminHelpEditorTest extends TestCase
         $this->assertSame(0, HelpArticle::count());
     }
 
-    public function test_opening_a_nonexistent_article_throws(): void
+    public function test_opening_a_nonexistent_article_is_not_found(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
 
-        try {
-            Livewire::actingAs($admin)->test(HelpEditor::class)->call('startEdit', 999999);
-            $this->fail('Expected a ModelNotFoundException.');
-        } catch (ModelNotFoundException) {
-            $this->assertTrue(true);
-        }
+        Livewire::actingAs($admin)->test(HelpEditor::class)->call('startEdit', 999999)
+            ->assertStatus(404);
     }
 
     public function test_creating_an_article_stamps_a_slug_from_its_initial_title(): void

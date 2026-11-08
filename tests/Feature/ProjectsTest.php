@@ -7,7 +7,6 @@ use App\Livewire\TaskBoard;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -113,14 +112,11 @@ class ProjectsTest extends TestCase
         $project = Project::factory()->for($other)->create();
         $task = Task::factory()->for($user)->todos()->create();
 
-        try {
-            Livewire::actingAs($user)
-                ->test(TaskBoard::class)
-                ->call('assignTaskToProject', $task->id, $project->id);
-            $this->fail('Expected a ModelNotFoundException for the foreign project.');
-        } catch (ModelNotFoundException $e) {
-            // The foreign project is invisible through the owner relationship.
-        }
+        // The foreign project is invisible through the owner relationship.
+        Livewire::actingAs($user)
+            ->test(TaskBoard::class)
+            ->call('assignTaskToProject', $task->id, $project->id)
+            ->assertStatus(404);
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'project_id' => null]);
     }
@@ -364,7 +360,7 @@ class ProjectsTest extends TestCase
 
     public function test_service_name_is_detected_from_url(): void
     {
-        $project = new Project();
+        $project = new Project;
 
         $project->external_url = 'https://mycompany.atlassian.net/jira/software/projects/APP';
         $this->assertSame('Jira', $project->externalServiceName());

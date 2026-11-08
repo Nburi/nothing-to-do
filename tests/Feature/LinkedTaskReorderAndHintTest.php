@@ -63,10 +63,9 @@ class LinkedTaskReorderAndHintTest extends TestCase
         $owner = User::factory()->create();
         [$category, $t] = $this->pinnedCategory($owner);
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
-
         Livewire::actingAs(User::factory()->create())->test(Settings::class)
-            ->call('movePinnedTask', $category->id, $t[2]->id, 'up');
+            ->call('movePinnedTask', $category->id, $t[2]->id, 'up')
+            ->assertStatus(404);
     }
 
     public function test_an_events_bound_tasks_can_be_reordered_before_saving(): void

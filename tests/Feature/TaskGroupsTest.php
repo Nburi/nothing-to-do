@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\GroupPage;
+use App\Livewire\ProjectPage;
 use App\Livewire\QuickCapture;
 use App\Livewire\TaskBoard;
 use App\Models\GroupNote;
@@ -11,7 +12,6 @@ use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
 use App\Services\ProgressStats;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -180,9 +180,8 @@ class TaskGroupsTest extends TestCase
         $stranger = Task::factory()->for(User::factory())->todos()->create();
         $own = Task::factory()->for($user)->todos()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(TaskBoard::class)->call('groupTasks', $own->id, $stranger->id);
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('groupTasks', $own->id, $stranger->id)
+            ->assertStatus(404);
     }
 
     public function test_the_inline_name_field_renames_the_new_group(): void
@@ -239,9 +238,8 @@ class TaskGroupsTest extends TestCase
         $foreign = TaskGroup::factory()->for(User::factory())->create();
         $task = Task::factory()->for($user)->inbox()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(TaskBoard::class)->call('assignTaskToGroup', $task->id, $foreign->id);
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('assignTaskToGroup', $task->id, $foreign->id)
+            ->assertStatus(404);
     }
 
     public function test_the_edit_sheet_assigns_and_releases_a_group(): void
@@ -554,11 +552,10 @@ class TaskGroupsTest extends TestCase
         $foreignNote = GroupNote::factory()->for($foreignGroup, 'group')->create();
         $ownGroup = TaskGroup::factory()->for($user)->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
         Livewire::actingAs($user)
             ->test(GroupPage::class, ['group' => $ownGroup])
-            ->call('editNote', $foreignNote->id);
+            ->call('editNote', $foreignNote->id)
+            ->assertStatus(404);
     }
 
     public function test_dissolving_a_group_deletes_its_notes(): void
@@ -740,9 +737,8 @@ class TaskGroupsTest extends TestCase
         $user = User::factory()->create();
         $stranger = Task::factory()->for(User::factory())->todos()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(TaskBoard::class)->call('ungroupTask', $stranger->id);
+        Livewire::actingAs($user)->test(TaskBoard::class)->call('ungroupTask', $stranger->id)
+            ->assertStatus(404);
     }
 
     public function test_assigning_a_task_to_a_project_leaves_its_group_and_prunes_it(): void
@@ -771,7 +767,7 @@ class TaskGroupsTest extends TestCase
         $task = Task::factory()->for($user)->inbox()->create(['group_id' => $group->id]);
 
         Livewire::actingAs($user)
-            ->test(\App\Livewire\ProjectPage::class, ['project' => $project])
+            ->test(ProjectPage::class, ['project' => $project])
             ->call('assignToProject', $task->id);
 
         $this->assertSame($project->id, $task->fresh()->project_id);

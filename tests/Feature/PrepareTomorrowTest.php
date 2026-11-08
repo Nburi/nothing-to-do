@@ -4,11 +4,11 @@ namespace Tests\Feature;
 
 use App\Livewire\PrepareTomorrow;
 use App\Models\EventCategory;
+use App\Models\EventTemplate;
 use App\Models\Project;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -88,14 +88,11 @@ class PrepareTomorrowTest extends TestCase
         $other = User::factory()->create();
         $task = Task::factory()->for($other)->inbox()->create();
 
-        try {
-            Livewire::actingAs($user)
-                ->test(PrepareTomorrow::class)
-                ->call('assignList', $task->id, 'todos');
-            $this->fail('Expected a ModelNotFoundException for the foreign task.');
-        } catch (ModelNotFoundException) {
-            // The foreign task is invisible through the owner relationship.
-        }
+        // The foreign task is invisible through the owner relationship.
+        Livewire::actingAs($user)
+            ->test(PrepareTomorrow::class)
+            ->call('assignList', $task->id, 'todos')
+            ->assertStatus(404);
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'list' => 'inbox']);
     }
@@ -201,7 +198,7 @@ class PrepareTomorrowTest extends TestCase
     {
         $user = User::factory()->create(['timezone_offset' => 0]);
         $category = EventCategory::factory()->for($user)->create();
-        $template = \App\Models\EventTemplate::factory()->for($user)->create([
+        $template = EventTemplate::factory()->for($user)->create([
             'category_id' => $category->id,
             'default_start' => '08:00',
             'duration' => 60,

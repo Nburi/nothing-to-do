@@ -327,9 +327,9 @@ class EisenhowerBoardTest extends TestCase
         $other = User::factory()->create();
         $foreign = Task::factory()->for($other)->tasks()->create();
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
         Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('setTodayEisenhower', $foreign->id, true);
+            ->call('setTodayEisenhower', $foreign->id, true)
+            ->assertStatus(404);
     }
 
     // ── swipeIntentEisenhower() ──────────────────────────────────────────

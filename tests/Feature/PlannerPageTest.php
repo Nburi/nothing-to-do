@@ -8,7 +8,6 @@ use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -100,8 +99,8 @@ class PlannerPageTest extends TestCase
         $this->actingUser();
         $foreign = Task::factory()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-        Livewire::test(Planner::class)->call('unassignTask', $foreign->id);
+        Livewire::test(Planner::class)->call('unassignTask', $foreign->id)
+            ->assertStatus(404);
     }
 
     public function test_move_to_day_appends_to_an_existing_days_order(): void

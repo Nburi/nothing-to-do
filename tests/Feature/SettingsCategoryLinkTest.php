@@ -9,7 +9,6 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -68,9 +67,8 @@ class SettingsCategoryLinkTest extends TestCase
         $foreignProject = Project::factory()->for(User::factory())->create();
         $category = EventCategory::factory()->for($user)->pomodoro()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(Settings::class)->call('linkCategoryToProject', $category->id, $foreignProject->id);
+        Livewire::actingAs($user)->test(Settings::class)->call('linkCategoryToProject', $category->id, $foreignProject->id)
+            ->assertStatus(404);
     }
 
     public function test_a_foreign_category_can_never_be_linked(): void
@@ -79,9 +77,8 @@ class SettingsCategoryLinkTest extends TestCase
         $project = Project::factory()->for($user)->create();
         $foreignCategory = EventCategory::factory()->for(User::factory())->pomodoro()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(Settings::class)->call('linkCategoryToProject', $foreignCategory->id, $project->id);
+        Livewire::actingAs($user)->test(Settings::class)->call('linkCategoryToProject', $foreignCategory->id, $project->id)
+            ->assertStatus(404);
     }
 
     public function test_link_category_to_group_sets_the_source(): void
@@ -170,9 +167,8 @@ class SettingsCategoryLinkTest extends TestCase
         $foreignTask = Task::factory()->for(User::factory())->todos()->create();
         $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'tasks']);
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(Settings::class)->call('togglePinnedTask', $category->id, $foreignTask->id);
+        Livewire::actingAs($user)->test(Settings::class)->call('togglePinnedTask', $category->id, $foreignTask->id)
+            ->assertStatus(404);
     }
 
     public function test_toggle_pinned_task_is_a_no_op_when_not_in_tasks_mode(): void

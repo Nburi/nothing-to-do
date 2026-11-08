@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Livewire\TaskBoard;
 use App\Models\AgendaEntry;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -79,11 +78,8 @@ class BoardHomeworkPreviewTest extends TestCase
 
         $component = Livewire::actingAs($user)->test(TaskBoard::class);
 
-        try {
-            $component->call('toggleHomeworkPreviewDone', $entry->id);
-            $this->fail('Expected a ModelNotFoundException for the foreign entry.');
-        } catch (ModelNotFoundException) {
-            $this->assertFalse($entry->fresh()->isDoneFor($stranger));
-        }
+        $component->call('toggleHomeworkPreviewDone', $entry->id)
+            ->assertStatus(404);
+        $this->assertFalse($entry->fresh()->isDoneFor($stranger));
     }
 }

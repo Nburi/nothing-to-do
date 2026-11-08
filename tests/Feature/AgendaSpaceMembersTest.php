@@ -6,7 +6,6 @@ use App\Livewire\Agenda;
 use App\Models\AgendaEntry;
 use App\Models\AgendaSpace;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -38,13 +37,10 @@ class AgendaSpaceMembersTest extends TestCase
         $stranger = User::factory()->create();
         $space = AgendaSpace::factory()->create();
 
-        try {
-            Livewire::actingAs($stranger)->test(Agenda::class)->call('openMembers', $space->id);
-            $this->fail('A non-member must not be able to see who is in a class.');
-        } catch (ModelNotFoundException) {
-            // Resolved through the user's own memberships.
-            $this->assertFalse($space->hasMember($stranger));
-        }
+        // Resolved through the user's own memberships.
+        Livewire::actingAs($stranger)->test(Agenda::class)->call('openMembers', $space->id)
+            ->assertStatus(404);
+        $this->assertFalse($space->hasMember($stranger));
     }
 
     public function test_online_members_are_listed_first(): void
@@ -121,12 +117,9 @@ class AgendaSpaceMembersTest extends TestCase
         $victim = User::factory()->create();
         $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member, $victim)->create();
 
-        try {
-            Livewire::actingAs($member)->test(Agenda::class)->call('removeMember', $space->id, $victim->id);
-            $this->fail('Removing people is owner-only, unlike editing entries.');
-        } catch (ModelNotFoundException) {
-            // Not their space to administer.
-        }
+        // Not their space to administer.
+        Livewire::actingAs($member)->test(Agenda::class)->call('removeMember', $space->id, $victim->id)
+            ->assertStatus(404);
 
         $this->assertTrue($space->fresh()->hasMember($victim));
     }
@@ -149,9 +142,8 @@ class AgendaSpaceMembersTest extends TestCase
         $outsider = User::factory()->create();
         $space = AgendaSpace::factory()->for($owner, 'owner')->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($owner)->test(Agenda::class)->call('removeMember', $space->id, $outsider->id);
+        Livewire::actingAs($owner)->test(Agenda::class)->call('removeMember', $space->id, $outsider->id)
+            ->assertStatus(404);
     }
 
     // ── Transferring ownership ────────────────────────────────────────
@@ -178,12 +170,9 @@ class AgendaSpaceMembersTest extends TestCase
         $member = User::factory()->create();
         $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
 
-        try {
-            Livewire::actingAs($member)->test(Agenda::class)->call('transferOwnership', $space->id, $member->id);
-            $this->fail('Only the owner may hand the class over.');
-        } catch (ModelNotFoundException) {
-            // Not their space to administer.
-        }
+        // Not their space to administer.
+        Livewire::actingAs($member)->test(Agenda::class)->call('transferOwnership', $space->id, $member->id)
+            ->assertStatus(404);
 
         $this->assertSame($owner->id, $space->fresh()->owner_id);
     }
@@ -194,9 +183,8 @@ class AgendaSpaceMembersTest extends TestCase
         $outsider = User::factory()->create();
         $space = AgendaSpace::factory()->for($owner, 'owner')->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($owner)->test(Agenda::class)->call('transferOwnership', $space->id, $outsider->id);
+        Livewire::actingAs($owner)->test(Agenda::class)->call('transferOwnership', $space->id, $outsider->id)
+            ->assertStatus(404);
     }
 
     // ── The sheet's own state ─────────────────────────────────────────

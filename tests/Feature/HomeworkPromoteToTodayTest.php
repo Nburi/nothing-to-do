@@ -6,7 +6,6 @@ use App\Livewire\TaskBoard;
 use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -98,9 +97,8 @@ class HomeworkPromoteToTodayTest extends TestCase
         $this->actingUser();
         $stranger = AgendaEntry::factory()->for(User::factory())->homework()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(TaskBoard::class)->call('promoteHomeworkToday', $stranger->id, 'tasks');
+        Livewire::test(TaskBoard::class)->call('promoteHomeworkToday', $stranger->id, 'tasks')
+            ->assertStatus(404);
     }
 
     public function test_promoted_homework_entry_ids_reflects_an_active_linked_task(): void
@@ -217,9 +215,8 @@ class HomeworkPromoteToTodayTest extends TestCase
         $this->actingUser();
         $stranger = Task::factory()->for(User::factory())->tasks()->create(['agenda_entry_id' => null]);
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(TaskBoard::class)->call('removeHomeworkFromToday', $stranger->id);
+        Livewire::test(TaskBoard::class)->call('removeHomeworkFromToday', $stranger->id)
+            ->assertStatus(404);
     }
 
     public function test_deleting_the_agenda_entry_unlinks_the_task_without_deleting_it(): void
