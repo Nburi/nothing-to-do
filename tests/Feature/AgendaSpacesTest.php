@@ -8,7 +8,6 @@ use App\Livewire\QuickCapture;
 use App\Models\AgendaEntry;
 use App\Models\AgendaSpace;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -215,12 +214,9 @@ class AgendaSpacesTest extends TestCase
         $member = User::factory()->create();
         $space = AgendaSpace::factory()->for($owner, 'owner')->withMembers($member)->create();
 
-        try {
-            Livewire::actingAs($member)->test(Agenda::class)->call('deleteSpace', $space->id);
-            $this->fail('A plain member must not be able to delete the space.');
-        } catch (ModelNotFoundException) {
-            // Not their space to delete.
-        }
+        // Not their space to delete.
+        Livewire::actingAs($member)->test(Agenda::class)->call('deleteSpace', $space->id)
+            ->assertStatus(404);
 
         $this->assertDatabaseHas('agenda_spaces', ['id' => $space->id]);
 
@@ -235,12 +231,9 @@ class AgendaSpacesTest extends TestCase
         $space = AgendaSpace::factory()->for($owner, 'owner')->create();
 
         foreach (['leaveSpace', 'regenerateInviteCode', 'deleteSpace'] as $action) {
-            try {
-                Livewire::actingAs($stranger)->test(Agenda::class)->call($action, $space->id);
-                $this->fail("A non-member must not be able to call {$action}.");
-            } catch (ModelNotFoundException) {
-                // Invisible, exactly like a foreign entry.
-            }
+            // Invisible, exactly like a foreign entry.
+            Livewire::actingAs($stranger)->test(Agenda::class)->call($action, $space->id)
+                ->assertStatus(404);
         }
 
         $this->assertDatabaseHas('agenda_spaces', ['id' => $space->id, 'owner_id' => $owner->id]);
@@ -275,12 +268,9 @@ class AgendaSpacesTest extends TestCase
         $entry = AgendaEntry::factory()->for($owner)->inSpace($space)->create();
 
         foreach (['toggleDone', 'startEdit', 'deleteEntry'] as $action) {
-            try {
-                Livewire::actingAs($outsider)->test(Agenda::class)->call($action, $entry->id);
-                $this->fail("A non-member must not be able to call {$action} on a class entry.");
-            } catch (ModelNotFoundException) {
-                // Not in their visibility scope.
-            }
+            // Not in their visibility scope.
+            Livewire::actingAs($outsider)->test(Agenda::class)->call($action, $entry->id)
+                ->assertStatus(404);
         }
 
         $this->assertDatabaseHas('agenda_entries', ['id' => $entry->id]);

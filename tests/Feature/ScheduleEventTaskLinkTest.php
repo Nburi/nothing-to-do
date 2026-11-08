@@ -7,7 +7,6 @@ use App\Models\EventCategory;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -54,9 +53,8 @@ class ScheduleEventTaskLinkTest extends TestCase
         $this->actingUser();
         $foreignTask = Task::factory()->for(User::factory())->todos()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('toggleEventLinkedTask', $foreignTask->id);
+        Livewire::test(Schedule::class)->call('toggleEventLinkedTask', $foreignTask->id)
+            ->assertStatus(404);
     }
 
     public function test_creating_a_one_off_appointment_persists_multiple_linked_tasks(): void
@@ -260,9 +258,8 @@ class ScheduleEventTaskLinkTest extends TestCase
         $otherUser = User::factory()->create();
         $event = ScheduleEvent::factory()->for($otherUser)->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('navigateToLinkedTask', $event->id);
+        Livewire::test(Schedule::class)->call('navigateToLinkedTask', $event->id)
+            ->assertStatus(404);
     }
 
     public function test_the_pick_order_becomes_the_pivot_sort_order(): void

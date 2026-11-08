@@ -7,7 +7,6 @@ use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\ScheduleEvent;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -391,8 +390,8 @@ class ScheduleTest extends TestCase
         $this->actingUser();
         $other = ScheduleEvent::factory()->create(['date' => '2026-06-26']);
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
-        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '10:00', '2026-06-27');
+        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '10:00', '2026-06-27')
+            ->assertStatus(404);
     }
 
     public function test_resize_guards_a_minimum_length(): void
@@ -478,8 +477,7 @@ class ScheduleTest extends TestCase
 
         // The event is resolved through the owner relationship, so another user's
         // id never matches — the write is rejected before it can run.
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '12:00');
+        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '12:00')
+            ->assertStatus(404);
     }
 }

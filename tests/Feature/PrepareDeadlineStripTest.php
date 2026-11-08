@@ -7,7 +7,6 @@ use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -70,8 +69,7 @@ class PrepareDeadlineStripTest extends TestCase
     {
         $task = Task::factory()->for(User::factory()->create())->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs(User::factory()->create())->test(PrepareTomorrow::class)->call('toggleDeadlineTaskDone', $task->id);
+        Livewire::actingAs(User::factory()->create())->test(PrepareTomorrow::class)->call('toggleDeadlineTaskDone', $task->id)
+            ->assertStatus(404);
     }
 }

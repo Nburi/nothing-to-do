@@ -7,7 +7,6 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -227,9 +226,9 @@ class KanbanBoardTest extends TestCase
         $other = User::factory()->create();
         $foreign = Task::factory()->for($other)->tasks()->create();
 
-        $this->expectException(ModelNotFoundException::class);
         Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('setKanbanColumn', $foreign->id, 'in_progress');
+            ->call('setKanbanColumn', $foreign->id, 'in_progress')
+            ->assertStatus(404);
     }
 
     // ── reorderKanban() — desktop drag across all three columns ─────────

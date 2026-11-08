@@ -56,8 +56,8 @@ class TaskDurationTest extends TestCase
         $this->actingUser();
         $foreign = Task::factory()->create();
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
-        Livewire::test(TaskBoard::class)->call('quickSetDuration', $foreign->id, 25);
+        Livewire::test(TaskBoard::class)->call('quickSetDuration', $foreign->id, 25)
+            ->assertStatus(404);
     }
 
     public function test_saving_the_edit_sheet_persists_the_duration(): void

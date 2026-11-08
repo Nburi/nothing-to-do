@@ -6,7 +6,6 @@ use App\Livewire\Agenda;
 use App\Models\AgendaEntry;
 use App\Models\AgendaSpace;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -144,12 +143,9 @@ class AgendaTest extends TestCase
         $component = Livewire::actingAs($user)->test(Agenda::class);
         $component->assertDontSeeHtml('agenda-'.$foreignEntry->id);
 
-        try {
-            $component->call('toggleDone', $foreignEntry->id);
-            $this->fail('Expected a ModelNotFoundException for the foreign entry.');
-        } catch (ModelNotFoundException) {
-            // The foreign entry is invisible through the visibility scope.
-        }
+        // The foreign entry is invisible through the visibility scope.
+        $component->call('toggleDone', $foreignEntry->id)
+            ->assertStatus(404);
 
         $this->assertDatabaseCount('agenda_entry_completions', 0);
     }
@@ -352,14 +348,11 @@ class AgendaTest extends TestCase
         $stranger = User::factory()->create();
         $entry = AgendaEntry::factory()->for($owner)->create(); // private, no space
 
-        try {
-            Livewire::actingAs($stranger)
-                ->test(Agenda::class)
-                ->call('startEdit', $entry->id);
-            $this->fail('Expected a ModelNotFoundException for a private entry outside any shared space.');
-        } catch (ModelNotFoundException) {
-            // visibleEntry() hides it before any private note could ever be read or written.
-        }
+        // visibleEntry() hides it before any private note could ever be read or written.
+        Livewire::actingAs($stranger)
+            ->test(Agenda::class)
+            ->call('startEdit', $entry->id)
+            ->assertStatus(404);
 
         $this->assertDatabaseCount('agenda_entry_notes', 0);
     }

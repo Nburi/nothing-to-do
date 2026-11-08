@@ -7,7 +7,6 @@ use App\Models\AgendaEntry;
 use App\Models\Task;
 use App\Models\TaskDayPlan;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -192,9 +191,8 @@ class ScheduleDeadlineItemsTest extends TestCase
 
         // Resolved through the owner relationship, so another user's id never
         // matches — the write is rejected before it can run.
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $other->id);
+        Livewire::test(Schedule::class)->call('toggleDeadlineTaskDone', $other->id)
+            ->assertStatus(404);
     }
 
     public function test_a_user_cannot_toggle_an_agenda_entry_they_cannot_see(): void
@@ -203,9 +201,8 @@ class ScheduleDeadlineItemsTest extends TestCase
         $other = AgendaEntry::factory()->for(User::factory())->homework()->create(['date' => now()->toDateString()]);
 
         // Resolved through AgendaEntry::scopeVisibleTo(), same as everywhere else in the app.
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('toggleDeadlineAgendaDone', $other->id);
+        Livewire::test(Schedule::class)->call('toggleDeadlineAgendaDone', $other->id)
+            ->assertStatus(404);
     }
 
     // ── Planer placements ──

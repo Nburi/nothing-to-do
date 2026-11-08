@@ -7,7 +7,6 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -285,9 +284,9 @@ class SimpleBoardTest extends TestCase
         $other = User::factory()->create();
         $foreign = Task::factory()->for($other)->tasks()->create();
 
-        $this->expectException(ModelNotFoundException::class);
         Livewire::actingAs($user)->test(TaskBoard::class)
-            ->call('setTodaySimple', $foreign->id, true);
+            ->call('setTodaySimple', $foreign->id, true)
+            ->assertStatus(404);
     }
 
     // ── swipeIntentSimple() — mobile swipe, routes through setTodaySimple() ──
