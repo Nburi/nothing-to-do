@@ -100,6 +100,22 @@ final readonly class SessionEngine
         return $state->with(taskId: $nextTaskId, doneTaskIds: $done);
     }
 
+    /**
+     * Leave the session without marking anything done ("back to the board").
+     * Like E6, a session that is stopped early does not count toward the
+     * fourth-session long break; the day's counter and done list are kept.
+     */
+    public function stop(SessionState $state, CarbonImmutable $now): SessionState
+    {
+        $state = $this->at($state, $now);
+
+        if ($state->phase === Phase::Idle) {
+            return $state;
+        }
+
+        return $state->with(phase: Phase::Idle, taskId: null, phaseStartedAt: null, pausedAt: null, pausedSeconds: 0);
+    }
+
     public function pause(SessionState $state, CarbonImmutable $now): SessionState
     {
         $state = $this->at($state, $now);

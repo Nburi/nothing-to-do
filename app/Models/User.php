@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -77,6 +78,12 @@ class User extends Authenticatable
     public function eventTemplates(): HasMany
     {
         return $this->hasMany(EventTemplate::class);
+    }
+
+    /** @return HasOne<PomodoroSession, $this> */
+    public function pomodoroSession(): HasOne
+    {
+        return $this->hasOne(PomodoroSession::class);
     }
 
     /** @return HasMany<Area, $this> */
