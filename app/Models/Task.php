@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Planning\PlannedTask;
+use App\Planning\Size;
 use App\Support\Markdown\Markdown;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +38,10 @@ class Task extends Model
         'is_important',
         'deadline',
         'due_date',
+        'hard_deadline',
+        'soft_deadline',
+        'size',
+        'area_id',
         'notes',
         'duration_minutes',
         'is_completed',
@@ -55,15 +61,92 @@ class Task extends Model
             'is_completed' => 'boolean',
             'deadline' => 'date',
             'due_date' => 'date',
+            'hard_deadline' => 'date',
+            'soft_deadline' => 'date',
+            'size' => Size::class,
             'duration_minutes' => 'integer',
             'completed_at' => 'datetime',
             'sort_order' => 'integer',
         ];
     }
 
+    /**
+     * Two-step rename, phase one (REFACTOR_PLAN § 3): `deadline` → `hard_deadline`
+     * and `due_date` → `soft_deadline` exist side by side until the old columns
+     * are dropped in a later release. Every Eloquent write mirrors whichever
+     * side changed onto the other, so readers of either column see the same
+     * value. When both change in one write and disagree, the new column wins.
+     * (A query-builder update bypasses this; none writes these columns today —
+     * keep it that way until the old columns are gone.)
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Task $task) {
+            foreach (self::RENAMED_DATE_COLUMNS as $old => $new) {
+                if ($task->isDirty($new)) {
+                    $task->{$old} = $task->{$new};
+                } elseif ($task->isDirty($old)) {
+                    $task->{$new} = $task->{$old};
+                }
+            }
+        });
+    }
+
+    /** Old column => new column, mirrored by booted(). */
+    public const RENAMED_DATE_COLUMNS = [
+        'deadline' => 'hard_deadline',
+        'due_date' => 'soft_deadline',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** The task's area (REQUIREMENTS § 4). Null = fits any pomodoro category that has no area links, see App\Planning\Category::accepts(). */
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
+    }
+
+    /**
+     * Transition reads (until the old columns are dropped): the mirror in
+     * booted() only runs on save, so an unsaved or freshly filled model can hold
+     * a value on just one side. Prefer the new column, fall back to the old one.
+     */
+    public function hardDeadline(): ?Carbon
+    {
+        return $this->hard_deadline ?? $this->deadline;
+    }
+
+    public function softDeadline(): ?Carbon
+    {
+        return $this->soft_deadline ?? $this->due_date;
+    }
+
+    /** G1: a missing size counts as Short. Use `size` itself to tell "not sized yet" apart. */
+    public function effectiveSize(): Size
+    {
+        return $this->size ?? Size::Short;
+    }
+
+    /**
+     * This task as the planning engine sees it (App\Planning). The old
+     * `duration_minutes` hint becomes the session estimate a Block needs; for
+     * every other size it is ignored (sizes are coarse on purpose, risk F4).
+     */
+    public function toPlannedTask(int $sessionMinutes = 25): PlannedTask
+    {
+        return new PlannedTask(
+            id: $this->id,
+            size: $this->effectiveSize(),
+            estimatedSessions: $this->duration_minutes !== null
+                ? (int) ceil($this->duration_minutes / $sessionMinutes)
+                : null,
+            hardDeadline: $this->hardDeadline()?->toDateString(),
+            softDeadline: $this->softDeadline()?->toDateString(),
+            areaId: $this->area_id,
+        );
     }
 
     /** Which day this task is planned for, if any (see App\Services\DayPlanner). */
@@ -122,7 +205,7 @@ class Task extends Model
     /** The date that drives urgency/display: hard deadline takes precedence. */
     public function effectiveDate(): ?Carbon
     {
-        return $this->deadline ?? $this->due_date;
+        return $this->hardDeadline() ?? $this->softDeadline();
     }
 
     /** True when the effective date is today, in the next URGENCY_DAYS, or overdue. */
@@ -161,7 +244,7 @@ class Task extends Model
      */
     public function isUrgencyLocked(): bool
     {
-        return $this->deadline !== null;
+        return $this->hardDeadline() !== null;
     }
 
     /**
