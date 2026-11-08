@@ -67,14 +67,14 @@ class MigrationRehearsalToolTest extends TestCase
     public function test_a_new_table_and_a_new_column_are_reported_but_fine(): void
     {
         $before = $this->snapshots->take();
-        Schema::create('areas', fn ($t) => $t->id());
-        Schema::table('tasks', fn ($t) => $t->string('size')->nullable());
+        Schema::create('rehearsal_probe', fn ($t) => $t->id());
+        Schema::table('tasks', fn ($t) => $t->string('rehearsal_probe')->nullable());
 
         $result = SnapshotComparison::compare($before, $this->snapshots->take());
 
         $this->assertTrue($result->ok(), implode("\n", $result->problems));
-        $this->assertContains('areas: new table (0 rows)', $result->notes);
-        $this->assertContains('tasks.size: new column', $result->notes);
+        $this->assertContains('rehearsal_probe: new table (0 rows)', $result->notes);
+        $this->assertContains('tasks.rehearsal_probe: new column', $result->notes);
     }
 
     public function test_a_dropped_column_is_a_problem_unless_allowed(): void
@@ -89,18 +89,18 @@ class MigrationRehearsalToolTest extends TestCase
 
     public function test_a_copied_column_must_match_its_source(): void
     {
-        // The two-step rename from the plan: deadline -> hard_deadline.
+        // A two-step rename like deadline -> hard_deadline, on a probe column so it never collides with a real migration.
         DB::table('tasks')->update(['deadline' => '2026-11-20']);
         $before = $this->snapshots->take();
-        Schema::table('tasks', fn ($t) => $t->date('hard_deadline')->nullable());
-        DB::table('tasks')->update(['hard_deadline' => DB::raw('deadline')]);
+        Schema::table('tasks', fn ($t) => $t->date('rehearsal_copy')->nullable());
+        DB::table('tasks')->update(['rehearsal_copy' => DB::raw('deadline')]);
         $after = $this->snapshots->take();
 
-        $this->assertTrue(SnapshotComparison::compare($before, $after, same: ['tasks.deadline' => 'tasks.hard_deadline'])->ok());
+        $this->assertTrue(SnapshotComparison::compare($before, $after, same: ['tasks.deadline' => 'tasks.rehearsal_copy'])->ok());
 
-        DB::table('tasks')->where('id', Task::query()->min('id'))->update(['hard_deadline' => null]);
-        $broken = SnapshotComparison::compare($before, $this->snapshots->take(), same: ['tasks.deadline' => 'tasks.hard_deadline']);
-        $this->assertContains('tasks.hard_deadline does not match tasks.deadline from before', $broken->problems);
+        DB::table('tasks')->where('id', Task::query()->min('id'))->update(['rehearsal_copy' => null]);
+        $broken = SnapshotComparison::compare($before, $this->snapshots->take(), same: ['tasks.deadline' => 'tasks.rehearsal_copy']);
+        $this->assertContains('tasks.rehearsal_copy does not match tasks.deadline from before', $broken->problems);
     }
 
     public function test_the_spot_check_counts_one_users_rows(): void
