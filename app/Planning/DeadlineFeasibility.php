@@ -73,6 +73,39 @@ final readonly class DeadlineFeasibility
     }
 
     /**
+     * Start-by dates (R5): plan every dated task as late as possible — the
+     * latest deadline claims the latest sessions first, then the next one fills
+     * in before it — and read off the day each task's work begins. A task that
+     * does not fit even when started now is late; its start-by is today.
+     * Respects area links like check(). `$now` must be in the user's timezone:
+     * its date is "today".
+     *
+     * @param  list<PlannedTask>  $tasks
+     * @param  array<string, list<SessionSlot>>  $slotsByDate
+     */
+    public function startBy(array $tasks, array $slotsByDate, CarbonImmutable $now): StartBy
+    {
+        $ordered = self::order($tasks);
+        $fill = $this->fill(array_reverse($ordered), $this->openSlots($slotsByDate, $now), forward: false);
+        $today = $now->toDateString();
+
+        $dates = [];
+        $late = [];
+        foreach ($ordered as $task) {
+            $planned = array_keys($fill['minutes'][$task->id] ?? []);
+            if (($fill['remaining'][$task->id] ?? 0) > 0) {
+                $late[] = $task->id;
+                $dates[$task->id] = $today;
+            } else {
+                $dates[$task->id] = $planned === [] ? $today : max($today, $planned[0]);
+            }
+        }
+        sort($late);
+
+        return new StartBy($dates, $late);
+    }
+
+    /**
      * @param  array<string, list<SessionSlot>>  $slotsByDate
      * @return list<array{date:string,category:int,free:int}>
      */

@@ -13,7 +13,7 @@ also has a `PomodoroCycleTest` and a `SchedulePauseTest` (retired with the old s
 
 | Nr | Anforderung | Prüfung | Befehl | Ergebnis |
 |---|---|---|---|---|
-| A1 | R1 | Battery low returns two quick to-dos, then a shrunk task; mid returns the deadline task first. | `php artisan test --filter=PickEngineTest` | offen |
+| A1 | R1 | Battery low returns two quick to-dos, then a shrunk task; mid returns the deadline task first. | `php artisan test --filter=PickEngineTest` | bestanden (Schritt 1.3, 2026-11-08; Verdrahtung in `SuggestionsTest`) |
 | A2 | R5 | Hard deadline beats soft; equal dates fall back to the smaller size. | `php artisan test tests/Unit/Planning/StartByOrderTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A3 | R4 | A one-off move changes one date only; the template is untouched. | `php artisan test tests/Unit/Planning/WeekExceptionTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A4 | R4 | A holiday suppresses template events; one day inside can be switched back on. | `php artisan test tests/Unit/Planning/SchedulePauseTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
@@ -22,13 +22,13 @@ also has a `PomodoroCycleTest` and a `SchedulePauseTest` (retired with the old s
 | A7 | R5 | Soft deadline: first miss rolls over, second miss moves the item to Later. | `php artisan test --filter=SoftSlipTest` | offen |
 | A8 | R3 | Capture saves a 400 character title, rejects an empty one with a German message, refuses a token without the capture ability. | `php artisan test --filter=CaptureTest` | offen |
 | A9 | R3 | Sorting moves an item to To-do, Task or Later and applies the default size. | `php artisan test --filter=InboxSortTest` | offen |
-| A19 | R9 | Outside pomodoro blocks the idle board offers no work suggestion; the next block's start time is shown instead; a manual start still works. | `php artisan test --filter=NoSuggestionOutsideBlocksTest` | offen |
+| A19 | R9 | Outside pomodoro blocks the idle board offers no work suggestion; the next block's start time is shown instead; a manual start still works. | `php artisan test --filter=NoSuggestionOutsideBlocksTest` | bestanden (Schritt 1.3, 2026-11-08) |
 | A10 | R6 | Ideas are offered only in free time outside pomodoro blocks and when deadline work is covered; a "mine" slot offers nothing. | `php artisan test --filter=IdeaSuggestionTest` | offen |
 | A11 | R7 | Every action in the registry has a desktop and a mobile entry point, in board and session mode. | `php artisan test --filter=ActionParityTest` | offen |
 | A12 | R8 | Old-schema fixtures migrate with equal row counts; deadline becomes hard, due date becomes soft; rollback restores. | `php artisan test --filter=MigrationRehearsalTest` | offen |
 | A13 | R2 | The nudge is sent once per evening, not after the reset is done, not on paused days. | `php artisan test --filter=NudgeSchedulerTest` | offen |
 | A14 | all | No endpoint returns another user's items. | `php artisan test --filter=AuthorizationTest` | offen |
-| A15 | R1 | A started session is stored on the server; a reload or the other device shows the focus view; Done returns the board with the next suggestion; Done twice is harmless. | `php artisan test --filter=SessionModeTest` | teilweise bestanden (Schritt 1.7, 2026-11-08: Speicherung, zweites Gerät, Done idempotent, Fremd-Tasks abgelehnt; die 'nächste Empfehlung' nach Done folgt mit 1.3) |
+| A15 | R1 | A started session is stored on the server; a reload or the other device shows the focus view; Done returns the board with the next suggestion; Done twice is harmless. | `php artisan test --filter=SessionModeTest` | bestanden (Schritt 1.7 + 1.3, 2026-11-08: Speicherung, zweites Gerät, Done idempotent, Fremd-Tasks abgelehnt, Done liefert die nächste Empfehlung) |
 | A16 | R9 | 25 / 5 cycle, 15 min after every fourth session (counter resets daily); an unfinished task carries over to the next session. | `php artisan test tests/Unit/Planning/PomodoroCycleTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A17 | R9 | Done with ≥ 5 min left starts the next task in the same session; with < 5 min left the break starts at once and the next session is a fresh 25 min. | `php artisan test tests/Unit/Planning/SessionEarlyFinishTest.php` | bestanden (Engine, Spike 0.2, 2026-11-06; Anbindung an die Modelle in Phase 1) |
 | A18 | R10 | Categories and areas are user-defined; a category only suggests its linked areas; deleting an area unlinks it without losing tasks. | `php artisan test --filter=CategoryAreaLinkTest` | bestanden (Datenebene, Schritt 1.6, 2026-11-07; Vorschläge pro Block folgen mit 1.3) |
