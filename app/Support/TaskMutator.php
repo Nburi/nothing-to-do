@@ -97,4 +97,29 @@ class TaskMutator
 
         return $task->fresh();
     }
+
+    /** The refactor's task fields (step 1.1), written by the REST API and MCP alike (step 1.5). */
+    public const REFACTOR_FIELDS = ['hard_deadline', 'soft_deadline', 'size', 'area_id', 'first_step'];
+
+    /**
+     * Apply the refactor's fields present in already validated $data. The
+     * new deadline columns win over the old ones in the same write (Task::booted()).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function applyRefactorFields(Task $task, array $data): Task
+    {
+        $updates = array_intersect_key($data, array_flip(self::REFACTOR_FIELDS));
+
+        if (array_key_exists('first_step', $updates)) {
+            $step = $updates['first_step'] !== null ? trim($updates['first_step']) : null;
+            $updates['first_step'] = $step !== '' ? $step : null;
+        }
+
+        if ($updates !== []) {
+            $task->update($updates);
+        }
+
+        return $task->fresh();
+    }
 }
