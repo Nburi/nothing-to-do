@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Planning\Category;
 use Database\Factories\EventCategoryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -118,6 +119,46 @@ class EventCategory extends Model
             'task_source' => null,
             'linked_text' => null,
         ]);
+    }
+
+    /**
+     * The task areas that may be suggested inside this category's blocks
+     * (REQUIREMENTS § 4, category ↔ area link). Empty = only tasks without an
+     * area (engine decision E5).
+     *
+     * @return BelongsToMany<Area, $this>
+     */
+    public function areas(): BelongsToMany
+    {
+        return $this->belongsToMany(Area::class, 'category_area')->withTimestamps();
+    }
+
+    /**
+     * Replace the linked areas. Ids that are not the category owner's own areas
+     * are dropped silently — a link can never point into another account.
+     *
+     * @param  list<int>  $areaIds
+     */
+    public function syncAreas(array $areaIds): void
+    {
+        $owned = Area::query()
+            ->where('user_id', $this->user_id)
+            ->whereIn('id', array_map('intval', $areaIds))
+            ->pluck('id')
+            ->all();
+
+        $this->areas()->sync($owned);
+        $this->unsetRelation('areas');
+    }
+
+    /** This category as the planning engine sees it (App\Planning). */
+    public function toPlanningCategory(): Category
+    {
+        return new Category(
+            id: $this->id,
+            pomodoro: (bool) $this->pomodoro_enabled,
+            areaIds: $this->areas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+        );
     }
 
     public function scopeForUser(Builder $query, User $user): Builder
