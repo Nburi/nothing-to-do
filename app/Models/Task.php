@@ -18,8 +18,13 @@ class Task extends Model
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
 
-    /** The board lists. */
-    public const LISTS = ['inbox', 'todos', 'tasks'];
+    /** The board lists. `later` is the refactor's Later box (3-THINGS.md); the old board does not show it. */
+    public const LISTS = ['inbox', 'todos', 'tasks', 'later'];
+
+    /** Lists whose tasks are work: suggested, planned and counted as load (refactor step 1.3 / 1.4). */
+    public const WORK_LISTS = ['todos', 'tasks'];
+
+    public const LATER = 'later';
 
     /** Lists offered as quick-add / drag targets on the main board. */
     public const BOARD_LISTS = ['inbox', 'todos', 'tasks'];
@@ -42,6 +47,7 @@ class Task extends Model
         'hard_deadline',
         'soft_deadline',
         'size',
+        'soft_slips',
         'area_id',
         'notes',
         'duration_minutes',
@@ -65,6 +71,7 @@ class Task extends Model
             'hard_deadline' => 'date',
             'soft_deadline' => 'date',
             'size' => Size::class,
+            'soft_slips' => 'integer',
             'duration_minutes' => 'integer',
             'completed_at' => 'datetime',
             'sort_order' => 'integer',
@@ -89,6 +96,17 @@ class Task extends Model
                 } elseif ($task->isDirty($old)) {
                     $task->{$new} = $task->{$old};
                 }
+            }
+
+            // G2: a soft deadline the user sets again starts with a clean slate.
+            // The slip rule sets the counter itself when it moves the date.
+            if ($task->exists && $task->isDirty('soft_deadline') && ! $task->isDirty('soft_slips')) {
+                $task->soft_slips = 0;
+            }
+
+            // Taken back out of Later: the slip rule starts over (one more roll-over, then "still want this?").
+            if ($task->exists && $task->isDirty('list') && $task->getOriginal('list') === self::LATER && ! $task->isDirty('soft_slips')) {
+                $task->soft_slips = 0;
             }
         });
     }
