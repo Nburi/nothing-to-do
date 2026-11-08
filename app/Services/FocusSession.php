@@ -126,7 +126,7 @@ final class FocusSession
      */
     private function engine(User $user, CarbonImmutable $now): SessionEngine
     {
-        $minutes = $user->utcOffsetMinutes($now->toMutable());
+        $minutes = $user->utcOffsetMinutes(\Illuminate\Support\Carbon::instance($now));
         $zone = sprintf('%s%02d:%02d', $minutes < 0 ? '-' : '+', intdiv(abs($minutes), 60), abs($minutes) % 60);
 
         return new SessionEngine($zone, $this->rhythm);
