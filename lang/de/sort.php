@@ -6,6 +6,10 @@ return [
     'progress' => ':current von :total',
     'close' => 'Schliessen',
     'esc' => 'Esc schliesst',
+    'how_long' => 'Wie lange?',
+    'deck_hint' => 'Zieh die Karte auf einen Stapel, oder tipp ihn an.',
+    'onto' => 'Auf :list legen',
+    'hard_hint_deck' => 'Harter Termin. Fällt weg, wenn die Karte auf Später landet.',
     'targets' => [
         'todos' => ['label' => 'To-do', 'hint' => 'klein, schnell'],
         'tasks' => ['label' => 'Task', 'hint' => 'braucht Sessions'],

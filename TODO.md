@@ -31,7 +31,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 2.3 Capture, Inbox and the daily sort (`feature/capture-sort`): capture line (C / +), sort card, capture token card, A9. Notes in `docs/steps/2.3.md`.
 - [ ] 2.4 Beta 1: Niels uses only capture and sort on `/board` for a week (gate: at least 20 things captured). Day-3 and day-7 check-ins only if Niels asks.
 - [x] Phase 2 preview picks confirmed by Niels on 2026-11-09: theme cards, System/Hell/Dunkel, capture line stays open, sort one card at a time, Later asks less, "Woche" opens the old week plan, settings behind the gear.
-- [ ] Mobile sort as real cards (Niels, 2026-11-09): pick the size on the top card, then swipe it onto its list (or tap). Preview first.
+- [x] Mobile sort as real cards (Niels, 2026-11-09, option A): size on the top card, drag it onto the To-dos / Tasks / Später pile or tap the pile. In `feature/capture-sort` (PR #17).
 
 ## Open questions for Niels
 - **`refactor/refactor` is 21 migrations behind `main`** (task_sessions, reminders, repeat rules, OAuth, day bounds, buffers, …). Prod data lives in those tables; the refactor has to land on top of them. Merge `main` into `refactor/refactor` soon, or decide per table what happens to it — the longer this waits, the bigger the 5.4 switch gets.

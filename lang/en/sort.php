@@ -6,6 +6,10 @@ return [
     'progress' => ':current of :total',
     'close' => 'Close',
     'esc' => 'Esc closes',
+    'how_long' => 'How long?',
+    'deck_hint' => 'Drag the card onto a pile, or tap the pile.',
+    'onto' => 'Put it on :list',
+    'hard_hint_deck' => 'Hard deadline. Dropped if the card lands on Later.',
     'targets' => [
         'todos' => ['label' => 'To-do', 'hint' => 'small, quick'],
         'tasks' => ['label' => 'Task', 'hint' => 'needs sessions'],

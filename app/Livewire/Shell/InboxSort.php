@@ -93,6 +93,31 @@ class InboxSort extends Component
         return Area::forUser(Auth::user())->ordered()->get();
     }
 
+    /** How many open items each target list holds (the piles of the phone deck). */
+    #[Computed]
+    public function counts(): array
+    {
+        return Task::forUser(Auth::user())->active()
+            ->whereIn('list', InboxSortService::TARGETS)
+            ->selectRaw('list, count(*) as n')
+            ->groupBy('list')
+            ->pluck('n', 'list')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+    }
+
+    /** The phone deck: the card was thrown onto (or the pile tapped for) one list. */
+    public function placeTo(string $list, InboxSortService $sort): void
+    {
+        if (! in_array($list, InboxSortService::TARGETS, true)) {
+            return;
+        }
+
+        $this->list = $list;
+        $this->place($sort);
+        unset($this->counts);
+    }
+
     public function pick(string $list): void
     {
         if (in_array($list, InboxSortService::TARGETS, true)) {
@@ -137,6 +162,7 @@ class InboxSort extends Component
         $this->placed++;
         $this->dropFromQueue($placed->id);
         $this->resetForm();
+        unset($this->counts);
         $this->dispatch('inbox-changed');
     }
 
@@ -158,7 +184,7 @@ class InboxSort extends Component
         $this->last = null;
         $this->toast = null;
         $this->open = true;
-        unset($this->current);
+        unset($this->current, $this->counts);
         $this->dispatch('inbox-changed');
     }
 

@@ -183,6 +183,43 @@ class InboxSortTest extends TestCase
             ->assertSee('Inbox ist leer');
     }
 
+    public function test_the_phone_deck_throws_the_top_card_onto_a_pile_with_the_chosen_size(): void
+    {
+        $first = $this->inbox('Erstes', 0);
+        $second = $this->inbox('Zweites', 1);
+        Task::forceCreate(['user_id' => $this->user->id, 'title' => 'Alt', 'list' => 'tasks']);
+
+        $deck = Livewire::actingAs($this->user)->test(InboxSort::class)->call('start');
+        $this->assertSame(['tasks' => 1], $deck->instance()->counts);
+
+        $deck->set('size', 'long')->call('placeTo', 'tasks')
+            ->assertHasNoErrors()
+            ->assertSet('toast', 'Bei Tasks · Long')
+            ->assertSee('Zweites');
+        $this->assertSame(['tasks' => 2], $deck->instance()->counts);
+        $this->assertSame(Size::Long, $first->fresh()->size);
+
+        $deck->call('placeTo', 'later')->assertSet('toast', 'Bei Später');
+        $this->assertSame('later', $second->fresh()->list);
+        $this->assertNull($second->fresh()->size, 'the size chip is ignored on Später');
+    }
+
+    public function test_the_deck_refuses_an_unknown_pile_and_keeps_the_card_on_a_validation_error(): void
+    {
+        $task = $this->inbox('Formular');
+
+        $deck = Livewire::actingAs($this->user)->test(InboxSort::class)->call('start')
+            ->call('placeTo', 'trash')
+            ->assertSet('toast', null);
+        $this->assertSame('inbox', $task->fresh()->list);
+
+        $deck->set('hardDeadline', '2026-11-01')->call('placeTo', 'tasks')
+            ->assertHasErrors('hard_deadline')
+            ->assertSet('more', true)
+            ->assertSee('Formular');
+        $this->assertSame('inbox', $task->fresh()->list);
+    }
+
     public function test_the_board_offers_sorting_when_the_inbox_has_something(): void
     {
         $this->inbox('Gedanke');

@@ -1548,3 +1548,116 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     window.Alpine?.store('capture')?.open();
 });
+
+/**
+ * The phone's sort deck (step 2.3, Niels' option A on 2026-11-09): the top Inbox card follows
+ * the finger 1:1; released over a pile (To-dos, Tasks, Später) it flies onto that pile and the
+ * server sorts it; anywhere else it springs back. Tapping a pile throws the card the same way.
+ * With the details open the card scrolls, and only its grip drags. Reduced motion: no flight.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('sortDeck', () => ({
+        dragging: false,
+        flying: false,
+        landing: false,
+        sx: 0,
+        sy: 0,
+        dx: 0,
+        dy: 0,
+        hot: null,
+        hotLabel: '',
+        hotColor: '',
+        down(event) {
+            if (this.flying) return;
+            const card = event.currentTarget;
+            const scrolls = card.scrollHeight > card.clientHeight + 1;
+            if (event.target.closest('button, input, select, textarea, a, label')) return;
+            if (scrolls && !event.target.closest('[data-grip]')) return;
+            this.dragging = true;
+            this.sx = event.clientX;
+            this.sy = event.clientY;
+            this.dx = 0;
+            this.dy = 0;
+            // Shrink around the finger, not the card's centre, so the card stays under it.
+            const r = card.getBoundingClientRect();
+            this.origin = `${event.clientX - r.left}px ${event.clientY - r.top}px`;
+            card.setPointerCapture?.(event.pointerId);
+        },
+        move(event) {
+            if (!this.dragging) return;
+            this.dx = event.clientX - this.sx;
+            this.dy = event.clientY - this.sy;
+            this.setHot(this.pileAt(event.clientX, event.clientY));
+        },
+        up() {
+            if (!this.dragging) return;
+            this.dragging = false;
+            const target = this.hot;
+            this.setHot(null);
+            if (target) {
+                this.throwTo(target);
+            } else {
+                this.dx = 0;
+                this.dy = 0;
+            }
+        },
+        setHot(pile) {
+            this.hot = pile ? pile.dataset.sortTarget : null;
+            this.hotLabel = pile ? pile.dataset.sortLabel : '';
+            this.hotColor = pile ? pile.dataset.sortColor : '';
+        },
+        pileAt(x, y) {
+            for (const pile of this.$root.querySelectorAll('[data-sort-target]')) {
+                const r = pile.getBoundingClientRect();
+                // A little generous upwards: the card covers the pile before the finger reaches it.
+                if (x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 48 && y <= r.bottom + 8) return pile;
+            }
+            return null;
+        },
+        async throwTo(list) {
+            if (this.flying) return;
+            this.flying = true;
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const card = this.$refs.card;
+            const pile = this.$root.querySelector(`[data-sort-target="${list}"]`);
+            if (card && pile && !reduce) {
+                const c = card.getBoundingClientRect();
+                const p = pile.getBoundingClientRect();
+                this.dx += (p.left + p.width / 2) - (c.left + c.width / 2);
+                this.dy += (p.top + 24) - (c.top + c.height / 2);
+                this.landing = true;
+                await new Promise((resolve) => setTimeout(resolve, 280));
+            }
+            try {
+                await this.$wire.placeTo(list);
+            } finally {
+                // On success the next card replaces this one; on a validation error it comes back.
+                this.flying = false;
+                this.landing = false;
+                this.dx = 0;
+                this.dy = 0;
+            }
+        },
+        get cardStyle() {
+            const moving = this.dragging || this.flying;
+            // Separate translate / rotate / scale: the card follows the finger 1:1 (no transition
+            // on translate while dragging), only the shrink over a pile is eased.
+            const ease = 'cubic-bezier(.2,.8,.2,1)';
+            const transition = this.dragging
+                ? 'scale 150ms ease-out'
+                : `translate 280ms ${ease}, rotate 280ms ${ease}, scale 280ms ${ease}, opacity 280ms ease`;
+            // Over a pile the card shrinks, so the pile it is about to land on stays visible.
+            const scale = this.landing ? 0.3 : (this.hot ? 0.5 : 1);
+            return {
+                translate: `${this.dx}px ${this.dy}px`,
+                rotate: `${this.dx * 0.05}deg`,
+                scale: String(scale),
+                transformOrigin: this.origin || '50% 50%',
+                opacity: this.landing ? 0 : 1,
+                transition,
+                zIndex: moving ? 30 : 'auto',
+                boxShadow: this.dragging ? '0 18px 40px -12px rgba(0,0,0,.35)' : undefined,
+            };
+        },
+    }));
+});
