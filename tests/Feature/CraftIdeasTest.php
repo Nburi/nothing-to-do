@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Livewire\CraftIdeas;
 use App\Models\CraftIdea;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -171,14 +170,11 @@ class CraftIdeasTest extends TestCase
         $other = User::factory()->create();
         $foreignIdea = CraftIdea::factory()->for($other)->create();
 
-        try {
-            Livewire::actingAs($user)
-                ->test(CraftIdeas::class)
-                ->call('startEdit', $foreignIdea->id);
-            $this->fail('Expected a ModelNotFoundException for the foreign idea.');
-        } catch (ModelNotFoundException) {
-            // Same guard as every other mutation, scoped through auth()->user()->craftIdeas().
-        }
+        // Same guard as every other mutation, scoped through auth()->user()->craftIdeas().
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('startEdit', $foreignIdea->id)
+            ->assertStatus(404);
     }
 
     public function test_the_page_suggests_a_hero_idea_when_ideas_exist(): void
@@ -279,21 +275,15 @@ class CraftIdeasTest extends TestCase
         $other = User::factory()->create();
         $foreignIdea = CraftIdea::factory()->for($other)->create();
 
-        $component = Livewire::actingAs($user)->test(CraftIdeas::class);
+        // The foreign idea is invisible through the owner relationship.
+        Livewire::actingAs($user)->test(CraftIdeas::class)
+            ->call('markDone', $foreignIdea->id)
+            ->assertStatus(404);
 
-        try {
-            $component->call('markDone', $foreignIdea->id);
-            $this->fail('Expected a ModelNotFoundException for the foreign idea.');
-        } catch (ModelNotFoundException) {
-            // The foreign idea is invisible through the owner relationship.
-        }
-
-        try {
-            $component->call('promote', $foreignIdea->id);
-            $this->fail('Expected a ModelNotFoundException promoting a foreign idea.');
-        } catch (ModelNotFoundException) {
-            // Same guard on promote(), scoped through auth()->user()->craftIdeas().
-        }
+        // Same guard on promote(), scoped through auth()->user()->craftIdeas().
+        Livewire::actingAs($user)->test(CraftIdeas::class)
+            ->call('promote', $foreignIdea->id)
+            ->assertStatus(404);
 
         $this->assertDatabaseHas('craft_ideas', ['id' => $foreignIdea->id, 'is_done' => false]);
     }
@@ -303,14 +293,11 @@ class CraftIdeasTest extends TestCase
         $user = User::factory()->create();
         $doneIdea = CraftIdea::factory()->for($user)->done()->create();
 
-        try {
-            Livewire::actingAs($user)
-                ->test(CraftIdeas::class)
-                ->call('promote', $doneIdea->id);
-            $this->fail('Expected a ModelNotFoundException promoting a done idea.');
-        } catch (ModelNotFoundException) {
-            // promote() is scoped through open(), so a done idea can't become the hero.
-        }
+        // promote() is scoped through open(), so a done idea can't become the hero.
+        Livewire::actingAs($user)
+            ->test(CraftIdeas::class)
+            ->call('promote', $doneIdea->id)
+            ->assertStatus(404);
 
         $this->assertDatabaseHas('craft_ideas', ['id' => $doneIdea->id, 'is_done' => true]);
     }
