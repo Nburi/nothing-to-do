@@ -7,7 +7,6 @@ use App\Models\EventCategory;
 use App\Models\EventTemplate;
 use App\Models\ScheduleEvent;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -360,8 +359,7 @@ class ScheduleTest extends TestCase
 
         // The event is resolved through the owner relationship, so another user's
         // id never matches — the write is rejected before it can run.
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '12:00');
+        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '12:00')
+            ->assertStatus(404);
     }
 }
