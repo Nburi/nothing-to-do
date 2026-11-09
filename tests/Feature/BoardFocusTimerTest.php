@@ -7,7 +7,6 @@ use App\Models\EventCategory;
 use App\Models\ScheduleEvent;
 use App\Models\User;
 use App\Services\PushNotifier;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -84,9 +83,8 @@ class BoardFocusTimerTest extends TestCase
         $category = EventCategory::factory()->for($otherUser)->create(['pomodoro_enabled' => true]);
         $event = ScheduleEvent::factory()->for($otherUser)->for($category, 'category')->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(TaskBoard::class)->call('startFocusTimer', $event->id);
+        Livewire::test(TaskBoard::class)->call('startFocusTimer', $event->id)
+            ->assertStatus(404);
     }
 
     public function test_a_user_cannot_stop_another_users_timer(): void
@@ -97,9 +95,8 @@ class BoardFocusTimerTest extends TestCase
         $event = ScheduleEvent::factory()->for($otherUser)->for($category, 'category')
             ->create(['pomodoro_phase' => 'work', 'pomodoro_started_at' => now()]);
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(TaskBoard::class)->call('stopFocusTimer', $event->id);
+        Livewire::test(TaskBoard::class)->call('stopFocusTimer', $event->id)
+            ->assertStatus(404);
     }
 
     public function test_handle_phase_complete_advances_automatically_when_autostart_is_enabled(): void

@@ -5,10 +5,9 @@ namespace Tests\Feature;
 use App\Livewire\WeekPlan;
 use App\Models\EventCategory;
 use App\Models\EventTemplate;
-use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
+use App\Models\SchedulePause;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -288,9 +287,8 @@ class WeekPlanTest extends TestCase
         $this->actingUser();
         $other = EventTemplate::factory()->recurring('1')->create(['user_id' => User::factory()->create()->id]);
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::test(WeekPlan::class)->call('moveEvent', $other->id, '10:00');
+        Livewire::test(WeekPlan::class)->call('moveEvent', $other->id, '10:00')
+            ->assertStatus(404);
     }
 
     public function test_pausing_a_range_creates_one_pause_per_date(): void
