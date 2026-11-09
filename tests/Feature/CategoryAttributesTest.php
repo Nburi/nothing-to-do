@@ -7,7 +7,6 @@ use App\Models\CategoryAttribute;
 use App\Models\EventCategory;
 use App\Models\ScheduleEvent;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -32,9 +31,8 @@ class CategoryAttributesTest extends TestCase
         $user = User::factory()->create();
         $foreign = EventCategory::factory()->for(User::factory())->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(Settings::class)->call('manageAttributes', $foreign->id);
+        Livewire::actingAs($user)->test(Settings::class)->call('manageAttributes', $foreign->id)
+            ->assertStatus(404);
     }
 
     public function test_save_attribute_creates_a_text_attribute(): void

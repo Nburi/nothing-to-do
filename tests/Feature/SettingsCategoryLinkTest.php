@@ -6,7 +6,6 @@ use App\Livewire\Settings;
 use App\Models\EventCategory;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -50,11 +49,10 @@ class SettingsCategoryLinkTest extends TestCase
         $user = User::factory()->create();
         $foreignCategory = EventCategory::factory()->for(User::factory())->pomodoro()->create();
 
-        $this->expectException(ModelNotFoundException::class);
-
         Livewire::actingAs($user)->test(Settings::class)
             ->set('linkTextDraft', 'x')
-            ->call('saveCategoryLinkText', $foreignCategory->id);
+            ->call('saveCategoryLinkText', $foreignCategory->id)
+            ->assertStatus(404);
     }
 
     public function test_save_category_link_text_requires_non_empty_text(): void
@@ -107,9 +105,8 @@ class SettingsCategoryLinkTest extends TestCase
         $foreignTask = Task::factory()->for(User::factory())->todos()->create();
         $category = EventCategory::factory()->for($user)->pomodoro()->create(['task_source' => 'tasks']);
 
-        $this->expectException(ModelNotFoundException::class);
-
-        Livewire::actingAs($user)->test(Settings::class)->call('togglePinnedTask', $category->id, $foreignTask->id);
+        Livewire::actingAs($user)->test(Settings::class)->call('togglePinnedTask', $category->id, $foreignTask->id)
+            ->assertStatus(404);
     }
 
     public function test_toggle_pinned_task_is_a_no_op_when_not_in_tasks_mode(): void
