@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PlanningPayload;
 use App\Http\Resources\TaskResource;
 use App\Planning\Battery;
+use App\Planning\Session\SessionState;
 use App\Services\FocusSession;
 use App\Services\Planning\Capacity;
 use App\Services\Planning\CrunchDecisions;
@@ -78,7 +79,7 @@ class PlanningController extends Controller
         return (new TaskResource($decisions->shrink($request->user(), $task)))->response();
     }
 
-    private function sessionResponse(Request $request, FocusSession $sessions, $state, CarbonImmutable $now): JsonResponse
+    private function sessionResponse(Request $request, FocusSession $sessions, SessionState $state, CarbonImmutable $now): JsonResponse
     {
         return response()->json(PlanningPayload::session($state, $sessions->remainingSeconds($request->user(), $now), $now));
     }

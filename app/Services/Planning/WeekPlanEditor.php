@@ -12,6 +12,7 @@ use App\Support\UserClock;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Refactor step 1.2: the write side of the week plan (R4; risks C2, C3).
@@ -121,6 +122,10 @@ final class WeekPlanEditor
     {
         $template = $this->template($user, $templateId);
         $data = $this->validated(['date' => $toDate, 'from' => $fromDate, 'start' => $start, 'end' => $end], $user, date: true);
+
+        if (! $template->occursOn(Carbon::parse($data['from']))) {
+            throw ValidationException::withMessages(['from' => __('weekplan.not_on_that_day')]);
+        }
 
         return DB::transaction(function () use ($user, $template, $data) {
             $this->occurrence($user, $template, $data['from'])->fill(['is_cancelled' => true])->save();
