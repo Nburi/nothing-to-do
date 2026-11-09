@@ -50,6 +50,7 @@ return [
             'good' => 'There is more in you.',
         ],
     ],
+    'sort_inbox' => 'Sort (:count)',
     'start_here' => 'Start here',
     'start_with' => 'Start with',
     'start' => 'Start · :minutes min',

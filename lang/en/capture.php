@@ -1,9 +1,54 @@
 <?php
 
-// Refactor step 1.5: capture into the Inbox (R3).
+// Refactor step 1.5: capture into the Inbox (R3). Step 2.3: the capture line and its token card.
 return [
     'saved' => 'In your Inbox.',
     'empty' => 'Nothing there yet. Type or dictate a thought.',
     'too_long' => 'That is too long. :max characters at most; the rest can go into the notes later.',
     'token_cannot_capture' => 'This token cannot add anything to the Inbox.',
+    'undo_gone' => 'That can no longer be taken back. It is in the Inbox.',
+    'undone' => 'Taken back.',
+    'line' => [
+        'label' => 'Capture',
+        'placeholder' => 'What is on your mind?',
+        'hint' => 'Lands in the Inbox. Enter saves.',
+        'saving' => 'Saving …',
+        'offline' => 'No connection right now. Your text stays here.',
+        'retry' => 'Try again',
+        'undo' => 'Undo',
+        'close' => 'Close',
+        'shortcut' => 'C',
+    ],
+    'tokens' => [
+        'title' => 'Shortcut for capturing',
+        'intro' => 'A token can only write into the Inbox. It reads nothing and deletes nothing.',
+        'empty' => 'No token yet. With one, an iPhone Shortcut can put things straight into your Inbox, with Siri or the Action Button.',
+        'name' => 'Name',
+        'name_placeholder' => 'iPhone',
+        'name_hint' => 'So you know which device you cut off later.',
+        'create' => 'Create token',
+        'another' => 'Another token',
+        'created' => 'Token ":name" created. Copy it now; it is shown only this once.',
+        'copy' => 'Copy',
+        'copied' => 'Copied',
+        'done' => 'Done, the token is copied',
+        'steps' => [
+            'Shortcuts app: new Shortcut, action "Get Contents of URL".',
+            'URL :url, method POST, header Authorization: Bearer <token>.',
+            'Request body JSON with the field text = the dictated text. Done.',
+        ],
+        'created_at' => 'created :date',
+        'used' => 'last used :when',
+        'never_used' => 'never used',
+        'revoke' => 'Revoke',
+        'revoke_confirm' => 'The Shortcut on ":name" stops working at once. This cannot be undone.',
+        'keep' => 'Keep',
+        'revoked' => 'Token ":name" revoked.',
+        'gone' => 'This token no longer exists.',
+        'errors' => [
+            'name_required' => 'Give the token a name, for example iPhone.',
+            'name_max' => 'At most 40 characters.',
+            'too_many' => 'At most :max capture tokens. Revoke one you no longer use.',
+        ],
+    ],
 ];

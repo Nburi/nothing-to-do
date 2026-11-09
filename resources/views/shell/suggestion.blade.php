@@ -41,7 +41,7 @@
             <x-shell.action
                 key="start" :layout="$layout" mode="board"
                 wire:click="start({{ $task->id }})" wire:loading.attr="disabled"
-                class="inline-flex min-h-11 flex-1 basis-36 items-center justify-center gap-2 rounded-card bg-accent px-4 font-semibold text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
+                class="inline-flex min-h-11 flex-1 basis-36 items-center justify-center gap-2 whitespace-nowrap rounded-card bg-accent px-3 font-semibold text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
             >
                 @include('shell.icon', ['name' => 'play', 'class' => 'size-4'])
                 {{ __('shell.start', ['minutes' => $s->pick?->minutes ?? 25]) }}
@@ -49,7 +49,7 @@
             <x-shell.action
                 key="swap" :layout="$layout" mode="board"
                 wire:click="another" wire:loading.attr="disabled"
-                class="inline-flex min-h-11 flex-1 basis-28 items-center justify-center gap-2 rounded-card border border-line bg-surface px-4 font-semibold text-ink transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+                class="inline-flex min-h-11 flex-1 basis-28 items-center justify-center gap-2 whitespace-nowrap rounded-card border border-line bg-surface px-3 font-semibold text-ink transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
             >
                 @include('shell.icon', ['name' => 'shuffle', 'class' => 'size-4'])
                 {{ __('shell.another') }}

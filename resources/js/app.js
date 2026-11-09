@@ -1422,3 +1422,129 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/**
+ * The capture line of the new app (step 2.3, R3, CONVENTIONS 5): one keyboard-first line on
+ * every page. C opens it on desktop, + on mobile. It posts JSON (ShellCaptureController), so a
+ * dropped connection keeps the text in the field with a calm message, and the board refreshes
+ * through the Livewire event `capture-saved`. After Enter the line stays open for the next
+ * thought (Niels' pick in the phase 2 preview); Esc closes it.
+ */
+document.addEventListener('alpine:init', () => {
+    const config = () => {
+        try {
+            return JSON.parse(document.getElementById('capture-config')?.textContent || '{}');
+        } catch (e) {
+            return {};
+        }
+    };
+    const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    window.Alpine.store('capture', {
+        sheetOpen: false,
+        toast: null,
+        lastId: null,
+        timer: null,
+        open() {
+            const inline = [...document.querySelectorAll('[data-capture-inline]')].find((el) => el.getClientRects().length > 0);
+            if (inline) {
+                inline.dispatchEvent(new CustomEvent('capture-focus'));
+            } else {
+                this.sheetOpen = true;
+            }
+        },
+        saved(message, id) {
+            this.toast = message;
+            this.lastId = id;
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => { this.toast = null; this.lastId = null; }, 6000);
+            window.Livewire?.dispatch('capture-saved');
+        },
+        async undo() {
+            const id = this.lastId;
+            if (!id) return;
+            const cfg = config();
+            this.lastId = null;
+            try {
+                const response = await fetch(`${cfg.url}/${id}`, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                });
+                const body = await response.json().catch(() => ({}));
+                this.toast = body.message || cfg.messages?.offline;
+            } catch (e) {
+                this.toast = cfg.messages?.offline;
+            }
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => { this.toast = null; }, 4000);
+            window.Livewire?.dispatch('capture-saved');
+        },
+    });
+
+    window.Alpine.data('captureLine', (variant) => ({
+        text: '',
+        saving: false,
+        error: '',
+        offline: false,
+        active: variant === 'sheet',
+        focus() {
+            this.active = true;
+            this.$nextTick(() => this.$refs.input?.focus());
+        },
+        close() {
+            this.error = '';
+            if (variant === 'sheet') {
+                window.Alpine.store('capture').sheetOpen = false;
+            } else if (this.text.trim() === '') {
+                this.active = false;
+            }
+            this.$refs.input?.blur();
+        },
+        async save() {
+            const cfg = config();
+            if (this.saving) return;
+            if (this.text.trim() === '') {
+                this.error = cfg.messages?.empty || '';
+                return;
+            }
+            this.saving = true;
+            this.error = '';
+            this.offline = false;
+            try {
+                const response = await fetch(cfg.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify({ text: this.text }),
+                });
+                const body = await response.json().catch(() => ({}));
+                if (response.status === 422) {
+                    this.error = body.errors?.text?.[0] || body.message || cfg.messages?.empty;
+                } else if (!response.ok) {
+                    throw new Error(String(response.status));
+                } else {
+                    this.text = '';
+                    window.Alpine.store('capture').saved(body.message, body.id);
+                    this.$nextTick(() => this.$refs.input?.focus());
+                }
+            } catch (e) {
+                this.offline = true;
+                this.error = cfg.messages?.offline || '';
+            } finally {
+                this.saving = false;
+            }
+        },
+    }));
+});
+
+document.addEventListener('keydown', (event) => {
+    if (!document.body.hasAttribute('data-shell')) return;
+    if (event.key !== 'c' && event.key !== 'C') return;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+    const target = event.target;
+    if (target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    // An open dialog (the sort card, a list sheet) keeps its own keys.
+    const openDialog = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].some((d) => d.getClientRects().length > 0);
+    if (openDialog) return;
+    event.preventDefault();
+    window.Alpine?.store('capture')?.open();
+});

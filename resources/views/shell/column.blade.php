@@ -1,7 +1,13 @@
 {{-- One Werkbank column's content. Expects $list, $lists, $counts, $suggestedId from the board. --}}
-<h3 id="col-{{ $list }}" class="flex items-baseline justify-between px-1 font-display text-[13px] text-ink" style="font-weight: var(--t-dw)">
+<h3 id="col-{{ $list }}" class="flex items-baseline gap-2 px-1 font-display text-[13px] text-ink" style="font-weight: var(--t-dw)">
     {{ __('shell.lists.'.$list) }}
     <em class="font-mono text-xs font-normal not-italic text-ink-faint">{{ $counts[$list] }}</em>
+    @if ($list === 'inbox' && $counts['inbox'] > 0)
+        <x-shell.action key="sort" layout="werkbank" mode="board" wire:click="$dispatch('open-sort')"
+            class="ml-auto font-sans text-xs font-bold text-accent-ink hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+            {{ __('shell.sort_inbox', ['count' => $counts['inbox']]) }}
+        </x-shell.action>
+    @endif
 </h3>
 <ul class="flex flex-col gap-1.5">
     @forelse ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)

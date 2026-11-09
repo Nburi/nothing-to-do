@@ -20,8 +20,8 @@ final class ActionRegistry
 
     /** key => [refactor step that builds it, available now] */
     private const ACTIONS = [
-        'capture' => ['2.3', false],
-        'sort' => ['2.3', false],
+        'capture' => ['2.3', true],
+        'sort' => ['2.3', true],
         'start' => ['2.2', true],
         'swap' => ['2.2', true],
         'battery' => ['2.2', true],

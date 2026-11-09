@@ -28,7 +28,9 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 2.1 Token layer and seven themes (`feature/theme-tokens`): Tailwind 4, `config/themes.php`, per-user theme + light/dark, contrast test, theme card in Settings. Notes in `docs/steps/2.1.md`.
 - [x] 2.2 App shell (`feature/app-shell`): `/board` with Werkbank and Stapel, board and session mode, action registry, A11. Notes in `docs/steps/2.2.md`.
 - [ ] Service worker: the stale page on navigation seen in 1.8 is not reproduced or fixed yet (navigations are network-first in `public/sw.js`); look again when it shows up on the dev server.
-- [ ] 2.3 Capture, Inbox and the daily sort, A9, capture token in settings.
+- [x] 2.3 Capture, Inbox and the daily sort (`feature/capture-sort`): capture line (C / +), sort card, capture token card, A9. Notes in `docs/steps/2.3.md`.
+- [ ] 2.4 Beta 1: Niels uses only capture and sort on `/board` for a week (gate: at least 20 things captured). Day-3 and day-7 check-ins only if Niels asks.
+- [ ] Phase 2 preview picks (https://claude.ai/artifact/U14VQTdSpG89XANKKEXT6v): built with Claude's picks; waiting for Niels' answers.
 
 ## Open questions for Niels
 - **`refactor/refactor` is 21 migrations behind `main`** (task_sessions, reminders, repeat rules, OAuth, day bounds, buffers, …). Prod data lives in those tables; the refactor has to land on top of them. Merge `main` into `refactor/refactor` soon, or decide per table what happens to it — the longer this waits, the bigger the 5.4 switch gets.
