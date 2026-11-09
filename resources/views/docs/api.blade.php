@@ -382,7 +382,7 @@
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
                         <li><span class="font-medium text-ink">Aktuelles Datum</span> formatiert als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code></li>
                         <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events</code>,
-                            Body <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"kind":"appointment","title":"Pause","color":"contour","date":"…","start_time":"14:00","end_time":"14:15"}</code>
+                            Body <code class="break-all rounded bg-paper px-1 py-0.5 font-mono text-xs">{"kind":"appointment","title":"Pause","color":"contour","date":"…","start_time":"14:00","end_time":"14:15"}</code>
                         </li>
                     </ol>
                 </div>
