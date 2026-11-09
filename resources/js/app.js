@@ -1378,3 +1378,47 @@ window.addEventListener('theme-applied', (event) => {
         });
     }
 });
+
+/**
+ * Session timer island (refactor step 2.2, risk C5). The server owns the session; this only
+ * counts down the seconds the server sent and, when a phase runs out, asks the server to
+ * render again (it then shows the break or the next phase). Wall-clock based, so a tab that
+ * slept catches up at once. The element is keyed by the session state, so every server
+ * change re-creates it with fresh numbers.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('sessionTimer', (remaining, total, running) => ({
+        left: remaining,
+        total,
+        running,
+        startedAt: Date.now(),
+        handle: null,
+        init() {
+            if (!this.running) return;
+            this.handle = setInterval(() => this.tick(), 1000);
+            this.onVisible = () => this.tick();
+            document.addEventListener('visibilitychange', this.onVisible);
+        },
+        tick() {
+            const elapsed = Math.floor((Date.now() - this.startedAt) / 1000);
+            this.left = Math.max(0, remaining - elapsed);
+            if (this.left === 0 && this.handle) {
+                clearInterval(this.handle);
+                this.handle = null;
+                this.$wire.tick();
+            }
+        },
+        destroy() {
+            if (this.handle) clearInterval(this.handle);
+            if (this.onVisible) document.removeEventListener('visibilitychange', this.onVisible);
+        },
+        get label() {
+            const m = Math.floor(this.left / 60);
+            const s = this.left % 60;
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        },
+        offset(circumference) {
+            return (circumference * (this.left / this.total)).toFixed(2);
+        },
+    }));
+});
