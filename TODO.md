@@ -24,10 +24,15 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] Prod `.env`: `APP_LOCALE=de` before the switch (5.4).
 - [ ] 1.7 follow-up: no HTTP/Livewire entry points yet (that's the session view, 3.1) and no API/MCP endpoints (1.5).
 
+## Refactor: phase 2 (started 2026-11-09)
+- [x] 2.1 Token layer and seven themes (`feature/theme-tokens`): Tailwind 4, `config/themes.php`, per-user theme + light/dark, contrast test, theme card in Settings. Notes in `docs/steps/2.1.md`.
+- [ ] 2.2 App shell: Werkbank and Stapel, board and session mode, action registry, A11.
+- [ ] 2.3 Capture, Inbox and the daily sort, A9, capture token in settings.
+
 ## Open questions for Niels
 - **`refactor/refactor` is 21 migrations behind `main`** (task_sessions, reminders, repeat rules, OAuth, day bounds, buffers, …). Prod data lives in those tables; the refactor has to land on top of them. Merge `main` into `refactor/refactor` soon, or decide per table what happens to it — the longer this waits, the bigger the 5.4 switch gets.
 - Answered 2026-11-08: "status" in step 1.1 is dropped (nobody knew what it meant; `list` + `is_completed` cover it). Instead, step 1.4 adds a soft-deadline slip counter (G2), and the crunch decision "drop" moves a task to Later instead of deleting it.
-- Before step 2.1 (themes): stay on Tailwind 3.4 or move to Tailwind 4 (CSS-first `@theme`, fits seven themes well, but every old view has to be checked)? Claude's suggestion: move to v4 at the start of 2.1, since the views get rebuilt anyway.
+- Answered 2026-11-09: move to **Tailwind 4** at the start of 2.1 (Niels: "Yes laravel 4 is fine", meaning Tailwind 4). Done in 2.1 (`feature/theme-tokens`); every old view was migrated by the upgrade tool and still builds and renders.
 - The app has no version number yet (global rule 9). Introduce one (e.g. `config/app.php` `version`, shown in settings)? Suggestion: start the refactor at `2.0.0_1`.
 - The live app (`main`) has the same vulnerable packages (Laravel critical TokenGuard advisory, Livewire XSS). Hotfix PR #7 against `main` was merged on 2026-11-08.
 - Answered 2026-11-06: no work suggestions outside pomodoro blocks; long break after every fourth session, counted per day.

@@ -25,7 +25,7 @@
             <p class="text-sm leading-relaxed text-ink-soft">
                 Eine token-authentifizierte JSON-API, die jede Aktion abdeckt, die auch in der App möglich ist —
                 gedacht für <span class="font-medium text-ink">Apple Shortcuts</span> und andere Automatisierungen.
-                Basis-URL: <code class="rounded bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">{{ $apiBase }}</code>
+                Basis-URL: <code class="rounded-sm bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">{{ $apiBase }}</code>
             </p>
 
             <nav class="mt-5 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-line pt-4 text-sm">
@@ -42,23 +42,23 @@
                 Erstelle ein persönliches Zugriffstoken unter
                 <a href="{{ route('settings') }}" class="text-overprint hover:underline" wire:navigate>Einstellungen → Shortcuts & API</a>.
                 Das Token wird nur einmal angezeigt — sofort kopieren. Es trägt volle Rechte auf deinen Account,
-                also wie ein Passwort behandeln. Jede Anfrage schickt es als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">Bearer</code>-Header:
+                also wie ein Passwort behandeln. Jede Anfrage schickt es als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">Bearer</code>-Header:
             </p>
             <pre class="mt-3 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl {{ $apiBase }}/me \
   -H "Authorization: Bearer &lt;DEIN_TOKEN&gt;" \
   -H "Accept: application/json"</code></pre>
-            <p class="mt-3 text-sm text-ink-soft">Ohne gültiges Token antwortet jeder Endpunkt mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">401</code>.</p>
+            <p class="mt-3 text-sm text-ink-soft">Ohne gültiges Token antwortet jeder Endpunkt mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">401</code>.</p>
         </section>
 
         {{-- Konventionen --}}
         <section id="conventions" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-3 text-base font-medium text-ink">Konventionen</h2>
             <ul class="space-y-2 text-sm leading-relaxed text-ink-soft">
-                <li>Alle Antworten sind JSON. Listen kommen als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"data": [...] }</code>, Einzelobjekte als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"data": {...} }</code>.</li>
-                <li>Schreibende Endpunkte (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">POST</code>/<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">PATCH</code>) akzeptieren <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">application/json</code> im Body — setze <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">Content-Type: application/json</code>.</li>
-                <li>Daten sind <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>, Uhrzeiten <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">HH:MM</code>, Zeitstempel ISO-8601.</li>
-                <li><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">PATCH</code>-Endpunkte sind Teil-Updates: nur mitgeschickte Felder werden geändert. Ein Feld weglassen ≠ es leeren — dafür explizit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> senden, wo das Feld nullable ist (z. B. Deadline entfernen).</li>
-                <li>Jede Ressource gehört exklusiv deinem Account — eine fremde/fehlende ID liefert <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">404</code>, nie Daten eines anderen Accounts.</li>
+                <li>Alle Antworten sind JSON. Listen kommen als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"data": [...] }</code>, Einzelobjekte als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"data": {...} }</code>.</li>
+                <li>Schreibende Endpunkte (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">POST</code>/<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">PATCH</code>) akzeptieren <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">application/json</code> im Body — setze <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">Content-Type: application/json</code>.</li>
+                <li>Daten sind <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>, Uhrzeiten <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">HH:MM</code>, Zeitstempel ISO-8601.</li>
+                <li><code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">PATCH</code>-Endpunkte sind Teil-Updates: nur mitgeschickte Felder werden geändert. Ein Feld weglassen ≠ es leeren — dafür explizit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> senden, wo das Feld nullable ist (z. B. Deadline entfernen).</li>
+                <li>Jede Ressource gehört exklusiv deinem Account — eine fremde/fehlende ID liefert <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">404</code>, nie Daten eines anderen Accounts.</li>
             </ul>
         </section>
 
@@ -75,18 +75,18 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /me</p>
                     <p class="mt-1 text-ink-soft">
-                        Felder (alle optional): <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_reset_time</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_work</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_short_break</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_break</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_every</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_autostart</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_event_start</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_pomo_start</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_break_start</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notify_event_upcoming</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_offset</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">timezone_auto_dst</code>.
+                        Felder (alle optional): <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task_reset_time</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_work</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_short_break</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_break</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_every</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_autostart</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notify_event_start</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notify_pomo_start</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notify_break_start</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notify_event_upcoming</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">timezone_offset</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">timezone_auto_dst</code>.
                     </p>
                 </div>
             </div>
@@ -101,9 +101,9 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /tasks</p>
                     <p class="mt-1 text-ink-soft">
-                        Query-Parameter: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (inbox/todos/tasks),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">today=1</code> (nur Today-Fokus),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">completed=1</code> (auch erledigte einschliessen).
+                        Query-Parameter: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (inbox/todos/tasks),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">today=1</code> (nur Today-Fokus),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">completed=1</code> (auch erledigte einschliessen).
                     </p>
                 </div>
                 <div>
@@ -112,11 +112,11 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /tasks</p>
                     <p class="mt-1 text-ink-soft">
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code> (required),
-                        optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Default <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">inbox</code>),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (freier Markdown-Text),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_important</code>.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code> (required),
+                        optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Default <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">inbox</code>),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (freier Markdown-Text),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">is_important</code>.
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X POST {{ $apiBase }}/tasks \
   -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
@@ -126,12 +126,12 @@
                     <p class="font-mono text-xs text-overprint">PATCH /tasks/{id}</p>
                     <p class="mt-1 text-ink-soft">
                         Ein einziger Endpunkt für jede Karten-Aktion. Beliebige Teilmenge von:
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_completed</code> (abhaken),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_important</code> (markieren),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">is_today</code> (Today-Fokus, nur für To-Dos/Tasks),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> zum Entfernen),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Spalte wechseln).
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">is_completed</code> (abhaken),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">is_important</code> (markieren),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">is_today</code> (Today-Fokus, nur für To-Dos/Tasks),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">deadline</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">due_date</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notes</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> zum Entfernen),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (Spalte wechseln).
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X PATCH {{ $apiBase }}/tasks/42 \
   -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
@@ -143,9 +143,9 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /tasks/reorder</p>
                     <p class="mt-1 text-ink-soft">
-                        Entspricht Drag &amp; Drop: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">today</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">ids</code> (vollständige, geordnete ID-Liste der Zielzone).
+                        Entspricht Drag &amp; Drop: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">today</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">ids</code> (vollständige, geordnete ID-Liste der Zielzone).
                     </p>
                 </div>
             </div>
@@ -160,9 +160,9 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /capture</p>
                     <p class="mt-1 text-ink-soft">
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">text</code> (Pflicht, bis 500 Zeichen) landet so, wie er ist, in der Inbox. Gedacht für den Kurzbefehl:
-                        ein Token, das <span class="font-medium text-ink">nur</span> das darf, erstellst du mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">php artisan app:capture-token &lt;E-Mail&gt;</code>.
-                        Antwort: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">message</code> zum Anzeigen. Höchstens 30 pro Minute.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">text</code> (Pflicht, bis 500 Zeichen) landet so, wie er ist, in der Inbox. Gedacht für den Kurzbefehl:
+                        ein Token, das <span class="font-medium text-ink">nur</span> das darf, erstellst du mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">php artisan app:capture-token &lt;E-Mail&gt;</code>.
+                        Antwort: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">message</code> zum Anzeigen. Höchstens 30 pro Minute.
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X POST {{ $apiBase }}/capture \
   -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
@@ -171,39 +171,39 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /suggestion · POST /suggestion/another · PUT /evening/battery</p>
                     <p class="mt-1 text-ink-soft">
-                        Der eine Vorschlag mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start_with</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">why</code>. Nur in einem Pomodoro-Block; sonst
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">status: outside_blocks</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">next_block_at</code>. <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">another</code> zeigt den nächsten,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">battery</code> (low, okay, good, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> = übersprungen) stellt den Akku für heute Abend ein.
+                        Der eine Vorschlag mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start_with</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">why</code>. Nur in einem Pomodoro-Block; sonst
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">status: outside_blocks</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">next_block_at</code>. <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">another</code> zeigt den nächsten,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">battery</code> (low, okay, good, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> = übersprungen) stellt den Akku für heute Abend ein.
                     </p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /session · POST /session/{start|done|pause|resume|stop}</p>
                     <p class="mt-1 text-ink-soft">
                         Die Pomodoro-Session, auf jedem Gerät dieselbe (25 Min. Arbeit, 5 Min. Pause, nach jeder vierten 15).
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start</code> mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_id</code> (ohne: der übernommene Task), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">done</code> mit der
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_id</code> des laufenden Tasks: hakt ihn ab und startet den nächsten Vorschlag in derselben Session, wenn noch mindestens 5 Minuten übrig sind.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start</code> mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task_id</code> (ohne: der übernommene Task), <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">done</code> mit der
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task_id</code> des laufenden Tasks: hakt ihn ab und startet den nächsten Vorschlag in derselben Session, wenn noch mindestens 5 Minuten übrig sind.
                     </p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /forecast · POST /tasks/{id}/drop · POST /tasks/{id}/shrink</p>
                     <p class="mt-1 text-ink-soft">
                         Auslastung pro Tag (Kapazität in Sessions, geplante Minuten, überlastet ja/nein), was zu spät würde und welche weichen
-                        Termine zuerst rutschen sollen. <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">drop</code> legt einen Task in „Später“ (nichts wird gelöscht), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">shrink</code> macht ihn eine Grösse kleiner.
+                        Termine zuerst rutschen sollen. <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">drop</code> legt einen Task in „Später“ (nichts wird gelöscht), <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">shrink</code> macht ihn eine Grösse kleiner.
                     </p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /areas · POST /areas · PATCH /areas/{id} · DELETE /areas/{id}</p>
                     <p class="mt-1 text-ink-soft">
-                        Bereiche für Tasks (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">color</code>). Welche Bereiche eine Kategorie vorschlägt, setzt
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">area_ids</code> bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">PATCH /event-categories/{id}</code>. Löschen entfernt nur die Verknüpfung, kein Task geht verloren.
+                        Bereiche für Tasks (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">color</code>). Welche Bereiche eine Kategorie vorschlägt, setzt
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">area_ids</code> bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">PATCH /event-categories/{id}</code>. Löschen entfernt nur die Verknüpfung, kein Task geht verloren.
                     </p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">Neue Felder bei /tasks</p>
                     <p class="mt-1 text-ink-soft">
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">size</code> (quick, short, long, block), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">hard_deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">soft_deadline</code>,
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">area_id</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">first_step</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">later</code>.
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code> / <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code> funktionieren weiter und zeigen dieselben Daten.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">size</code> (quick, short, long, block), <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">hard_deadline</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">soft_deadline</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">area_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">first_step</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">later</code>.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">deadline</code> / <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">due_date</code> funktionieren weiter und zeigen dieselben Daten.
                     </p>
                 </div>
             </div>
@@ -218,8 +218,8 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /schedule-events</p>
                     <p class="mt-1 text-ink-soft">
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">date</code> für einen Tag, oder
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start</code>/<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">end</code> für eine Spanne.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">date</code> für einen Tag, oder
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start</code>/<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">end</code> für eine Spanne.
                         Ohne Parameter: heute. Wiederkehrende Serien werden für das Fenster automatisch materialisiert.
                     </p>
                 </div>
@@ -229,11 +229,11 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /schedule-events</p>
                     <p class="mt-1 text-ink-soft">
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">kind</code> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">appointment</code> oder <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">category</code>),
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">date</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">end_time</code>.
-                        Bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">appointment</code>: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">color</code>
-                        (contour/overprint/forest/signal/ink). Bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">category</code>: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">category_id</code>.
-                        Optional wiederkehrend: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">recurring: true</code> + <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">days: [1..7]</code> (ISO-Wochentage, 1=Montag).
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">kind</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">appointment</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">category</code>),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">date</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">end_time</code>.
+                        Bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">appointment</code>: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code> + <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">color</code>
+                        (contour/overprint/forest/signal/ink). Bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">category</code>: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">category_id</code>.
+                        Optional wiederkehrend: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">recurring: true</code> + <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">days: [1..7]</code> (ISO-Wochentage, 1=Montag).
                     </p>
                     <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X POST {{ $apiBase }}/schedule-events \
   -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
@@ -243,7 +243,7 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /schedule-events/{id}</p>
                     <p class="mt-1 text-ink-soft">
-                        Teil-Update — deckt auch Verschieben/Grösse ändern ab (einfach <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>/<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">end_time</code> setzen).
+                        Teil-Update — deckt auch Verschieben/Grösse ändern ab (einfach <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>/<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">end_time</code> setzen).
                         Ein wiederkehrendes Vorkommen auf ein anderes Datum verschieben löst es aus der Serie und hinterlässt einen Tombstone, damit es nicht neu entsteht.
                     </p>
                 </div>
@@ -257,12 +257,12 @@
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/stop-focus</p>
-                    <p class="mt-1 text-ink-soft">Beendet die Session komplett — ein neuer <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start-focus</code>-Aufruf ist nötig, um wieder zu beginnen.</p>
+                    <p class="mt-1 text-ink-soft">Beendet die Session komplett — ein neuer <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start-focus</code>-Aufruf ist nötig, um wieder zu beginnen.</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /schedule-events/{id}/continue-focus</p>
                     <p class="mt-1 text-ink-soft">
-                        Startet manuell die nächste Phase — nötig, wenn <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_autostart</code> deaktiviert ist und die
+                        Startet manuell die nächste Phase — nötig, wenn <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_autostart</code> deaktiviert ist und die
                         vorige Phase fertig ist (der Timer friert dann ein, bis dieser Endpoint aufgerufen wird).
                     </p>
                 </div>
@@ -273,11 +273,11 @@
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /schedule-events/focus</p>
                     <p class="mt-1 text-ink-soft">
-                        Der Fokus-Header von jetzt: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code> (der aktive/bald startende
-                        Pomodoro-Block, oder <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code>), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">phase</code>
-                        (Work/Pause, Restsekunden, plus <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">awaiting_next</code>/<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">next_phase</code>
-                        wenn der Timer eingefroren auf einen manuellen <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">continue-focus</code> wartet) und
-                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">suggestion</code> ("was jetzt tun").
+                        Der Fokus-Header von jetzt: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code> (der aktive/bald startende
+                        Pomodoro-Block, oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code>), <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">phase</code>
+                        (Work/Pause, Restsekunden, plus <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">awaiting_next</code>/<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">next_phase</code>
+                        wenn der Timer eingefroren auf einen manuellen <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">continue-focus</code> wartet) und
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">suggestion</code> ("was jetzt tun").
                     </p>
                 </div>
             </div>
@@ -292,7 +292,7 @@
                 <div><p class="font-mono text-xs text-overprint">GET /event-categories</p></div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /event-categories</p>
-                    <p class="mt-1 text-ink-soft"><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">color</code>, optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_enabled</code>.</p>
+                    <p class="mt-1 text-ink-soft"><code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">color</code>, optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_enabled</code>.</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /event-categories/{id}</p>
@@ -311,7 +311,7 @@
                 <div><p class="font-mono text-xs text-overprint">GET /event-templates</p></div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /event-templates/{id}/apply</p>
-                    <p class="mt-1 text-ink-soft"><code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">date</code> (required), optional <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start_time</code> (sonst die Standardzeit der Vorlage). Legt einen konkreten Termin an.</p>
+                    <p class="mt-1 text-ink-soft"><code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">date</code> (required), optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start_time</code> (sonst die Standardzeit der Vorlage). Legt einen konkreten Termin an.</p>
                 </div>
                 <div><p class="font-mono text-xs text-overprint">DELETE /event-templates/{id}</p></div>
             </div>
@@ -327,9 +327,9 @@
 
             <div class="rounded-card border border-line bg-paper/60 p-4 text-sm">
                 <ol class="list-decimal space-y-1.5 pl-5 text-ink-soft">
-                    <li><span class="font-medium text-ink">URL:</span> <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{{ $apiBase }}/…</code></li>
+                    <li><span class="font-medium text-ink">URL:</span> <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{{ $apiBase }}/…</code></li>
                     <li><span class="font-medium text-ink">Methode:</span> GET/POST/PATCH/DELETE je nach Endpunkt</li>
-                    <li><span class="font-medium text-ink">Kopfzeilen (Headers):</span> <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">Authorization: Bearer &lt;Token&gt;</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">Content-Type: application/json</code></li>
+                    <li><span class="font-medium text-ink">Kopfzeilen (Headers):</span> <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">Authorization: Bearer &lt;Token&gt;</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">Content-Type: application/json</code></li>
                     <li><span class="font-medium text-ink">Anfragetext (Request Body):</span> bei POST/PATCH → "JSON" wählen, Felder als Schlüssel/Wert-Paare</li>
                 </ol>
                 <p class="mt-3 text-xs text-ink-faint">Tipp: Token als Shortcuts-Textkonstante oder in "Alle Shortcuts" als wiederverwendbare Variable ablegen, statt es in jedem Shortcut neu einzutippen.</p>
@@ -340,7 +340,7 @@
                     <h3 class="mb-2 text-sm font-medium text-ink">① Schnell in die Inbox</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
                         <li><span class="font-medium text-ink">Eingabe erfragen</span> (Text) — Prompt: "Was gibt's zu tun?"</li>
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/capture</code>, Body: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"text": Bereitgestellte Eingabe}</code> (mit dem Capture-Token, das nur das darf)</li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/capture</code>, Body: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"text": Bereitgestellte Eingabe}</code> (mit dem Capture-Token, das nur das darf)</li>
                         <li><span class="font-medium text-ink">Ergebnis anzeigen</span> (optional) — "Hinzugefügt ✓"</li>
                     </ol>
                     <p class="mt-1.5 text-xs text-ink-faint">Als Home-Screen-Symbol oder Siri-Phrase ("Hey Siri, notiere …") die schnellste Erfassung unterwegs.</p>
@@ -349,9 +349,9 @@
                 <div>
                     <h3 class="mb-2 text-sm font-medium text-ink">② Was steht heute an?</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/tasks?today=1</code></li>
-                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> — Schlüssel <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">data</code></li>
-                        <li><span class="font-medium text-ink">Für jeden Wert in Liste</span> → <span class="font-medium text-ink">Wörterbuchwert abrufen</span> (Schlüssel <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code>) → Text sammeln</li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/tasks?today=1</code></li>
+                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> — Schlüssel <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">data</code></li>
+                        <li><span class="font-medium text-ink">Für jeden Wert in Liste</span> → <span class="font-medium text-ink">Wörterbuchwert abrufen</span> (Schlüssel <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code>) → Text sammeln</li>
                         <li><span class="font-medium text-ink">Ergebnis anzeigen</span> mit der gesammelten Liste</li>
                     </ol>
                 </div>
@@ -360,19 +360,19 @@
                     <h3 class="mb-2 text-sm font-medium text-ink">③ Einen Task per Zuruf abhaken</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
                         <li><span class="font-medium text-ink">Eingabe erfragen</span> (Text) — welcher Task?</li>
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/tasks</code></li>
-                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">data</code>) → <span class="font-medium text-ink">Elemente filtern</span>, wobei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">title</code> die Eingabe enthält</li>
-                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">id</code>) vom ersten Treffer</li>
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — PATCH <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/tasks/&lt;id&gt;</code>, Body <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"is_completed": true}</code></li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/tasks</code></li>
+                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">data</code>) → <span class="font-medium text-ink">Elemente filtern</span>, wobei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code> die Eingabe enthält</li>
+                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">id</code>) vom ersten Treffer</li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — PATCH <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/tasks/&lt;id&gt;</code>, Body <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"is_completed": true}</code></li>
                     </ol>
                 </div>
 
                 <div>
                     <h3 class="mb-2 text-sm font-medium text-ink">④ Fokus-Timer starten</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events/focus</code></li>
-                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code>) → (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">id</code>)</li>
-                        <li><span class="font-medium text-ink">Hat einen Wert?</span> → wenn ja: <span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events/&lt;id&gt;/start-focus</code></li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — GET <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events/focus</code></li>
+                        <li><span class="font-medium text-ink">Wörterbuchwert abrufen</span> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">focus_session</code>) → (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">id</code>)</li>
+                        <li><span class="font-medium text-ink">Hat einen Wert?</span> → wenn ja: <span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events/&lt;id&gt;/start-focus</code></li>
                         <li>Sonst: <span class="font-medium text-ink">Warnung anzeigen</span> — "Gerade kein Fokus-Block."</li>
                     </ol>
                 </div>
@@ -380,9 +380,9 @@
                 <div>
                     <h3 class="mb-2 text-sm font-medium text-ink">⑤ Pause im Zeitplan eintragen</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
-                        <li><span class="font-medium text-ink">Aktuelles Datum</span> formatiert als <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code></li>
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events</code>,
-                            Body <code class="break-all rounded bg-paper px-1 py-0.5 font-mono text-xs">{"kind":"appointment","title":"Pause","color":"contour","date":"…","start_time":"14:00","end_time":"14:15"}</code>
+                        <li><span class="font-medium text-ink">Aktuelles Datum</span> formatiert als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code></li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">/schedule-events</code>,
+                            Body <code class="break-all rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"kind":"appointment","title":"Pause","color":"contour","date":"…","start_time":"14:00","end_time":"14:15"}</code>
                         </li>
                     </ol>
                 </div>
@@ -403,7 +403,7 @@
                     <tbody class="divide-y divide-line text-ink-soft">
                         <tr><td class="py-2 pr-4 font-mono text-xs">401</td><td class="py-2">Kein oder ungültiges Token.</td></tr>
                         <tr><td class="py-2 pr-4 font-mono text-xs">404</td><td class="py-2">Ressource existiert nicht oder gehört einem anderen Account.</td></tr>
-                        <tr><td class="py-2 pr-4 font-mono text-xs">422</td><td class="py-2">Validierung fehlgeschlagen — Details unter <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">errors</code> im Body.</td></tr>
+                        <tr><td class="py-2 pr-4 font-mono text-xs">422</td><td class="py-2">Validierung fehlgeschlagen — Details unter <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">errors</code> im Body.</td></tr>
                         <tr><td class="py-2 pr-4 font-mono text-xs">429</td><td class="py-2">Zu viele Anfragen (Standardlimit: 60/Minute je Token).</td></tr>
                     </tbody>
                 </table>

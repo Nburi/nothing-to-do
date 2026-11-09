@@ -20,7 +20,7 @@
 
     <div
         x-show="open"
-        x-transition:enter="transition ease-[cubic-bezier(0.16,1,0.3,1)] duration-300"
+        x-transition:enter="transition ease-tactile duration-300"
         x-transition:enter-start="opacity-0 translate-y-6 md:translate-y-2 md:scale-[0.98]"
         x-transition:enter-end="opacity-100 translate-y-0 md:scale-100"
         x-transition:leave="transition ease-in duration-150"
@@ -45,7 +45,7 @@
                             wire:click="$set('eventKind', '{{ $val }}')"
                             @class([
                                 'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                'bg-forest text-white shadow-sm' => $eventKind === $val,
+                                'bg-forest text-white shadow-xs' => $eventKind === $val,
                                 'text-ink-soft hover:text-ink' => $eventKind !== $val,
                             ])
                         >{{ $lbl }}</button>

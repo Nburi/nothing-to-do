@@ -38,3 +38,14 @@ Livewire::test(TaskBoard::class)
 ```
 
 Where it matters, also assert that the foreign row is unchanged (`assertDatabaseHas`).
+
+## Vite build: "`@layer base` is used but no matching `@tailwind base` directive" (2026-11-09)
+
+**Symptom.** After the move to Tailwind 4 (step 2.1), `npm run build` in a git worktree failed with a
+Tailwind 3 PostCSS error, although the project no longer has a PostCSS config.
+
+**Cause.** Vite looks for `postcss.config.js` in parent folders. A worktree lives inside the main checkout
+(`.claude/worktrees/…`), so it found the main checkout's Tailwind 3 config.
+
+**Fix.** `vite.config.js` sets `css: { postcss: {} }`, so Vite never searches upwards. Tailwind 4 runs as
+the `@tailwindcss/vite` plugin and needs no PostCSS config.

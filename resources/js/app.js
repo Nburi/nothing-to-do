@@ -1163,7 +1163,7 @@ document.addEventListener('alpine:init', () => {
             if (!token) return '';
             // CSS vars use plain token names: --forest, --contour, --ink-faint, etc.
             const v = token === 'ink' ? '--ink-faint' : `--${token}`;
-            return `background: rgb(var(${v}) / 0.25); outline: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
+            return `background: rgb(var(${v}) / 0.25); outline-solid: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
         },
     }));
 
@@ -1360,3 +1360,21 @@ document.addEventListener('DOMContentLoaded', highlightFromQueryParam);
 // own 'livewire:navigated' dispatch, which would otherwise win a same-tick
 // race against our own scrollIntoView and strand it back at 0.
 document.addEventListener('livewire:navigated', () => setTimeout(highlightFromQueryParam, 0));
+
+/**
+ * Theme switch without a reload (step 2.1). App\Livewire\ThemePicker saves the choice and
+ * dispatches the new stylesheet; swapping the <style id="theme-vars"> repaints the whole
+ * page, old screens included. data-mode drives the `dark:` variant and the flame colours.
+ */
+window.addEventListener('theme-applied', (event) => {
+    const { css, mode, chrome } = event.detail || {};
+    const style = document.getElementById('theme-vars');
+    if (style && typeof css === 'string') style.textContent = css;
+    if (mode) document.documentElement.dataset.mode = mode;
+    if (chrome) {
+        document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+            const dark = (meta.getAttribute('media') || '').includes('dark');
+            meta.setAttribute('content', dark ? chrome.dark : chrome.light);
+        });
+    }
+});

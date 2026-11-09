@@ -25,7 +25,7 @@
                 @foreach ($days as $day)
                     @php $count = $dayCounts[$day] ?? 0; @endphp
                     <div
-                        class="min-w-0 flex-1 rounded-sm bg-contour-soft transition"
+                        class="min-w-0 flex-1 rounded-xs bg-contour-soft transition"
                         style="height: {{ $count > 0 ? max(8, round($count / $maxDayCount * 100)) : 3 }}%"
                         title="{{ \Illuminate\Support\Carbon::parse($day)->isoFormat('D.M.') }} — {{ $count }} {{ $count === 1 ? 'Fehler' : 'Fehler' }}"
                     ></div>

@@ -26,7 +26,7 @@
                 Ein <span class="font-medium text-ink">Model Context Protocol</span>-Server, damit ein KI-Assistent
                 (z. B. Claude) deine Aufgaben, Kategorien und Einstellungen lesen und organisieren kann —
                 immer für genau deinen Account, nie global. Ein Endpunkt, JSON-RPC 2.0 über HTTP (Streamable HTTP,
-                Protokollversion <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">2025-06-18</code>):
+                Protokollversion <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">2025-06-18</code>):
             </p>
             <pre class="mt-3 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>{{ $mcpUrl }}</code></pre>
         </div>
@@ -39,10 +39,10 @@
                 ein neues Token. Wähle dort bewusst, ob es auch schreiben und/oder löschen darf — ein reines
                 Lese-Token reicht für "was steht an", zum Organisieren braucht es "Schreiben". In deinem
                 MCP-Client (z. B. Claude Desktop, Claude Code) trägst du die URL oben plus das Token als
-                <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">Authorization: Bearer &lt;TOKEN&gt;</code>-Header ein.
+                <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">Authorization: Bearer &lt;TOKEN&gt;</code>-Header ein.
             </p>
             <p class="mt-3 text-sm text-ink-soft">
-                Ohne gültiges Token antwortet der Endpunkt mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">401</code>.
+                Ohne gültiges Token antwortet der Endpunkt mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">401</code>.
                 Der Server ist zustandslos — jeder Aufruf authentifiziert sich selbst, es gibt keine Sitzung, die
                 offen bleiben könnte.
             </p>
@@ -52,7 +52,7 @@
         <section class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-3 text-base font-medium text-ink">Was die KI sieht, passt sich an</h2>
             <p class="text-sm leading-relaxed text-ink-soft">
-                Welche Werkzeuge ein KI-Assistent bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">tools/list</code>
+                Welche Werkzeuge ein KI-Assistent bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tools/list</code>
                 angeboten bekommt, wird bei jedem Aufruf neu berechnet — nicht einmalig festgelegt. Zwei Dinge
                 steuern das:
             </p>
@@ -64,7 +64,7 @@
                 </li>
                 <li>
                     <span class="font-medium text-ink">Token-Rechte.</span> Ein Lese-Token sieht nie ein
-                    schreibendes Werkzeug; ein Token ohne "Löschen erlauben" sieht <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_task</code>
+                    schreibendes Werkzeug; ein Token ohne "Löschen erlauben" sieht <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">delete_task</code>
                     gar nicht — auch nicht als "gesperrt". Ein Aufruf eines nicht angebotenen Werkzeugs wird
                     exakt wie ein nicht existierendes behandelt (derselbe Fehler), damit ein Token nie verrät,
                     was mit mehr Rechten möglich wäre.
@@ -111,8 +111,8 @@
         <section class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-3 text-base font-medium text-ink">Fehler</h2>
             <ul class="space-y-2 text-sm leading-relaxed text-ink-soft">
-                <li>Ein unbekanntes oder nicht angebotenes Werkzeug → JSON-RPC-Protokollfehler (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">-32602</code>).</li>
-                <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_task</code> → ein normales Tool-Ergebnis mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
+                <li>Ein unbekanntes oder nicht angebotenes Werkzeug → JSON-RPC-Protokollfehler (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">-32602</code>).</li>
+                <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">delete_task</code> → ein normales Tool-Ergebnis mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
             </ul>
         </section>
     </div>

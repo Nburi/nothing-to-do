@@ -42,7 +42,7 @@
                 }, { passive: true });
             },
         }"
-        class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-sm"
+        class="sticky top-16 z-20 -mt-1 mb-2 flex items-center gap-1.5 overflow-x-auto border-b border-line bg-paper/95 py-3 backdrop-blur-xs"
     >
         @foreach (['general' => 'Allgemein', 'schedule' => 'Zeitplan & Fokus', 'progress' => 'Fortschritt', 'notifications' => 'Benachrichtigungen', 'developer' => 'Entwickler'] as $id => $label)
             <a
@@ -62,6 +62,11 @@
     <section id="general" class="scroll-mt-28 space-y-5">
         <h2 class="text-lg font-medium tracking-tight text-ink">Allgemein</h2>
 
+        {{-- Aussehen (refactor step 2.1): theme and light/dark, saved per user. --}}
+        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <livewire:theme-picker />
+        </div>
+
         <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Erledigte Aufgaben</h3>
         <p class="mb-5 text-sm text-ink-soft leading-relaxed">
@@ -76,7 +81,7 @@
                 type="time"
                 wire:model="resetTime"
                 wire:change="save"
-                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
             />
             @error('resetTime')
                 <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
@@ -123,8 +128,8 @@
                             aria-label="{{ $row['label'] }} {{ $row['hidden'] ? 'einblenden' : 'ausblenden' }}"
                         >
                             <span @class([
-                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                                'left-[1.125rem]' => ! $row['hidden'],
+                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                                'left-4.5' => ! $row['hidden'],
                                 'left-0.5' => $row['hidden'],
                             ])></span>
                         </button>
@@ -148,7 +153,7 @@
                         wire:click="setDefaultPage('{{ $option['key'] }}')"
                         @class([
                             'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                            'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
+                            'bg-forest text-white shadow-xs' => $defaultPage === $option['key'],
                             'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                         ])
                     >{{ $option['label'] }}</button>
@@ -257,8 +262,8 @@
                     aria-label="Planer {{ $plannerEnabled ? 'deaktivieren' : 'aktivieren' }}"
                 >
                     <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $plannerEnabled,
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-4.5' => $plannerEnabled,
                         'left-0.5' => ! $plannerEnabled,
                     ])></span>
                 </button>
@@ -292,7 +297,7 @@
                     max="14"
                     wire:model="timezoneOffset"
                     wire:change="saveTimezone"
-                    class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                 />
                 @error('timezoneOffset')
                     <p class="mt-1.5 text-xs text-signal">{{ $message }}</p>
@@ -315,8 +320,8 @@
                     aria-label="Sommer-/Winterzeit automatisch korrigieren {{ $timezoneAutoDst ? 'deaktivieren' : 'aktivieren' }}"
                 >
                     <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $timezoneAutoDst,
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-4.5' => $timezoneAutoDst,
                         'left-0.5' => ! $timezoneAutoDst,
                     ])></span>
                 </button>
@@ -361,8 +366,8 @@
                             aria-label="{{ $row['label'] }} {{ $row['enabled'] ? 'ausblenden' : 'anzeigen' }}"
                         >
                             <span @class([
-                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                                'left-[1.125rem]' => $row['enabled'],
+                                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                                'left-4.5' => $row['enabled'],
                                 'left-0.5' => ! $row['enabled'],
                             ])></span>
                         </button>
@@ -424,8 +429,8 @@
                         title="Pomodoro-Fokus-Timer"
                     >
                         <span @class([
-                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                            'left-[1.125rem]' => $category->pomodoro_enabled,
+                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                            'left-4.5' => $category->pomodoro_enabled,
                             'left-0.5' => ! $category->pomodoro_enabled,
                         ])></span>
                     </button>
@@ -437,7 +442,7 @@
                         @click.outside="armed = false; clearTimeout(_t)"
                         @keydown.escape.window="armed = false; clearTimeout(_t)"
                         :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                         aria-label="Kategorie löschen"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
@@ -530,7 +535,7 @@
                 @foreach ($fields as $model => $label)
                     <div>
                         <label for="{{ $model }}" class="mb-1.5 block text-xs font-medium text-ink-soft">{{ $label }}</label>
-                        <input id="{{ $model }}" type="number" min="1" wire:model="{{ $model }}" wire:change="saveSchedule" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                        <input id="{{ $model }}" type="number" min="1" wire:model="{{ $model }}" wire:change="saveSchedule" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                         @error($model) <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                     </div>
                 @endforeach
@@ -555,8 +560,8 @@
                     aria-label="Automatisch weiterlaufen {{ $pAutostart ? 'deaktivieren' : 'aktivieren' }}"
                 >
                     <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $pAutostart,
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-4.5' => $pAutostart,
                         'left-0.5' => ! $pAutostart,
                     ])></span>
                 </button>
@@ -585,17 +590,17 @@
                     aria-label="Vorschau auf Termine {{ $deadlinePreviewEnabled ? 'deaktivieren' : 'aktivieren' }}"
                 >
                     <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $deadlinePreviewEnabled,
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-4.5' => $deadlinePreviewEnabled,
                         'left-0.5' => ! $deadlinePreviewEnabled,
                     ])></span>
                 </button>
             </div>
 
             @if ($deadlinePreviewEnabled)
-                <div class="mt-4 max-w-[10rem]">
+                <div class="mt-4 max-w-40">
                     <label for="deadlinePreviewDays" class="mb-1.5 block text-xs font-medium text-ink-soft">Tage vorher</label>
-                    <input id="deadlinePreviewDays" type="number" min="0" max="14" wire:model="deadlinePreviewDays" wire:change="saveDeadlinePreviewDays" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                    <input id="deadlinePreviewDays" type="number" min="0" max="14" wire:model="deadlinePreviewDays" wire:change="saveDeadlinePreviewDays" class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                     @error('deadlinePreviewDays') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
             @endif
@@ -614,7 +619,7 @@
             und eine der beiden Feier-Animationen.
         </p>
 
-        <div class="max-w-[8rem]">
+        <div class="max-w-32">
             <label for="dailyTaskGoal" class="mb-1.5 block text-sm font-medium text-ink">Aufgaben pro Tag</label>
             <input
                 id="dailyTaskGoal"
@@ -623,7 +628,7 @@
                 max="30"
                 wire:model="dailyTaskGoal"
                 wire:change="saveDailyGoal"
-                class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
             />
             @error('dailyTaskGoal') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
         </div>
@@ -652,22 +657,22 @@
                     aria-label="Erinnerung an offene Aufgaben {{ $notifyDailyReminder ? 'deaktivieren' : 'aktivieren' }}"
                 >
                     <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $notifyDailyReminder,
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-4.5' => $notifyDailyReminder,
                         'left-0.5' => ! $notifyDailyReminder,
                     ])></span>
                 </button>
             </div>
 
             @if ($notifyDailyReminder)
-                <div class="max-w-[10rem] pb-2">
+                <div class="max-w-40 pb-2">
                     <label for="dailyReminderTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
                     <input
                         id="dailyReminderTime"
                         type="time"
                         wire:model="dailyReminderTime"
                         wire:change="saveDailyReminderTime"
-                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                     />
                     @error('dailyReminderTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
@@ -692,8 +697,8 @@
                     aria-label="Serie-in-Gefahr-Erinnerung {{ $notifyStreakRisk ? 'deaktivieren' : 'aktivieren' }}"
                 >
                     <span @class([
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                        'left-[1.125rem]' => $notifyStreakRisk,
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-4.5' => $notifyStreakRisk,
                         'left-0.5' => ! $notifyStreakRisk,
                     ])></span>
                 </button>
@@ -842,8 +847,8 @@
                         aria-label="{{ $row['label'] }} {{ auth()->user()->{$row['key']} ? 'deaktivieren' : 'aktivieren' }}"
                     >
                         <span @class([
-                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                            'left-[1.125rem]' => auth()->user()->{$row['key']},
+                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                            'left-4.5' => auth()->user()->{$row['key']},
                             'left-0.5' => ! auth()->user()->{$row['key']},
                         ])></span>
                     </button>
@@ -883,7 +888,7 @@
                         readonly
                         value="{{ $createdToken }}"
                         onclick="this.select()"
-                        class="min-w-0 flex-1 rounded-card border border-line bg-paper px-3 py-2 font-mono text-xs text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                        class="min-w-0 flex-1 rounded-card border border-line bg-paper px-3 py-2 font-mono text-xs text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                     />
                     <button
                         type="button"
@@ -937,7 +942,7 @@
                         @click.outside="armed = false; clearTimeout(_t)"
                         @keydown.escape.window="armed = false; clearTimeout(_t)"
                         :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                         aria-label="Token widerrufen"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
@@ -963,11 +968,11 @@
             </div>
             <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-soft">
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="newTokenCanWrite" class="rounded border-line text-forest focus:ring-forest" />
+                    <input type="checkbox" wire:model="newTokenCanWrite" class="rounded-sm border-line text-forest focus:ring-forest" />
                     Schreiben erlauben (Aufgaben anlegen/ändern, Einstellungen setzen)
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="newTokenCanDelete" class="rounded border-line text-signal focus:ring-signal" />
+                    <input type="checkbox" wire:model="newTokenCanDelete" class="rounded-sm border-line text-signal focus:ring-signal" />
                     Löschen erlauben
                 </label>
             </div>

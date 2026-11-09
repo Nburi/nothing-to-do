@@ -23,6 +23,7 @@ also has a `PomodoroCycleTest` and a `SchedulePauseTest` (retired with the old s
 | A8 | R3 | Capture saves a 400 character title, rejects an empty one with a German message, refuses a token without the capture ability. | `php artisan test --filter=CaptureTest` | bestanden (Schritt 1.5, 2026-11-08) |
 | A9 | R3 | Sorting moves an item to To-do, Task or Later and applies the default size. | `php artisan test --filter=InboxSortTest` | offen |
 | A19 | R9 | Outside pomodoro blocks the idle board offers no work suggestion; the next block's start time is shown instead; a manual start still works. | `php artisan test --filter=NoSuggestionOutsideBlocksTest` | bestanden (Schritt 1.3, 2026-11-08) |
+| A20 | R7 | Every theme, light and dark: all text colours >= 4.5:1 on the backgrounds they sit on; Topografie is the default. | `php artisan test tests/Unit/ThemeContrastTest.php tests/Feature/Refactor/ThemeSettingTest.php` | bestanden (Schritt 2.1, 2026-11-09: 14 Kombinationen; Textfarben der Plan-Paletten minimal angepasst, siehe docs/steps/2.1.md) |
 | A10 | R6 | Ideas are offered only in free time outside pomodoro blocks and when deadline work is covered; a "mine" slot offers nothing. | `php artisan test --filter=IdeaSuggestionTest` | offen |
 | A11 | R7 | Every action in the registry has a desktop and a mobile entry point, in board and session mode. | `php artisan test --filter=ActionParityTest` | offen |
 | A12 | R8 | Old-schema fixtures migrate with equal row counts; deadline becomes hard, due date becomes soft; rollback restores. | `php artisan test --filter=MigrationRehearsalTest` | offen |
@@ -43,7 +44,7 @@ screenshot comes out, Claude **stops and tells Niels**, and the affected rows mo
 | B1 | R1–R6 | Empty states of board, week, inbox and Later look finished, not blank. | Screenshot with a fresh account | offen |
 | B2 | R3 | A 400 character title and umlauts do not clip in the suggestion card, inbox row, pile card and week block. | Screenshots at 390 and 1280 px | offen |
 | B3 | R7 | No horizontal scroll at 390 px; every registry action is reachable in Werkbank and Stapel. | Walk the parity table | offen |
-| B4 | Themes | Each theme is readable in light and dark; Topografie is the default for a new account. | Screenshots | offen |
+| B4 | Themes | Each theme is readable in light and dark; Topografie is the default for a new account. | Screenshots | teilweise (Schritt 2.1, 2026-11-09): Themen-Karte in den Einstellungen bei 1280 und 390 px, Wechsel auf Kiosk dunkel ohne Reload färbt die ganze (alte) Seite um, Topografie hell ist Standard; alte Board- und Zeitplan-Ansicht unter Tailwind 4 unverändert. Screens `docs/screens/2.1-*`. Alle sieben im neuen Shell folgen mit 2.2. |
 | B5 | Signature | "The board folds away" plays on Start in both layouts; under reduced motion it becomes an instant, readable change. | Live check + emulated reduced motion | offen |
 | B6 | R4 | A holiday week shows paused blocks as ghosts that can be restored. | Screenshot of the week | offen |
 | B7 | R5 | The crunch screen with six items fits at 390 px with all four decisions visible. | Screenshot | offen |
