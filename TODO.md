@@ -37,7 +37,8 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [x] Phase 3 preview picks (2026-11-11): fold A "Falten" at 520 ms (above the plan's 400 ms, on purpose), reset as a calm screen, battery at the end of the reset, nudge at a **fixed time** per weekday, Ideen view as cards. Preview: https://claude.ai/artifact/Y5ieY4W47HaZwjzGFGR48W
 - [x] 3.1 "The board folds away" (`feature/board-folds`). Notes in `docs/steps/3.1.md`.
 - [ ] 3.1 known issue: in the Stapel layout in a narrow *desktop* window the card jumps 20 px after the fold (a scrollbar shows for ~400 ms). Not on phones. Two fixes failed and were reverted; next idea `scrollbar-gutter: stable`. Waiting for Niels: fix now or leave it?
-- [ ] 3.2 Battery check-in and reset (calm screen, battery at its end).
+- [x] 3.2 Battery check-in and reset (`feature/battery-reset`). Notes in `docs/steps/3.2.md`. Offered from 17:00 or via `/board?reset=1` until 3.3 brings the nudge time per weekday.
+- [ ] 3.2 open for Niels: should a reset started by hand during a work session pause the pomodoro? (now it keeps running)
 - [ ] 3.3 Nudge at a fixed time per weekday (Wi-Fi path later, once C2 passes).
 - [ ] 3.4 Free-time ideas, "Meins behalten", Ideen view (cards).
 - [ ] 3.5 Beta 2, 3.6 review rounds.
