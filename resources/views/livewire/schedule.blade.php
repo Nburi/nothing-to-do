@@ -128,7 +128,7 @@
                             @endfor
 
                             @if ($day->isSameDay($today) && $nowMin >= $dayStart && $nowMin <= $dayEnd)
-                                <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) * $ppmWeek }}px">
+                                <div class="pointer-events-none absolute inset-x-0 z-15 border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) * $ppmWeek }}px">
                                     <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-signal"></span>
                                 </div>
                             @endif
@@ -229,7 +229,7 @@
                     @endfor
 
                     @if ($focused->isSameDay($today) && $nowMin >= $dayStart && $nowMin <= $dayEnd)
-                        <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) / $span * 100 }}%">
+                        <div class="pointer-events-none absolute inset-x-0 z-15 border-t-2 border-signal" style="top: {{ ($nowMin - $dayStart) / $span * 100 }}%">
                             <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-signal"></span>
                         </div>
                     @endif

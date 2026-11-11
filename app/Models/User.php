@@ -78,6 +78,12 @@ class User extends Authenticatable
         return $this->hasMany(EventTemplate::class);
     }
 
+    /** @return HasOne<CrunchAlert, $this> */
+    public function crunchAlert(): HasOne
+    {
+        return $this->hasOne(CrunchAlert::class);
+    }
+
     /** @return HasOne<PomodoroSession, $this> */
     public function pomodoroSession(): HasOne
     {

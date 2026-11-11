@@ -44,7 +44,7 @@
                     <button
                         type="button"
                         wire:click="cancelEdit"
-                        class="grid h-7 w-7 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        class="grid h-7 w-7 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                         aria-label="Bearbeiten abbrechen"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -52,7 +52,7 @@
                 @endif
                 <button
                     type="submit"
-                    class="grid h-7 w-7 flex-none place-items-center rounded-card {{ $editingId ? 'bg-overprint' : 'bg-forest' }} text-white transition hover:brightness-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                    class="grid h-7 w-7 flex-none place-items-center rounded-card {{ $editingId ? 'bg-overprint' : 'bg-forest' }} text-white transition hover:brightness-110 active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest"
                     aria-label="{{ $editingId ? 'Änderungen speichern' : 'Idee hinzufügen' }}"
                 >
                     @if ($editingId)
@@ -107,7 +107,7 @@
                 <button
                     type="button"
                     wire:click="markDone({{ $this->hero->id }})"
-                    class="inline-flex items-center gap-1.5 rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    class="inline-flex items-center gap-1.5 rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
                     Erledigt
@@ -116,7 +116,7 @@
                     <button
                         type="button"
                         wire:click="shuffle"
-                        class="inline-flex items-center gap-1.5 rounded-card border border-line bg-paper px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        class="inline-flex items-center gap-1.5 rounded-card border border-line bg-paper px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M3 6h3.5L14 15h3M3 15h3.5L14 6h3M14 6l3-2.2M14 6l3 2.2M14 15l3 2.2M14 15l3-2.2"/>
@@ -128,7 +128,7 @@
                     <button
                         type="button"
                         wire:click="startEdit({{ $this->hero->id }})"
-                        class="grid h-9 w-9 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        class="grid h-9 w-9 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                         aria-label="Bearbeiten: {{ $this->hero->title }}"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -142,7 +142,7 @@
                         @click.outside="armed = false; clearTimeout(_t)"
                         @keydown.escape.window="armed = false; clearTimeout(_t)"
                         :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                        class="grid h-9 w-9 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        class="grid h-9 w-9 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                         aria-label="Löschen: {{ $this->hero->title }}"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -173,12 +173,12 @@
                         class="pin-card group/idea relative {{ $span }} rounded-card border border-line bg-surface shadow-map"
                         style="transform: rotate({{ $rot }}deg)"
                     >
-                        <span class="absolute -top-[5px] left-1/2 h-[9px] w-[9px] -translate-x-1/2 rounded-full {{ $pin }} shadow-[0_1px_3px_rgb(35_41_31/0.35)]" aria-hidden="true"></span>
+                        <span class="absolute top-[-5px] left-1/2 h-[9px] w-[9px] -translate-x-1/2 rounded-full {{ $pin }} shadow-[0_1px_3px_rgb(35_41_31/0.35)]" aria-hidden="true"></span>
 
                         <button
                             type="button"
                             wire:click.stop="startEdit({{ $idea->id }})"
-                            class="absolute right-9 top-1.5 grid h-6 w-6 place-items-center rounded-card text-ink-faint opacity-0 transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/idea:opacity-100 group-focus-within/idea:opacity-100"
+                            class="absolute right-9 top-1.5 grid h-6 w-6 place-items-center rounded-card text-ink-faint opacity-0 transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/idea:opacity-100 group-focus-within/idea:opacity-100"
                             aria-label="Bearbeiten: {{ $idea->title }}"
                         >
                             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -193,7 +193,7 @@
                             @click.outside="armed = false; clearTimeout(_t)"
                             @keydown.escape.window="armed = false; clearTimeout(_t)"
                             :class="armed ? 'opacity-100 bg-signal text-white' : 'opacity-0 text-ink-faint hover:bg-signal-soft hover:text-signal group-hover/idea:opacity-100 group-focus-within/idea:opacity-100'"
-                            class="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-card transition focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-signal"
+                            class="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-card transition focus:outline-hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-signal"
                             aria-label="Löschen: {{ $idea->title }}"
                         >
                             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -204,7 +204,7 @@
                         <button
                             type="button"
                             wire:click="promote({{ $idea->id }})"
-                            class="block w-full px-3.5 pb-3.5 pt-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint focus-visible:ring-inset"
+                            class="block w-full px-3.5 pb-3.5 pt-3 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint focus-visible:ring-inset"
                         >
                             <h3 class="pr-14 text-[13.5px] font-medium leading-snug text-ink">{{ $idea->title }}</h3>
                             @if ($idea->where_to_begin)
@@ -242,7 +242,7 @@
                         <button
                             type="button"
                             wire:click="restoreIdea({{ $idea->id }})"
-                            class="grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 border-forest bg-forest text-white transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                            class="grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 border-forest bg-forest text-white transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest"
                             aria-label="Wiederherstellen: {{ $idea->title }}"
                         >
                             <svg class="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" aria-hidden="true">

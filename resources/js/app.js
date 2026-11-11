@@ -1163,7 +1163,7 @@ document.addEventListener('alpine:init', () => {
             if (!token) return '';
             // CSS vars use plain token names: --forest, --contour, --ink-faint, etc.
             const v = token === 'ink' ? '--ink-faint' : `--${token}`;
-            return `background: rgb(var(${v}) / 0.25); outline: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
+            return `background: rgb(var(${v}) / 0.25); outline-solid: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
         },
     }));
 
@@ -1360,3 +1360,65 @@ document.addEventListener('DOMContentLoaded', highlightFromQueryParam);
 // own 'livewire:navigated' dispatch, which would otherwise win a same-tick
 // race against our own scrollIntoView and strand it back at 0.
 document.addEventListener('livewire:navigated', () => setTimeout(highlightFromQueryParam, 0));
+
+/**
+ * Theme switch without a reload (step 2.1). App\Livewire\ThemePicker saves the choice and
+ * dispatches the new stylesheet; swapping the <style id="theme-vars"> repaints the whole
+ * page, old screens included. data-mode drives the `dark:` variant and the flame colours.
+ */
+window.addEventListener('theme-applied', (event) => {
+    const { css, mode, chrome } = event.detail || {};
+    const style = document.getElementById('theme-vars');
+    if (style && typeof css === 'string') style.textContent = css;
+    if (mode) document.documentElement.dataset.mode = mode;
+    if (chrome) {
+        document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+            const dark = (meta.getAttribute('media') || '').includes('dark');
+            meta.setAttribute('content', dark ? chrome.dark : chrome.light);
+        });
+    }
+});
+
+/**
+ * Session timer island (refactor step 2.2, risk C5). The server owns the session; this only
+ * counts down the seconds the server sent and, when a phase runs out, asks the server to
+ * render again (it then shows the break or the next phase). Wall-clock based, so a tab that
+ * slept catches up at once. The element is keyed by the session state, so every server
+ * change re-creates it with fresh numbers.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('sessionTimer', (remaining, total, running) => ({
+        left: remaining,
+        total,
+        running,
+        startedAt: Date.now(),
+        handle: null,
+        init() {
+            if (!this.running) return;
+            this.handle = setInterval(() => this.tick(), 1000);
+            this.onVisible = () => this.tick();
+            document.addEventListener('visibilitychange', this.onVisible);
+        },
+        tick() {
+            const elapsed = Math.floor((Date.now() - this.startedAt) / 1000);
+            this.left = Math.max(0, remaining - elapsed);
+            if (this.left === 0 && this.handle) {
+                clearInterval(this.handle);
+                this.handle = null;
+                this.$wire.tick();
+            }
+        },
+        destroy() {
+            if (this.handle) clearInterval(this.handle);
+            if (this.onVisible) document.removeEventListener('visibilitychange', this.onVisible);
+        },
+        get label() {
+            const m = Math.floor(this.left / 60);
+            const s = this.left % 60;
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        },
+        offset(circumference) {
+            return (circumference * (this.left / this.total)).toFixed(2);
+        },
+    }));
+});

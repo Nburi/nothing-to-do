@@ -13,6 +13,8 @@ use App\Livewire\Planner;
 use App\Livewire\Progress;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
+use App\Livewire\Shell\Board as ShellBoard;
+use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
@@ -49,6 +51,16 @@ Route::get('/sitemap.xml', function () {
 
     return response($xml)->header('Content-Type', 'application/xml');
 })->name('sitemap');
+
+// The new app of the refactor (phase 2 on): Werkbank on desktop, Stapel on mobile. It lives
+// beside the old screens until the switch (step 5.4) makes it the only one.
+Route::get('/board', ShellBoard::class)
+    ->middleware('auth')
+    ->name('shell.board');
+
+Route::get('/board/settings', ShellSettings::class)
+    ->middleware('auth')
+    ->name('shell.settings');
 
 Route::get('/app', TaskBoard::class)
     ->middleware('auth')
