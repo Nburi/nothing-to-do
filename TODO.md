@@ -33,6 +33,15 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] Phase 2 preview picks confirmed by Niels on 2026-11-09: theme cards, System/Hell/Dunkel, capture line stays open, sort one card at a time, Later asks less, "Woche" opens the old week plan, settings behind the gear.
 - [x] Mobile sort as real cards (Niels, 2026-11-09, option A): size on the top card, drag it onto the To-dos / Tasks / Später pile or tap the pile. In `feature/capture-sort` (PR #17).
 
+## Refactor: phase 3 (started 2026-11-11, gate waived by Niels, stacked on PR #17)
+- [x] Phase 3 preview picks (2026-11-11): fold A "Falten" at 520 ms (above the plan's 400 ms, on purpose), reset as a calm screen, battery at the end of the reset, nudge at a **fixed time** per weekday, Ideen view as cards. Preview: https://claude.ai/artifact/Y5ieY4W47HaZwjzGFGR48W
+- [x] 3.1 "The board folds away" (`feature/board-folds`). Notes in `docs/steps/3.1.md`.
+- [ ] 3.1 known issue: in the Stapel layout in a narrow *desktop* window the card jumps 20 px after the fold (a scrollbar shows for ~400 ms). Not on phones. Two fixes failed and were reverted; next idea `scrollbar-gutter: stable`. Waiting for Niels: fix now or leave it?
+- [ ] 3.2 Battery check-in and reset (calm screen, battery at its end).
+- [ ] 3.3 Nudge at a fixed time per weekday (Wi-Fi path later, once C2 passes).
+- [ ] 3.4 Free-time ideas, "Meins behalten", Ideen view (cards).
+- [ ] 3.5 Beta 2, 3.6 review rounds.
+
 ## Open questions for Niels
 - **`refactor/refactor` is 21 migrations behind `main`** (task_sessions, reminders, repeat rules, OAuth, day bounds, buffers, …). Prod data lives in those tables; the refactor has to land on top of them. Merge `main` into `refactor/refactor` soon, or decide per table what happens to it — the longer this waits, the bigger the 5.4 switch gets.
 - Answered 2026-11-08: "status" in step 1.1 is dropped (nobody knew what it meant; `list` + `is_completed` cover it). Instead, step 1.4 adds a soft-deadline slip counter (G2), and the crunch decision "drop" moves a task to Later instead of deleting it.

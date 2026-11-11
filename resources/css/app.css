@@ -852,3 +852,149 @@
         }
     }
 }
+
+/*
+  Step 3.1 · "The board folds away" (CONVENTIONS 10: the signature moment, taboo for cleanup).
+  Niels' picks (phase 3 preview, 2026-11-11): variant A "Falten", 520 ms until the card stands.
+  This is a deliberate change from the plan's "under 400 ms" (risk F13); do not "fix" it.
+
+  The server switches data-shell-mode on the shell root; the board region stays rendered (inert)
+  in a session, so these are plain transitions on elements Livewire keeps. body.shell-folding is
+  set by Alpine on the click (the fold starts before the server answers), body.shell-entering and
+  body.shell-returning only for the moment of a switch, so a reload shows a session without motion.
+  The session card grows out of the started card in JS (shellFold in app.js, FLIP).
+
+  Unlayered on purpose: it must win over the utility classes on the same elements.
+*/
+.shell {
+  --fold-ms: 520ms;
+  --fold-stag: 70ms;
+  --fold-dur: 310ms; /* 310 + 3 × 70 = 520 */
+  --fold-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* At rest and on the way back: everything in place, one column after the other. */
+.shell [data-region="board"] {
+  transition: visibility 0s;
+}
+.shell [data-region="board"] .fold-col {
+  transform-origin: left center;
+  transition:
+    transform var(--fold-dur) var(--fold-ease),
+    opacity var(--fold-dur) var(--fold-ease);
+  transition-delay: calc(var(--i, 0) * var(--fold-stag));
+}
+.shell [data-region="board"] .fold-pile {
+  transition:
+    transform var(--fold-dur) var(--fold-ease),
+    opacity var(--fold-dur) var(--fold-ease);
+  transition-delay: calc(var(--i, 0) * var(--fold-stag));
+}
+.shell [data-region="board"] .fold-away {
+  transition:
+    transform var(--fold-dur) var(--fold-ease),
+    opacity var(--fold-dur) var(--fold-ease);
+}
+.shell [data-region="board"] .fold-tabs {
+  transition: transform var(--fold-dur) var(--fold-ease);
+}
+.shell [data-region="board"] .fold-tray {
+  transition:
+    background-color var(--fold-dur) var(--fold-ease),
+    border-color var(--fold-dur) var(--fold-ease);
+}
+
+/* Folded: on the click (body.shell-folding) and for as long as the session runs. */
+body.shell-folding .shell [data-region="board"] .fold-col,
+.shell[data-shell-mode="session"] [data-region="board"] .fold-col {
+  transform: perspective(900px) rotateY(-88deg) translateX(-30px);
+  opacity: 0;
+}
+body.shell-folding .shell [data-region="board"] .fold-pile,
+.shell[data-shell-mode="session"] [data-region="board"] .fold-pile {
+  transform: translateY(calc(55dvh - var(--row, 0) * 90px)) scale(0.3);
+  opacity: 0;
+}
+body.shell-folding .shell [data-region="board"] .fold-away,
+.shell[data-shell-mode="session"] [data-region="board"] .fold-away {
+  transform: translateY(-8px);
+  opacity: 0;
+}
+body.shell-folding .shell [data-region="board"] .fold-tabs,
+.shell[data-shell-mode="session"] [data-region="board"] .fold-tabs {
+  transform: translateY(100%);
+}
+body.shell-folding .shell [data-region="board"] .fold-tray,
+.shell[data-shell-mode="session"] [data-region="board"] .fold-tray {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+/* In a session the folded board steps out of the flow and out of sight once it has folded.
+   The started card stays until the session card has taken its place. */
+.shell[data-shell-mode="session"] [data-region="board"] {
+  position: absolute;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear var(--fold-ms);
+}
+.shell[data-shell-mode="session"] [data-region="board"] .fold-card {
+  opacity: 0;
+}
+
+/* The session arriving: only while switching, never on a reload. */
+body.shell-entering .shell .fold-rail {
+  animation: fold-rail-in var(--fold-dur) var(--fold-ease) both;
+}
+body.shell-entering .shell .fold-rail-count {
+  animation: fold-pop 220ms var(--fold-ease) both;
+  animation-delay: calc(var(--i, 0) * var(--fold-stag) + var(--fold-dur) * 0.6);
+}
+body.shell-entering .shell .fold-arrive {
+  animation: fold-rise 300ms var(--fold-ease) both;
+  animation-delay: calc(var(--fold-ms) - 200ms);
+}
+body.shell-entering .shell .fold-drawer {
+  animation: fold-drawer-in var(--fold-dur) var(--fold-ease) both;
+  animation-delay: calc(2 * var(--fold-stag));
+}
+
+/* The board coming back: the done row and the next suggestion rise into place. */
+body.shell-returning .shell .fold-return {
+  animation: fold-rise 360ms var(--fold-ease) both;
+  animation-delay: calc(2 * var(--fold-stag));
+}
+
+@keyframes fold-rail-in {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+@keyframes fold-drawer-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@keyframes fold-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fold-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Reduced motion: the same change, instant and readable (CONVENTIONS 10). */
+@media (prefers-reduced-motion: reduce) {
+  .shell [data-region="board"],
+  .shell [data-region="board"] *,
+  .shell .fold-rail,
+  .shell .fold-rail-count,
+  .shell .fold-arrive,
+  .shell .fold-drawer,
+  .shell .fold-return {
+    transition: none !important;
+    animation: none !important;
+  }
+}

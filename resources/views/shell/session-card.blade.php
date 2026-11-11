@@ -9,7 +9,7 @@
     $isReady = $phase === Phase::Ready;
     $circumference = 339.29; // 2 * pi * 54
 @endphp
-<article class="flex w-full max-w-[520px] flex-col gap-4 rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
+<article data-session-card class="flex w-full max-w-[520px] flex-col gap-4 rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
     <div class="flex flex-wrap items-center gap-2 text-xs">
         @if ($phase === Phase::Work)
             <span class="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-good">

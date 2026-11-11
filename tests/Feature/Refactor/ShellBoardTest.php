@@ -103,6 +103,84 @@ class ShellBoardTest extends TestCase
         $this->assertSame($task->id, $state->taskId);
     }
 
+    /**
+     * Step 3.1: the board stays rendered (inert) during a session, so the switch is a CSS fold on
+     * elements Livewire keeps, not a page swap (risk C5). CONVENTIONS 10: this must not be tidied
+     * away, which is what this test guards.
+     */
+    public function test_the_board_stays_rendered_but_inert_during_a_session_so_it_can_fold(): void
+    {
+        $this->block();
+        $task = $this->task('Formular');
+        app(FocusSession::class)->start($this->user, $task->id);
+
+        $html = $this->actingAs($this->user)->get('/board')->assertOk()->getContent();
+        $xpath = $this->xpath($html);
+
+        foreach (['werkbank', 'stapel'] as $layout) {
+            $root = "//*[@data-layout-root='{$layout}']";
+            $this->assertSame(1, $xpath->query("{$root}/section[@data-region='board'][@inert][@aria-hidden='true']")->length, "{$layout}: folded board, inert");
+            $this->assertSame(1, $xpath->query("{$root}/section[@data-region='session']//*[@data-session-card]")->length, "{$layout}: session card");
+        }
+        $this->assertSame(4, $xpath->query("//*[@data-layout-root='werkbank']//*[contains(@class,'fold-col')]")->length, 'four columns fold');
+        $this->assertSame(4, $xpath->query("//*[@data-layout-root='stapel']//*[contains(@class,'fold-pile')]")->length, 'four piles slide into the drawer');
+        $this->assertSame(1, $xpath->query("//*[@data-layout-root='werkbank']//*[contains(concat(' ', @class, ' '),' fold-rail ')]")->length);
+        $this->assertSame(1, $xpath->query("//*[@data-layout-root='stapel']//*[contains(concat(' ', @class, ' '),' fold-drawer ')]")->length);
+    }
+
+    public function test_starts_from_the_board_fold_and_starts_inside_a_session_do_not(): void
+    {
+        $this->block();
+        $this->task('Formular');
+        $this->task('Bericht', 'tasks', Size::Long);
+
+        $board = $this->actingAs($this->user)->get('/board')->assertOk()->getContent();
+        $xpath = $this->xpath($board);
+
+        $this->assertSame(0, $xpath->query("//section[@data-region='board'][@inert]")->length, 'nothing is inert while idle');
+        $this->assertSame(0, $xpath->query("//section[@data-region='session']")->length);
+        $starts = $xpath->query("//*[@data-action='start'][@data-mode='board']");
+        $this->assertGreaterThan(0, $starts->length);
+        foreach ($starts as $button) {
+            $this->assertNotNull($xpath->query('ancestor::*[@data-fold-from]', $button)->item(0), 'every start knows which card it grows from');
+        }
+        // DOMDocument drops attributes named @click, so the handlers are read from the raw HTML.
+        preg_match_all('/<button(?:[^>"]|"[^"]*")*data-action="start"(?:[^>"]|"[^"]*")*data-mode="board"(?:[^>"]|"[^"]*")*>/', $board, $tags);
+        $this->assertCount($starts->length, $tags[0]);
+        foreach ($tags[0] as $tag) {
+            $this->assertStringContainsString('@click="foldInto($el, () => $wire.start(', $tag, 'every start from the board folds');
+            $this->assertStringNotContainsString('wire:click="start', $tag);
+        }
+        $this->assertStringContainsString('x-data="shellFold"', $board);
+
+        // In a session the list buttons start the next session the usual way (no fold).
+        app(FocusSession::class)->start($this->user, Task::where('title', 'Formular')->first()->id);
+        preg_match_all('/<button(?:[^>"]|"[^"]*")*data-action="start"(?:[^>"]|"[^"]*")*data-mode="session"(?:[^>"]|"[^"]*")*>/', $this->get('/board')->getContent(), $tags);
+        $this->assertNotEmpty($tags[0]);
+        foreach ($tags[0] as $tag) {
+            $this->assertStringNotContainsString('foldInto', $tag);
+        }
+    }
+
+    public function test_the_fold_keeps_niels_timing_and_respects_reduced_motion(): void
+    {
+        $css = file_get_contents(resource_path('css/app.css'));
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('--fold-ms: 520ms', $css, "Niels' pick from the phase 3 preview");
+        $this->assertStringContainsString('const FOLD_MS = 520', $js);
+        $this->assertMatchesRegularExpression('/prefers-reduced-motion: reduce\)\s*\{\s*\.shell \[data-region="board"\]/', $css, 'reduced motion: instant change');
+        $this->assertStringContainsString('reducedMotion()', $js, 'no card flight under reduced motion');
+    }
+
+    private function xpath(string $html): \DOMXPath
+    {
+        $dom = new \DOMDocument;
+        @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+
+        return new \DOMXPath($dom);
+    }
+
     public function test_a_task_can_be_started_by_hand_from_a_list_outside_blocks(): void
     {
         $task = $this->task('Bericht', 'tasks', Size::Long);

@@ -6,6 +6,7 @@
     $total = array_sum($counts);
 @endphp
 <article
+    @if ($s->hasPick()) data-fold-from @endif
     class="flex min-w-0 flex-col gap-2.5 rounded-panel bg-surface p-4 shadow-card wb:p-5"
     style="border: var(--t-bw) solid {{ $s->hasPick() ? 'var(--t-accent)' : 'var(--t-line)' }}"
     aria-live="polite"
@@ -40,7 +41,7 @@
         <div class="mt-1 flex flex-wrap gap-2">
             <x-shell.action
                 key="start" :layout="$layout" mode="board"
-                wire:click="start({{ $task->id }})" wire:loading.attr="disabled"
+                @click="foldInto($el, () => $wire.start({{ $task->id }}))" wire:loading.attr="disabled"
                 class="inline-flex min-h-11 flex-1 basis-36 items-center justify-center gap-2 whitespace-nowrap rounded-card bg-accent px-3 font-semibold text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
             >
                 @include('shell.icon', ['name' => 'play', 'class' => 'size-4'])

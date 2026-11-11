@@ -1380,6 +1380,119 @@ window.addEventListener('theme-applied', (event) => {
 });
 
 /**
+ * "The board folds away" (refactor step 3.1, CONVENTIONS 10: the signature moment, never tidy
+ * it away). The shell root's Alpine part. Niels' picks from the phase 3 preview: variant A
+ * "Falten" (each column folds like a card towards the rail), 520 ms until the card stands.
+ *
+ * How it stays out of Livewire's way (risk C5):
+ * - The board region stays rendered during a session, so the morph keeps its elements and the
+ *   server's switch of data-shell-mode is a plain CSS transition (resources/css/app.css, "fold").
+ * - The fold state lives on <body> (shell-folding / shell-entering / shell-returning), which
+ *   Livewire never morphs.
+ * - A click on Start folds at once (before the server answers) and remembers where the card
+ *   was; when the session card shows up, it grows out of that place (FLIP). A reload or another
+ *   device shows the session without any motion. Under reduced motion it is an instant change.
+ */
+const FOLD_MS = 520;
+
+document.addEventListener('alpine:init', () => {
+    const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const flag = (name, on) => document.body.classList.toggle(name, on);
+
+    window.Alpine.data('shellFold', () => ({
+        peek: null,
+        mode: null,
+        from: null,
+        timers: {},
+
+        init() {
+            this.mode = this.$el.dataset.shellMode;
+            this.observer = new MutationObserver(() => {
+                const mode = this.$el.dataset.shellMode;
+                if (mode === this.mode) return;
+                const was = this.mode;
+                this.mode = mode;
+                if (mode === 'session') this.enter();
+                else if (was === 'session') this.leave();
+            });
+            this.observer.observe(this.$el, { attributes: true, attributeFilter: ['data-shell-mode'] });
+        },
+
+        destroy() {
+            this.observer?.disconnect();
+            Object.values(this.timers).forEach(clearTimeout);
+            ['shell-folding', 'shell-entering', 'shell-returning'].forEach((name) => flag(name, false));
+        },
+
+        /** Start a task from the board: fold now, ask the server, unfold again if it said no. */
+        foldInto(el, call) {
+            const card = el.closest('[data-fold-from]');
+            this.from = card ? { rect: card.getBoundingClientRect(), at: performance.now() } : null;
+            this.peek = null;
+            flag('shell-folding', true);
+
+            return Promise.resolve()
+                .then(call)
+                .catch(() => {})
+                .finally(() => {
+                    // Two frames later the morph has surely landed. Still on the board (task
+                    // gone, no connection): the columns come back and the notice explains.
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        flag('shell-folding', false);
+                        if (this.$el.dataset.shellMode !== 'session') this.from = null;
+                    }));
+                });
+        },
+
+        enter() {
+            this.pulse('shell-entering', FOLD_MS + 400);
+            const from = this.from;
+            this.from = null;
+            if (!from || reducedMotion()) return;
+
+            // The fold started on the click; the card takes whatever is left of the 520 ms,
+            // but never less than 260 ms, so a slow answer still lands softly.
+            const left = Math.max(260, FOLD_MS - (performance.now() - from.at));
+
+            requestAnimationFrame(() => {
+                const card = [...this.$el.querySelectorAll('[data-session-card]')].find((c) => c.getClientRects().length > 0);
+                if (!card) return;
+                const to = card.getBoundingClientRect();
+                if (!to.width || !to.height) return;
+
+                const dx = from.rect.left - to.left;
+                const dy = from.rect.top - to.top;
+                const sx = from.rect.width / to.width;
+                const sy = from.rect.height / to.height;
+                const easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+                card.animate(
+                    [
+                        { transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+                        { transformOrigin: 'top left', transform: 'none' },
+                    ],
+                    { duration: left, easing },
+                );
+                // The content would stretch with the card; it fades in once the card has landed.
+                [...card.children].forEach((child) => {
+                    child.animate([{ opacity: 0 }, { opacity: 0, offset: 0.55 }, { opacity: 1 }], { duration: left + 120, easing: 'ease-out' });
+                });
+            });
+        },
+
+        leave() {
+            this.pulse('shell-returning', FOLD_MS + 400);
+        },
+
+        pulse(name, ms) {
+            clearTimeout(this.timers[name]);
+            flag(name, true);
+            this.timers[name] = setTimeout(() => flag(name, false), ms);
+        },
+    }));
+});
+
+/**
  * Session timer island (refactor step 2.2, risk C5). The server owns the session; this only
  * counts down the seconds the server sent and, when a phase runs out, asks the server to
  * render again (it then shows the break or the next phase). Wall-clock based, so a tab that

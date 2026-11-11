@@ -6,6 +6,7 @@
 @endphp
 <li
     wire:key="{{ $layout }}-{{ $mode }}-item-{{ $task->id }}"
+    data-fold-from
     @class([
         'group relative flex items-start gap-2.5 rounded-card bg-surface px-3 py-2.5 text-sm',
         'ring-3 ring-accent-soft' => $suggested ?? false,
@@ -31,14 +32,21 @@
         @endif
     </div>
     @if ($canStart)
-        <x-shell.action
-            key="start" :layout="$layout" :mode="$mode"
-            wire:click="start({{ $task->id }})"
-            wire:loading.attr="disabled"
-            :disabled="$locked ?? false"
-            :title="($locked ?? false) ? __('shell.session.not_now') : __('shell.start_this')"
-            :aria-label="__('shell.start_this').': '.$task->title"
-            class="-my-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-accent-soft hover:text-accent-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent wb:absolute wb:top-1.5 wb:right-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100"
-        >@include('shell.icon', ['name' => 'play', 'class' => 'size-4'])</x-shell.action>
+        @php
+            $startClass = '-my-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-accent-soft hover:text-accent-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent wb:absolute wb:top-1.5 wb:right-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100';
+            $startTitle = ($locked ?? false) ? __('shell.session.not_now') : __('shell.start_this');
+        @endphp
+        @if ($mode === 'board')
+            {{-- From the board, a start folds the board away (step 3.1). --}}
+            <x-shell.action key="start" :layout="$layout" :mode="$mode"
+                @click="foldInto($el, () => $wire.start({{ $task->id }}))" wire:loading.attr="disabled"
+                :disabled="$locked ?? false" :title="$startTitle" :aria-label="__('shell.start_this').': '.$task->title"
+                class="{{ $startClass }}">@include('shell.icon', ['name' => 'play', 'class' => 'size-4'])</x-shell.action>
+        @else
+            <x-shell.action key="start" :layout="$layout" :mode="$mode"
+                wire:click="start({{ $task->id }})" wire:loading.attr="disabled"
+                :disabled="$locked ?? false" :title="$startTitle" :aria-label="__('shell.start_this').': '.$task->title"
+                class="{{ $startClass }}">@include('shell.icon', ['name' => 'play', 'class' => 'size-4'])</x-shell.action>
+        @endif
     @endif
 </li>
