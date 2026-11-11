@@ -66,7 +66,7 @@
             </ul>
 
             @if ($running)
-                <div class="flex flex-col items-center gap-2">
+                <div class="flex min-h-24 flex-col items-center gap-2">{{-- same height as Los + Überspringen, so the timer never moves --}}
                     <p class="text-sm text-ink-soft">{{ __('shell.reset.running') }}</p>
                     <button type="button" wire:click="closeReset" wire:loading.attr="disabled" data-autofocus
                         class="rounded-card px-3 py-2 text-sm font-semibold text-ink-soft underline decoration-line underline-offset-4 transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60">
@@ -74,7 +74,7 @@
                     </button>
                 </div>
             @else
-                <div class="flex w-full flex-col items-center gap-3">
+                <div class="flex min-h-24 w-full flex-col items-center gap-3">
                     <button type="button" wire:click="beginReset" wire:loading.attr="disabled" data-autofocus
                         class="inline-flex min-h-12 w-full max-w-60 items-center justify-center gap-2 rounded-card bg-accent px-6 text-base font-semibold text-accent-fg shadow-card transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-60">
                         @include('shell.icon', ['name' => 'play', 'class' => 'size-4'])
