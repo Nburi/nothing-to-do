@@ -19,9 +19,9 @@
         <div class="rounded-card border border-line bg-surface p-5 shadow-map">
             <div class="flex items-center gap-3.5">
                 <svg class="h-11 w-11 flex-none -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
-                    <circle cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="rgb(var(--line))" stroke-width="3" />
+                    <circle cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="var(--color-line)" stroke-width="3" />
                     <circle
-                        cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="rgb(var(--forest))" stroke-width="3"
+                        cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="var(--color-forest)" stroke-width="3"
                         stroke-linecap="round" stroke-dasharray="{{ $ringDash }} {{ $ringCircumference }}"
                     />
                 </svg>

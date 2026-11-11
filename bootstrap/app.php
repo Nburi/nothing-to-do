@@ -25,7 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            // board/capture: the new app's capture line talks JSON (step 2.3).
+            fn (Request $request) => $request->is('api/*') || $request->is('board/capture*'),
         );
 
         // Every rendered HTML error page (404/403/419/500/...) is counted for

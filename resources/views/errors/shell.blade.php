@@ -24,21 +24,20 @@
     }
 @endphp
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="robots" content="noindex">
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.theme-style')
 
         <title>{{ $title }} · nothing-to-do</title>
 
         @include('partials.pwa-head')
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
-        <div class="flex min-h-[100dvh] flex-col">
+    <body class="min-h-dvh bg-paper font-sans text-ink antialiased">
+        <div class="flex min-h-dvh flex-col">
             <header class="mx-auto flex h-16 w-full max-w-6xl items-center px-5 sm:px-8">
                 <div class="flex items-center gap-2.5">
                     <x-logo class="h-6 w-6 text-forest" />
@@ -57,12 +56,12 @@
                         <button
                             type="button"
                             onclick="location.reload()"
-                            class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                            class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
                         >Seite neu laden</button>
                     @else
                         <a
                             href="{{ route($backRoute) }}"
-                            class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                            class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
                         >{{ $backLabel }}</a>
                     @endif
                 </div>

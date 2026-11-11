@@ -22,7 +22,7 @@
                     type="text"
                     wire:model="formTitle"
                     maxlength="255"
-                    class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                     placeholder="z. B. Neu: Wochenplan"
                 />
                 @error('formTitle')
@@ -37,10 +37,10 @@
                         @php
                             $active = $formType === $key;
                             $activeClasses = match ($key) {
-                                'maintenance' => 'bg-contour text-white shadow-sm',
-                                'warning' => 'bg-signal text-white shadow-sm',
-                                'release' => 'bg-forest text-white shadow-sm',
-                                default => 'bg-ink text-white shadow-sm',
+                                'maintenance' => 'bg-contour text-white shadow-xs',
+                                'warning' => 'bg-signal text-white shadow-xs',
+                                'release' => 'bg-forest text-white shadow-xs',
+                                default => 'bg-ink text-white shadow-xs',
                             };
                         @endphp
                         <button
@@ -66,7 +66,7 @@
                     wire:model="formDescription"
                     maxlength="500"
                     rows="3"
-                    class="block w-full resize-y rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                    class="block w-full resize-y rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                     placeholder="Ein bis zwei Sätze — wird als kleiner Hinweis angezeigt, kein Fliesstext."
                 ></textarea>
                 @error('formDescription')
@@ -83,7 +83,7 @@
                             wire:click="$set('formLinkType', '{{ $key }}')"
                             @class([
                                 'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                'bg-ink text-white shadow-sm' => $formLinkType === $key,
+                                'bg-ink text-white shadow-xs' => $formLinkType === $key,
                                 'bg-paper text-ink-soft hover:text-ink' => $formLinkType !== $key,
                             ])
                         >{{ $label }}</button>
@@ -95,7 +95,7 @@
                         <select
                             id="formRelatedModule"
                             wire:model.live="formRelatedModule"
-                            class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                            class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                         >
                             <option value="">Bitte wählen</option>
                             @foreach ($this->moduleOptions as $key => $meta)
@@ -119,7 +119,7 @@
                                         wire:click="$set('formOnlyForModuleUsers', false)"
                                         @class([
                                             'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                            'bg-ink text-white shadow-sm' => ! $formOnlyForModuleUsers,
+                                            'bg-ink text-white shadow-xs' => ! $formOnlyForModuleUsers,
                                             'bg-paper text-ink-soft hover:text-ink' => $formOnlyForModuleUsers,
                                         ])
                                     >Alle Personen</button>
@@ -128,7 +128,7 @@
                                         wire:click="$set('formOnlyForModuleUsers', true)"
                                         @class([
                                             'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                            'bg-ink text-white shadow-sm' => $formOnlyForModuleUsers,
+                                            'bg-ink text-white shadow-xs' => $formOnlyForModuleUsers,
                                             'bg-paper text-ink-soft hover:text-ink' => ! $formOnlyForModuleUsers,
                                         ])
                                     >Nur {{ $this->moduleOptions[$formRelatedModule]['label'] }}-Nutzer</button>
@@ -154,7 +154,7 @@
                                 type="text"
                                 wire:model="formHighlightSelector"
                                 maxlength="255"
-                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                                 placeholder="z. B. #notifications"
                             />
                             <p class="mt-1.5 text-xs text-ink-soft">Wird nach dem Klick auf der Zielseite ins Bild gescrollt und kurz hervorgehoben.</p>
@@ -171,7 +171,7 @@
                                 type="url"
                                 wire:model="formExternalUrl"
                                 maxlength="2048"
-                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                                 placeholder="https://…"
                             />
                             @error('formExternalUrl')
@@ -184,7 +184,7 @@
                                 type="text"
                                 wire:model="formExternalLinkLabel"
                                 maxlength="100"
-                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                                class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                                 placeholder="Linktext, z. B. „Mehr erfahren" (optional)"
                             />
                             @error('formExternalLinkLabel')
@@ -200,7 +200,7 @@
             <div class="flex items-center gap-3 pt-1">
                 <button
                     type="submit"
-                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >{{ $editingId ? 'Speichern' : 'Anlegen' }}</button>
                 @if ($editingId)
                     <button
@@ -308,7 +308,7 @@
                             @click.outside="armed = false; clearTimeout(_t)"
                             @keydown.escape.window="armed = false; clearTimeout(_t)"
                             :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                            class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                            class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                             aria-label="Ankündigung löschen"
                         >
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m-6.5 0 .6 9.3A1.5 1.5 0 0 0 7.6 17h4.8a1.5 1.5 0 0 0 1.5-1.7L14.5 6"/></svg>

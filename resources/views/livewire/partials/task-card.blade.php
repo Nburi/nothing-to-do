@@ -20,7 +20,7 @@
         type="button"
         wire:click.stop="toggleComplete({{ $task->id }})"
         @class([
-            'mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+            'mt-px grid h-5 w-5 flex-none place-items-center rounded-full border-2 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
             'border-forest bg-forest text-white' => $task->is_completed,
             'border-line text-transparent hover:border-forest hover:text-forest' => !$task->is_completed,
         ])
@@ -43,7 +43,7 @@
                     <button
                         type="button"
                         @click.stop="if (! revealed) { revealed = true; clearTimeout(_t); _t = setTimeout(() => revealed = false, 2000); } else { clearTimeout(_t); $wire.goToPlanner(); }"
-                        class="grid h-4 w-4 place-items-center rounded text-ink-faint transition hover:bg-forest-soft hover:text-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                        class="grid h-4 w-4 place-items-center rounded-sm text-ink-faint transition hover:bg-forest-soft hover:text-forest focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest"
                         aria-label="Aus dem Planer für heute: {{ $task->title }} — antippen zum Ansehen, nochmal für den Planer"
                     >
                         <svg class="h-3 w-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14"/><path d="M7 2.5v4M13 2.5v4"/></svg>
@@ -56,11 +56,11 @@
                     type="button"
                     wire:click="toggleImportant({{ $task->id }})"
                     @click="if (Date.now() - lastTap < 320) { $wire.startEdit({{ $task->id }}); lastTap = 0; } else { lastTap = Date.now(); }"
-                    class="block w-full cursor-pointer rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="block w-full cursor-pointer rounded-sm text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                     title="Tippen markiert als wichtig, doppelt tippen bearbeitet"
                 >
                     <span @class([
-                        'block break-words text-sm leading-snug',
+                        'block wrap-break-word text-sm leading-snug',
                         'line-through text-ink-faint' => $task->is_completed,
                         'font-medium text-ink' => !$task->is_completed && $task->is_important,
                         'text-ink' => !$task->is_completed && !$task->is_important,
@@ -76,7 +76,7 @@
                 <button
                     type="button"
                     @click.stop="dateOpen = !dateOpen"
-                    class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint
+                    class="tnum mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium transition hover:brightness-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint
                     {{ $task->isOverdue()
                         ? 'bg-signal-soft text-signal'
                         : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}"
@@ -91,7 +91,7 @@
                 <button
                     type="button"
                     @click.stop="dateOpen = !dateOpen"
-                    class="mt-0 flex max-h-0 min-h-0 items-center gap-1 overflow-hidden rounded px-1.5 py-0 text-[11px] font-medium text-ink-faint transition-all duration-150 hover:text-ink-soft focus:outline-none focus-visible:mt-1 focus-visible:max-h-5 focus-visible:py-0.5 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:mt-1 group-hover/card:max-h-5 group-hover/card:py-0.5"
+                    class="mt-0 flex max-h-0 min-h-0 items-center gap-1 overflow-hidden rounded-sm px-1.5 py-0 text-[11px] font-medium text-ink-faint transition-all duration-150 hover:text-ink-soft focus:outline-hidden focus-visible:mt-1 focus-visible:max-h-5 focus-visible:py-0.5 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:mt-1 group-hover/card:max-h-5 group-hover/card:py-0.5"
                     aria-label="Termin setzen: {{ $task->title }}"
                 >
                     <svg class="h-2.5 w-2.5 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -106,7 +106,7 @@
                     <button
                         type="button"
                         @click.stop="dateOpen = false; durationOpen = !durationOpen"
-                        class="tnum ml-1 mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        class="tnum ml-1 mt-1 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-ink-faint transition hover:brightness-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                         aria-label="Dauer ändern: {{ $task->title }}"
                     >
                         {{ $task->duration_minutes }} min
@@ -115,7 +115,7 @@
                     <button
                         type="button"
                         @click.stop="dateOpen = false; durationOpen = !durationOpen"
-                        class="ml-1 mt-0 flex max-h-0 min-h-0 items-center gap-1 overflow-hidden rounded px-1.5 py-0 text-[11px] font-medium text-ink-faint transition-all duration-150 hover:text-ink-soft focus:outline-none focus-visible:mt-1 focus-visible:max-h-5 focus-visible:py-0.5 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:mt-1 group-hover/card:max-h-5 group-hover/card:py-0.5"
+                        class="ml-1 mt-0 flex max-h-0 min-h-0 items-center gap-1 overflow-hidden rounded-sm px-1.5 py-0 text-[11px] font-medium text-ink-faint transition-all duration-150 hover:text-ink-soft focus:outline-hidden focus-visible:mt-1 focus-visible:max-h-5 focus-visible:py-0.5 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:mt-1 group-hover/card:max-h-5 group-hover/card:py-0.5"
                         aria-label="Dauer schätzen: {{ $task->title }}"
                     >
                         <svg class="h-2.5 w-2.5 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v3.8l2.5 1.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -129,7 +129,7 @@
                     type="button"
                     wire:click="startEdit({{ $task->id }})"
                     @click.stop
-                    class="mt-1 block max-w-full truncate rounded text-left text-[11px] text-ink-faint transition hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="mt-1 block max-w-full truncate rounded-sm text-left text-[11px] text-ink-faint transition hover:text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                     title="{{ $preview }}"
                     aria-label="Notizen anzeigen: {{ $task->title }}"
                 >{{ $preview }}</button>
@@ -194,7 +194,7 @@
             type="button"
             wire:click="startEdit({{ $task->id }})"
             @click.stop
-            class="grid h-7 w-7 place-items-center rounded-card text-ink-faint opacity-0 transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:opacity-100"
+            class="grid h-7 w-7 place-items-center rounded-card text-ink-faint opacity-0 transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-overprint group-hover/card:opacity-100"
             aria-label="Bearbeiten: {{ $task->title }}"
         >
             <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -209,7 +209,7 @@
             @click.outside="armed = false; clearTimeout(_t)"
             @keydown.escape.window="armed = false; clearTimeout(_t)"
             :class="armed ? 'opacity-100 bg-signal text-white' : 'opacity-0 group-hover/card:opacity-100 text-ink-faint hover:bg-signal-soft hover:text-signal'"
-            class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-signal"
+            class="grid h-7 w-7 place-items-center rounded-card transition focus:outline-hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-signal"
             aria-label="Löschen: {{ $task->title }}"
         >
             <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">

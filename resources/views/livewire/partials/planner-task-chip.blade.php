@@ -72,7 +72,7 @@
         <button
             type="button"
             wire:click="unassignTask({{ $id }})"
-            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-faint transition hover:bg-signal-soft hover:text-signal"
+            class="grid h-5 w-5 flex-none place-items-center rounded-sm text-ink-faint transition hover:bg-signal-soft hover:text-signal"
             aria-label="{{ $title }} nicht mehr für diesen Tag einplanen"
         >
             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>

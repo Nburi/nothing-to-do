@@ -57,7 +57,7 @@
                 data-backlog
                 x-data
                 x-init="window.plannerDaySortable($el, $wire)"
-                class="flex min-h-[3rem] flex-row flex-wrap items-start gap-1.5"
+                class="flex min-h-12 flex-row flex-wrap items-start gap-1.5"
             >
                 @forelse ($this->backlog as $item)
                     @include('livewire.partials.planner-task-chip', [...$item, 'showRemove' => false, 'fixedWidth' => 'max-w-56'])

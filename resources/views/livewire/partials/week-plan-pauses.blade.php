@@ -84,7 +84,7 @@
 
         <div
             x-show="open"
-            x-transition:enter="transition ease-[cubic-bezier(0.16,1,0.3,1)] duration-300"
+            x-transition:enter="transition ease-tactile duration-300"
             x-transition:enter-start="opacity-0 translate-y-6 md:translate-y-2 md:scale-[0.98]"
             x-transition:enter-end="opacity-100 translate-y-0 md:scale-100"
             x-transition:leave="transition ease-in duration-150"
