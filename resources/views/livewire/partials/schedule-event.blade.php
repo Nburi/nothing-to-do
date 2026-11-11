@@ -58,7 +58,7 @@
         'group absolute min-h-[16px] select-none rounded-[7px] border px-2 py-1 text-left',
         $styles['bg'], $styles['bd'],
         'inset-x-1' => $compact,
-        'left-[3.75rem] right-2' => ! $compact,
+        'left-15 right-2' => ! $compact,
         // The "Zeitplan" header badge's ?event= link lands here — a brief
         // highlight proves the badge showed exactly this block, not just
         // some page. See Schedule::$highlightEventId.
@@ -71,7 +71,7 @@
 
     {{-- Start time in the gutter (day view) — rides along while dragging. --}}
     @unless($compact)
-        <span class="tnum absolute -left-[3.6rem] top-0 w-[3.2rem] text-right text-[11px] font-medium text-ink">{{ $event->start_time }}</span>
+        <span class="tnum absolute left-[-3.6rem] top-0 w-[3.2rem] text-right text-[11px] font-medium text-ink">{{ $event->start_time }}</span>
     @endunless
 
     {{-- Resize handles (top / bottom of the strich) — only when there's room. --}}

@@ -16,7 +16,7 @@
     @endphp
     <div class="grid grid-cols-3 gap-2">
         @foreach ($threeThingsColumns as $column)
-            <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+            <div class="rounded-lg border border-line/60 bg-surface p-2">
                 <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $column['label'] }}</p>
                 @forelse ($column['tasks']->take(2) as $previewTask)
                     <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
@@ -29,7 +29,7 @@
 @elseif ($conceptKey === 'simple')
     {{-- One flat list, no columns to split into — up to 4 of the same real
          tasks the other thumbnails read from, stacked. --}}
-    <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+    <div class="rounded-lg border border-line/60 bg-surface p-2">
         @forelse ($previewTasks->take(4) as $previewTask)
             <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
         @empty
@@ -47,7 +47,7 @@
     @endphp
     <div class="grid grid-cols-2 gap-2">
         @foreach ($eisenhowerQuadrants as $quadrant)
-            <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+            <div class="rounded-lg border border-line/60 bg-surface p-2">
                 <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $quadrant['label'] }}</p>
                 @forelse ($quadrant['tasks']->take(2) as $previewTask)
                     <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>
@@ -71,7 +71,7 @@
     @endphp
     <div class="grid grid-cols-2 gap-2">
         @foreach ($kanbanColumns as $column)
-            <div class="rounded-[0.5rem] border border-line/60 bg-surface p-2">
+            <div class="rounded-lg border border-line/60 bg-surface p-2">
                 <p class="mb-1 text-[9px] font-medium uppercase tracking-[0.08em] text-ink-faint">{{ $column['label'] }}</p>
                 @forelse ($column['tasks']->take(2) as $previewTask)
                     <p class="truncate text-[10px] leading-relaxed text-ink-soft">{{ $previewTask->title }}</p>

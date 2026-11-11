@@ -20,7 +20,7 @@
         </div>
 
         <label for="remember_me" class="flex items-center gap-2 text-sm text-ink-soft">
-            <input id="remember_me" type="checkbox" class="rounded border-line bg-paper text-forest focus:ring-forest focus:ring-offset-0" name="remember">
+            <input id="remember_me" type="checkbox" class="rounded-sm border-line bg-paper text-forest focus:ring-forest focus:ring-offset-0" name="remember">
             Angemeldet bleiben
         </label>
 

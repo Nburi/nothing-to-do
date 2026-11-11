@@ -34,7 +34,7 @@
                         @keydown.escape.window="open = false"
                         :aria-expanded="open"
                         aria-haspopup="listbox"
-                        class="flex w-full items-center gap-2 rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink transition hover:border-ink-faint/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        class="flex w-full items-center gap-2 rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink transition hover:border-ink-faint/60 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                     >
                         <span x-text="label" class="min-w-0 flex-1 text-left"></span>
                         <svg class="h-3.5 w-3.5 flex-none text-ink-faint transition-transform duration-150" :class="open && 'rotate-180'" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -101,7 +101,7 @@
                         @click.outside="armed = false; clearTimeout(_t)"
                         @keydown.escape.window="armed = false; clearTimeout(_t)"
                         :class="armed ? 'bg-signal text-white' : 'text-signal hover:bg-signal-soft'"
-                        class="rounded-card px-2 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        class="rounded-card px-2 py-1.5 text-sm transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                         aria-label="Aufgabe löschen"
                     >
                         <span x-text="armed ? 'Wirklich löschen?' : 'Löschen'">Löschen</span>

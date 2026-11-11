@@ -101,7 +101,7 @@
                             <input
                                 type="checkbox"
                                 x-model="quizAnswers['{{ $answer['key'] }}']"
-                                class="mt-0.5 h-4 w-4 flex-none rounded border-line text-forest focus:ring-forest"
+                                class="mt-0.5 h-4 w-4 flex-none rounded-sm border-line text-forest focus:ring-forest"
                             >
                             <span class="leading-snug">{{ $answer['label'] }}</span>
                         </label>
@@ -133,7 +133,7 @@
                                 wire:key="onboarding-concept-tab-{{ $row['key'] }}"
                                 class="flex-1 rounded-[0.45rem] px-2 py-1.5 text-xs font-medium transition"
                                 @class([
-                                    'bg-forest text-white shadow-sm' => $row['current'],
+                                    'bg-forest text-white shadow-xs' => $row['current'],
                                     'text-ink-soft hover:text-ink' => ! $row['current'],
                                 ])
                             >{{ $row['label'] }}</button>
@@ -185,8 +185,8 @@
                                 aria-label="{{ $row['label'] }} {{ $row['hidden'] ? 'einblenden' : 'ausblenden' }}"
                             >
                                 <span @class([
-                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition',
-                                    'left-[1.125rem]' => ! $row['hidden'],
+                                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                                    'left-4.5' => ! $row['hidden'],
                                     'left-0.5' => $row['hidden'],
                                 ])></span>
                             </button>
@@ -203,7 +203,7 @@
                                 wire:click="setDefaultPage('{{ $option['key'] }}')"
                                 @class([
                                     'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                    'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
+                                    'bg-forest text-white shadow-xs' => $defaultPage === $option['key'],
                                     'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                                 ])
                             >{{ $option['label'] }}</button>

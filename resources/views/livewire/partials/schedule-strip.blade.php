@@ -42,7 +42,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="mb-0.5 flex items-center gap-2">
-                        <span class="rounded bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">Bereit</span>
+                        <span class="rounded-sm bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">Bereit</span>
                     </div>
                     <p class="truncate text-[15px] font-medium text-ink">{{ $nextLabel }}</p>
                     @if ($linkedNotice)
@@ -81,8 +81,8 @@
             >
                 <div class="relative h-16 w-16 flex-none">
                     <svg viewBox="0 0 100 100" class="h-16 w-16 -rotate-90" aria-hidden="true">
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgb(var(--forest-soft))" stroke-width="9" />
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgb(var(--forest))" stroke-width="9" stroke-linecap="round" stroke-dasharray="263.9" :stroke-dashoffset="offset" />
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-forest-soft)" stroke-width="9" />
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-forest)" stroke-width="9" stroke-linecap="round" stroke-dasharray="263.9" :stroke-dashoffset="offset" />
                     </svg>
                     <div class="absolute inset-0 grid place-items-center">
                         <span class="tnum text-[15px] font-medium text-ink" x-text="mmss"></span>
@@ -90,7 +90,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="mb-0.5 flex items-center gap-2">
-                        <span class="rounded bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">{{ $phase['phase'] === 'work' ? 'Fokus' : 'Pause' }}</span>
+                        <span class="rounded-sm bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">{{ $phase['phase'] === 'work' ? 'Fokus' : 'Pause' }}</span>
                         <span class="text-[11px] text-forest">läuft</span>
                     </div>
                     <p class="truncate text-[15px] font-medium text-ink">{{ match ($phase['phase']) {
@@ -132,7 +132,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="mb-0.5 flex items-center gap-2">
-                        <span class="rounded bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">Bereit</span>
+                        <span class="rounded-sm bg-forest-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-forest">Bereit</span>
                         <span class="tnum text-[11px] text-ink-faint">{{ $focus->start_time }}–{{ $focus->end_time }}</span>
                     </div>
                     <p class="truncate text-[15px] font-medium text-ink">{{ $focus->displayTitle() }}</p>
@@ -169,7 +169,7 @@
                     <span class="inline-flex items-center gap-1 text-xs text-ink-faint">Zeitplan öffnen <svg class="h-3.5 w-3.5 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></span>
                 </div>
                 <div class="relative h-7">
-                    <div class="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded bg-line"></div>
+                    <div class="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded-sm bg-line"></div>
                     @foreach ($events as $e)
                         @php
                             $left = $pct($e->startMinutes());
@@ -193,7 +193,7 @@
                         </div>
                     @endforeach
                     @if ($nowMin >= $dayStart && $nowMin <= $dayEnd)
-                        <div class="absolute bottom-0 top-0 z-10 w-0.5 rounded bg-signal" style="left: {{ $pct($nowMin) }}%"></div>
+                        <div class="absolute bottom-0 top-0 z-10 w-0.5 rounded-sm bg-signal" style="left: {{ $pct($nowMin) }}%"></div>
                     @endif
                 </div>
                 <div class="relative mt-1.5 h-3">
