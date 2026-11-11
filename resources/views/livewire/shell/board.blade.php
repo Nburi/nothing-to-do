@@ -19,11 +19,15 @@
     $done = $this->doneToday;
     $columns = ['inbox' => 'inbox', 'todos' => 'todos', 'tasks' => 'tasks', 'later' => 'later'];
     $inSession = $mode === 'session';
+    // Step 3.2: the reset covers both layouts while it is offered, running or asking the battery.
+    $reset = $this->resetStage;
+    $covered = $reset->covers();
 @endphp
 <div
     id="content"
     class="shell min-h-dvh"
     data-shell-mode="{{ $mode }}"
+    data-reset="{{ $reset->value }}"
     x-data="shellFold"
     @keydown.escape.window="peek = null"
     @shell-peek-close.window="peek = null"
@@ -40,7 +44,7 @@
     @endif
 
     {{-- ════════════════════ Werkbank (desktop, ≥ 720 px) ════════════════════ --}}
-    <div class="relative hidden min-h-dvh flex-col wb:flex" data-layout-root="werkbank">
+    <div class="relative hidden min-h-dvh flex-col wb:flex" data-layout-root="werkbank" @if ($covered) inert aria-hidden="true" @endif>
         <section data-region="board" wire:key="werkbank-board" class="flex min-h-dvh flex-col" @if ($inSession) inert aria-hidden="true" @endif>
             <div class="fold-away sticky top-0 z-30">
                 @include('shell.topbar', ['battery' => $suggestion->battery, 'active' => 'board'])
@@ -112,7 +116,10 @@
                 <main class="flex min-w-0 flex-1 flex-col gap-5 px-8 py-5">
                     <div class="fold-arrive mx-auto flex w-full max-w-[680px] items-start gap-4">
                         <div class="min-w-0 flex-1">@include('shell.timeline', ['timeline' => $timeline, 'compact' => true])</div>
-                        @include('shell.battery', ['layout' => 'werkbank', 'mode' => 'session', 'battery' => $suggestion->battery])
+                        <div class="flex shrink-0 items-center gap-2">
+                            @include('shell.reset-button', ['layout' => 'werkbank', 'mode' => 'session', 'label' => true])
+                            @include('shell.battery', ['layout' => 'werkbank', 'mode' => 'session', 'battery' => $suggestion->battery])
+                        </div>
                     </div>
                     <div class="flex flex-1 items-center justify-center pb-10">
                         @include('shell.session-card', ['layout' => 'werkbank', 'session' => $session, 'task' => $this->sessionTask, 'next' => $this->nextInSession, 'timer' => $this->timer])
@@ -132,11 +139,14 @@
     </div>
 
     {{-- ════════════════════ Stapel (mobile, < 720 px) ════════════════════ --}}
-    <div class="relative flex min-h-dvh flex-col wb:hidden" data-layout-root="stapel" style="background: color-mix(in srgb, var(--t-warn) 5%, var(--t-bg))">
+    <div class="relative flex min-h-dvh flex-col wb:hidden" data-layout-root="stapel" style="background: color-mix(in srgb, var(--t-warn) 5%, var(--t-bg))" @if ($covered) inert aria-hidden="true" @endif>
         <section data-region="board" wire:key="stapel-board" class="flex min-h-dvh flex-col pb-[calc(88px+env(safe-area-inset-bottom))]" @if ($inSession) inert aria-hidden="true" @endif>
             <header class="fold-away sticky top-0 z-20 flex items-center gap-2 px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))]" style="background: color-mix(in srgb, var(--t-warn) 5%, var(--t-bg))">
                 <a href="{{ route('shell.board') }}" class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)" wire:navigate>nothing-to-do</a>
-                <div class="ml-auto">@include('shell.battery', ['layout' => 'stapel', 'mode' => 'board', 'battery' => $suggestion->battery])</div>
+                <div class="ml-auto flex items-center gap-2">
+                    @include('shell.reset-button', ['layout' => 'stapel', 'mode' => 'board'])
+                    @include('shell.battery', ['layout' => 'stapel', 'mode' => 'board', 'battery' => $suggestion->battery])
+                </div>
                 <a href="{{ route('shell.settings') }}" wire:navigate class="grid size-9 place-items-center rounded-full border border-line bg-surface text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.nav.settings') }}">@include('shell.icon', ['name' => 'gear', 'class' => 'size-5'])</a>
             </header>
 
@@ -188,7 +198,10 @@
             <section data-region="session" wire:key="stapel-session" class="flex min-h-dvh flex-col">
                 <header class="fold-arrive flex items-center gap-2 px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))]">
                     <p class="font-mono text-[11px] uppercase tracking-widest text-ink-faint">{{ __('shell.session.running') }}</p>
-                    <div class="ml-auto">@include('shell.battery', ['layout' => 'stapel', 'mode' => 'session', 'battery' => $suggestion->battery])</div>
+                    <div class="ml-auto flex items-center gap-2">
+                        @include('shell.reset-button', ['layout' => 'stapel', 'mode' => 'session'])
+                        @include('shell.battery', ['layout' => 'stapel', 'mode' => 'session', 'battery' => $suggestion->battery])
+                    </div>
                 </header>
                 <div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 pb-6">
                     @include('shell.session-card', ['layout' => 'stapel', 'session' => $session, 'task' => $this->sessionTask, 'next' => $this->nextInSession, 'timer' => $this->timer])
@@ -226,6 +239,11 @@
             </div>
         </div>
     </div>
+
+    {{-- Step 3.2: the reset and the battery question, a calm screen over both layouts. --}}
+    @if ($covered)
+        @include('shell.reset', ['stage' => $reset, 'timer' => $this->resetTimer])
+    @endif
 
     {{-- The daily sort card, the same over both layouts. --}}
     {{-- A stable key: the board re-renders after every sort, the card must keep its round. --}}

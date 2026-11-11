@@ -42,7 +42,7 @@ return [
     'parked' => 'geparkt :age',
     'battery' => [
         'label' => 'Akku',
-        'low' => 'Wenig',
+        'low' => 'Leer',
         'okay' => 'Okay',
         'good' => 'Voll',
         'hint' => [
@@ -115,6 +115,32 @@ return [
         'drawer' => 'Schublade',
         'peek' => 'Kurz reinschauen',
         'running' => 'Session läuft',
+    ],
+    'reset' => [
+        'eyebrow' => 'Abschalten',
+        'title' => 'Zehn Minuten nur für dich.',
+        'ideas_label' => 'Zum Beispiel',
+        'ideas' => ['Duschen', 'Etwas essen', 'Kurz raus'],
+        'go' => 'Los',
+        'skip' => 'Überspringen',
+        'end_early' => 'Schon fertig',
+        'running' => 'Läuft. Das Board wartet.',
+        'start_by_hand' => 'Abschalten',
+        'start_by_hand_hint' => 'Zehn Minuten abschalten',
+    ],
+    'checkin' => [
+        'eyebrow' => 'Akku',
+        'title' => 'Wie viel Akku hast du heute?',
+        'low' => 'Leer',
+        'okay' => 'Okay',
+        'good' => 'Voll',
+        'hint' => [
+            'low' => '2 kleine Sachen',
+            'okay' => 'normal',
+            'good' => 'das Grosse zuerst',
+        ],
+        'later' => 'Später',
+        'note' => 'Später zählt als Okay. Im Board änderst du den Akku jederzeit.',
     ],
     'errors' => [
         'task_gone' => 'Diese Aufgabe gibt es nicht mehr. Die Liste ist jetzt aktuell.',

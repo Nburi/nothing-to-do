@@ -10,7 +10,6 @@ use App\Planning\Pick\Pick;
 use App\Planning\Pick\PickEngine;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * Refactor step 1.3: the pick engine wired to a user's tasks, week plan and
@@ -89,7 +88,8 @@ final class Suggestions
     public function setBattery(User $user, ?Battery $battery, ?CarbonImmutable $now = null): Suggestion
     {
         $today = UserClock::now($user, $now)->toDateString();
-        $this->eveningForWrite($user, $today)->update(['battery' => $battery?->value]);
+        // Any answer (the chip or the question after the reset) means tonight's question is done (G4).
+        $this->eveningForWrite($user, $today)->update(['battery' => $battery?->value, 'battery_asked_at' => $now ?? CarbonImmutable::now()]);
 
         return $this->current($user, $now);
     }
@@ -156,21 +156,11 @@ final class Suggestions
 
     private function evening(User $user, string $date): ?Evening
     {
-        return Evening::query()->where('user_id', $user->id)->whereDate('date', $date)->first();
+        return Evening::for($user, $date);
     }
 
     private function eveningForWrite(User $user, string $date): Evening
     {
-        $evening = $this->evening($user, $date);
-        if ($evening !== null) {
-            return $evening;
-        }
-
-        // Two devices can arrive here at once (risk C14): the unique index decides, the loser reads the winner's row.
-        try {
-            return $user->evenings()->create(['date' => $date]);
-        } catch (UniqueConstraintViolationException) {
-            return $this->evening($user, $date);
-        }
+        return Evening::forWrite($user, $date);
     }
 }

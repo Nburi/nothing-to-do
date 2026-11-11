@@ -26,7 +26,7 @@ final class ActionRegistry
         'swap' => ['2.2', true],
         'battery' => ['2.2', true],
         'browse_later' => ['2.2', true],
-        'reset' => ['3.2', false],
+        'reset' => ['3.2', true],
         'move_event' => ['4.1', false],
         'week_plan' => ['4.1', false],
         'pause_days' => ['4.1', false],

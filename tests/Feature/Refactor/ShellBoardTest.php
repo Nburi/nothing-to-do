@@ -231,7 +231,7 @@ class ShellBoardTest extends TestCase
         $board->call('another');
         $this->assertNotSame($first, $board->instance()->suggestion->task->id);
 
-        $board->call('setBattery', 'low')->assertSee('Akku: Wenig');
+        $board->call('setBattery', 'low')->assertSee('Akku: Leer');
         $this->assertSame(Battery::Low, $board->instance()->suggestion->battery);
         $this->assertContains($board->instance()->suggestion->task->id, [$quick->id, $long->id]);
     }

@@ -6,10 +6,12 @@ use App\Models\EventCategory;
 use App\Models\Task;
 use App\Models\User;
 use App\Planning\Battery;
+use App\Planning\ResetStage;
 use App\Planning\Session\Phase;
 use App\Planning\Session\SessionState;
 use App\Services\FocusSession;
 use App\Services\Planning\CrunchDecisions;
+use App\Services\Planning\EveningReset;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
 use App\Services\Planning\WeekPlanReader;
@@ -21,6 +23,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -41,6 +44,15 @@ class Board extends Component
 
     /** A calm one-line message after an action (shown inline, never an alert). */
     public ?string $notice = null;
+
+    /** The nudge links to /board?reset=1 (step 3.3): offer the reset even before EveningReset::DUE_FROM. */
+    #[Locked]
+    public bool $resetRequested = false;
+
+    public function mount(): void
+    {
+        $this->resetRequested = request()->boolean('reset');
+    }
 
     // ---- reads -------------------------------------------------------------------------------
 
@@ -65,6 +77,28 @@ class Board extends Component
     public function inSession(): bool
     {
         return $this->session->phase !== Phase::Idle;
+    }
+
+    /** Tonight's reset (step 3.2): hidden, offered, running or asking the battery. */
+    #[Computed]
+    public function resetStage(): ResetStage
+    {
+        return app(EveningReset::class)->stage($this->user, $this->resetRequested, $this->inSession(), $this->now);
+    }
+
+    /** The reset countdown for the timer island (the same sessionTimer, wall-clock based). */
+    #[Computed]
+    public function resetTimer(): array
+    {
+        $remaining = app(EveningReset::class)->remainingSeconds($this->user, $this->now);
+        $running = $this->resetStage === ResetStage::Running;
+
+        return [
+            'remaining' => $remaining,
+            'total' => EveningReset::MINUTES * 60,
+            'running' => $running,
+            'key' => ($running ? 'run-' : 'idle-').$remaining,
+        ];
     }
 
     #[Computed]
@@ -276,6 +310,34 @@ class Board extends Component
         $this->fresh();
     }
 
+    /** "Los" on the reset screen, or "Abschalten" by hand from the board or a session. */
+    public function beginReset(): void
+    {
+        $this->notice = null;
+        app(EveningReset::class)->begin($this->user, CarbonImmutable::now());
+        $this->fresh();
+        $this->dispatch('shell-peek-close');
+    }
+
+    /** "Überspringen" or "Schon fertig": silent, nothing is counted (R2). */
+    public function closeReset(): void
+    {
+        app(EveningReset::class)->close($this->user, CarbonImmutable::now());
+        $this->fresh();
+    }
+
+    /** The battery question at the end of the reset; "later" counts as Okay (G4). */
+    public function answerBattery(string $level): void
+    {
+        $battery = Battery::tryFrom($level);
+        if ($battery === null && $level !== 'later') {
+            return;
+        }
+
+        app(EveningReset::class)->answerBattery($this->user, $battery, CarbonImmutable::now());
+        $this->fresh();
+    }
+
     public function shrink(int $taskId): void
     {
         $this->notice = null;
@@ -347,7 +409,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer'] as $computed) {
             unset($this->{$computed});
         }
     }

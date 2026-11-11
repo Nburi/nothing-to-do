@@ -998,3 +998,25 @@ body.shell-returning .shell .fold-return {
     animation: none !important;
   }
 }
+
+/*
+  Step 3.2 · The reset (R2, Niels' pick A: a calm full screen over the board). It fades in once;
+  the countdown line shrinks with the seconds. Under reduced motion both are instant.
+*/
+.reset-screen {
+  animation: reset-in 280ms var(--ease-tactile) both;
+}
+.reset-screen .reset-bar {
+  transition: width 1s linear;
+}
+@keyframes reset-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reset-screen,
+  .reset-screen .reset-bar {
+    animation: none !important;
+    transition: none !important;
+  }
+}
