@@ -171,7 +171,11 @@ class ScheduleEvent extends Model
                         $sub->select(DB::raw(1))
                             ->from('schedule_pauses')
                             ->whereColumn('schedule_pauses.user_id', 'schedule_events.user_id')
-                            ->whereColumn('schedule_pauses.date', 'schedule_events.date');
+                            // By calendar day, not by string: SQLite keeps a date written
+                            // through Eloquent as "Y-m-d 00:00:00" but a raw insert (pauses,
+                            // materialised rows) as "Y-m-d". A plain column comparison let an
+                            // occurrence edited in the form slip through a pause.
+                            ->whereRaw('date(schedule_pauses.date) = date(schedule_events.date)');
                     });
             });
     }

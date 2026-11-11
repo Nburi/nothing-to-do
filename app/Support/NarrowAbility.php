@@ -13,10 +13,13 @@ final class NarrowAbility
     /** Report "I'm home" and receive the evening nudge (refactor spike 0.1, R2). */
     public const ARRIVAL = 'arrival:notify';
 
+    /** Put one line into the Inbox and nothing else (refactor step 1.5, R3). */
+    public const CAPTURE = 'capture:inbox';
+
     /** @return list<string> */
     public static function all(): array
     {
-        return [self::ARRIVAL];
+        return [self::ARRIVAL, self::CAPTURE];
     }
 
     /** True when the token can do nothing but narrow things ('*' is never narrow). */
