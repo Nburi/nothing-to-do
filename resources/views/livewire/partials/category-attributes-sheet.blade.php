@@ -88,7 +88,7 @@
                             wire:click="$set('attrType', '{{ $type }}')"
                             @class([
                                 'rounded-[0.45rem] px-3 py-1.5 text-sm transition',
-                                'bg-forest text-white shadow-sm' => $attrType === $type,
+                                'bg-forest text-white shadow-xs' => $attrType === $type,
                                 'text-ink-soft hover:text-ink' => $attrType !== $type,
                             ])
                         >{{ $label }}</button>

@@ -1163,7 +1163,7 @@ document.addEventListener('alpine:init', () => {
             if (!token) return '';
             // CSS vars use plain token names: --forest, --contour, --ink-faint, etc.
             const v = token === 'ink' ? '--ink-faint' : `--${token}`;
-            return `background: rgb(var(${v}) / 0.25); outline: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
+            return `background: rgb(var(${v}) / 0.25); outline-solid: 2px solid rgb(var(${v}) / 0.55); outline-offset: -1px`;
         },
     }));
 
@@ -1360,3 +1360,417 @@ document.addEventListener('DOMContentLoaded', highlightFromQueryParam);
 // own 'livewire:navigated' dispatch, which would otherwise win a same-tick
 // race against our own scrollIntoView and strand it back at 0.
 document.addEventListener('livewire:navigated', () => setTimeout(highlightFromQueryParam, 0));
+
+/**
+ * Theme switch without a reload (step 2.1). App\Livewire\ThemePicker saves the choice and
+ * dispatches the new stylesheet; swapping the <style id="theme-vars"> repaints the whole
+ * page, old screens included. data-mode drives the `dark:` variant and the flame colours.
+ */
+window.addEventListener('theme-applied', (event) => {
+    const { css, mode, chrome } = event.detail || {};
+    const style = document.getElementById('theme-vars');
+    if (style && typeof css === 'string') style.textContent = css;
+    if (mode) document.documentElement.dataset.mode = mode;
+    if (chrome) {
+        document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+            const dark = (meta.getAttribute('media') || '').includes('dark');
+            meta.setAttribute('content', dark ? chrome.dark : chrome.light);
+        });
+    }
+});
+
+/**
+ * "The board folds away" (refactor step 3.1, CONVENTIONS 10: the signature moment, never tidy
+ * it away). The shell root's Alpine part. Niels' picks from the phase 3 preview: variant A
+ * "Falten" (each column folds like a card towards the rail), 520 ms until the card stands.
+ *
+ * How it stays out of Livewire's way (risk C5):
+ * - The board region stays rendered during a session, so the morph keeps its elements and the
+ *   server's switch of data-shell-mode is a plain CSS transition (resources/css/app.css, "fold").
+ * - The fold state lives on <body> (shell-folding / shell-entering / shell-returning), which
+ *   Livewire never morphs.
+ * - A click on Start folds at once (before the server answers) and remembers where the card
+ *   was; when the session card shows up, it grows out of that place (FLIP). A reload or another
+ *   device shows the session without any motion. Under reduced motion it is an instant change.
+ */
+const FOLD_MS = 520;
+
+document.addEventListener('alpine:init', () => {
+    const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const flag = (name, on) => document.body.classList.toggle(name, on);
+
+    window.Alpine.data('shellFold', () => ({
+        peek: null,
+        mode: null,
+        from: null,
+        timers: {},
+
+        init() {
+            this.mode = this.$el.dataset.shellMode;
+            this.observer = new MutationObserver(() => {
+                const mode = this.$el.dataset.shellMode;
+                if (mode === this.mode) return;
+                const was = this.mode;
+                this.mode = mode;
+                if (mode === 'session') this.enter();
+                else if (was === 'session') this.leave();
+            });
+            this.observer.observe(this.$el, { attributes: true, attributeFilter: ['data-shell-mode'] });
+        },
+
+        destroy() {
+            this.observer?.disconnect();
+            Object.values(this.timers).forEach(clearTimeout);
+            ['shell-folding', 'shell-entering', 'shell-returning'].forEach((name) => flag(name, false));
+        },
+
+        /** Start a task from the board: fold now, ask the server, unfold again if it said no. */
+        foldInto(el, call) {
+            const card = el.closest('[data-fold-from]');
+            this.from = card ? { rect: card.getBoundingClientRect(), at: performance.now() } : null;
+            this.peek = null;
+            flag('shell-folding', true);
+
+            return Promise.resolve()
+                .then(call)
+                .catch(() => {})
+                .finally(() => {
+                    // Two frames later the morph has surely landed. Still on the board (task
+                    // gone, no connection): the columns come back and the notice explains.
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        flag('shell-folding', false);
+                        if (this.$el.dataset.shellMode !== 'session') this.from = null;
+                    }));
+                });
+        },
+
+        enter() {
+            this.pulse('shell-entering', FOLD_MS + 400);
+            const from = this.from;
+            this.from = null;
+            if (!from || reducedMotion()) return;
+
+            // The fold started on the click; the card takes whatever is left of the 520 ms,
+            // but never less than 260 ms, so a slow answer still lands softly.
+            const left = Math.max(260, FOLD_MS - (performance.now() - from.at));
+
+            requestAnimationFrame(() => {
+                const card = [...this.$el.querySelectorAll('[data-session-card]')].find((c) => c.getClientRects().length > 0);
+                if (!card) return;
+                const to = card.getBoundingClientRect();
+                if (!to.width || !to.height) return;
+
+                const dx = from.rect.left - to.left;
+                const dy = from.rect.top - to.top;
+                const sx = from.rect.width / to.width;
+                const sy = from.rect.height / to.height;
+                const easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+                card.animate(
+                    [
+                        { transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+                        { transformOrigin: 'top left', transform: 'none' },
+                    ],
+                    { duration: left, easing },
+                );
+                // The content would stretch with the card; it fades in once the card has landed.
+                [...card.children].forEach((child) => {
+                    child.animate([{ opacity: 0 }, { opacity: 0, offset: 0.55 }, { opacity: 1 }], { duration: left + 120, easing: 'ease-out' });
+                });
+            });
+        },
+
+        leave() {
+            this.pulse('shell-returning', FOLD_MS + 400);
+        },
+
+        pulse(name, ms) {
+            clearTimeout(this.timers[name]);
+            flag(name, true);
+            this.timers[name] = setTimeout(() => flag(name, false), ms);
+        },
+    }));
+});
+
+/**
+ * Session timer island (refactor step 2.2, risk C5). The server owns the session; this only
+ * counts down the seconds the server sent and, when a phase runs out, asks the server to
+ * render again (it then shows the break or the next phase). Wall-clock based, so a tab that
+ * slept catches up at once. The element is keyed by the session state, so every server
+ * change re-creates it with fresh numbers.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('sessionTimer', (remaining, total, running) => ({
+        left: remaining,
+        total,
+        running,
+        startedAt: Date.now(),
+        handle: null,
+        init() {
+            if (!this.running) return;
+            this.handle = setInterval(() => this.tick(), 1000);
+            this.onVisible = () => this.tick();
+            document.addEventListener('visibilitychange', this.onVisible);
+        },
+        tick() {
+            const elapsed = Math.floor((Date.now() - this.startedAt) / 1000);
+            this.left = Math.max(0, remaining - elapsed);
+            if (this.left === 0 && this.handle) {
+                clearInterval(this.handle);
+                this.handle = null;
+                this.$wire.tick();
+            }
+        },
+        destroy() {
+            if (this.handle) clearInterval(this.handle);
+            if (this.onVisible) document.removeEventListener('visibilitychange', this.onVisible);
+        },
+        get label() {
+            const m = Math.floor(this.left / 60);
+            const s = this.left % 60;
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        },
+        offset(circumference) {
+            return (circumference * (this.left / this.total)).toFixed(2);
+        },
+    }));
+});
+
+/**
+ * The capture line of the new app (step 2.3, R3, CONVENTIONS 5): one keyboard-first line on
+ * every page. C opens it on desktop, + on mobile. It posts JSON (ShellCaptureController), so a
+ * dropped connection keeps the text in the field with a calm message, and the board refreshes
+ * through the Livewire event `capture-saved`. After Enter the line stays open for the next
+ * thought (Niels' pick in the phase 2 preview); Esc closes it.
+ */
+document.addEventListener('alpine:init', () => {
+    const config = () => {
+        try {
+            return JSON.parse(document.getElementById('capture-config')?.textContent || '{}');
+        } catch (e) {
+            return {};
+        }
+    };
+    const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    window.Alpine.store('capture', {
+        sheetOpen: false,
+        toast: null,
+        lastId: null,
+        timer: null,
+        open() {
+            const inline = [...document.querySelectorAll('[data-capture-inline]')].find((el) => el.getClientRects().length > 0);
+            if (inline) {
+                inline.dispatchEvent(new CustomEvent('capture-focus'));
+            } else {
+                this.sheetOpen = true;
+            }
+        },
+        saved(message, id) {
+            this.toast = message;
+            this.lastId = id;
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => { this.toast = null; this.lastId = null; }, 6000);
+            window.Livewire?.dispatch('capture-saved');
+        },
+        async undo() {
+            const id = this.lastId;
+            if (!id) return;
+            const cfg = config();
+            this.lastId = null;
+            try {
+                const response = await fetch(`${cfg.url}/${id}`, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                });
+                const body = await response.json().catch(() => ({}));
+                this.toast = body.message || cfg.messages?.offline;
+            } catch (e) {
+                this.toast = cfg.messages?.offline;
+            }
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => { this.toast = null; }, 4000);
+            window.Livewire?.dispatch('capture-saved');
+        },
+    });
+
+    window.Alpine.data('captureLine', (variant) => ({
+        text: '',
+        saving: false,
+        error: '',
+        offline: false,
+        active: variant === 'sheet',
+        focus() {
+            this.active = true;
+            this.$nextTick(() => this.$refs.input?.focus());
+        },
+        close() {
+            this.error = '';
+            if (variant === 'sheet') {
+                window.Alpine.store('capture').sheetOpen = false;
+            } else if (this.text.trim() === '') {
+                this.active = false;
+            }
+            this.$refs.input?.blur();
+        },
+        async save() {
+            const cfg = config();
+            if (this.saving) return;
+            if (this.text.trim() === '') {
+                this.error = cfg.messages?.empty || '';
+                return;
+            }
+            this.saving = true;
+            this.error = '';
+            this.offline = false;
+            try {
+                const response = await fetch(cfg.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify({ text: this.text }),
+                });
+                const body = await response.json().catch(() => ({}));
+                if (response.status === 422) {
+                    this.error = body.errors?.text?.[0] || body.message || cfg.messages?.empty;
+                } else if (!response.ok) {
+                    throw new Error(String(response.status));
+                } else {
+                    this.text = '';
+                    window.Alpine.store('capture').saved(body.message, body.id);
+                    this.$nextTick(() => this.$refs.input?.focus());
+                }
+            } catch (e) {
+                this.offline = true;
+                this.error = cfg.messages?.offline || '';
+            } finally {
+                this.saving = false;
+            }
+        },
+    }));
+});
+
+document.addEventListener('keydown', (event) => {
+    if (!document.body.hasAttribute('data-shell')) return;
+    if (event.key !== 'c' && event.key !== 'C') return;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+    const target = event.target;
+    if (target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    // An open dialog (the sort card, a list sheet) keeps its own keys.
+    const openDialog = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].some((d) => d.getClientRects().length > 0);
+    if (openDialog) return;
+    event.preventDefault();
+    window.Alpine?.store('capture')?.open();
+});
+
+/**
+ * The phone's sort deck (step 2.3, Niels' option A on 2026-11-09): the top Inbox card follows
+ * the finger 1:1; released over a pile (To-dos, Tasks, Später) it flies onto that pile and the
+ * server sorts it; anywhere else it springs back. Tapping a pile throws the card the same way.
+ * With the details open the card scrolls, and only its grip drags. Reduced motion: no flight.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('sortDeck', () => ({
+        dragging: false,
+        flying: false,
+        landing: false,
+        sx: 0,
+        sy: 0,
+        dx: 0,
+        dy: 0,
+        hot: null,
+        hotLabel: '',
+        hotColor: '',
+        down(event) {
+            if (this.flying) return;
+            const card = event.currentTarget;
+            const scrolls = card.scrollHeight > card.clientHeight + 1;
+            if (event.target.closest('button, input, select, textarea, a, label')) return;
+            if (scrolls && !event.target.closest('[data-grip]')) return;
+            this.dragging = true;
+            this.sx = event.clientX;
+            this.sy = event.clientY;
+            this.dx = 0;
+            this.dy = 0;
+            // Shrink around the finger, not the card's centre, so the card stays under it.
+            const r = card.getBoundingClientRect();
+            this.origin = `${event.clientX - r.left}px ${event.clientY - r.top}px`;
+            card.setPointerCapture?.(event.pointerId);
+        },
+        move(event) {
+            if (!this.dragging) return;
+            this.dx = event.clientX - this.sx;
+            this.dy = event.clientY - this.sy;
+            this.setHot(this.pileAt(event.clientX, event.clientY));
+        },
+        up() {
+            if (!this.dragging) return;
+            this.dragging = false;
+            const target = this.hot;
+            this.setHot(null);
+            if (target) {
+                this.throwTo(target);
+            } else {
+                this.dx = 0;
+                this.dy = 0;
+            }
+        },
+        setHot(pile) {
+            this.hot = pile ? pile.dataset.sortTarget : null;
+            this.hotLabel = pile ? pile.dataset.sortLabel : '';
+            this.hotColor = pile ? pile.dataset.sortColor : '';
+        },
+        pileAt(x, y) {
+            for (const pile of this.$root.querySelectorAll('[data-sort-target]')) {
+                const r = pile.getBoundingClientRect();
+                // A little generous upwards: the card covers the pile before the finger reaches it.
+                if (x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 48 && y <= r.bottom + 8) return pile;
+            }
+            return null;
+        },
+        async throwTo(list) {
+            if (this.flying) return;
+            this.flying = true;
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const card = this.$refs.card;
+            const pile = this.$root.querySelector(`[data-sort-target="${list}"]`);
+            if (card && pile && !reduce) {
+                const c = card.getBoundingClientRect();
+                const p = pile.getBoundingClientRect();
+                this.dx += (p.left + p.width / 2) - (c.left + c.width / 2);
+                this.dy += (p.top + 24) - (c.top + c.height / 2);
+                this.landing = true;
+                await new Promise((resolve) => setTimeout(resolve, 280));
+            }
+            try {
+                await this.$wire.placeTo(list);
+            } finally {
+                // On success the next card replaces this one; on a validation error it comes back.
+                this.flying = false;
+                this.landing = false;
+                this.dx = 0;
+                this.dy = 0;
+            }
+        },
+        get cardStyle() {
+            const moving = this.dragging || this.flying;
+            // Separate translate / rotate / scale: the card follows the finger 1:1 (no transition
+            // on translate while dragging), only the shrink over a pile is eased.
+            const ease = 'cubic-bezier(.2,.8,.2,1)';
+            const transition = this.dragging
+                ? 'scale 150ms ease-out'
+                : `translate 280ms ${ease}, rotate 280ms ${ease}, scale 280ms ${ease}, opacity 280ms ease`;
+            // Over a pile the card shrinks, so the pile it is about to land on stays visible.
+            const scale = this.landing ? 0.3 : (this.hot ? 0.5 : 1);
+            return {
+                translate: `${this.dx}px ${this.dy}px`,
+                rotate: `${this.dx * 0.05}deg`,
+                scale: String(scale),
+                transformOrigin: this.origin || '50% 50%',
+                opacity: this.landing ? 0 : 1,
+                transition,
+                zIndex: moving ? 30 : 'auto',
+                boxShadow: this.dragging ? '0 18px 40px -12px rgba(0,0,0,.35)' : undefined,
+            };
+        },
+    }));
+});

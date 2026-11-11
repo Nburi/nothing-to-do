@@ -26,17 +26,17 @@
             <form wire:submit="submit" class="space-y-4">
                 <div class="flex flex-wrap gap-1.5">
                     @foreach (\App\Models\SupportRequest::TYPES as $key => $meta)
-                        <button type="button" wire:click="$set('formType', '{{ $key }}')" @class(['rounded-[0.45rem] px-3.5 py-1.5 text-sm transition', 'bg-ink text-white shadow-sm' => $formType === $key, 'bg-paper text-ink-soft hover:text-ink' => $formType !== $key])>{{ $meta['label'] }}</button>
+                        <button type="button" wire:click="$set('formType', '{{ $key }}')" @class(['rounded-[0.45rem] px-3.5 py-1.5 text-sm transition', 'bg-ink text-white shadow-xs' => $formType === $key, 'bg-paper text-ink-soft hover:text-ink' => $formType !== $key])>{{ $meta['label'] }}</button>
                     @endforeach
                 </div>
                 <div>
                     <label for="formSubject" class="mb-1.5 block text-sm font-medium text-ink">Betreff</label>
-                    <input id="formSubject" type="text" wire:model="formSubject" maxlength="255" placeholder="Ein Satz reicht" class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                    <input id="formSubject" type="text" wire:model="formSubject" maxlength="255" placeholder="Ein Satz reicht" class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                     @error('formSubject') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label for="formMessage" class="mb-1.5 block text-sm font-medium text-ink">Nachricht</label>
-                    <textarea id="formMessage" wire:model="formMessage" rows="4" maxlength="5000" placeholder="Was ist passiert, was hättest du erwartet?" class="block w-full resize-y rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"></textarea>
+                    <textarea id="formMessage" wire:model="formMessage" rows="4" maxlength="5000" placeholder="Was ist passiert, was hättest du erwartet?" class="block w-full resize-y rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"></textarea>
                     @error('formMessage') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit" class="rounded-card bg-forest px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Absenden</button>

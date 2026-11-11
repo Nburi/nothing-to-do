@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
+use App\Planning\Size;
 use App\Support\TaskMutator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,15 +59,21 @@ class TaskController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'list' => ['sometimes', Rule::in(Task::BOARD_LISTS)],
+            'title' => ['required', 'string', 'max:500'],
+            'list' => ['sometimes', Rule::in(Task::LISTS)],
             'deadline' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
+            'hard_deadline' => ['sometimes', 'nullable', 'date'],
+            'soft_deadline' => ['sometimes', 'nullable', 'date'],
+            'size' => ['sometimes', 'nullable', Rule::enum(Size::class)],
+            'area_id' => ['sometimes', 'nullable', 'integer', Rule::exists('areas', 'id')->where('user_id', $request->user()->id)],
+            'first_step' => ['sometimes', 'nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'is_important' => ['sometimes', 'boolean'],
         ]);
 
         $task = $request->user()->tasks()->create(TaskMutator::attributesForCreate($data));
+        $task = TaskMutator::applyRefactorFields($task, $data);
 
         return (new TaskResource($task->fresh()))->response()->setStatusCode(201);
     }
@@ -81,9 +88,14 @@ class TaskController extends Controller
         $task = $this->userTask($request, $id);
 
         $data = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
+            'title' => ['sometimes', 'string', 'max:500'],
             'deadline' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['sometimes', 'nullable', 'date'],
+            'hard_deadline' => ['sometimes', 'nullable', 'date'],
+            'soft_deadline' => ['sometimes', 'nullable', 'date'],
+            'size' => ['sometimes', 'nullable', Rule::enum(Size::class)],
+            'area_id' => ['sometimes', 'nullable', 'integer', Rule::exists('areas', 'id')->where('user_id', $request->user()->id)],
+            'first_step' => ['sometimes', 'nullable', 'string', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'is_important' => ['sometimes', 'boolean'],
             'is_completed' => ['sometimes', 'boolean'],
@@ -92,6 +104,7 @@ class TaskController extends Controller
         ]);
 
         $task = TaskMutator::applyUpdate($task, $request->user(), $data);
+        $task = TaskMutator::applyRefactorFields($task, $data);
 
         return (new TaskResource($task))->response();
     }

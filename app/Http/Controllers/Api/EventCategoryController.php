@@ -13,7 +13,7 @@ class EventCategoryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $categories = $request->user()->eventCategories()->ordered()->get();
+        $categories = $request->user()->eventCategories()->with('areas')->ordered()->get();
 
         return EventCategoryResource::collection($categories)->response();
     }
@@ -24,6 +24,8 @@ class EventCategoryController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'color' => ['required', Rule::in(ScheduleEvent::EVENT_COLORS)],
             'pomodoro_enabled' => ['sometimes', 'boolean'],
+            'area_ids' => ['sometimes', 'array'],
+            'area_ids.*' => ['integer'],
         ]);
 
         $category = $request->user()->eventCategories()->create([
@@ -32,6 +34,10 @@ class EventCategoryController extends Controller
             'pomodoro_enabled' => $data['pomodoro_enabled'] ?? false,
             'sort_order' => $request->user()->eventCategories()->count(),
         ]);
+
+        if (array_key_exists('area_ids', $data)) {
+            $category->syncAreas($data['area_ids']); // foreign ids are dropped there
+        }
 
         return (new EventCategoryResource($category->fresh()))->response()->setStatusCode(201);
     }
@@ -44,6 +50,8 @@ class EventCategoryController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'color' => ['sometimes', Rule::in(ScheduleEvent::EVENT_COLORS)],
             'pomodoro_enabled' => ['sometimes', 'boolean'],
+            'area_ids' => ['sometimes', 'array'],
+            'area_ids.*' => ['integer'],
         ]);
 
         $updates = [];
@@ -59,6 +67,10 @@ class EventCategoryController extends Controller
         }
 
         $category->update($updates);
+
+        if (array_key_exists('area_ids', $data)) {
+            $category->syncAreas($data['area_ids']);
+        }
 
         return (new EventCategoryResource($category->fresh()))->response();
     }
