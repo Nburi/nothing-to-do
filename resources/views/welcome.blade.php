@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <script>if ('IntersectionObserver' in window) document.documentElement.classList.add('js');</script>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.theme-style')
 
         <title>nothing-to-do - Drei Listen, ein ruhiger Kopf</title>
         <meta name="description" content="Erfasse alles in der Inbox, sortiere in To-Dos und Tasks, und sieh nur, was heute zählt. Mit Zeitplan, Fokus-Timer und Erinnerungen für den ganzen Tag.">
@@ -35,7 +34,7 @@
             }
         </style>
     </head>
-    <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
+    <body class="min-h-dvh bg-paper font-sans text-ink antialiased">
         <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-card focus:bg-forest focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">Zum Inhalt springen</a>
 
         {{-- Header --}}
@@ -45,8 +44,8 @@
                 <span class="text-[15px] font-medium tracking-tight">nothing-to-do</span>
             </div>
             <nav class="flex items-center gap-1.5 sm:gap-3" aria-label="Hauptnavigation">
-                <a href="{{ route('login') }}" class="rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Anmelden</a>
-                <a href="{{ route('register') }}" class="rounded-card bg-forest px-3.5 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
+                <a href="{{ route('login') }}" class="rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Anmelden</a>
+                <a href="{{ route('register') }}" class="rounded-card bg-forest px-3.5 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
             </nav>
         </header>
 
@@ -61,8 +60,8 @@
                         Erfasse alles in der Inbox, sortiere in To-Dos und Tasks, und sieh nur, was heute wirklich zählt.
                     </p>
                     <div class="mt-8 flex items-center gap-3">
-                        <a href="{{ route('register') }}" class="rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
-                        <a href="{{ route('login') }}" class="rounded-card border border-line bg-surface px-5 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">Anmelden</a>
+                        <a href="{{ route('register') }}" class="rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
+                        <a href="{{ route('login') }}" class="rounded-card border border-line bg-surface px-5 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">Anmelden</a>
                     </div>
                     <p class="mt-5 text-xs text-ink-faint">Kein Team, keine Einladung, kein Setup. Nur du und deine Listen.</p>
                 </div>
@@ -88,7 +87,7 @@
                                                 <span class="text-[11px] leading-tight text-ink">{{ $t }}</span>
                                             </div>
                                             @if ($tag)
-                                                <span class="mt-1 ml-4 inline-block rounded px-1 py-px text-[9px] font-medium {{ $tag === 'heute' ? 'bg-forest-soft text-forest' : 'bg-contour-soft text-contour' }}">{{ $tag }}</span>
+                                                <span class="mt-1 ml-4 inline-block rounded-sm px-1 py-px text-[9px] font-medium {{ $tag === 'heute' ? 'bg-forest-soft text-forest' : 'bg-contour-soft text-contour' }}">{{ $tag }}</span>
                                             @endif
                                         </div>
                                     @endforeach
@@ -134,13 +133,13 @@
                         <p class="mt-2 max-w-sm text-sm text-ink-soft">Ordne Termine und Aufgaben auf einer Zeitachse an, mit eingebautem Fokus-Timer für konzentrierte Arbeitsblöcke.</p>
                         <div class="mt-5 flex items-center gap-3" aria-hidden="true">
                             <div class="flex h-16 flex-1 items-end gap-1.5 rounded-[7px] border border-line bg-paper/60 p-2.5">
-                                <div class="h-[40%] w-full rounded-sm bg-contour-soft"></div>
-                                <div class="h-[75%] w-full rounded-sm bg-forest-soft"></div>
-                                <div class="h-full w-full rounded-sm bg-forest"></div>
-                                <div class="h-[55%] w-full rounded-sm bg-overprint-soft"></div>
-                                <div class="h-[30%] w-full rounded-sm bg-line"></div>
+                                <div class="h-[40%] w-full rounded-xs bg-contour-soft"></div>
+                                <div class="h-[75%] w-full rounded-xs bg-forest-soft"></div>
+                                <div class="h-full w-full rounded-xs bg-forest"></div>
+                                <div class="h-[55%] w-full rounded-xs bg-overprint-soft"></div>
+                                <div class="h-[30%] w-full rounded-xs bg-line"></div>
                             </div>
-                            <div class="h-16 w-16 flex-none rounded-full" style="background: conic-gradient(rgb(var(--forest)) 0deg 260deg, rgb(var(--line)) 260deg 360deg)">
+                            <div class="h-16 w-16 flex-none rounded-full" style="background: conic-gradient(var(--color-forest) 0deg 260deg, var(--color-line) 260deg 360deg)">
                                 <div class="m-[3px] flex h-[calc(100%-6px)] w-[calc(100%-6px)] items-center justify-center rounded-full bg-surface text-[11px] font-medium tnum text-ink">18:24</div>
                             </div>
                         </div>
@@ -184,8 +183,8 @@
                 <div class="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8 md:py-20">
                     <h2 class="text-2xl font-medium tracking-tight sm:text-3xl">Bereit, den Kopf frei zu räumen?</h2>
                     <div class="mt-7 flex items-center justify-center gap-3">
-                        <a href="{{ route('register') }}" class="rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
-                        <a href="{{ route('login') }}" class="rounded-card border border-line bg-surface px-5 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">Anmelden</a>
+                        <a href="{{ route('register') }}" class="rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
+                        <a href="{{ route('login') }}" class="rounded-card border border-line bg-surface px-5 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">Anmelden</a>
                     </div>
                 </div>
             </section>

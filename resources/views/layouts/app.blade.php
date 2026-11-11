@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,8 +9,7 @@
         @auth
             <meta name="presence-url" content="{{ route('presence.heartbeat') }}">
         @endauth
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.theme-style')
         @include('partials.pwa-head')
 
         <title>{{ config('app.name', 'nothing-to-do') }}</title>
@@ -40,15 +39,15 @@
     {{-- The capture defaults live on <body> so the keyboard shortcut (N, handled
          globally in app.js) opens the same chip the page's own "+" would. --}}
     <body
-        class="min-h-[100dvh] bg-paper font-sans text-ink antialiased"
+        class="min-h-dvh bg-paper font-sans text-ink antialiased"
         @if ($captureTarget) data-capture-target="{{ $captureTarget }}" @endif
     >
         <a href="#content" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-card focus:bg-surface focus:px-4 focus:py-2 focus:shadow-map">
             Zum Inhalt springen
         </a>
 
-        <div class="min-h-[100dvh]">
-            <header class="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-sm">
+        <div class="min-h-dvh">
+            <header class="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-xs">
                 <div class="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6">
                     {{-- The wordmark hides on mobile like every other text label in this
                          header (avatar name, "Mehr" label) — the logo icon alone already
@@ -118,7 +117,7 @@
                                 @click="open = !open"
                                 @keydown.escape.window="open = false"
                                 @class([
-                                    'flex items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                    'flex items-center gap-1.5 rounded-card px-2.5 py-1.5 text-sm transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint',
                                     'bg-surface text-ink' => $featuresActive,
                                     'text-ink-soft hover:bg-surface hover:text-ink' => !$featuresActive,
                                 ])
@@ -159,7 +158,7 @@
                             x-data
                             @click="$store.quickCapture.show($event.currentTarget)"
                             @class([
-                                'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
+                                'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest',
                                 'hidden sm:grid' => $showCaptureFab,
                                 'grid' => !$showCaptureFab,
                             ])
@@ -173,7 +172,7 @@
                                 type="button"
                                 @click="open = !open"
                                 @keydown.escape.window="open = false"
-                                class="flex items-center gap-2 rounded-card px-2.5 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                                class="flex items-center gap-2 rounded-card px-2.5 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                                 :aria-expanded="open"
                                 aria-haspopup="true"
                                 aria-label="Konto{{ $anyMehrNavVisible ? ' & weitere Funktionen' : '' }}"
@@ -274,7 +273,7 @@
                     x-data
                     @click="$store.quickCapture.show($event.currentTarget)"
                     @class([
-                        'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
+                        'fixed right-4 z-40 grid h-14 w-14 place-items-center rounded-full bg-forest text-white shadow-map transition active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:hidden',
                         'bottom-[84px]' => request()->routeIs('app'),
                         'bottom-5' => !request()->routeIs('app'),
                     ])

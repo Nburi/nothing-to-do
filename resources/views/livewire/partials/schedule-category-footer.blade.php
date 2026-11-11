@@ -24,7 +24,7 @@
             :class="$store.draw.cat === {{ $cat->id }}
                 ? '{{ $s['active'] }}'
                 : '{{ $s['idle'] }}'"
-            class="inline-flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            class="inline-flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             aria-label="{{ $cat->name }} zeichnen"
         >
             <span class="h-2 w-2 flex-none rounded-full {{ $s['dot'] }}"></span>
@@ -44,11 +44,11 @@
                 ? 'bg-ink-faint/30 text-ink ring-2 ring-ink/30 focus-visible:ring-ink'
                 : 'border border-dashed border-line text-ink-soft hover:bg-paper hover:text-ink focus-visible:ring-overprint'"
             :aria-label="$store.draw.title ? ('Termin \'' + $store.draw.title + '\' abbrechen') : 'Termin zeichnen'"
-            class="inline-flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            class="inline-flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             style="display: none"
         >
             <svg class="h-3 w-3 flex-none" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-            <span x-text="$store.draw.title || 'Termin'" class="max-w-[9rem] truncate"></span>
+            <span x-text="$store.draw.title || 'Termin'" class="max-w-36 truncate"></span>
         </button>
         <input
             type="text"
@@ -61,7 +61,7 @@
             placeholder="Titel…"
             maxlength="255"
             autocomplete="off"
-            class="w-28 flex-none rounded-full border border-line bg-paper px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-none focus:ring-0"
+            class="w-28 flex-none rounded-full border border-line bg-paper px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-hidden focus:ring-0"
             style="display: none"
         />
     </div>
@@ -71,7 +71,7 @@
         type="button"
         x-show="$store.draw.active"
         @click="$store.draw.clear()"
-        class="ml-auto grid h-6 w-6 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+        class="ml-auto grid h-6 w-6 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
         style="display: none"
         aria-label="Zeichnen abbrechen"
     >

@@ -43,7 +43,7 @@
             <div class="rounded-card border border-line bg-surface p-3 shadow-map">
                 <div class="mb-2 flex items-center gap-2 rounded-card border border-line bg-paper px-2.5 py-1.5">
                     <svg class="h-3.5 w-3.5 flex-none text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="m17 17-4-4"/></svg>
-                    <input x-model="query" type="search" placeholder="Hilfe durchsuchen…" aria-label="Hilfe durchsuchen" class="w-full border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-0" />
+                    <input x-model="query" type="search" placeholder="Hilfe durchsuchen…" aria-label="Hilfe durchsuchen" class="w-full border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-0" />
                 </div>
 
                 <nav class="space-y-0.5">
@@ -147,7 +147,7 @@
                             <div class="mt-1 rounded-card bg-overprint-soft p-3.5" x-show="state === 'no'">
                                 @if (! $justSentFeedback)
                                     <p class="mb-2 text-sm font-medium text-overprint">Was hat gefehlt?</p>
-                                    <textarea wire:model="followupNote" rows="3" placeholder="Kurz beschreiben, was du gesucht hast (optional)…" class="block w-full resize-none rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-none focus:ring-0"></textarea>
+                                    <textarea wire:model="followupNote" rows="3" placeholder="Kurz beschreiben, was du gesucht hast (optional)…" class="block w-full resize-none rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-hidden focus:ring-0"></textarea>
                                     <button type="button" wire:click="sendFollowupFeedback" class="mt-2 rounded-card bg-forest px-4 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Als Feedback senden</button>
                                 @else
                                     <p class="text-sm font-medium text-forest">Danke — als Feedback gespeichert. Du findest es unter „Meine Anfragen".</p>

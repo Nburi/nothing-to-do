@@ -1,73 +1,720 @@
-/* Self-hosted Space Grotesk (Fontsource) — no external font requests. */
-@import '@fontsource/space-grotesk/400.css';
-@import '@fontsource/space-grotesk/500.css';
-@import '@fontsource/space-grotesk/700.css';
+/* Self-hosted fonts (Fontsource): no external font requests. Each theme picks its faces in
+   config/themes.php; the browser only downloads the faces the active theme uses. */
+@import '@fontsource/space-grotesk/400.css' layer(base);
+@import '@fontsource/space-grotesk/500.css' layer(base);
+@import '@fontsource/space-grotesk/700.css' layer(base);
+@import '@fontsource/ibm-plex-mono/400.css' layer(base);
+@import '@fontsource/ibm-plex-mono/500.css' layer(base);
+@import '@fontsource/ibm-plex-mono/600.css' layer(base);
+@import '@fontsource-variable/manrope/index.css' layer(base);
+@import '@fontsource-variable/bricolage-grotesque/index.css' layer(base);
+@import '@fontsource-variable/dm-sans/index.css' layer(base);
+@import '@fontsource-variable/outfit/index.css' layer(base);
+@import '@fontsource-variable/newsreader/index.css' layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+/* Light or dark follows <html data-mode>: "system" asks the OS, "light" / "dark" pin it
+   (per user, App\Support\Theme). */
+@custom-variant dark {
+  &:where([data-mode='dark'], [data-mode='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-mode='system'], [data-mode='system'] *) {
+      @slot;
+    }
+  }
+}
+
+/*
+  The token layer (step 2.1). Every colour, font, corner and shadow comes from a --t-* variable
+  that App\Support\Theme writes into the page head for the user's theme (config/themes.php).
+  Tailwind names point at those variables ("inline" makes utilities reference the variable
+  itself, so an element that sets its own --t-* values, like a theme preview card, repaints).
+
+  New code uses the semantic names (paper, surface, ink, accent, good, warn, bad, area-1..3,
+  deep). The Topografie names of the old screens (forest, overprint, contour, signal) stay as
+  aliases until those screens are retired, so they wear the chosen theme too.
+*/
+@theme inline {
+  --font-sans: var(--t-fb);
+  --font-display: var(--t-fd);
+  --font-mono: var(--t-fm);
+
+  --color-paper: var(--t-bg);
+  --color-surface: var(--t-surface);
+  --color-line: var(--t-line);
+  --color-ink: var(--t-ink);
+  --color-ink-soft: var(--t-soft);
+  --color-ink-faint: var(--t-faint);
+
+  --color-accent: var(--t-accent);
+  --color-accent-fg: var(--t-accent-fg);
+  --color-accent-ink: var(--t-accent-ink);
+  --color-accent-soft: var(--t-accent-soft);
+  --color-good: var(--t-good);
+  --color-good-soft: var(--t-good-soft);
+  --color-warn: var(--t-warn);
+  --color-warn-soft: var(--t-warn-soft);
+  --color-bad: var(--t-bad);
+  --color-bad-soft: var(--t-bad-soft);
+  --color-area-1: var(--t-area-1);
+  --color-area-2: var(--t-area-2);
+  --color-area-3: var(--t-area-3);
+  --color-deep: var(--t-deep);
+  --color-on-deep: var(--t-on-deep);
+
+  /* Old screens (Topografie names). */
+  --color-forest: var(--t-good);
+  --color-forest-soft: var(--t-good-soft);
+  --color-overprint: var(--t-area-1);
+  --color-overprint-soft: var(--t-area-1-soft);
+  --color-contour: var(--t-warn);
+  --color-contour-soft: var(--t-warn-soft);
+  --color-signal: var(--t-bad);
+  --color-signal-soft: var(--t-bad-soft);
+
+  /* One radius scale per theme: card for items and controls, panel for columns and sheets. */
+  --radius-card: var(--t-r);
+  --radius-panel: var(--t-rl);
+
+  --shadow-card: var(--t-sh);
+}
+
+@theme {
+
+  --ease-tactile: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-punch-in: punch-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-rise: rise 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes punch-in {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    60% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes rise {
+    0% {
+      transform: translateY(4px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility shadow-map {
+  /* Tinted elevation — never a pure-black shadow on map paper. */
+  box-shadow: var(--shadow-map);
+}
+
+@utility tnum {
+  /* Tabular figures for dates, counts, control codes. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@utility prose-topo {
+  /* Rendered Brainstorming Markdown — typeset onto the Topografie map. */
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-ink);
+  overflow-wrap: break-word;
+  & > :first-child {
+    margin-top: 0;
+  }
+  & > :last-child {
+    margin-bottom: 0;
+  }
+  & h1 {
+    margin: 1.35em 0 0.5em;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+  & h2 {
+    margin: 1.35em 0 0.5em;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+  & h3 {
+    margin: 1.35em 0 0.5em;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+  & h4 {
+    margin: 1.35em 0 0.5em;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+  & h1 {
+    font-size: 1.4em;
+  }
+  & h2 {
+    font-size: 1.2em;
+  }
+  & h3 {
+    font-size: 1.05em;
+  }
+  & p {
+    margin: 0.7em 0;
+  }
+  & a {
+    color: var(--color-overprint);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+  }
+  & a:hover {
+    text-decoration-thickness: 2px;
+  }
+  & strong {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  & em {
+    font-style: italic;
+  }
+  & u {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  & ul {
+    margin: 0.7em 0;
+    padding-left: 1.4em;
+  }
+  & ol {
+    margin: 0.7em 0;
+    padding-left: 1.4em;
+  }
+  & ul {
+    list-style: disc;
+  }
+  & ol {
+    list-style: decimal;
+  }
+  & li {
+    margin: 0.3em 0;
+  }
+  & li::marker {
+    color: var(--color-ink-faint);
+  }
+  /* GitHub-flavoured task lists. */
+  & ul:has(input[type='checkbox']) {
+    padding-left: 0.2em;
+    list-style: none;
+  }
+  & li:has(> input[type='checkbox']) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.15em;
+  }
+  & input[type='checkbox'] {
+    margin-right: 0.45em;
+    accent-color: var(--color-forest);
+    transform: translateY(1px);
+  }
+  & blockquote {
+    margin: 0.9em 0;
+    padding-left: 0.9em;
+    border-left: 2px solid var(--color-contour);
+    color: var(--color-ink-soft);
+    font-style: italic;
+  }
+  & code {
+    padding: 0.08em 0.34em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--color-paper);
+    border: 1px solid var(--color-line);
+    border-radius: 0.3rem;
+  }
+  & pre {
+    margin: 0.9em 0;
+    padding: 0.85em 1em;
+    overflow-x: auto;
+    background: var(--color-paper);
+    border: 1px solid var(--color-line);
+    border-radius: 0.625rem;
+  }
+  & pre code {
+    padding: 0;
+    font-size: 0.86em;
+    background: none;
+    border: 0;
+  }
+  & hr {
+    margin: 1.4em 0;
+    border: 0;
+    border-top: 1px solid var(--color-line);
+  }
+  /* GitHub-flavoured tables (Bibliothek articles). */
+  & table {
+    width: 100%;
+    margin: 0.9em 0;
+    border-collapse: collapse;
+    font-size: 0.92em;
+  }
+  & th {
+    padding: 0.45em 0.7em;
+    border: 1px solid var(--color-line);
+    text-align: left;
+  }
+  & td {
+    padding: 0.45em 0.7em;
+    border: 1px solid var(--color-line);
+    text-align: left;
+  }
+  & th {
+    background: var(--color-paper);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+}
+
+@utility board-ghost {
+  /* Drag & drop: the drop target reads like a course leg — a dashed overprint outline. */
+  & > * {
+    opacity: 0;
+  }
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1.5px dashed var(--color-overprint);
+    background: var(--color-overprint-soft);
+    border-radius: 0.625rem;
+  }
+}
+
+@utility board-chosen {
+  cursor: grabbing;
+}
+
+@utility tier-free {
+  /* Planer day-board: which days are available for the chip currently
+       being dragged (see plannerWave in app.js) — applied in a short
+       left-to-right stagger from today outwards, not all at once. Border/
+       background need !important: they override the Tailwind utilities
+       (border-line, bg-surface) already on the same element, which would
+       otherwise win the cascade regardless of source order once Tailwind's
+       own layer is injected. */
+  border-color: color-mix(in srgb, var(--color-forest) 55%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-forest-soft) 55%, transparent) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-forest) 14%, transparent),
+    var(--shadow-map);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+@utility tier-tight {
+  border-color: color-mix(in srgb, var(--color-contour) 60%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-contour-soft) 55%, transparent) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-contour) 16%, transparent),
+    var(--shadow-map);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+@utility tier-past {
+  opacity: 0.5;
+  transition: opacity 180ms ease;
+}
+
+@utility pin-card {
+  /* Bastelideen pinboard: each card's resting tilt comes from an inline rotate(); a
+       plain class rule (not a Tailwind rotate utility, which would fight the inline
+       transform) straightens it on hover/focus. !important is required to beat the
+       inline style — see CLAUDE.md's cascade note if this ever looks like it "does
+       nothing". */
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-2px) rotate(0deg) !important;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+  }
+  &:focus-within {
+    transform: translateY(-2px) rotate(0deg) !important;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+  }
+  @variant dark {
+    &:hover {
+      box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+    }
+    &:focus-within {
+      box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+    }
+  }
+}
+
+@utility celebrate-ring {
+  /* Milestone celebration (ProgressStats::celebrationFor) — concentric topographic
+       rings plus a handful of flying line-mark particles. Positioning (inset/left/top)
+       lives here so the Alpine template only needs to set the per-particle --dx/--dy/
+       --rotate custom properties. Respects prefers-reduced-motion via the global
+       animation-collapse rule in @layer utilities below — nothing extra needed here. */
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-forest);
+  animation: celebrate-ring 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility celebrate-ring--record {
+  border-color: var(--color-overprint);
+}
+
+@utility celebrate-ring--perfect-day {
+  /* Perfect day (every today-task cleared) is the rarest, most personally-
+       defined win — a warmer, more spread-out burst than goal/record, not
+       just a recolor. See the 'celebration' store's `big` branch in app.js. */
+  border-color: var(--color-contour);
+  animation-name: celebrate-ring-big;
+  animation-duration: 1.6s;
+}
+
+@utility celebrate-ring--streak-record {
+  /* A streak record is a perfect day that also just beat every streak ever
+       run before it — the rarest of the four kinds, so it escalates once
+       more past perfect-day rather than introducing a new color: this app's
+       four-tone Topografie palette has no fifth tone to spare, and forest/
+       overprint are already goal/record's own colors. */
+  border-color: var(--color-contour);
+  animation-name: celebrate-ring-huge;
+  animation-duration: 2.1s;
+}
+
+@utility celebrate-particle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--color-forest);
+  animation: celebrate-particle 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) both;
+}
+
+@utility celebrate-particle--record {
+  background: var(--color-overprint);
+}
+
+@utility celebrate-particle--perfect-day {
+  background: var(--color-contour);
+  animation-duration: 1.3s;
+}
+
+@utility celebrate-particle--streak-record {
+  background: var(--color-contour);
+  animation-duration: 1.7s;
+}
+
+@utility weekplan-ripple {
+  /* Week plan ripple (WeekPlan::saveEventForm, via resources/js/app.js's
+       "weekplan-ripple" Livewire listener) — a brief light sweep across a day
+       column the instant a block is confirmed to repeat on it, so "this now
+       applies here too" is something you see, not something you have to trust
+       a chip list about. Respects prefers-reduced-motion via the global
+       animation-collapse rule below — nothing extra needed here. */
+  animation: weekplan-ripple 650ms ease-out;
+}
+
+@utility badge-jump-highlight {
+  /* Header badge "proof of destination" (see HeaderBadges::scheduleBadge()
+       and Schedule::$highlightEventId) — the block the Zeitplan badge was
+       showing pulses once on arrival, slower and calmer than the weekplan
+       ripple above since it's greeting a page load, not confirming a save. */
+  animation: badge-jump-highlight 1400ms ease-out;
+}
+
+@utility announcement-highlight {
+  /* Feature-announcement "highlight_selector" (see FeatureAnnouncement::linkHref()
+       and the `highlight` query-param handler in app.js) — an admin-picked CSS
+       selector gets the same "arriving at a page" wash as the header badge above,
+       just for an arbitrary element instead of one specific schedule block. */
+  animation: announcement-highlight 1400ms ease-out;
+}
+
+@utility eisenhower-crisis-ring {
+  /* "Eisenhower" concept's "Krisenring" signature moment (see
+       TaskBoard::trackEisenhowerCrisisEntries(), the "eisenhower-crisis"
+       Livewire listener in app.js) — a slow, calm wash across the "Wichtig &
+       Dringend" quadrant the instant a task genuinely lands there (drag,
+       star-tap, a date change, or a fresh quadrant-tap capture), in the
+       star's own tone (overprint) rather than this app's danger tone
+       (signal) — an acknowledgment, not an alarm. */
+  animation: eisenhower-crisis-ring 1400ms ease-out;
+}
+
+@utility today-toggle {
+  /* "Eisenhower" concept's Heute badge (partials/board-eisenhower.blade.php,
+       TaskBoard::setTodayEisenhower()) — is_today has no quadrant of its own
+       to visually drop into (the grid is already spoken for by importance/
+       urgency), so tapping the badge fires a short radiating pulse instead —
+       a temporal confirmation standing in for a spatial one this concept
+       doesn't have for that particular flag. (NOTE for the eventual merge
+       with feature/list-concept-simple: that sibling branch independently
+       built the identical .today-toggle/.today-pulse-ring/@keyframes
+       today-pulse rule for its own Heute badge — keep one copy when
+       resolving that conflict, not both.) */
+  overflow: visible;
+}
+
+@utility today-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-forest);
+  animation: today-pulse 650ms ease-out;
+  pointer-events: none;
+}
+
+@utility flame-ignite {
+  /* Streak flame ignition (see ProgressStats::celebrationFor() and the
+       Livewire.on('celebrate', …) handler in app.js) — the header's streak
+       badge genuinely catches fire the instant today's streak is extended
+       (a perfect day, or a fresh streak record), instead of just silently
+       sitting in its next tier colour. Three parts, all on [data-badge="streak"]
+       gaining .flame-ignite: the whole pill glows warm once, the flame icon
+       flickers irregularly (not a simple fade — several uneven scale/rotate
+       steps, like it's actually catching), and two small embers break off
+       and rise from its base. Respects prefers-reduced-motion via the global
+       animation-collapse rule below — nothing extra needed here. */
+  animation: flame-pill-glow 950ms ease-out;
+  & .flame-icon {
+    transform-origin: 50% 85%;
+    animation: flame-flicker 700ms ease-in-out;
+  }
+  & .flame-icon__core {
+    animation: flame-core-pulse 700ms ease-in-out;
+  }
+  & .flame-spark-anchor::before {
+    --drift: -5px;
+    background: rgb(var(--ember-warm));
+    animation: ember-rise 750ms ease-out 80ms both;
+  }
+  & .flame-spark-anchor::after {
+    --drift: 6px;
+    background: rgb(var(--ember-blaze));
+    animation: ember-rise 820ms ease-out 200ms both;
+  }
+  /* Both classes can land on the same element at once — a fresh ignition
+       at the hottest tier. A single `animation` shorthand from either class
+       alone would otherwise be silently overwritten by the other's cascade
+       (equal specificity), cancelling one of the two outright. This compound
+       selector outranks both on specificity and runs both animations. */
+  &.streak-tier-4 {
+    animation:
+      flame-pill-glow 950ms ease-out,
+      ember-breathe 3.2s ease-in-out infinite;
+  }
+}
+
+@utility flame-icon {
+  .flame-ignite & {
+    transform-origin: 50% 85%;
+    animation: flame-flicker 700ms ease-in-out;
+  }
+}
+
+@utility flame-icon__core {
+  .flame-ignite & {
+    animation: flame-core-pulse 700ms ease-in-out;
+  }
+}
+
+@utility flame-spark-anchor {
+  overflow: visible;
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 3px;
+    height: 3px;
+    border-radius: 9999px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 3px;
+    height: 3px;
+    border-radius: 9999px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .flame-ignite &::before {
+    --drift: -5px;
+    background: rgb(var(--ember-warm));
+    animation: ember-rise 750ms ease-out 80ms both;
+  }
+  .flame-ignite &::after {
+    --drift: 6px;
+    background: rgb(var(--ember-blaze));
+    animation: ember-rise 820ms ease-out 200ms both;
+  }
+}
+
+@utility streak-tier-4 {
+  /* The hottest streak tier (14+ days) doesn't just flare up once — it
+       keeps visibly burning: a slow, endless glow-breathe on the badge
+       itself (both the header pill and the Fortschritt tile share this
+       class). Deliberately not on any other tier — this is "richtig
+       brennen", the top of the escalation, not a baseline state. */
+  animation: ember-breathe 3.2s ease-in-out infinite;
+  /* Both classes can land on the same element at once — a fresh ignition
+       at the hottest tier. A single `animation` shorthand from either class
+       alone would otherwise be silently overwritten by the other's cascade
+       (equal specificity), cancelling one of the two outright. This compound
+       selector outranks both on specificity and runs both animations. */
+  &.flame-ignite {
+    animation:
+      flame-pill-glow 950ms ease-out,
+      ember-breathe 3.2s ease-in-out infinite;
+  }
+}
+
+@utility streak-spark-flight {
+  /* "Der fliegende Funke" — the flying-spark element flyStreakSpark()
+       (app.js) creates and animates via the Web Animations API (the path
+       differs on every flight, so a static @keyframes rule can't express
+       it). Not itself an @keyframes/animation rule — WAAPI drives its
+       transform/opacity directly — but it still respects reduced-motion:
+       app.js checks prefers-reduced-motion before ever creating one and
+       ignites the badge immediately instead (see flyStreakSpark's caller). */
+  position: fixed;
+  z-index: 60;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(var(--ember-warm));
+  box-shadow: 0 0 6px 2px rgb(var(--ember-warm) / 0.6);
+  pointer-events: none;
+}
+
+@utility header-menu-fan-in {
+  /* Mobile header redesign — "Mehr" folded into the avatar menu (see
+       partials/mehr-nav-links.blade.php's $stagger param, layouts/app.blade.php).
+       The signature moment: opening the newly-combined mobile menu, each
+       feature link fans in from the avatar button ~35ms after the last —
+       a quick, calm proof that nothing vanished when the two separate icon
+       buttons merged into one, not just a static list appearing. Restarts
+       every time the menu reopens for free: Alpine's x-show toggles the
+       panel's own `display: none`, and a CSS animation on a display:none-d
+       descendant restarts from its 0% state the next time it's shown.
+       Respects prefers-reduced-motion via the global animation-collapse
+       rule below — nothing extra needed here. */
+  animation: header-menu-fan-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility error-icon-settle {
+  /* Fehler-Statistiken — the 404 page's signature moment: the error icon
+       pulses once, slowly, then settles fully still (no loop) — the page
+       itself visibly calming down, the opposite of the jolt an error usually
+       gives. 4xx/5xx reuse <x-error-icon> unanimated on purpose; this class
+       is only ever applied on 404, see resources/views/errors/404.blade.php.
+       Respects prefers-reduced-motion via the global animation-collapse rule
+       below — nothing extra needed here. */
+  animation: error-icon-settle 2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 @layer base {
-    /* ── Topografie · map in daylight (channels are space-separated RGB) ── */
+    /* Derived tints. They live here, not in the head style, so an element that sets its own
+       --t-* values (data-theme-scope, e.g. a theme preview card) recomputes them. Same mix as
+       App\Support\Contrast::mix(), which ThemeContrastTest checks. */
+    :root,
+    [data-theme-scope] {
+        --t-accent-soft: color-mix(in srgb, var(--t-accent) 15%, var(--t-surface));
+        --t-good-soft: color-mix(in srgb, var(--t-good) 15%, var(--t-surface));
+        --t-warn-soft: color-mix(in srgb, var(--t-warn) 15%, var(--t-surface));
+        --t-bad-soft: color-mix(in srgb, var(--t-bad) 15%, var(--t-surface));
+        --t-area-1-soft: color-mix(in srgb, var(--t-area-1) 15%, var(--t-surface));
+        --shadow-map: var(--t-sh);
+    }
+
     :root {
-        --paper: 241 237 226;
-        --surface: 252 251 247;
-        --line: 227 222 207;
-        --ink: 35 41 31;
-        --ink-soft: 78 83 69;
-        --ink-faint: 106 110 89;
-        --forest: 31 107 59;
-        --forest-soft: 226 239 230;
-        --overprint: 164 25 125;
-        --overprint-soft: 246 227 239;
-        --contour: 156 107 46;
-        --contour-soft: 241 231 214;
-        --signal: 168 57 42;
-        --signal-soft: 246 225 220;
-        /* Streak flame only (header badge + Fortschritt page) — a deliberate
-           exception to the four-tone Topografie palette above: a flame icon
-           that never turns yellow/orange doesn't read as a flame. Never used
-           anywhere else in the UI. Tier 1 (--ember-glow) stays a muted,
-           barely-lit amber-brown — the badge is deliberately understated at
-           first — and only from tier 2 on does it become a real yellow-orange
-           fire, escalating to orange-red at tier 4. See .flame-ignite and
-           .streak-tier-4 below. */
+        /* Streak flame only (header badge + Fortschritt page, old screens): a deliberate
+           exception to the theme tokens, a flame that never turns yellow/orange doesn't read
+           as a flame. Channels are space-separated RGB. It goes with the old screens (the
+           refactor has no streaks, CONVENTIONS 11). */
         --ember-glow: 168 128 78;
         --ember-warm: 214 133 27;
         --ember-warm-soft: 250 231 194;
         --ember-hot: 214 92 23;
         --ember-hot-soft: 250 214 181;
         --ember-blaze: 197 51 20;
-        --shadow-map: 0 1px 2px rgb(35 41 31 / 0.07), 0 2px 8px rgb(35 41 31 / 0.04);
-        color-scheme: light;
     }
 
-    /* ── Topografie · map at night ───────────────────────────────────── */
+    :root[data-mode='dark'] {
+        --ember-glow: 176 145 104;
+        --ember-warm: 235 165 60;
+        --ember-warm-soft: 51 38 16;
+        --ember-hot: 235 121 55;
+        --ember-hot-soft: 54 30 14;
+        --ember-blaze: 232 90 48;
+    }
+
     @media (prefers-color-scheme: dark) {
-        :root {
-            --paper: 16 20 14;
-            --surface: 25 30 22;
-            --line: 44 51 38;
-            --ink: 232 234 223;
-            --ink-soft: 167 172 153;
-            --ink-faint: 133 138 119;
-            --forest: 87 169 114;
-            --forest-soft: 27 40 30;
-            --overprint: 227 100 176;
-            --overprint-soft: 44 22 35;
-            --contour: 201 154 92;
-            --contour-soft: 39 31 18;
-            --signal: 217 101 79;
-            --signal-soft: 44 23 20;
-            /* See the light-mode --ember-* block above for what these are. */
+        :root[data-mode='system'] {
             --ember-glow: 176 145 104;
             --ember-warm: 235 165 60;
             --ember-warm-soft: 51 38 16;
             --ember-hot: 235 121 55;
             --ember-hot-soft: 54 30 14;
             --ember-blaze: 232 90 48;
-            --shadow-map: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 10px rgb(0 0 0 / 0.3);
-            color-scheme: dark;
         }
     }
 
@@ -81,392 +728,77 @@
     }
 
     body {
-        background-color: rgb(var(--paper));
-        color: rgb(var(--ink));
+        background-color: var(--color-paper);
+        color: var(--color-ink);
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
     }
 
     ::selection {
-        background: rgb(var(--overprint));
+        background: var(--color-overprint);
         color: #fff;
     }
 
     /* Map-grid scrollbars: thin, hairline-coloured. */
     * {
         scrollbar-width: thin;
-        scrollbar-color: rgb(var(--line)) transparent;
+        scrollbar-color: var(--color-line) transparent;
     }
     *::-webkit-scrollbar {
         width: 9px;
         height: 9px;
     }
     *::-webkit-scrollbar-thumb {
-        background: rgb(var(--line));
+        background: var(--color-line);
         border-radius: 9999px;
-        border: 2px solid rgb(var(--paper));
+        border: 2px solid var(--color-paper);
     }
     *::-webkit-scrollbar-thumb:hover {
-        background: rgb(var(--ink-faint));
+        background: var(--color-ink-faint);
     }
 }
 
 @layer components {
-    /* Tinted elevation — never a pure-black shadow on map paper. */
-    .shadow-map {
-        box-shadow: var(--shadow-map);
-    }
-
-    /* Tabular figures for dates, counts, control codes. */
-    .tnum {
-        font-variant-numeric: tabular-nums;
-        font-feature-settings: 'tnum' 1;
-    }
-
-    /* Rendered Brainstorming Markdown — typeset onto the Topografie map. */
-    .prose-topo {
-        font-size: 15px;
-        line-height: 1.7;
-        color: rgb(var(--ink));
-        overflow-wrap: break-word;
-    }
-    .prose-topo > :first-child {
-        margin-top: 0;
-    }
-    .prose-topo > :last-child {
-        margin-bottom: 0;
-    }
-    .prose-topo h1,
-    .prose-topo h2,
-    .prose-topo h3,
-    .prose-topo h4 {
-        margin: 1.35em 0 0.5em;
-        font-weight: 500;
-        line-height: 1.3;
-        letter-spacing: -0.01em;
-        color: rgb(var(--ink));
-    }
-    .prose-topo h1 { font-size: 1.4em; }
-    .prose-topo h2 { font-size: 1.2em; }
-    .prose-topo h3 { font-size: 1.05em; }
-    .prose-topo p { margin: 0.7em 0; }
-    .prose-topo a {
-        color: rgb(var(--overprint));
-        text-decoration: underline;
-        text-underline-offset: 2px;
-        text-decoration-thickness: 1px;
-    }
-    .prose-topo a:hover { text-decoration-thickness: 2px; }
-    .prose-topo strong { font-weight: 700; color: rgb(var(--ink)); }
-    .prose-topo em { font-style: italic; }
-    .prose-topo u { text-decoration: underline; text-underline-offset: 2px; }
-    .prose-topo ul,
-    .prose-topo ol {
-        margin: 0.7em 0;
-        padding-left: 1.4em;
-    }
-    .prose-topo ul { list-style: disc; }
-    .prose-topo ol { list-style: decimal; }
-    .prose-topo li { margin: 0.3em 0; }
-    .prose-topo li::marker { color: rgb(var(--ink-faint)); }
-    /* GitHub-flavoured task lists. */
-    .prose-topo ul:has(input[type='checkbox']) {
-        padding-left: 0.2em;
-        list-style: none;
-    }
-    .prose-topo li:has(> input[type='checkbox']) {
-        display: flex;
-        align-items: baseline;
-        gap: 0.15em;
-    }
-    .prose-topo input[type='checkbox'] {
-        margin-right: 0.45em;
-        accent-color: rgb(var(--forest));
-        transform: translateY(1px);
-    }
-    .prose-topo blockquote {
-        margin: 0.9em 0;
-        padding-left: 0.9em;
-        border-left: 2px solid rgb(var(--contour));
-        color: rgb(var(--ink-soft));
-        font-style: italic;
-    }
-    .prose-topo code {
-        padding: 0.08em 0.34em;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 0.88em;
-        background: rgb(var(--paper));
-        border: 1px solid rgb(var(--line));
-        border-radius: 0.3rem;
-    }
-    .prose-topo pre {
-        margin: 0.9em 0;
-        padding: 0.85em 1em;
-        overflow-x: auto;
-        background: rgb(var(--paper));
-        border: 1px solid rgb(var(--line));
-        border-radius: 0.625rem;
-    }
-    .prose-topo pre code {
-        padding: 0;
-        font-size: 0.86em;
-        background: none;
-        border: 0;
-    }
-    .prose-topo hr {
-        margin: 1.4em 0;
-        border: 0;
-        border-top: 1px solid rgb(var(--line));
-    }
-    /* GitHub-flavoured tables (Bibliothek articles). */
-    .prose-topo table {
-        width: 100%;
-        margin: 0.9em 0;
-        border-collapse: collapse;
-        font-size: 0.92em;
-    }
-    .prose-topo th,
-    .prose-topo td {
-        padding: 0.45em 0.7em;
-        border: 1px solid rgb(var(--line));
-        text-align: left;
-    }
-    .prose-topo th {
-        background: rgb(var(--paper));
-        font-weight: 600;
-        color: rgb(var(--ink));
-    }
-
-    /* Drag & drop: the drop target reads like a course leg — a dashed overprint outline. */
-    .board-ghost > * {
-        opacity: 0;
-    }
-    .board-ghost {
-        position: relative;
-    }
-    .board-ghost::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border: 1.5px dashed rgb(var(--overprint));
-        background: rgb(var(--overprint-soft));
-        border-radius: 0.625rem;
-    }
-    .board-chosen {
-        cursor: grabbing;
-    }
-
-    /* Planer day-board: which days are available for the chip currently
-       being dragged (see plannerWave in app.js) — applied in a short
-       left-to-right stagger from today outwards, not all at once. Border/
-       background need !important: they override the Tailwind utilities
-       (border-line, bg-surface) already on the same element, which would
-       otherwise win the cascade regardless of source order once Tailwind's
-       own layer is injected. */
-    .tier-free {
-        border-color: rgb(var(--forest) / 0.55) !important;
-        background-color: rgb(var(--forest-soft) / 0.55) !important;
-        box-shadow: 0 0 0 3px rgb(var(--forest) / 0.14), var(--shadow-map);
-        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
-    }
-    .tier-tight {
-        border-color: rgb(var(--contour) / 0.6) !important;
-        background-color: rgb(var(--contour-soft) / 0.55) !important;
-        box-shadow: 0 0 0 3px rgb(var(--contour) / 0.16), var(--shadow-map);
-        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
-    }
-    .tier-past {
-        opacity: 0.5;
-        transition: opacity 180ms ease;
-    }
-
-    /* Bastelideen pinboard: each card's resting tilt comes from an inline rotate(); a
-       plain class rule (not a Tailwind rotate utility, which would fight the inline
-       transform) straightens it on hover/focus. !important is required to beat the
-       inline style — see CLAUDE.md's cascade note if this ever looks like it "does
-       nothing". */
-    .pin-card {
-        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
-    }
-    .pin-card:hover,
-    .pin-card:focus-within {
-        transform: translateY(-2px) rotate(0deg) !important;
-        box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
-    }
-    @media (prefers-color-scheme: dark) {
-        .pin-card:hover,
-        .pin-card:focus-within {
-            box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
-        }
-    }
-
-    /* Milestone celebration (ProgressStats::celebrationFor) — concentric topographic
-       rings plus a handful of flying line-mark particles. Positioning (inset/left/top)
-       lives here so the Alpine template only needs to set the per-particle --dx/--dy/
-       --rotate custom properties. Respects prefers-reduced-motion via the global
-       animation-collapse rule in @layer utilities below — nothing extra needed here. */
     @keyframes celebrate-ring {
         0% { transform: scale(0.5); opacity: 0.9; }
         100% { transform: scale(1.9); opacity: 0; }
     }
-    .celebrate-ring {
-        position: absolute;
-        inset: 0;
-        border-radius: 9999px;
-        border: 1.5px solid rgb(var(--forest));
-        animation: celebrate-ring 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
-    }
-    .celebrate-ring--record {
-        border-color: rgb(var(--overprint));
-    }
-    /* Perfect day (every today-task cleared) is the rarest, most personally-
-       defined win — a warmer, more spread-out burst than goal/record, not
-       just a recolor. See the 'celebration' store's `big` branch in app.js. */
     @keyframes celebrate-ring-big {
         0% { transform: scale(0.5); opacity: 0.9; }
         100% { transform: scale(2.5); opacity: 0; }
     }
-    .celebrate-ring--perfect-day {
-        border-color: rgb(var(--contour));
-        animation-name: celebrate-ring-big;
-        animation-duration: 1.6s;
-    }
-    /* A streak record is a perfect day that also just beat every streak ever
-       run before it — the rarest of the four kinds, so it escalates once
-       more past perfect-day rather than introducing a new color: this app's
-       four-tone Topografie palette has no fifth tone to spare, and forest/
-       overprint are already goal/record's own colors. */
     @keyframes celebrate-ring-huge {
         0% { transform: scale(0.5); opacity: 0.9; }
         100% { transform: scale(3.1); opacity: 0; }
-    }
-    .celebrate-ring--streak-record {
-        border-color: rgb(var(--contour));
-        animation-name: celebrate-ring-huge;
-        animation-duration: 2.1s;
     }
     @keyframes celebrate-particle {
         0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
         100% { transform: translate(calc(-50% + var(--dx, 40px)), calc(-50% + var(--dy, 40px))) rotate(var(--rotate, 90deg)); opacity: 0; }
     }
-    .celebrate-particle {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 3px;
-        height: 10px;
-        border-radius: 2px;
-        background: rgb(var(--forest));
-        animation: celebrate-particle 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) both;
-    }
-    .celebrate-particle--record {
-        background: rgb(var(--overprint));
-    }
-    .celebrate-particle--perfect-day {
-        background: rgb(var(--contour));
-        animation-duration: 1.3s;
-    }
-    .celebrate-particle--streak-record {
-        background: rgb(var(--contour));
-        animation-duration: 1.7s;
-    }
-
-    /* Week plan ripple (WeekPlan::saveEventForm, via resources/js/app.js's
-       "weekplan-ripple" Livewire listener) — a brief light sweep across a day
-       column the instant a block is confirmed to repeat on it, so "this now
-       applies here too" is something you see, not something you have to trust
-       a chip list about. Respects prefers-reduced-motion via the global
-       animation-collapse rule below — nothing extra needed here. */
     @keyframes weekplan-ripple {
-        0% { box-shadow: inset 0 0 0 9999px rgb(var(--forest) / 0.22); }
-        100% { box-shadow: inset 0 0 0 9999px rgb(var(--forest) / 0); }
+        0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-forest) 22%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    .weekplan-ripple {
-        animation: weekplan-ripple 650ms ease-out;
-    }
-
-    /* Header badge "proof of destination" (see HeaderBadges::scheduleBadge()
-       and Schedule::$highlightEventId) — the block the Zeitplan badge was
-       showing pulses once on arrival, slower and calmer than the weekplan
-       ripple above since it's greeting a page load, not confirming a save. */
     @keyframes badge-jump-highlight {
-        0% { box-shadow: inset 0 0 0 9999px rgb(var(--contour) / 0.28); }
-        100% { box-shadow: inset 0 0 0 9999px rgb(var(--contour) / 0); }
+        0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-contour) 28%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    .badge-jump-highlight {
-        animation: badge-jump-highlight 1400ms ease-out;
-    }
-
-    /* Feature-announcement "highlight_selector" (see FeatureAnnouncement::linkHref()
-       and the `highlight` query-param handler in app.js) — an admin-picked CSS
-       selector gets the same "arriving at a page" wash as the header badge above,
-       just for an arbitrary element instead of one specific schedule block. */
     @keyframes announcement-highlight {
-        0% { box-shadow: inset 0 0 0 9999px rgb(var(--contour) / 0.28); }
-        100% { box-shadow: inset 0 0 0 9999px rgb(var(--contour) / 0); }
+        0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-contour) 28%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    .announcement-highlight {
-        animation: announcement-highlight 1400ms ease-out;
-    }
-
-    /* "Eisenhower" concept's "Krisenring" signature moment (see
-       TaskBoard::trackEisenhowerCrisisEntries(), the "eisenhower-crisis"
-       Livewire listener in app.js) — a slow, calm wash across the "Wichtig &
-       Dringend" quadrant the instant a task genuinely lands there (drag,
-       star-tap, a date change, or a fresh quadrant-tap capture), in the
-       star's own tone (overprint) rather than this app's danger tone
-       (signal) — an acknowledgment, not an alarm. */
     @keyframes eisenhower-crisis-ring {
-        0% { box-shadow: inset 0 0 0 9999px rgb(var(--overprint) / 0.22); }
-        100% { box-shadow: inset 0 0 0 9999px rgb(var(--overprint) / 0); }
+        0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-overprint) 22%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    .eisenhower-crisis-ring {
-        animation: eisenhower-crisis-ring 1400ms ease-out;
-    }
-
-    /* "Eisenhower" concept's Heute badge (partials/board-eisenhower.blade.php,
-       TaskBoard::setTodayEisenhower()) — is_today has no quadrant of its own
-       to visually drop into (the grid is already spoken for by importance/
-       urgency), so tapping the badge fires a short radiating pulse instead —
-       a temporal confirmation standing in for a spatial one this concept
-       doesn't have for that particular flag. (NOTE for the eventual merge
-       with feature/list-concept-simple: that sibling branch independently
-       built the identical .today-toggle/.today-pulse-ring/@keyframes
-       today-pulse rule for its own Heute badge — keep one copy when
-       resolving that conflict, not both.) */
     @keyframes today-pulse {
         0% { transform: scale(0.6); opacity: 0.55; }
         100% { transform: scale(2.4); opacity: 0; }
     }
-    .today-toggle {
-        overflow: visible;
-    }
-    .today-pulse-ring {
-        position: absolute;
-        inset: 0;
-        border-radius: 9999px;
-        border: 1.5px solid rgb(var(--forest));
-        animation: today-pulse 650ms ease-out;
-        pointer-events: none;
-    }
-
-    /* Streak flame ignition (see ProgressStats::celebrationFor() and the
-       Livewire.on('celebrate', …) handler in app.js) — the header's streak
-       badge genuinely catches fire the instant today's streak is extended
-       (a perfect day, or a fresh streak record), instead of just silently
-       sitting in its next tier colour. Three parts, all on [data-badge="streak"]
-       gaining .flame-ignite: the whole pill glows warm once, the flame icon
-       flickers irregularly (not a simple fade — several uneven scale/rotate
-       steps, like it's actually catching), and two small embers break off
-       and rise from its base. Respects prefers-reduced-motion via the global
-       animation-collapse rule below — nothing extra needed here. */
     @keyframes flame-pill-glow {
         0% { box-shadow: 0 0 0 0 rgb(var(--ember-warm) / 0); }
         30% { box-shadow: 0 0 10px 3px rgb(var(--ember-warm) / 0.55); }
         100% { box-shadow: 0 0 0 0 rgb(var(--ember-warm) / 0); }
-    }
-    .flame-ignite {
-        animation: flame-pill-glow 950ms ease-out;
     }
     @keyframes flame-flicker {
         0% { transform: scale(1) rotate(0deg); }
@@ -478,122 +810,29 @@
         86% { transform: scale(0.98) rotate(1deg); }
         100% { transform: scale(1) rotate(0deg); }
     }
-    .flame-ignite .flame-icon {
-        transform-origin: 50% 85%;
-        animation: flame-flicker 700ms ease-in-out;
-    }
     @keyframes flame-core-pulse {
         0%, 100% { opacity: 1; }
         40% { opacity: .5; }
         70% { opacity: 1; }
-    }
-    .flame-ignite .flame-icon__core {
-        animation: flame-core-pulse 700ms ease-in-out;
     }
     @keyframes ember-rise {
         0% { transform: translate(-50%, 0) scale(1); opacity: 0; }
         15% { opacity: 1; }
         100% { transform: translate(calc(-50% + var(--drift, 0px)), -16px) scale(0.4); opacity: 0; }
     }
-    .flame-spark-anchor {
-        overflow: visible;
-    }
-    .flame-spark-anchor::before,
-    .flame-spark-anchor::after {
-        content: '';
-        position: absolute;
-        left: 50%;
-        bottom: 2px;
-        width: 3px;
-        height: 3px;
-        border-radius: 9999px;
-        opacity: 0;
-        pointer-events: none;
-    }
-    .flame-ignite .flame-spark-anchor::before {
-        --drift: -5px;
-        background: rgb(var(--ember-warm));
-        animation: ember-rise 750ms ease-out 80ms both;
-    }
-    .flame-ignite .flame-spark-anchor::after {
-        --drift: 6px;
-        background: rgb(var(--ember-blaze));
-        animation: ember-rise 820ms ease-out 200ms both;
-    }
-
-    /* The hottest streak tier (14+ days) doesn't just flare up once — it
-       keeps visibly burning: a slow, endless glow-breathe on the badge
-       itself (both the header pill and the Fortschritt tile share this
-       class). Deliberately not on any other tier — this is "richtig
-       brennen", the top of the escalation, not a baseline state. */
     @keyframes ember-breathe {
         0%, 100% { box-shadow: 0 0 0 0 rgb(var(--ember-blaze) / 0); }
         50% { box-shadow: 0 0 7px 1px rgb(var(--ember-blaze) / 0.4); }
     }
-    .streak-tier-4 {
-        animation: ember-breathe 3.2s ease-in-out infinite;
-    }
-    /* Both classes can land on the same element at once — a fresh ignition
-       at the hottest tier. A single `animation` shorthand from either class
-       alone would otherwise be silently overwritten by the other's cascade
-       (equal specificity), cancelling one of the two outright. This compound
-       selector outranks both on specificity and runs both animations. */
-    .flame-ignite.streak-tier-4 {
-        animation: flame-pill-glow 950ms ease-out, ember-breathe 3.2s ease-in-out infinite;
-    }
-
-    /* "Der fliegende Funke" — the flying-spark element flyStreakSpark()
-       (app.js) creates and animates via the Web Animations API (the path
-       differs on every flight, so a static @keyframes rule can't express
-       it). Not itself an @keyframes/animation rule — WAAPI drives its
-       transform/opacity directly — but it still respects reduced-motion:
-       app.js checks prefers-reduced-motion before ever creating one and
-       ignites the badge immediately instead (see flyStreakSpark's caller). */
-    .streak-spark-flight {
-        position: fixed;
-        z-index: 60;
-        width: 6px;
-        height: 6px;
-        border-radius: 9999px;
-        background: rgb(var(--ember-warm));
-        box-shadow: 0 0 6px 2px rgb(var(--ember-warm) / 0.6);
-        pointer-events: none;
-    }
-
-    /* Mobile header redesign — "Mehr" folded into the avatar menu (see
-       partials/mehr-nav-links.blade.php's $stagger param, layouts/app.blade.php).
-       The signature moment: opening the newly-combined mobile menu, each
-       feature link fans in from the avatar button ~35ms after the last —
-       a quick, calm proof that nothing vanished when the two separate icon
-       buttons merged into one, not just a static list appearing. Restarts
-       every time the menu reopens for free: Alpine's x-show toggles the
-       panel's own `display: none`, and a CSS animation on a display:none-d
-       descendant restarts from its 0% state the next time it's shown.
-       Respects prefers-reduced-motion via the global animation-collapse
-       rule below — nothing extra needed here. */
     @keyframes header-menu-fan-in {
         0% { opacity: 0; transform: translateY(4px); }
         100% { opacity: 1; transform: translateY(0); }
     }
-    .header-menu-fan-in {
-        animation: header-menu-fan-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    }
-
-    /* Fehler-Statistiken — the 404 page's signature moment: the error icon
-       pulses once, slowly, then settles fully still (no loop) — the page
-       itself visibly calming down, the opposite of the jolt an error usually
-       gives. 4xx/5xx reuse <x-error-icon> unanimated on purpose; this class
-       is only ever applied on 404, see resources/views/errors/404.blade.php.
-       Respects prefers-reduced-motion via the global animation-collapse rule
-       below — nothing extra needed here. */
     @keyframes error-icon-settle {
         0% { transform: scale(0.85); opacity: 0; }
         35% { transform: scale(1.08); opacity: 1; }
         60% { transform: scale(0.97); }
         100% { transform: scale(1); opacity: 1; }
-    }
-    .error-icon-settle {
-        animation: error-icon-settle 2s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
 }

@@ -20,7 +20,7 @@
 
     <div
         x-show="open"
-        x-transition:enter="transition ease-[cubic-bezier(0.16,1,0.3,1)] duration-300"
+        x-transition:enter="transition ease-tactile duration-300"
         x-transition:enter-start="opacity-0 translate-y-6 md:translate-y-2 md:scale-[0.98]"
         x-transition:enter-end="opacity-100 translate-y-0 md:scale-100"
         x-transition:leave="transition ease-in duration-150"
@@ -45,7 +45,7 @@
                             wire:click="$set('eventKind', '{{ $val }}')"
                             @class([
                                 'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                'bg-forest text-white shadow-sm' => $eventKind === $val,
+                                'bg-forest text-white shadow-xs' => $eventKind === $val,
                                 'text-ink-soft hover:text-ink' => $eventKind !== $val,
                             ])
                         >{{ $lbl }}</button>
@@ -141,7 +141,7 @@
                             <div wire:key="eattr-{{ $attr->id }}">
                                 @if ($attr->type === 'checkbox')
                                     <label class="flex cursor-pointer items-center gap-2.5">
-                                        <input type="checkbox" wire:model="eventAttributeValues.{{ $attr->id }}" class="rounded border-line text-forest focus:ring-forest" />
+                                        <input type="checkbox" wire:model="eventAttributeValues.{{ $attr->id }}" class="rounded-sm border-line text-forest focus:ring-forest" />
                                         <span class="text-sm text-ink-soft">{{ $attr->name }}</span>
                                     </label>
                                 @else
@@ -201,7 +201,7 @@
                             <div class="mb-2 flex flex-wrap gap-1.5">
                                 @foreach ($eventLinkedTasks as $picked)
                                     <span wire:key="picked-{{ $picked['id'] }}" class="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper/70 py-1 pl-2.5 pr-1.5 text-xs text-ink">
-                                        <span class="max-w-[11rem] truncate">{{ $picked['title'] }}</span>
+                                        <span class="max-w-44 truncate">{{ $picked['title'] }}</span>
                                         <button
                                             type="button"
                                             wire:click="toggleEventLinkedTask({{ $picked['id'] }})"
@@ -261,7 +261,7 @@
                     <div x-data="{ rec: $wire.entangle('eventRecurring'), days: $wire.entangle('eventDays') }" class="rounded-card border border-line bg-paper/60 p-3">
                         <label class="flex cursor-pointer items-center justify-between">
                             <span class="text-sm text-ink">Wiederholen</span>
-                            <input type="checkbox" x-model="rec" class="rounded border-line text-forest focus:ring-forest" />
+                            <input type="checkbox" x-model="rec" class="rounded-sm border-line text-forest focus:ring-forest" />
                         </label>
                         <div x-show="rec" x-transition.opacity.duration.150ms class="mt-3 flex flex-wrap gap-1.5" style="display:none">
                             @foreach ($wdLabels as $i => $lbl)
@@ -278,7 +278,7 @@
 
                     @if ($eventKind === 'appointment')
                         <label class="flex cursor-pointer items-center gap-2.5">
-                            <input type="checkbox" wire:model="eventSaveAsTemplate" class="rounded border-line text-forest focus:ring-forest" />
+                            <input type="checkbox" wire:model="eventSaveAsTemplate" class="rounded-sm border-line text-forest focus:ring-forest" />
                             <span class="text-sm text-ink-soft">Als Vorlage speichern</span>
                         </label>
                     @endif

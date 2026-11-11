@@ -64,6 +64,16 @@ final readonly class DeadlineFeasibility
         $second = $this->fill(array_reverse($hard), $slots, forward: false);
         $second = $this->fill($soft, $second['slots'], forward: true, carry: $second);
 
+        // Pass 2 exists to let soft work give way. It must never make a hard
+        // task late that pass 1 finished on time (planning hard work as late as
+        // possible can push an earlier hard deadline out when there is too
+        // much hard work); then pass 1 is the honest answer.
+        $hardIds = array_map(fn (PlannedTask $t) => $t->id, $hard);
+        $newlyLate = array_diff(array_intersect($this->lateIds($ordered, $second), $hardIds), $lateFirst);
+        if ($newlyLate !== []) {
+            return $this->result($ordered, $first, []);
+        }
+
         $slipped = array_values(array_filter(
             $this->lateIds($soft, $second),
             fn (int $id) => ! in_array($id, $lateFirst, true),

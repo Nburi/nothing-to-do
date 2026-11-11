@@ -14,7 +14,7 @@
         <div class="mb-6">
             @if ($creatingRootCategory)
                 <form wire:submit="saveRootCategory" class="flex items-center gap-2">
-                    <input type="text" wire:model="newRootCategoryName" autofocus placeholder="Name der Kategorie" maxlength="255" class="block w-full max-w-xs rounded-card border border-line bg-surface px-3 py-1.5 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                    <input type="text" wire:model="newRootCategoryName" autofocus placeholder="Name der Kategorie" maxlength="255" class="block w-full max-w-xs rounded-card border border-line bg-surface px-3 py-1.5 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                     <button type="submit" class="rounded-card bg-forest px-3 py-1.5 text-sm font-medium text-white transition hover:brightness-110">Anlegen</button>
                     <button type="button" wire:click="cancelCategoryForm" class="text-sm text-ink-soft transition hover:text-ink">Abbrechen</button>
                 </form>
@@ -29,7 +29,7 @@
                     <div class="flex items-center justify-between gap-2" x-data="{ editing: false, draft: @js($category->name) }">
                         <div class="flex min-w-0 flex-1 items-center gap-1.5">
                             <span x-show="! editing" class="truncate text-sm font-semibold text-ink">{{ $category->name }}</span>
-                            <input x-show="editing" x-ref="input{{ $category->id }}" x-model="draft" @keydown.enter="$wire.renameCategory({{ $category->id }}, draft); editing = false" @keydown.escape="editing = false" @blur="if (editing) { $wire.renameCategory({{ $category->id }}, draft); editing = false }" class="block w-full max-w-xs rounded-card border border-line bg-paper px-2 py-1 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                            <input x-show="editing" x-ref="input{{ $category->id }}" x-model="draft" @keydown.enter="$wire.renameCategory({{ $category->id }}, draft); editing = false" @keydown.escape="editing = false" @blur="if (editing) { $wire.renameCategory({{ $category->id }}, draft); editing = false }" class="block w-full max-w-xs rounded-card border border-line bg-paper px-2 py-1 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                             <button type="button" x-show="! editing" @click="editing = true; draft = @js($category->name); $nextTick(() => $refs['input{{ $category->id }}'].focus())" class="grid h-6 w-6 flex-none place-items-center rounded-[0.4rem] text-ink-faint transition hover:bg-paper hover:text-ink" aria-label="Kategorie umbenennen">
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 3.5a1.5 1.5 0 0 1 2 2L6 15l-3 1 1-3 9.5-9.5Z"/></svg>
                             </button>
@@ -44,7 +44,7 @@
                                 @click.outside="armed = false; clearTimeout(_t)"
                                 @keydown.escape.window="armed = false; clearTimeout(_t)"
                                 :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                                class="grid h-7 w-7 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                                class="grid h-7 w-7 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                                 aria-label="Kategorie löschen"
                             >
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m-6.5 0 .6 9.3A1.5 1.5 0 0 0 7.6 17h4.8a1.5 1.5 0 0 0 1.5-1.7L14.5 6"/></svg>
@@ -54,7 +54,7 @@
 
                     @if ($creatingSubcategoryFor === $category->id)
                         <form wire:submit="saveSubcategory" class="mt-2.5 flex items-center gap-2 pl-1">
-                            <input type="text" wire:model="newSubcategoryName" autofocus placeholder="Name der Unterkategorie" maxlength="255" class="block w-full max-w-xs rounded-card border border-line bg-paper px-3 py-1.5 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                            <input type="text" wire:model="newSubcategoryName" autofocus placeholder="Name der Unterkategorie" maxlength="255" class="block w-full max-w-xs rounded-card border border-line bg-paper px-3 py-1.5 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                             <button type="submit" class="rounded-card bg-forest px-3 py-1.5 text-sm font-medium text-white transition hover:brightness-110">Anlegen</button>
                             <button type="button" wire:click="cancelCategoryForm" class="text-sm text-ink-soft transition hover:text-ink">Abbrechen</button>
                         </form>
@@ -75,7 +75,7 @@
                                     <div class="flex items-center justify-between gap-2" x-data="{ editing: false, draft: @js($sub->name) }">
                                         <div class="flex min-w-0 flex-1 items-center gap-1.5">
                                             <span x-show="! editing" class="truncate text-[13.5px] font-medium text-ink-soft">{{ $sub->name }}</span>
-                                            <input x-show="editing" x-ref="input{{ $sub->id }}" x-model="draft" @keydown.enter="$wire.renameCategory({{ $sub->id }}, draft); editing = false" @keydown.escape="editing = false" @blur="if (editing) { $wire.renameCategory({{ $sub->id }}, draft); editing = false }" class="block w-full max-w-xs rounded-card border border-line bg-paper px-2 py-1 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0" />
+                                            <input x-show="editing" x-ref="input{{ $sub->id }}" x-model="draft" @keydown.enter="$wire.renameCategory({{ $sub->id }}, draft); editing = false" @keydown.escape="editing = false" @blur="if (editing) { $wire.renameCategory({{ $sub->id }}, draft); editing = false }" class="block w-full max-w-xs rounded-card border border-line bg-paper px-2 py-1 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0" />
                                             <button type="button" x-show="! editing" @click="editing = true; draft = @js($sub->name); $nextTick(() => $refs['input{{ $sub->id }}'].focus())" class="grid h-6 w-6 flex-none place-items-center rounded-[0.4rem] text-ink-faint transition hover:bg-paper hover:text-ink" aria-label="Unterkategorie umbenennen">
                                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 3.5a1.5 1.5 0 0 1 2 2L6 15l-3 1 1-3 9.5-9.5Z"/></svg>
                                             </button>
@@ -89,7 +89,7 @@
                                                 @click.outside="armed = false; clearTimeout(_t)"
                                                 @keydown.escape.window="armed = false; clearTimeout(_t)"
                                                 :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                                                class="grid h-7 w-7 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                                                class="grid h-7 w-7 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                                                 aria-label="Unterkategorie löschen"
                                             >
                                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m-6.5 0 .6 9.3A1.5 1.5 0 0 0 7.6 17h4.8a1.5 1.5 0 0 0 1.5-1.7L14.5 6"/></svg>
@@ -203,7 +203,7 @@
                         @click.outside="armed = false; clearTimeout(_t)"
                         @keydown.escape.window="armed = false; clearTimeout(_t)"
                         :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
-                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                        class="grid h-8 w-8 flex-none place-items-center rounded-card transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-signal"
                         aria-label="Artikel löschen"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m-6.5 0 .6 9.3A1.5 1.5 0 0 0 7.6 17h4.8a1.5 1.5 0 0 0 1.5-1.7L14.5 6"/></svg>
@@ -213,7 +213,7 @@
 
             <div :class="chromeHidden ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100'" class="mb-4 transition-opacity duration-500">
                 <label class="mb-1 block text-xs font-medium text-ink-soft">Kategorie</label>
-                <select wire:model.live="formCategoryId" class="block w-full max-w-xs rounded-card border border-line bg-paper px-3 py-1.5 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0">
+                <select wire:model.live="formCategoryId" class="block w-full max-w-xs rounded-card border border-line bg-paper px-3 py-1.5 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0">
                     @foreach ($this->categoryOptions as $id => $label)
                         <option value="{{ $id }}" @selected((string) $formCategoryId === (string) $id)>{{ $label }}</option>
                     @endforeach
@@ -227,7 +227,7 @@
                     @input="typed()"
                     maxlength="255"
                     placeholder="Titel"
-                    class="block w-full border-0 bg-transparent px-0 text-2xl font-medium text-ink placeholder:text-ink-faint focus:outline-none focus:ring-0"
+                    class="block w-full border-0 bg-transparent px-0 text-2xl font-medium text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-0"
                 />
 
                 @if (! $showPreview)
@@ -259,7 +259,7 @@
                         wire:model.live.debounce.600ms="formContent"
                         @input="typed(); autosize($el)"
                         placeholder="Schreib los — volles Markdown, inkl. Tabellen und Checklisten."
-                        class="mt-3 block min-h-[50vh] w-full resize-none border-0 bg-transparent px-0 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none focus:ring-0"
+                        class="mt-3 block min-h-[50vh] w-full resize-none border-0 bg-transparent px-0 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-0"
                     ></textarea>
                 @endif
             </div>
