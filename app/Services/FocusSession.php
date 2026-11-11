@@ -9,9 +9,11 @@ use App\Planning\Rhythm;
 use App\Planning\Session\Phase;
 use App\Planning\Session\SessionEngine;
 use App\Planning\Session\SessionState;
+use App\Services\Planning\Suggestions;
 use App\Support\TaskMutator;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,7 +34,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class FocusSession
 {
-    public function __construct(private Rhythm $rhythm = new Rhythm) {}
+    public function __construct(
+        private Rhythm $rhythm = new Rhythm,
+        private Suggestions $suggestions = new Suggestions,
+    ) {}
 
     /** The current state with elapsed time applied. Read-only: nothing is written. */
     public function current(User $user, ?CarbonImmutable $now = null): SessionState
@@ -85,6 +90,19 @@ final class FocusSession
         });
     }
 
+    /**
+     * Done from the session view (A15): like complete(), with the next task
+     * chosen by the pick engine. With at least 5 minutes left it starts inside
+     * this session; otherwise it waits for the next one; with nothing left to
+     * do the session ends and the board shows the next suggestion.
+     */
+    public function done(User $user, int $taskId, ?CarbonImmutable $now = null): SessionState
+    {
+        $next = $this->suggestions->nextInSession($user, $taskId, $now);
+
+        return $this->complete($user, $taskId, $next, $now);
+    }
+
     public function pause(User $user, ?CarbonImmutable $now = null): SessionState
     {
         return $this->mutate($user, $now, fn (SessionEngine $e, SessionState $s, CarbonImmutable $t) => $e->pause($s, $t));
@@ -126,7 +144,7 @@ final class FocusSession
      */
     private function engine(User $user, CarbonImmutable $now): SessionEngine
     {
-        $minutes = $user->utcOffsetMinutes(\Illuminate\Support\Carbon::instance($now));
+        $minutes = $user->utcOffsetMinutes(Carbon::instance($now));
         $zone = sprintf('%s%02d:%02d', $minutes < 0 ? '-' : '+', intdiv(abs($minutes), 60), abs($minutes) % 60);
 
         return new SessionEngine($zone, $this->rhythm);

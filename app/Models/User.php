@@ -8,8 +8,6 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -84,6 +82,12 @@ class User extends Authenticatable
     public function pomodoroSession(): HasOne
     {
         return $this->hasOne(PomodoroSession::class);
+    }
+
+    /** @return HasMany<Evening, $this> */
+    public function evenings(): HasMany
+    {
+        return $this->hasMany(Evening::class);
     }
 
     /** @return HasMany<Area, $this> */

@@ -13,7 +13,8 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [x] 1.6 Categories and areas, data layer: `areas`, `category_area`, `EventCategory::syncAreas()` / `toPlanningCategory()`. No UI (P1 is "no pixel").
 - [ ] 1.1 follow-up (later release): switch the remaining raw-SQL reads (`scopeBoardOrdered`, `DayPlanner`, API/MCP resources) to the new columns, then drop `deadline`/`due_date`.
 - [x] 1.7 Session engine wired to storage: `pomodoro_sessions` (one row per user), `App\Services\FocusSession`, `SessionEngine::stop()`. Notes in `docs/steps/1.7.md`.
-- [ ] 1.2 Week plan, 1.3 pick engine, 1.4 capacity/crunch, 1.5 capture + API parity, 1.8 review.
+- [x] 1.3 Pick engine: `PickEngine`, `DeadlineFeasibility::startBy()`, `Suggestions` service, `evenings` (battery + Another log), `tasks.first_step`, first `lang/` files. Also the read side of the week plan (`WeekPlanReader`). Notes in `docs/steps/1.3.md`.
+- [ ] 1.2 Week plan (write side: this week only / every week, pauses), 1.4 capacity/crunch, 1.5 capture + API parity, 1.8 review.
 - [ ] 1.7 follow-up: no HTTP/Livewire entry points yet (that's the session view, 3.1) and no API/MCP endpoints (1.5).
 
 ## Open questions for Niels
@@ -25,4 +26,4 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - Answered 2026-11-06: no work suggestions outside pomodoro blocks; long break after every fourth session, counted per day.
 
 ## Known issues carried over
-- No `lang/` directory yet, so validation messages are English (fixed by G6 in the refactor).
+- `lang/` exists since step 1.3 (`pick.php` only). Validation messages are still English until the shell (phase 2) sets the German locale.

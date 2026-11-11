@@ -32,6 +32,7 @@ class Task extends Model
 
     protected $fillable = [
         'title',
+        'first_step',
         'list',
         'is_today',
         'today_date',

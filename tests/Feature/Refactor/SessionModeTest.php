@@ -2,11 +2,16 @@
 
 namespace Tests\Feature\Refactor;
 
+use App\Models\EventCategory;
+use App\Models\EventTemplate;
 use App\Models\PomodoroSession;
 use App\Models\Task;
 use App\Models\User;
 use App\Planning\Session\Phase;
+use App\Planning\Size;
 use App\Services\FocusSession;
+use App\Services\Planning\Suggestions;
+use App\Services\Planning\SuggestionStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,8 +22,8 @@ use Tests\TestCase;
  * stored on the server, a reload or the other device sees the same state, Done
  * completes the task and is harmless the second time.
  *
- * Not covered yet: "Done returns the board with the next suggestion" — the
- * suggestion is the pick engine (step 1.3); here the caller passes the next task.
+ * "Done returns the board with the next suggestion" (step 1.3): done() asks the
+ * pick engine for the next task, and that task is what the board suggests.
  */
 class SessionModeTest extends TestCase
 {
@@ -235,5 +240,86 @@ class SessionModeTest extends TestCase
         $this->user->delete();
 
         $this->assertDatabaseCount('pomodoro_sessions', 0);
+    }
+
+    // ── A15 with the pick engine (step 1.3) ─────────────────────────────
+
+    /** Deep work (pomodoro) Mon–Fri 19:30–21:30. */
+    private function deepWorkEvenings(): void
+    {
+        $category = EventCategory::factory()->for($this->user)->pomodoro()->create();
+        EventTemplate::factory()->for($this->user)->create([
+            'category_id' => $category->id, 'is_recurring' => true, 'recurrence' => '1,2,3,4,5',
+            'default_start' => '19:30', 'duration' => 120,
+        ]);
+    }
+
+    public function test_done_with_time_left_starts_the_suggested_next_task_inside_the_session(): void
+    {
+        $this->deepWorkEvenings();
+        $quick = Task::factory()->for($this->user)->create(['list' => 'todos', 'size' => Size::Quick]);
+        $next = Task::factory()->for($this->user)->create(['list' => 'tasks', 'hard_deadline' => '2026-11-11']);
+        $other = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $this->sessions->start($this->user, $quick->id, $this->at('19:30:00'));
+
+        $state = $this->sessions->done($this->user, $quick->id, $this->at('19:40:00'));
+
+        $this->assertTrue($quick->fresh()->is_completed);
+        $this->assertSame(Phase::Work, $state->phase);
+        $this->assertSame($next->id, $state->taskId, 'the deadline task, as the board suggests it');
+        $this->assertSame($next->id, (new Suggestions)->current($this->user, $this->at('19:40:01'))->task->id);
+        $this->assertNotSame($other->id, $state->taskId);
+    }
+
+    public function test_done_with_less_than_five_minutes_left_carries_the_next_suggestion_into_the_next_session(): void
+    {
+        $this->deepWorkEvenings();
+        $first = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $next = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $this->sessions->start($this->user, $first->id, $this->at('19:30:00'));
+
+        $state = $this->sessions->done($this->user, $first->id, $this->at('19:52:00'));
+
+        $this->assertSame(Phase::ShortBreak, $state->phase);
+        $this->assertSame($next->id, $state->taskId);
+    }
+
+    public function test_done_on_the_last_task_returns_to_the_board(): void
+    {
+        $this->deepWorkEvenings();
+        $only = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $this->sessions->start($this->user, $only->id, $this->at('19:30:00'));
+
+        $state = $this->sessions->done($this->user, $only->id, $this->at('19:40:00'));
+
+        $this->assertSame(Phase::Idle, $state->phase);
+        $this->assertSame(SuggestionStatus::Empty, (new Suggestions)->current($this->user, $this->at('19:40:01'))->status);
+    }
+
+    public function test_done_twice_through_the_pick_engine_is_harmless(): void
+    {
+        $this->deepWorkEvenings();
+        $first = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $second = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $third = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $this->sessions->start($this->user, $first->id, $this->at('19:30:00'));
+
+        $this->sessions->done($this->user, $first->id, $this->at('19:35:00'));
+        $state = $this->sessions->done($this->user, $first->id, $this->at('19:35:01'));
+
+        $this->assertSame($second->id, $state->taskId);
+        $this->assertFalse($second->fresh()->is_completed);
+        $this->assertFalse($third->fresh()->is_completed);
+    }
+
+    public function test_done_outside_blocks_still_finds_the_next_task(): void
+    {
+        $first = Task::factory()->for($this->user)->create(['list' => 'tasks']);
+        $next = Task::factory()->for($this->user)->create(['list' => 'todos']);
+        $this->sessions->start($this->user, $first->id, $this->at('17:00:00'));
+
+        $state = $this->sessions->done($this->user, $first->id, $this->at('17:05:00'));
+
+        $this->assertSame($next->id, $state->taskId, 'the user chose to work; no area filter outside blocks');
     }
 }
