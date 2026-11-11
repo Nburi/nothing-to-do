@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 /**
  * Raw, filterable task listing — independent of the user's active list
  * concept (see GetBoardTool for a concept-aware view). Mirrors
- * Api\TaskController::index()'s own filter shape plus group_id, which the
+ * Api\TaskController::index()'s own filter shape, which the
  * REST API doesn't support.
  */
 class ListTasksTool extends McpTool

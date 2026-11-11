@@ -16,6 +16,7 @@ class EventCategoryResource extends JsonResource
             'name' => $this->name,
             'color' => $this->color,
             'pomodoro_enabled' => $this->pomodoro_enabled,
+            'area_ids' => $this->areas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'sort_order' => $this->sort_order,
         ];
     }

@@ -151,6 +151,64 @@
             </div>
         </section>
 
+        {{-- Erfassen und Planung (Refactor, Schritt 1.5) --}}
+        <section id="planning" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Erfassen und Planung</h2>
+            <p class="mb-4 text-sm text-ink-soft">Ein Gedanke in die Inbox, der eine Vorschlag für jetzt, die laufende Session und die Auslastung der nächsten Tage.</p>
+
+            <div class="space-y-4 text-sm">
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /capture</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">text</code> (Pflicht, bis 500 Zeichen) landet so, wie er ist, in der Inbox. Gedacht für den Kurzbefehl:
+                        ein Token, das <span class="font-medium text-ink">nur</span> das darf, erstellst du mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">php artisan app:capture-token &lt;E-Mail&gt;</code>.
+                        Antwort: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">message</code> zum Anzeigen. Höchstens 30 pro Minute.
+                    </p>
+                    <pre class="mt-2 overflow-x-auto rounded-card border border-line bg-paper p-4 text-xs text-ink"><code>curl -X POST {{ $apiBase }}/capture \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
+  -d '{"text": "Kompass für Samstag einpacken"}'</code></pre>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /suggestion · POST /suggestion/another · PUT /evening/battery</p>
+                    <p class="mt-1 text-ink-soft">
+                        Der eine Vorschlag mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start_with</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">why</code>. Nur in einem Pomodoro-Block; sonst
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">status: outside_blocks</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">next_block_at</code>. <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">another</code> zeigt den nächsten,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">battery</code> (low, okay, good, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">null</code> = übersprungen) stellt den Akku für heute Abend ein.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /session · POST /session/{start|done|pause|resume|stop}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Die Pomodoro-Session, auf jedem Gerät dieselbe (25 Min. Arbeit, 5 Min. Pause, nach jeder vierten 15).
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">start</code> mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_id</code> (ohne: der übernommene Task), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">done</code> mit der
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">task_id</code> des laufenden Tasks: hakt ihn ab und startet den nächsten Vorschlag in derselben Session, wenn noch mindestens 5 Minuten übrig sind.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /forecast · POST /tasks/{id}/drop · POST /tasks/{id}/shrink</p>
+                    <p class="mt-1 text-ink-soft">
+                        Auslastung pro Tag (Kapazität in Sessions, geplante Minuten, überlastet ja/nein), was zu spät würde und welche weichen
+                        Termine zuerst rutschen sollen. <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">drop</code> legt einen Task in „Später“ (nichts wird gelöscht), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">shrink</code> macht ihn eine Grösse kleiner.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /areas · POST /areas · PATCH /areas/{id} · DELETE /areas/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Bereiche für Tasks (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">color</code>). Welche Bereiche eine Kategorie vorschlägt, setzt
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">area_ids</code> bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">PATCH /event-categories/{id}</code>. Löschen entfernt nur die Verknüpfung, kein Task geht verloren.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">Neue Felder bei /tasks</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">size</code> (quick, short, long, block), <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">hard_deadline</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">soft_deadline</code>,
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">area_id</code>, <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">first_step</code> und <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">list</code> <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">later</code>.
+                        <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">deadline</code> / <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">due_date</code> funktionieren weiter und zeigen dieselben Daten.
+                    </p>
+                </div>
+            </div>
+        </section>
+
         {{-- Zeitplan --}}
         <section id="schedule" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-1 text-base font-medium text-ink">Zeitplan</h2>
@@ -282,7 +340,7 @@
                     <h3 class="mb-2 text-sm font-medium text-ink">① Schnell in die Inbox</h3>
                     <ol class="list-decimal space-y-1 pl-5 text-sm text-ink-soft">
                         <li><span class="font-medium text-ink">Eingabe erfragen</span> (Text) — Prompt: "Was gibt's zu tun?"</li>
-                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/tasks</code>, Body: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"title": Bereitgestellte Eingabe}</code></li>
+                        <li><span class="font-medium text-ink">Inhalt von URL abrufen</span> — POST <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">/capture</code>, Body: <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{"text": Bereitgestellte Eingabe}</code> (mit dem Capture-Token, das nur das darf)</li>
                         <li><span class="font-medium text-ink">Ergebnis anzeigen</span> (optional) — "Hinzugefügt ✓"</li>
                     </ol>
                     <p class="mt-1.5 text-xs text-ink-faint">Als Home-Screen-Symbol oder Siri-Phrase ("Hey Siri, notiere …") die schnellste Erfassung unterwegs.</p>
