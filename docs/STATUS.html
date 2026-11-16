@@ -223,7 +223,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
         <div class="sub">3.6 review, all of phase 4 and 5</div>
       </div>
     </div>
-    <p class="summary-note">Phases 0 to 3 are built. Nothing from phase 2 or 3 is merged yet: it all sits in one stack of 10 PRs that has to be merged bottom-up. Phase 4 (week plan editor, crunch) is next to build.</p>
+    <p class="summary-note">Phases 0 to 3 are built. Nothing from phase 2 or 3 is merged yet: it all sits in one stack of 10 PRs that has to be merged bottom-up. <strong>New:</strong> main is merged into the refactor in PR #22 (all 21 newer migrations, 1814 tests green), waiting for your review. Phase 4 (week plan editor, crunch) is next to build.</p>
   </section>
 
   <!-- Phase map -->
@@ -278,9 +278,16 @@ footer { font-size: 0.82rem; color: var(--muted); }
             <a href="https://github.com/Nburi/nothing-to-do/pull/10">#10 1.4</a>
           </div>
         </div>
-        <div class="callout bad">
-          <strong>refactor/refactor is far behind main</strong>
-          <span>134 commits behind <code>origin/main</code>, including about 21 migrations (task sessions, reminders, repeat rules, OAuth, day bounds, buffers). Prod data lives in those tables, so the switch in 5.4 gets harder the longer this waits.</span>
+        <div class="panel">
+          <div class="eyebrow">Main merge into refactor/refactor</div>
+          <ol class="stack">
+            <li>
+              <span class="node">22</span>
+              <span class="t"><a href="https://github.com/Nburi/nothing-to-do/pull/22">Merge main into refactor/refactor</a><span class="branch">feature/merge-main → refactor/refactor · independent of the stack</span></span>
+              <span class="ci none">CI running</span>
+            </li>
+          </ol>
+          <p class="muted" style="font-size:.86rem">134 commits and 21 migrations from main. Removed features (Projekte, Gruppen, Agenda, Notfall, Vorbereiten) stay removed; their tables stay and the export still reads them. 1814 tests pass locally.</p>
         </div>
       </div>
     </div>
@@ -333,9 +340,24 @@ footer { font-size: 0.82rem; color: var(--muted); }
         <p>The open part of the phase 1 gate. Tooling is merged (#5); the rehearsal on a dev copy lost nothing.</p>
       </div>
       <div class="ask">
-        <div class="top"><span class="tag decide">Decide</span><span class="mono muted">main → refactor</span></div>
-        <h3>Bring main into refactor/refactor</h3>
-        <p>Merge now, or decide per table what happens to the 21 newer migrations.</p>
+        <div class="top"><span class="tag block">Blocks</span><span class="mono muted">#22</span></div>
+        <h3>Review and merge the main merge</h3>
+        <p>Pull it on the dev server, run <code>php artisan migrate</code>, click through the old screens. Merge it before the stack; the stack branches then take refactor/refactor in.</p>
+      </div>
+      <div class="ask">
+        <div class="top"><span class="tag do">Do</span><span class="mono muted">main · phpseclib</span></div>
+        <h3>phpseclib hotfix for prod</h3>
+        <p>main has phpseclib 4.0.1 (CPU-exhaustion advisory, via Passport). Fixed to 4.0.3 in #22; prod needs the same patch.</p>
+      </div>
+      <div class="ask">
+        <div class="top"><span class="tag decide">Decide</span><span class="mono muted">5.4 · data</span></div>
+        <h3>Category links to removed features</h3>
+        <p>Prod categories linked to a project, group or Agenda entry now show no link. Clear them at the switch, or turn them into a text link?</p>
+      </div>
+      <div class="ask">
+        <div class="top"><span class="tag decide">Decide</span><span class="mono muted">legal</span></div>
+        <h3>Datenschutz text</h3>
+        <p>The privacy page still describes the class Agenda and Projekte. What should it say after the switch?</p>
       </div>
       <div class="ask">
         <div class="top"><span class="tag do">Do</span><span class="mono muted">#14</span></div>
@@ -400,8 +422,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
   <section class="take" aria-labelledby="h-take">
     <h2 id="h-take">My take on what to do next</h2>
     <ol>
-      <li><strong>Shrink the stack before building more.</strong> Ten stacked PRs means every fix low in the stack has to be merged up through nine branches. Merging #11 to #13 (phase 1) would already help a lot.</li>
-      <li><strong>Merge main into refactor/refactor right after that.</strong> 134 commits and about 21 migrations is the biggest risk for the switch. Doing it before phase 4 keeps the conflicts small.</li>
+      <li><strong>Merge #22 (main merge) first.</strong> It is independent of the stack. Afterwards each stack branch takes refactor/refactor in, bottom-up; expect conflicts mostly in TODO.md and the old views.</li>
+      <li><strong>Then shrink the stack before building more.</strong> Ten stacked PRs means every fix low in the stack has to be merged up through nine branches. Merging #11 to #13 (phase 1) would already help a lot.</li>
       <li><strong>Get the prod dump.</strong> It closes the phase 1 gate and makes C3 and C15 checkable.</li>
       <li><strong>Then phase 4.</strong> 4.1 (week plan editor) also unblocks B1, B2 and B6.</li>
     </ol>
