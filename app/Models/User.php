@@ -31,6 +31,7 @@ use Laravel\Sanctum\HasApiTokens;
     'is_admin',
     'last_login_at',
     'list_concept',
+    'nudge_times',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -429,6 +430,7 @@ class User extends Authenticatable
             'onboarding_completed_at' => 'datetime',
             'is_admin' => 'boolean',
             'last_login_at' => 'datetime',
+            'nudge_times' => 'array',
         ];
     }
 }

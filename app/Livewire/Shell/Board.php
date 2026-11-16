@@ -45,7 +45,7 @@ class Board extends Component
     /** A calm one-line message after an action (shown inline, never an alert). */
     public ?string $notice = null;
 
-    /** The nudge links to /board?reset=1 (step 3.3): offer the reset even before EveningReset::DUE_FROM. */
+    /** The nudge links to /board?reset=1 (step 3.3): offer the reset even before the nudge time (EveningNudge::offerFrom). */
     #[Locked]
     public bool $resetRequested = false;
 

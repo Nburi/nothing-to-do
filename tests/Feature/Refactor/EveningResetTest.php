@@ -21,7 +21,8 @@ use Tests\TestCase;
 
 /**
  * Step 3.2: the ten minute reset and the battery question at its end (R2, G4, CONVENTIONS 11).
- * Monday 9 November 2026 in Zurich; the reset is due from 17:00 local (EveningReset::DUE_FROM).
+ * Monday 9 November 2026 in Zurich; the user set no nudge time, so the reset is due from 17:00 local
+ * (EveningNudge::FALLBACK); step 3.3's own times are tested at the end.
  */
 class EveningResetTest extends TestCase
 {
@@ -208,5 +209,43 @@ class EveningResetTest extends TestCase
             $this->assertMatchesRegularExpression('/data-action="reset" data-layout="'.$layout.'" data-mode="board"/', $html);
         }
         $this->assertStringContainsString('wire:click="beginReset"', $html);
+    }
+
+    // Step 3.3: the offer follows the user's nudge time per weekday.
+
+    public function test_with_a_nudge_time_the_reset_is_offered_from_that_time(): void
+    {
+        $this->user->forceFill(['nudge_times' => ['1' => '19:15']])->save();
+
+        $this->at('19:14');
+        $this->assertSame(ResetStage::Hidden, $this->stage(), 'not at 17:00 any more');
+
+        $this->at('19:15');
+        $this->assertSame(ResetStage::Offer, $this->stage());
+    }
+
+    public function test_an_early_nudge_time_offers_it_earlier_than_17(): void
+    {
+        $this->user->forceFill(['nudge_times' => ['1' => '16:00']])->save();
+        $this->at('16:05');
+
+        $this->assertSame(ResetStage::Offer, $this->stage());
+    }
+
+    public function test_a_weekday_left_empty_offers_nothing_by_itself_but_the_link_and_abschalten_work(): void
+    {
+        $this->user->forceFill(['nudge_times' => ['2' => '18:00']])->save(); // Tuesday only
+        $this->at('21:00'); // Monday
+
+        $this->assertSame(ResetStage::Hidden, $this->stage());
+        $this->assertSame(ResetStage::Offer, app(EveningReset::class)->stage($this->user, requested: true));
+        $this->board()->call('beginReset')->assertSee('data-reset="running"', false);
+    }
+
+    public function test_a_saved_but_empty_week_offers_nothing_by_itself(): void
+    {
+        $this->user->forceFill(['nudge_times' => []])->save();
+
+        $this->assertSame(ResetStage::Hidden, $this->stage());
     }
 }

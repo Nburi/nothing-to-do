@@ -15,6 +15,10 @@
             <livewire:theme-picker />
         </section>
 
+        <section id="abschalten" class="scroll-mt-20 rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
+            <livewire:shell.nudge-times />
+        </section>
+
         <section class="rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
             <livewire:shell.capture-tokens />
         </section>

@@ -7,7 +7,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Settings of the new app (step 2.2): appearance now, the Shortcut token from step 2.3.
+ * Settings of the new app (step 2.2): appearance, the evening nudge times (step 3.3) and the
+ * Shortcut token (step 2.3).
  * Reached from the gear in the top bar on both layouts.
  */
 #[Layout('layouts.shell')]

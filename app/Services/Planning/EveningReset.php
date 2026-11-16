@@ -16,8 +16,9 @@ use Carbon\CarbonImmutable;
  *
  * - The state lives on tonight's Evening row, so a reload or a second device shows the
  *   same screen (like the session, step 1.7).
- * - Offered once per evening: from DUE_FROM local time, or earlier when the nudge link
- *   (/board?reset=1) asks for it. Not on paused days, not during a running session, never
+ * - Offered once per evening: from the user's nudge time for this weekday (step 3.3,
+ *   EveningNudge::offerFrom; 17:00 for users who never set one), or at any time when the
+ *   nudge link (/board?reset=1) asks for it. Not on paused days, not during a running session, never
  *   again once it was done or skipped. Starting it by hand ("Abschalten") always works.
  * - Ten minutes at most. Skipping or ending early just closes it: nothing is counted, no
  *   streak, no message. A reset that ran out is closed by time alone, so reads never write.
@@ -27,12 +28,6 @@ use Carbon\CarbonImmutable;
 final class EveningReset
 {
     public const MINUTES = 10;
-
-    /**
-     * Local time from which the reset is offered on the first visit of the evening. Step 3.3
-     * replaces this with the nudge time per weekday; the nudge itself links to /board?reset=1.
-     */
-    public const DUE_FROM = '17:00';
 
     public function stage(User $user, bool $requested = false, bool $inSession = false, ?CarbonImmutable $now = null): ResetStage
     {
@@ -53,7 +48,8 @@ final class EveningReset
             return ResetStage::Hidden;
         }
 
-        $due = $requested || $local->format('H:i') >= self::DUE_FROM;
+        $from = app(EveningNudge::class)->offerFrom($user, $local);
+        $due = $requested || ($from !== null && $local->format('H:i') >= $from);
 
         return $due ? ResetStage::Offer : ResetStage::Hidden;
     }
