@@ -168,7 +168,7 @@ return [
         'remove' => 'Remove',
         'remove_label' => 'Remove the time for :day',
         'time_label' => 'Time for :day',
-        'none' => 'none',
+        'none' => 'quiet',
         'copy_weekdays' => 'Mon–Fri like Monday',
         'save' => 'Save',
         'saving' => 'Saving …',

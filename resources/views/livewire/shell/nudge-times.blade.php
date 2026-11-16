@@ -82,12 +82,13 @@
                             <button type="button" wire:click="copyWeekdays" class="ml-auto text-sm font-semibold text-accent-ink underline decoration-line underline-offset-4 hover:decoration-current focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('shell.nudge.copy_weekdays') }}</button>
                         @endif
                     @else
-                        <span class="w-32 text-sm text-ink-faint">{{ __('shell.nudge.none') }}</span>
-                        <button type="button" wire:click="addTime({{ $day }})"
-                            class="inline-flex h-9 items-center gap-1.5 rounded-card px-2 text-sm font-semibold text-ink-soft hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                        {{-- Sits in the input's slot: an empty day reads as an empty field you can fill. --}}
+                        <button type="button" wire:click="addTime({{ $day }})" aria-label="{{ __('shell.nudge.add') }}: {{ $label['long'] }}"
+                            class="inline-flex h-10 w-32 items-center justify-center gap-1.5 rounded-card border border-dashed border-line text-sm font-semibold text-ink-soft hover:border-ink-faint hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                             @include('shell.icon', ['name' => 'plus', 'class' => 'size-4'])
                             {{ __('shell.nudge.add') }}
                         </button>
+                        <span class="text-xs text-ink-faint">{{ __('shell.nudge.none') }}</span>
                     @endif
 
                     @error("times.{$day}")

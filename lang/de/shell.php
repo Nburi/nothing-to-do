@@ -169,7 +169,7 @@ return [
         'remove' => 'Entfernen',
         'remove_label' => 'Zeit für :day entfernen',
         'time_label' => 'Zeit für :day',
-        'none' => 'keine',
+        'none' => 'still',
         'copy_weekdays' => 'Mo–Fr wie Montag',
         'save' => 'Speichern',
         'saving' => 'Speichert …',
