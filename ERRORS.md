@@ -2,6 +2,30 @@
 
 Errors and surprises worth remembering, with the fix. Newest first.
 
+## A push command crashes every tick on a server without VAPID keys (2026-11-16)
+
+**Symptom.** `php artisan app:send-evening-nudges` on the dev worktree failed with
+`[VAPID] Public key should be 65 bytes long when decoded.` before looking at a single user.
+
+**Cause.** `AppServiceProvider` builds `WebPush` with the VAPID keys from `.env`; when they are empty,
+building `PushNotifier` throws. Injecting it into `handle()` therefore breaks the whole command, even when
+nobody is due. (The older push commands have the same shape.)
+
+**Fix.** Resolve `PushNotifier` only when a push is actually sent, inside the guarded block
+(`EveningNudge::sendIfDue`). Regression test in `NudgeSchedulerTest`.
+
+**Rule:** never inject `PushNotifier` into a scheduled command's `handle()`; resolve it at send time.
+
+## `npm run build` in a worktree: "Can't resolve 'tailwindcss'" (2026-11-16)
+
+**Symptom.** The build stopped at `resources/css/app.css` with `Can't resolve 'tailwindcss'`.
+
+**Cause.** The worktree's `node_modules` was installed before the Tailwind 4 move (step 2.1) and still had
+`tailwindcss` 3.4; `package-lock.json` says 4.3.5.
+
+**Fix.** `npm ci` in the worktree (installs exactly the lockfile; no package changes). After switching to a
+branch with a changed `package-lock.json`, run `npm ci` before building.
+
 ## SQLite date columns hold two formats (2026-11-08)
 
 **Symptom:** a paused day still showed a block that had been edited "this week only" in the form.

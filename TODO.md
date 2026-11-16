@@ -39,7 +39,10 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [ ] 3.1 known issue: in the Stapel layout in a narrow *desktop* window the card jumps 20 px after the fold (a scrollbar shows for ~400 ms). Not on phones. Two fixes failed and were reverted; next idea `scrollbar-gutter: stable`. Waiting for Niels: fix now or leave it?
 - [x] 3.2 Battery check-in and reset (`feature/battery-reset`). Notes in `docs/steps/3.2.md`. Offered from 17:00 or via `/board?reset=1` until 3.3 brings the nudge time per weekday.
 - [ ] 3.2 open for Niels: should a reset started by hand during a work session pause the pomodoro? (now it keeps running)
-- [ ] 3.3 Nudge at a fixed time per weekday (Wi-Fi path later, once C2 passes).
+- [x] 3.3 Nudge at a fixed time per weekday (`feature/nudge-time`). Notes in `docs/steps/3.3.md`. Time-based only; the reset is offered from the nudge time (17:00 for users who never set one).
+- [ ] 3.3 open for Niels: TESTBERICHT C13 (a real push on the iPhone from the dev server; needs VAPID keys and cron `schedule:run`), C12 updated. Check the decisions in `docs/steps/3.3.md`.
+- [ ] 3.3 later: the Wi-Fi arrival path (`POST /api/arrival`) once spike 0.1 passes C2; then it should also respect "one nudge per evening" (`evenings.nudge_sent_at`).
+- [ ] The older push commands (`app:send-progress-reminders`, event notifications) inject `PushNotifier` and crash every tick on a server without VAPID keys (see ERRORS.md, 2026-11-16). Harmless on prod (keys set); fix when those commands are touched.
 - [ ] 3.4 Free-time ideas, "Meins behalten", Ideen view (cards).
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
