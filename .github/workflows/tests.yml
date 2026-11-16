@@ -53,6 +53,8 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+          # The MCP OAuth server (Passport) signs tokens with these; they are gitignored.
+          php artisan passport:keys --no-interaction
 
       - name: Run tests
         run: php artisan test
