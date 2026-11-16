@@ -12,8 +12,10 @@
         /* null = follow typing; true/false = the user overrode it with the button. */
         forced: null,
         targets: @js($targets),
-        /* Optional fields appear as soon as there is something to attach them to. */
+        /* Optional fields appear as soon as there is something to attach them to.
+           A reminder is always open: its day is the one thing it needs. */
         get showExtra() {
+            if ($wire.target === 'reminder') return true;
             return this.forced !== null ? this.forced : this.typed.trim().length > 0;
         },
         cycle(dir) {
@@ -22,7 +24,7 @@
         },
     }"
     @captured.window="typed = ''; forced = null"
-    @quick-capture-opened.window="typed = ''; forced = null"
+    @quick-capture-opened.window="typed = $event.detail?.title ?? ''; forced = null"
     x-show="$store.quickCapture.open"
     x-cloak
     class="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
@@ -59,16 +61,17 @@
                     placeholder="Was steht an?"
                     :placeholder="{
                         craft: 'Was möchtest du basteln?',
+                        reminder: 'Woran darfst du nicht vergessen?',
                     }[$wire.target] ?? 'Was steht an?'"
                     autocomplete="off"
                     @input="typed = $event.target.value"
                     @keydown.down.prevent="cycle(1)"
                     @keydown.up.prevent="cycle(-1)"
-                    class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0"
+                    class="min-w-0 flex-1 border-0 bg-transparent p-0 py-2 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0 sm:py-0"
                 />
                 <button
                     type="submit"
-                    class="flex-none rounded-card bg-forest px-3.5 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    class="flex-none rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white sm:px-3.5 sm:py-1.5 transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                     Erfassen
                 </button>
@@ -81,7 +84,7 @@
                         type="button"
                         wire:click="setTarget('{{ $t }}')"
                         @class([
-                            'rounded-full border px-2.5 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                            'rounded-full border px-3 py-2 text-xs transition focus:outline-none sm:px-2.5 sm:py-1 focus-visible:ring-2 focus-visible:ring-overprint',
                             'border-forest bg-forest text-white' => $target === $t,
                             'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $target !== $t,
                         ])
@@ -93,8 +96,9 @@
 
                 <button
                     type="button"
+                    x-show="$wire.target !== 'reminder'"
                     @click="forced = !showExtra"
-                    class="ml-auto flex items-center gap-1 rounded-card px-1.5 py-1 text-xs text-ink-faint transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="ml-auto flex items-center gap-1 rounded-card px-2 py-2 text-xs text-ink-faint sm:px-1.5 sm:py-1 transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
                 >
                     <span x-text="showExtra ? 'Weniger' : 'Mehr'">Mehr</span>
@@ -148,6 +152,43 @@
                         class="w-full resize-y rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
                     ></textarea>
                 </div>
+
+                {{-- Reminder ("Nicht vergessen"): the day is the one thing it needs, so this section
+                     is always open for it. The pushes are two switches
+                     with sensible defaults; nothing is sent to a device that hasn't enabled push. --}}
+                <div x-show="$wire.target === 'reminder'" style="display: none;" class="flex flex-col gap-3">
+                    <div>
+                        <span class="mb-1.5 block text-[11px] font-medium text-ink-faint" id="qc-reminder-day-label">Wann?</span>
+                        <div class="flex flex-wrap items-center gap-1.5" role="group" aria-labelledby="qc-reminder-day-label">
+                            @foreach ($this->reminderDays as $option)
+                                <button
+                                    type="button"
+                                    wire:click="$set('date', '{{ $option['date'] }}')"
+                                    @class([
+                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                        'border-forest bg-forest text-white' => $date === $option['date'],
+                                        'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $date !== $option['date'],
+                                    ])
+                                    aria-pressed="{{ $date === $option['date'] ? 'true' : 'false' }}"
+                                >{{ $option['label'] }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="max-w-[11rem]">
+                        <label for="qc-reminder-date" class="mb-1 block text-[11px] font-medium text-ink-faint">Oder ein anderer Tag</label>
+                        <input id="qc-reminder-date" type="date" wire:model="date" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                    </div>
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
+                            <input type="checkbox" wire:model="reminderEvening" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            Am Vorabend erinnern
+                        </label>
+                        <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
+                            <input type="checkbox" wire:model="reminderOnDay" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            Am Tag selbst erinnern
+                        </label>
+                    </div>
+                </div>
             </div>
 
             {{-- Footer: errors, the "just captured" confirmation, or the key hints. --}}
@@ -170,7 +211,7 @@
                 @error('whereToBegin')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
-                @error('newGroupName')
+                @error('date')
                     <span class="text-signal">{{ $message }}</span>
                 @enderror
 

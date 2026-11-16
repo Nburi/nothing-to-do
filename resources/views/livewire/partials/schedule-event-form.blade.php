@@ -44,7 +44,7 @@
                             type="button"
                             wire:click="$set('eventKind', '{{ $val }}')"
                             @class([
-                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                 'bg-forest text-white shadow-sm' => $eventKind === $val,
                                 'text-ink-soft hover:text-ink' => $eventKind !== $val,
                             ])
@@ -71,7 +71,12 @@
                                             'border-line text-ink-soft hover:border-ink-faint/60' => $eventCategoryId !== $cat->id,
                                         ])
                                     >
-                                        <span class="h-2.5 w-2.5 rounded-full {{ $swatches[$cat->color] ?? 'bg-contour' }}"></span>
+                                        <span
+                                            @class([
+                                                'h-2.5 w-2.5 rounded-full transition', $swatches[$cat->color] ?? 'bg-contour',
+                                                'ring-2 ring-offset-1 ring-offset-surface ring-ink/60' => $eventCategoryId === $cat->id,
+                                            ])
+                                        ></span>
                                         {{ $cat->name }}
                                     </button>
                                 @endforeach
@@ -109,6 +114,50 @@
                     </div>
                 </div>
                 @error('eventEnd') <p class="-mt-2 text-xs text-signal">{{ $message }}</p> @enderror
+
+                {{-- Weg-/Pufferzeit. Unlike the linked tasks and attribute values below, this
+                     is offered for a recurring series too: the way to training is the same
+                     length every Wednesday, so it belongs on the template. --}}
+                <div>
+                    <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Weg- und Pufferzeit</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    id="eventBufferBefore"
+                                    type="number"
+                                    min="0"
+                                    max="240"
+                                    step="5"
+                                    wire:model="eventBufferBefore"
+                                    class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0"
+                                />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="eventBufferBefore" class="mt-1 block text-[11px] text-ink-faint">davor — Hinweg</label>
+                            @error('eventBufferBefore') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    id="eventBufferAfter"
+                                    type="number"
+                                    min="0"
+                                    max="240"
+                                    step="5"
+                                    wire:model="eventBufferAfter"
+                                    class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0"
+                                />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="eventBufferAfter" class="mt-1 block text-[11px] text-ink-faint">danach — Rückweg</label>
+                            @error('eventBufferAfter') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                    <p class="mt-1.5 text-[11px] text-ink-faint">
+                        Belegt Zeit auf der Achse, zählt aber nicht als Fokuszeit — unterwegs wird nicht gearbeitet.
+                    </p>
+                </div>
 
                 @if ($eventKind === 'appointment')
                     <div>
@@ -197,11 +246,27 @@
                     <div x-data="{ taskPickerOpen: false }">
                         <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Aufgaben</label>
 
+                        @if ($this->eventCategoryLinkLabel !== null)
+                            <p class="mb-2 text-xs text-ink-faint">
+                                Diese Kategorie ist bereits mit „{{ $this->eventCategoryLinkLabel }}“ verknüpft — hier nur etwas wählen, wenn dieser Termin etwas anderes braucht.
+                            </p>
+                        @endif
+
                         @if (count($eventLinkedTasks) > 0)
                             <div class="mb-2 flex flex-wrap gap-1.5">
                                 @foreach ($eventLinkedTasks as $picked)
-                                    <span wire:key="picked-{{ $picked['id'] }}" class="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper/70 py-1 pl-2.5 pr-1.5 text-xs text-ink">
+                                    <span wire:key="picked-{{ $picked['id'] }}" class="inline-flex items-center gap-1 rounded-full border border-line bg-paper/70 py-1 pl-2 pr-1.5 text-xs text-ink">
+                                        @if (count($eventLinkedTasks) > 1)
+                                            <button type="button" wire:click="moveEventLinkedTask({{ $picked['id'] }}, 'up')" @disabled($loop->first) aria-label="„{{ $picked['title'] }}“ früher vorschlagen" class="grid h-4 w-4 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-line/60 hover:text-ink disabled:pointer-events-none disabled:opacity-30">
+                                                <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                                            </button>
+                                        @endif
                                         <span class="max-w-[11rem] truncate">{{ $picked['title'] }}</span>
+                                        @if (count($eventLinkedTasks) > 1)
+                                            <button type="button" wire:click="moveEventLinkedTask({{ $picked['id'] }}, 'down')" @disabled($loop->last) aria-label="„{{ $picked['title'] }}“ später vorschlagen" class="grid h-4 w-4 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-line/60 hover:text-ink disabled:pointer-events-none disabled:opacity-30">
+                                                <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                                            </button>
+                                        @endif
                                         <button
                                             type="button"
                                             wire:click="toggleEventLinkedTask({{ $picked['id'] }})"

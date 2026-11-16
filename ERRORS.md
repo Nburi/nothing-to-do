@@ -22,3 +22,11 @@ Livewire::test(TaskBoard::class)
 ```
 
 Where it matters, also assert that the foreign row is unchanged (`assertDatabaseHas`).
+
+## MCP OAuth tests fail with `LogicException: Invalid key supplied` (2026-11-16)
+
+**Symptom.** In a fresh checkout, worktree or on CI, every `McpOAuth*` test gets a 500 instead of 200/401.
+
+**Cause.** Passport signs the MCP OAuth tokens with `storage/oauth-private.key` and `storage/oauth-public.key`. Both are gitignored, so a new checkout has none.
+
+**Fix.** Run `php artisan passport:keys --no-interaction` once per checkout. CI does it in the "Prepare environment" step of `.github/workflows/tests.yml`.

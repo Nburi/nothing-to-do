@@ -1,16 +1,35 @@
 {{--
-    One chip in the Zeitplan's all-day strip: a task deadline/Wunschtermin, on its own
-    date or (dashed) as an advance preview. Colours mirror the rest of the app: hard deadline =
-    contour, soft Wunschtermin = neutral (see task-card.blade.php).
+    One chip in the Zeitplan's all-day strip: a task deadline/Wunschtermin or a Planer placement,
+    on its own date or (dashed) as an advance preview. Colours mirror the rest of the app: hard
+    deadline = contour, soft Wunschtermin = neutral (see task-card.blade.php). A Planer placement
+    (subtype=planned) gets a filled dot instead of a hollow ring — the one visual cue that
+    distinguishes "you scheduled work on this" from an actual deadline.
 --}}
 @php
     $styles = match (true) {
         $item['subtype'] === 'deadline' => ['dot' => 'border-contour', 'tx' => 'text-contour', 'bg' => 'bg-contour-soft'],
+        $item['subtype'] === 'planned' => ['dot' => 'border-ink-soft bg-ink-soft', 'tx' => 'text-ink-soft', 'bg' => 'bg-line/50'],
         default => ['dot' => 'border-ink-faint', 'tx' => 'text-ink-soft', 'bg' => 'bg-surface'],
     };
-    $toggleAction = 'toggleDeadlineTaskDone';
-    $sourceUrl = url('/app');
-    $sourceLabel = 'Zum Board';
+    $isPart = isset($item['sessionId']);
+    $toggleAction = match (true) {
+        $isPart => 'toggleDeadlinePartDone',
+        default => 'toggleDeadlineTaskDone',
+    };
+    $toggleId = $isPart ? $item['sessionId'] : $item['id'];
+    $sourceUrl = match (true) {
+        $item['subtype'] === 'planned' => route('planner'),
+        default => url('/app'),
+    };
+    $sourceLabel = match (true) {
+        $item['subtype'] === 'planned' => 'Zum Planer',
+        default => 'Zum Board',
+    };
+    $tooltip = match (true) {
+        $item['isPreview'] => 'in '.$item['daysUntil'].' Tagen fällig · '.$item['title'],
+        $item['subtype'] === 'planned' => 'Geplant: '.$item['title'],
+        default => $item['title'],
+    };
 @endphp
 <div
     @class([
@@ -18,13 +37,13 @@
         $styles['bg'] => ! $item['isPreview'],
         'border border-dashed border-line' => $item['isPreview'],
     ])
-    title="{{ $item['isPreview'] ? 'in '.$item['daysUntil'].' Tagen fällig · '.$item['title'] : $item['title'] }}"
+    title="{{ $tooltip }}"
 >
     <button
         type="button"
-        wire:click="{{ $toggleAction }}({{ $item['id'] }})"
-        class="grid h-3 w-3 flex-none place-items-center rounded-full border-[1.5px] {{ $styles['dot'] }} transition hover:scale-110"
-        aria-label="Erledigt markieren: {{ $item['title'] }}"
+        wire:click="{{ $toggleAction }}({{ $toggleId }})"
+        class="hit-area grid h-3 w-3 flex-none place-items-center rounded-full border-[1.5px] {{ $styles['dot'] }} transition hover:scale-110"
+        aria-label="{{ $isPart ? 'Teil erledigt markieren' : 'Erledigt markieren' }}: {{ $item['title'] }}"
     ></button>
 
     <span class="min-w-0 flex-1 truncate text-[11px] {{ $item['isPreview'] ? $styles['tx'].' opacity-80' : $styles['tx'] }}">{{ $item['title'] }}</span>

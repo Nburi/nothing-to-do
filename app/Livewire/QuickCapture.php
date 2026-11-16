@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Task;
 use App\Services\AppModules;
 use App\Services\ListConcepts;
+use App\Services\Reminders;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -28,7 +29,7 @@ class QuickCapture extends Component
      * are also the task `list` value they write; the last goes to an entirely
      * different table, which is why this isn't just Task::BOARD_LISTS.
      */
-    public const TARGETS = ['inbox', 'todos', 'tasks', 'craft'];
+    public const TARGETS = ['inbox', 'todos', 'tasks', 'reminder', 'craft'];
 
     /** Targets that create a Task — the value doubles as the `list` column. */
     public const TASK_TARGETS = ['inbox', 'todos', 'tasks'];
@@ -65,6 +66,16 @@ class QuickCapture extends Component
     public ?int $duration = null;
 
     public string $whereToBegin = '';
+
+    /**
+     * Reminder target ("Nicht vergessen", see App\Services\Reminders): the day it is for and which
+     * pushes it gets. Reset when the target changes to anything else.
+     */
+    public ?string $date = null;
+
+    public bool $reminderEvening = true;
+
+    public bool $reminderOnDay = true;
 
     /**
      * The thing captured last, echoed back as a confirmation line so the panel
@@ -154,9 +165,39 @@ class QuickCapture extends Component
         return match ($target) {
             'todos' => 'To-Do',
             'tasks' => 'Task',
+            'reminder' => 'Erinnerung',
             'craft' => 'Bastelidee',
             default => 'Inbox',
         };
+    }
+
+    /**
+     * The quick day choices of the reminder target: tomorrow, the day after and then the next
+     * five days by weekday name — the way "Mittwoch" is actually said. Today is deliberately not
+     * offered as a chip (a reminder for right now is a task); the date field still accepts it.
+     *
+     * @return list<array{date: string, label: string}>
+     */
+    #[Computed]
+    public function reminderDays(): array
+    {
+        $today = auth()->user()->localToday();
+        $wd = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+        $days = [];
+
+        for ($i = 1; $i <= 7; $i++) {
+            $day = $today->copy()->addDays($i);
+            $days[] = [
+                'date' => $day->toDateString(),
+                'label' => match ($i) {
+                    1 => 'Morgen',
+                    2 => 'Übermorgen',
+                    default => $wd[$day->dayOfWeek],
+                },
+            ];
+        }
+
+        return $days;
     }
 
     /** The notes buffer rendered to safe HTML for the panel's preview (task targets only). */
@@ -194,6 +235,17 @@ class QuickCapture extends Component
             $this->deadline = null;
         }
 
+        // The date field belongs to the reminder target; any other target drops it.
+        if ($target !== 'reminder') {
+            $this->date = null;
+        } else {
+            $tomorrow = auth()->user()->localToday()->addDay()->toDateString();
+
+            if ($this->date === null || $this->date < auth()->user()->localToday()->toDateString()) {
+                $this->date = $tomorrow;
+            }
+        }
+
         $this->resetValidation();
     }
 
@@ -216,9 +268,9 @@ class QuickCapture extends Component
      * reset above already cleared it to.
      */
     #[On('quick-capture-opened')]
-    public function resetPanel(?string $target = null, ?bool $important = null, ?string $dueDate = null): void
+    public function resetPanel(?string $target = null, ?bool $important = null, ?string $dueDate = null, ?string $title = null): void
     {
-        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured']);
+        $this->reset(['title', 'target', 'deadline', 'dueDate', 'important', 'duration', 'notes', 'whereToBegin', 'captured', 'date', 'reminderEvening', 'reminderOnDay']);
         $this->resetValidation();
 
         // reset() restores 'target' to its bare class-declared default
@@ -236,6 +288,17 @@ class QuickCapture extends Component
 
         if ($dueDate !== null) {
             $this->dueDate = $dueDate;
+        }
+
+        // The command palette's "erfassen" action: the sentence the user just
+        // typed there arrives pre-filled, so nothing has to be typed twice.
+        // Trimmed and capped like the field's own validation would.
+        if ($title !== null && trim($title) !== '') {
+            $this->title = mb_substr(trim($title), 0, 255);
+        }
+
+        if ($this->target === 'reminder') {
+            $this->date = auth()->user()->localToday()->addDay()->toDateString();
         }
     }
 
@@ -259,11 +322,37 @@ class QuickCapture extends Component
             'whereToBegin' => ['nullable', 'string', 'max:2000'],
         ];
 
+        // A reminder needs its day (never in the past) and is a little shorter than a task title.
+        if ($this->target === 'reminder') {
+            $rules['title'] = ['required', 'string', 'max:'.Reminders::TITLE_MAX];
+            $rules['date'] = ['required', 'date_format:Y-m-d', 'after_or_equal:'.auth()->user()->localToday()->toDateString()];
+            $rules['reminderEvening'] = ['boolean'];
+            $rules['reminderOnDay'] = ['boolean'];
+        }
+
         $this->validate($rules);
 
         $user = auth()->user();
         $title = $this->title;
         $notes = trim($this->notes);
+
+        if ($this->target === 'reminder') {
+            $reminder = Reminders::create($user, [
+                'title' => $title,
+                'remind_on' => $this->date,
+                'notify_evening_before' => $this->reminderEvening,
+                'notify_on_day' => $this->reminderOnDay,
+            ]);
+
+            // Day and the two switches survive, so writing down the shoes and the
+            // water bottle for the same Wednesday is the normal case.
+            $this->captured = ['title' => $title, 'label' => 'Erinnerung · '.$reminder->dateLabel($user->localToday())];
+            $this->reset(['title']);
+            $this->dispatch('captured');
+            $this->dispatch('reminders-changed');
+
+            return;
+        }
 
         match ($this->target) {
             'craft' => $user->craftIdeas()->create([
@@ -300,11 +389,14 @@ class QuickCapture extends Component
     {
         return [
             'title.required' => 'Ohne Titel geht es nicht.',
-            'title.max' => 'Höchstens 255 Zeichen.',
             'deadline.date' => 'Das ist kein gültiges Datum.',
             'dueDate.date' => 'Das ist kein gültiges Datum.',
             'notes.max' => 'Das ist zu lang — höchstens 5000 Zeichen.',
             'whereToBegin.max' => 'Das ist zu lang — höchstens 2000 Zeichen.',
+            'date.required' => 'Für die Erinnerung fehlt noch der Tag.',
+            'date.after_or_equal' => 'Das liegt schon in der Vergangenheit.',
+            'date.date_format' => 'Das ist kein gültiges Datum.',
+            'title.max' => 'Zu lang — höchstens :max Zeichen.',
         ];
     }
 

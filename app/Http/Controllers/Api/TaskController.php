@@ -52,7 +52,7 @@ class TaskController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        return (new TaskResource($this->userTask($request, $id)))->response();
+        return (new TaskResource($this->userTask($request, $id)->load('sessions')))->response();
     }
 
     public function store(Request $request): JsonResponse
@@ -64,6 +64,8 @@ class TaskController extends Controller
             'due_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'is_important' => ['sometimes', 'boolean'],
+            'repeat_rule' => ['sometimes', 'nullable', Rule::in(array_keys(Task::REPEAT_RULES))],
+            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:600'],
         ]);
 
         $task = $request->user()->tasks()->create(TaskMutator::attributesForCreate($data));
@@ -86,6 +88,8 @@ class TaskController extends Controller
             'due_date' => ['sometimes', 'nullable', 'date'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'is_important' => ['sometimes', 'boolean'],
+            'repeat_rule' => ['sometimes', 'nullable', Rule::in(array_keys(Task::REPEAT_RULES))],
+            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:600'],
             'is_completed' => ['sometimes', 'boolean'],
             'is_today' => ['sometimes', 'boolean'],
             'list' => ['sometimes', Rule::in(Task::LISTS)],

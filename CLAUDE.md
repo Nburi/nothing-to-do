@@ -14,6 +14,7 @@ Here I'm building a todo list app. It was once just an app for me, because I had
 | `docs/REQUIREMENTS.md` | The contract the refactor is built and tested against (R1–R10, session and capacity rules) |
 | `docs/REFACTOR_PLAN.md` | Decisions, chosen layouts, flows, data migration map, risks and the phases with skills |
 | `docs/TESTBERICHT.md` | Test plan (A automatic, B Claude visual, C Niels); fill in the result column during the build |
+| `docs/STATUS.html`    | Source of the refactor status board artifact (see "status board" below) |
 
 The most important files of the global CLAUDE.md are also listed here.
 
@@ -77,3 +78,10 @@ The refactor follows the feature-schmiede plan in `docs/REFACTOR_PLAN.md`; the c
 
 ## visual checks
 Try a real browser check once or twice (see the working recipe in your memory: `php artisan serve` + Vite in the background, Playwright MCP). If you can't get a usable screenshot, stop and tell me what you tried; don't silently replace the check with tests. Record the outcome in `docs/TESTBERICHT.md` section B.
+
+## status board
+The refactor has one status board: the artifact https://claude.ai/artifact/A5CvNurAi6Viz15xHsXM8W, built from `docs/STATUS.html`.
+**After finishing every step** (a feature PR opened, a PR merged, a check from `docs/TESTBERICHT.md` done, a question answered, a known issue fixed or found), update it:
+1. Edit `docs/STATUS.html`: step states in the phase map, the PR stack, the test counts, "Waiting on you", known issues and the date.
+2. Republish it to the same artifact (Artifact tool with `url` set to the link above; read the artifact first if this session hasn't published it yet). Never publish it as a new artifact.
+3. Commit the `docs/STATUS.html` change together with the step it describes.
