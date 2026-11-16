@@ -26,7 +26,7 @@
             <form wire:submit="submit" class="space-y-4">
                 <div class="flex flex-wrap gap-1.5">
                     @foreach (\App\Models\SupportRequest::TYPES as $key => $meta)
-                        <button type="button" wire:click="$set('formType', '{{ $key }}')" @class(['rounded-[0.45rem] px-3.5 py-1.5 text-sm transition', 'bg-ink text-white shadow-sm' => $formType === $key, 'bg-paper text-ink-soft hover:text-ink' => $formType !== $key])>{{ $meta['label'] }}</button>
+                        <button type="button" wire:click="$set('formType', '{{ $key }}')" @class(['rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition', 'bg-ink text-white shadow-sm' => $formType === $key, 'bg-paper text-ink-soft hover:text-ink' => $formType !== $key])>{{ $meta['label'] }}</button>
                     @endforeach
                 </div>
                 <div>

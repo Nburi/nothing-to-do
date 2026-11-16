@@ -6,8 +6,10 @@ use App\Http\Controllers\Api\EventTemplateController;
 use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\ScheduleEventController;
+use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Middleware\RejectNarrowTokens;
+use App\Http\Controllers\Api\TaskSplitController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,6 +46,15 @@ Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function (
     Route::get('/tasks/{task}', [TaskController::class, 'show']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
+    Route::put('/tasks/{task}/split', [TaskSplitController::class, 'update']);
+    Route::delete('/tasks/{task}/split', [TaskSplitController::class, 'destroy']);
+    Route::patch('/task-sessions/{session}', [TaskSplitController::class, 'part']);
+
+    Route::get('/reminders', [ReminderController::class, 'index']);
+    Route::post('/reminders', [ReminderController::class, 'store']);
+    Route::get('/reminders/{reminder}', [ReminderController::class, 'show']);
+    Route::patch('/reminders/{reminder}', [ReminderController::class, 'update']);
+    Route::delete('/reminders/{reminder}', [ReminderController::class, 'destroy']);
 
     Route::get('/schedule-events/focus', [ScheduleEventController::class, 'focus']);
     Route::get('/schedule-events', [ScheduleEventController::class, 'index']);
@@ -60,6 +71,8 @@ Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function (
     Route::post('/event-categories', [EventCategoryController::class, 'store']);
     Route::patch('/event-categories/{category}', [EventCategoryController::class, 'update']);
     Route::delete('/event-categories/{category}', [EventCategoryController::class, 'destroy']);
+    Route::put('/event-categories/{category}/task-link', [EventCategoryController::class, 'setTaskLink']);
+    Route::delete('/event-categories/{category}/task-link', [EventCategoryController::class, 'clearTaskLink']);
 
     Route::get('/event-templates', [EventTemplateController::class, 'index']);
     Route::post('/event-templates/{template}/apply', [EventTemplateController::class, 'apply']);

@@ -59,7 +59,7 @@
                                 @click="list = opt.value; open = false"
                                 role="option"
                                 :aria-selected="list === opt.value"
-                                class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-1.5 text-left text-sm transition"
+                                class="flex w-full items-center gap-2 rounded-[0.4rem] px-2.5 py-2.5 sm:py-1.5 text-left text-sm transition"
                                 :class="list === opt.value ? 'bg-paper font-medium text-ink' : 'text-ink-soft hover:bg-paper hover:text-ink'"
                             >
                                 <span x-text="opt.label"></span>
@@ -89,6 +89,57 @@
                     <label for="editDuration" class="mb-1 block text-xs font-medium text-ink-soft">Geschätzte Dauer (Minuten)</label>
                     <input id="editDuration" type="number" min="1" max="600" step="1" wire:model="editDuration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
                     @error('editDuration') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- Aufteilen: only with the Planer on. The split sheet is a global component
+                     (SplitTaskSheet), so it opens on top of this one and works from any page. --}}
+                @if (auth()->user()->planner_enabled)
+                    @php $splitProgress = \App\Models\Task::query()->forUser(auth()->user())->with('sessions')->find($editingId)?->sessionProgress(); @endphp
+                    <div x-show="$wire.editList !== 'inbox'" style="display: none;">
+                        <button
+                            type="button"
+                            @click="Livewire.dispatch('open-split-sheet', { taskId: {{ $editingId }} })"
+                            class="flex w-full items-center gap-2.5 rounded-card border border-dashed border-line px-3 py-2 text-left text-sm text-ink-soft transition hover:border-forest/40 hover:text-ink"
+                        >
+                            <svg class="h-4 w-4 flex-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h4M9.5 4h4M2.5 8h11M2.5 12h2M7 12h2M11.5 12h2"/></svg>
+                            @if ($splitProgress)
+                                <span class="min-w-0 flex-1">Auf {{ $splitProgress['total'] }} Tage aufgeteilt · {{ $splitProgress['done'] }} erledigt <span class="text-forest">· ändern</span></span>
+                            @else
+                                <span class="min-w-0 flex-1">Auf mehrere Tage aufteilen …</span>
+                            @endif
+                        </button>
+                    </div>
+                @endif
+
+                {{-- Recurring task: a chip row, not a dropdown — there are only four
+                     rules and seeing them all at once is the whole explanation. Picked
+                     locally (no round trip); saved with the rest of the sheet. --}}
+                <div>
+                    <span class="mb-1 block text-xs font-medium text-ink-soft" id="editRepeatLabel">Wiederholen</span>
+                    <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-labelledby="editRepeatLabel">
+                        <button
+                            type="button"
+                            role="radio"
+                            :aria-checked="!$wire.editRepeat"
+                            @click="$wire.set('editRepeat', null, false)"
+                            class="rounded-full border px-3 py-1.5 text-xs transition sm:py-1"
+                            :class="!$wire.editRepeat ? 'border-forest bg-forest-soft font-medium text-forest' : 'border-line text-ink-soft hover:text-ink'"
+                        >Nie</button>
+                        @foreach (\App\Models\Task::REPEAT_RULES as $ruleKey => $ruleLabel)
+                            <button
+                                type="button"
+                                role="radio"
+                                :aria-checked="$wire.editRepeat === @js($ruleKey)"
+                                @click="$wire.set('editRepeat', @js($ruleKey), false)"
+                                class="rounded-full border px-3 py-1.5 text-xs transition sm:py-1"
+                                :class="$wire.editRepeat === @js($ruleKey) ? 'border-forest bg-forest-soft font-medium text-forest' : 'border-line text-ink-soft hover:text-ink'"
+                            >{{ $ruleLabel }}</button>
+                        @endforeach
+                    </div>
+                    <p x-show="$wire.editRepeat" style="display: none;" class="mt-1.5 text-xs text-ink-faint">
+                        Sobald du sie erledigst, entsteht die nächste automatisch.
+                    </p>
+                    @error('editRepeat') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
                 </div>
 
                 @include('livewire.partials.notes-editor', ['fieldName' => 'editNotes', 'htmlProperty' => 'editNotesHtml', 'idPrefix' => 'edit'])

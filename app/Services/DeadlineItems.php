@@ -1,0 +1,105 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Task;
+use App\Models\TaskDayPlan;
+use App\Models\TaskSession;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+
+/**
+ * The "all-day strip" items — Task deadlines/Wunschtermine and Planer placements — for a date
+ * range, grouped by Y-m-d. None of these carry a time, so they sit in a row above an hour grid: the
+ * Zeitplan's week/day view renders them through partials/schedule-deadline-strip.blade.php.
+ *
+ * Each source item contributes one entry on its actual date, plus (only for a *hard* task deadline,
+ * never a soft Wunschtermin) a second, `isPreview` entry `deadline_preview_days` earlier, when that
+ * setting is enabled — see Settings::saveDeadlinePreview(). Completed items are excluded entirely
+ * (Task::active()), consistent with how the Board hides finished work.
+ */
+class DeadlineItems
+{
+    /** @return Collection<string, Collection<int, array<string, mixed>>> keyed by Y-m-d */
+    public static function forRange(User $user, Carbon $start, Carbon $end): Collection
+    {
+        $previewEnabled = (bool) $user->deadline_preview_enabled;
+        $previewDays = max(0, (int) $user->deadline_preview_days);
+
+        $items = collect();
+
+        Task::forUser($user)->active()
+            ->where(fn ($q) => $q->whereNotNull('deadline')->orWhereNotNull('due_date'))
+            ->get()
+            ->each(function (Task $task) use ($items, $previewEnabled, $previewDays) {
+                $date = $task->effectiveDate();
+
+                if ($date === null) {
+                    return;
+                }
+
+                $isHard = $task->effectiveIsHard();
+                $base = [
+                    'kind' => 'task',
+                    'subtype' => $isHard ? 'deadline' : 'due',
+                    'id' => $task->id,
+                    'title' => $task->title,
+                ];
+
+                $items->push($base + ['date' => $date->copy(), 'isPreview' => false]);
+
+                if ($isHard && $previewEnabled && $previewDays > 0) {
+                    $items->push($base + [
+                        'date' => $date->copy()->subDays($previewDays),
+                        'isPreview' => true,
+                        'daysUntil' => $previewDays,
+                    ]);
+                }
+            });
+
+        // Planer placements — "you scheduled work on this task for this day", not a deadline of
+        // any kind. Pure visibility, deliberately never a preview copy (there's no advance-warning
+        // concept for a day you picked yourself the way there is for a deadline). A task can show
+        // both this and its own deadline chip on two different dates at once — "fällig Freitag,
+        // aber ich hab mir Mittwoch dafür reserviert" is genuinely useful, not a duplicate.
+        TaskDayPlan::query()
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active()->whereDoesntHave('sessions'))
+            ->with('task')
+            ->get()
+            ->each(fn (TaskDayPlan $plan) => $items->push([
+                'kind' => 'task',
+                'subtype' => 'planned',
+                'id' => $plan->task_id,
+                'title' => $plan->task->title,
+                'date' => $plan->planned_date->copy(),
+                'isPreview' => false,
+            ]));
+
+        // A split task's parts (Planer "Aufteilen"): one chip per open part on its own day. The
+        // chip's tick-off marks that part, not the whole task — see ManagesDeadlineItems.
+        TaskSession::query()->open()
+            ->whereHas('task', fn ($q) => $q->forUser($user)->active())
+            ->with('task.sessions')
+            ->get()
+            ->each(function (TaskSession $part) use ($items) {
+                $position = $part->task->sessions->search(fn (TaskSession $s) => $s->id === $part->id);
+
+                $items->push([
+                    'kind' => 'task',
+                    'subtype' => 'planned',
+                    'id' => $part->task_id,
+                    'sessionId' => $part->id,
+                    'title' => $part->task->title.' · Teil '.(($position === false ? 0 : $position) + 1).'/'.$part->task->sessions->count(),
+                    'date' => $part->planned_date->copy(),
+                    'isPreview' => false,
+                ]);
+            });
+
+        return $items
+            ->filter(fn (array $item) => $item['date']->between($start->copy()->startOfDay(), $end->copy()->endOfDay()))
+            ->sortBy('title')
+            ->sortBy(fn (array $item) => $item['isPreview'] ? 1 : 0)
+            ->groupBy(fn (array $item) => $item['date']->toDateString());
+    }
+}
