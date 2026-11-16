@@ -15,6 +15,7 @@ use App\Livewire\Progress;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\Shell\Board as ShellBoard;
+use App\Livewire\Shell\Ideas as ShellIdeas;
 use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
@@ -58,6 +59,11 @@ Route::get('/sitemap.xml', function () {
 Route::get('/board', ShellBoard::class)
     ->middleware('auth')
     ->name('shell.board');
+
+// Step 3.4: "Ideen", the browse view of Later (the old Bastelideen).
+Route::get('/board/ideas', ShellIdeas::class)
+    ->middleware('auth')
+    ->name('shell.ideas');
 
 Route::get('/board/settings', ShellSettings::class)
     ->middleware('auth')

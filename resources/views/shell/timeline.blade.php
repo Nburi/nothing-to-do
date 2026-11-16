@@ -1,5 +1,6 @@
 {{-- Today's time line around now: pomodoro blocks as work, other blocks as fixed, a now marker
-     and "free until". @param $timeline (Board::timeline()), $compact (no axis) --}}
+     and the free time with "Meins behalten" (step 3.4). @param $timeline (Board::timeline()), $compact (no axis),
+     $layout, $mode, $idea (IdeaOffer; without it the free time is plain text) --}}
 @php
     $span = max(1, $timeline['to'] - $timeline['from']);
     $pos = fn (float $h) => round(max(0, min(100, ($h - $timeline['from']) / $span * 100)), 2);
@@ -29,5 +30,11 @@
             @endforeach
         </div>
     @endunless
-    <figcaption class="text-sm text-ink-soft">{{ $timeline['free'] }}</figcaption>
+    <figcaption>
+        @isset($idea)
+            @include('shell.free-line', ['layout' => $layout, 'mode' => $mode, 'idea' => $idea, 'free' => $timeline['free']])
+        @else
+            <span class="text-sm text-ink-soft">{{ $timeline['free'] }}</span>
+        @endisset
+    </figcaption>
 </figure>

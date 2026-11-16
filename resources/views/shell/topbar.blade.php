@@ -1,4 +1,4 @@
-{{-- Werkbank top bar: logo, Board / Woche, capture line (C), battery, settings. @param $battery (?Battery) --}}
+{{-- Werkbank top bar: logo, Board / Woche / Ideen, capture line (C), battery, settings. @param $battery (?Battery) --}}
 <header class="sticky top-0 z-30 flex h-14 items-center gap-4 bg-surface px-6" style="border-bottom: var(--t-bw) solid var(--t-line)">
     <a href="{{ route('shell.board') }}" wire:navigate class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">nothing-to-do</a>
     <nav class="flex gap-1 text-sm font-semibold" aria-label="{{ __('shell.nav.board') }}">
@@ -10,6 +10,10 @@
             {{ __('shell.nav.week') }}
             <span class="rounded-[4px] border border-line px-1 font-mono text-[9.5px] font-medium uppercase text-ink-faint">{{ __('shell.nav.old') }}</span>
         </a>
+        {{-- Step 3.4: "Ideen", the browse view of Later. --}}
+        <x-shell.action key="browse_later" layout="werkbank" mode="board" as="a" :href="route('shell.ideas')" wire:navigate
+            @class(['rounded-card px-3 py-1.5 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'bg-accent-soft text-accent-ink' => ($active ?? '') === 'ideas', 'text-ink-soft hover:text-ink' => ($active ?? '') !== 'ideas'])
+            :aria-current="($active ?? '') === 'ideas' ? 'page' : null">{{ __('shell.nav.ideas') }}</x-shell.action>
     </nav>
     <div class="ml-auto flex items-center gap-2">
         @include('shell.capture-field', ['mode' => 'board'])

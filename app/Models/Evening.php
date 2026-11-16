@@ -11,11 +11,13 @@ use Illuminate\Database\UniqueConstraintViolationException;
  * One user's evening (local date): the battery check-in, the picks skipped with
  * "Another" (App\Services\Planning\Suggestions) and the ten minute reset
  * (App\Services\Planning\EveningReset, step 3.2) and whether tonight's nudge went out
- * (App\Services\Planning\EveningNudge, step 3.3).
+ * (App\Services\Planning\EveningNudge, step 3.3) and tonight's free-time ideas and the slot kept
+ * "mine" (App\Services\Planning\FreeTimeIdeas, step 3.4).
  */
 class Evening extends Model
 {
-    protected $fillable = ['date', 'battery', 'skipped_task_ids', 'reset_started_at', 'reset_closed_at', 'battery_asked_at', 'nudge_sent_at'];
+    protected $fillable = ['date', 'battery', 'skipped_task_ids', 'reset_started_at', 'reset_closed_at', 'battery_asked_at', 'nudge_sent_at',
+        'idea_task_id', 'idea_slot_until', 'idea_shown_ids', 'mine_from', 'mine_until'];
 
     protected function casts(): array
     {
@@ -26,6 +28,11 @@ class Evening extends Model
             'reset_closed_at' => 'immutable_datetime',
             'battery_asked_at' => 'immutable_datetime',
             'nudge_sent_at' => 'immutable_datetime',
+            'idea_task_id' => 'integer',
+            'idea_slot_until' => 'immutable_datetime',
+            'idea_shown_ids' => 'array',
+            'mine_from' => 'immutable_datetime',
+            'mine_until' => 'immutable_datetime',
         ];
     }
 
@@ -66,6 +73,12 @@ class Evening extends Model
     public function skippedTaskIds(): array
     {
         return array_values(array_map('intval', $this->skipped_task_ids ?? []));
+    }
+
+    /** @return list<int> Ideas offered today (step 3.4, F9: never twice the same day). */
+    public function shownIdeaIds(): array
+    {
+        return array_values(array_map('intval', $this->idea_shown_ids ?? []));
     }
 
     /** G4: asked once per evening. A battery set through the chip counts as answered. */

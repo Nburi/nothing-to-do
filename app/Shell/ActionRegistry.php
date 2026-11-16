@@ -31,7 +31,7 @@ final class ActionRegistry
         'week_plan' => ['4.1', false],
         'pause_days' => ['4.1', false],
         'crunch' => ['4.2', false],
-        'keep_mine' => ['3.4', false],
+        'keep_mine' => ['3.4', true],
     ];
 
     /** @return list<Action> */

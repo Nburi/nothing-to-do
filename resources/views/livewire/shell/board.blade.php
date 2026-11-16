@@ -22,6 +22,10 @@
     // Step 3.2: the reset covers both layouts while it is offered, running or asking the battery.
     $reset = $this->resetStage;
     $covered = $reset->covers();
+    // Step 3.4: free time. An idea from Later (or "Der Rest gehört dir.") takes the card's place when there is no work pick.
+    $idea = $this->idea;
+    $showIdea = ! $suggestion->hasPick() && $idea->status->showsCard() && array_sum($counts) > 0;
+    $freePlain = $this->freeLabel($idea, false);
 @endphp
 <div
     id="content"
@@ -29,6 +33,7 @@
     data-shell-mode="{{ $mode }}"
     data-reset="{{ $reset->value }}"
     x-data="shellFold"
+    @if ($open) x-init="peek = @js($open)" @endif
     @keydown.escape.window="peek = null"
     @shell-peek-close.window="peek = null"
 >
@@ -52,7 +57,7 @@
 
             <div class="grid items-start gap-5 px-6 pt-4 lg:grid-cols-[minmax(0,1fr)_400px]">
                 <div class="fold-away flex min-w-0 flex-col gap-3">
-                    @include('shell.timeline', ['timeline' => $timeline])
+                    @include('shell.timeline', ['timeline' => $timeline, 'layout' => 'werkbank', 'mode' => 'board', 'idea' => $idea])
                     @if ($done->isNotEmpty())
                         <p class="fold-return flex items-center gap-2 self-start rounded-card bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
                             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
@@ -62,7 +67,11 @@
                     @endif
                 </div>
                 <div class="fold-card fold-return min-w-0">
-                    @include('shell.suggestion', ['layout' => 'werkbank', 'suggestion' => $suggestion, 'counts' => $counts])
+                    @if ($showIdea)
+                        @include('shell.idea', ['layout' => 'werkbank', 'idea' => $idea, 'free' => $timeline['free'], 'freePlain' => $freePlain])
+                    @else
+                        @include('shell.suggestion', ['layout' => 'werkbank', 'suggestion' => $suggestion, 'counts' => $counts, 'idea' => $idea])
+                    @endif
                 </div>
             </div>
 
@@ -115,7 +124,7 @@
 
                 <main class="flex min-w-0 flex-1 flex-col gap-5 px-8 py-5">
                     <div class="fold-arrive mx-auto flex w-full max-w-[680px] items-start gap-4">
-                        <div class="min-w-0 flex-1">@include('shell.timeline', ['timeline' => $timeline, 'compact' => true])</div>
+                        <div class="min-w-0 flex-1">@include('shell.timeline', ['timeline' => $timeline, 'compact' => true, 'layout' => 'werkbank', 'mode' => 'session', 'idea' => $idea])</div>
                         <div class="flex shrink-0 items-center gap-2">
                             @include('shell.reset-button', ['layout' => 'werkbank', 'mode' => 'session', 'label' => true])
                             @include('shell.battery', ['layout' => 'werkbank', 'mode' => 'session', 'battery' => $suggestion->battery])
@@ -155,14 +164,18 @@
                 <section class="fold-tray flex flex-col gap-2 rounded-panel p-3" style="background: color-mix(in srgb, var(--t-ink) 5%, var(--t-surface)); border: var(--t-bw) solid var(--t-line)">
                     <p class="fold-away font-mono text-[11px] uppercase tracking-widest text-ink-faint">{{ __('shell.tonight') }}</p>
                     <div class="relative isolate mt-2">
-                        @if ($suggestion->hasPick() && $suggestion->alternatives > 0)
+                        @if (($suggestion->hasPick() && $suggestion->alternatives > 0) || ($showIdea && $idea->alternatives > 0))
                             <span class="fold-away absolute inset-x-3 -top-1.5 -z-10 h-10 rounded-panel bg-surface" style="border: var(--t-bw) solid var(--t-line)" aria-hidden="true"></span>
                         @endif
                         <div class="fold-card fold-return">
-                            @include('shell.suggestion', ['layout' => 'stapel', 'suggestion' => $suggestion, 'counts' => $counts])
+                            @if ($showIdea)
+                                @include('shell.idea', ['layout' => 'stapel', 'idea' => $idea, 'free' => $timeline['free'], 'freePlain' => $freePlain])
+                            @else
+                                @include('shell.suggestion', ['layout' => 'stapel', 'suggestion' => $suggestion, 'counts' => $counts, 'idea' => $idea])
+                            @endif
                         </div>
                     </div>
-                    <p class="fold-away text-sm text-ink-soft">{{ $timeline['free'] }}</p>
+                    @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'board', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'fold-away'])
                 </section>
 
                 {{-- Piles, 2 × 2: each shows its top card and its count; tap opens the list. --}}
@@ -189,7 +202,7 @@
                 @php($tab = 'flex min-w-16 flex-col items-center gap-0.5 rounded-card px-2 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                 <button type="button" @click="peek = null; window.scrollTo({ top: 0, behavior: 'smooth' })" class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></button>
                 <a href="{{ route('weekplan') }}" class="{{ $tab }}">@include('shell.icon', ['name' => 'calendar'])<span>{{ __('shell.tabs.calendar') }}</span></a>
-                <x-shell.action key="browse_later" layout="stapel" mode="board" @click="peek = 'later'" class="{{ $tab }}">@include('shell.icon', ['name' => 'later'])<span>{{ __('shell.tabs.later') }}</span></x-shell.action>
+                <x-shell.action key="browse_later" layout="stapel" mode="board" as="a" :href="route('shell.ideas')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'later'])<span>{{ __('shell.tabs.later') }}</span></x-shell.action>
                 <button type="button" @click="peek = 'inbox'" class="{{ $tab }}">@include('shell.icon', ['name' => 'inbox'])<span>{{ __('shell.tabs.inbox') }}</span></button>
             </nav>
         </section>
@@ -205,6 +218,7 @@
                 </header>
                 <div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 pb-6">
                     @include('shell.session-card', ['layout' => 'stapel', 'session' => $session, 'task' => $this->sessionTask, 'next' => $this->nextInSession, 'timer' => $this->timer])
+                    @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'session', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'justify-center text-center'])
                 </div>
                 {{-- The drawer: the piles slid away, one tap to peek. --}}
                 <nav class="fold-drawer relative flex flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-surface px-3 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-card" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.session.drawer') }}">

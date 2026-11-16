@@ -12,6 +12,8 @@ use App\Planning\Session\SessionState;
 use App\Services\FocusSession;
 use App\Services\Planning\CrunchDecisions;
 use App\Services\Planning\EveningReset;
+use App\Services\Planning\FreeTimeIdeas;
+use App\Services\Planning\IdeaOffer;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
 use App\Services\Planning\WeekPlanReader;
@@ -49,9 +51,15 @@ class Board extends Component
     #[Locked]
     public bool $resetRequested = false;
 
+    /** The Ideen page's Inbox tab links to /board?open=inbox (step 3.4): open that list once. */
+    #[Locked]
+    public ?string $open = null;
+
     public function mount(): void
     {
         $this->resetRequested = request()->boolean('reset');
+        $open = request()->query('open');
+        $this->open = is_string($open) && in_array($open, Task::LISTS, true) ? $open : null;
     }
 
     // ---- reads -------------------------------------------------------------------------------
@@ -105,6 +113,13 @@ class Board extends Component
     public function suggestion(): Suggestion
     {
         return app(Suggestions::class)->current($this->user, $this->now);
+    }
+
+    /** Free time (step 3.4): the idea from Later, "mine", or why there is none; and the free slot for the time line. */
+    #[Computed]
+    public function idea(): IdeaOffer
+    {
+        return app(FreeTimeIdeas::class)->current($this->user, $this->now);
     }
 
     /** @return array<string, Collection<int, Task>> */
@@ -209,7 +224,6 @@ class Board extends Component
         $from = max(0, min($local->hour - 1, 18));
         $to = min(24, max($from + 6, $local->hour + 4));
         $segments = [];
-        $freeUntil = null;
 
         foreach ($blocks as $block) {
             $start = $block->start->setTimezone($tz);
@@ -229,10 +243,6 @@ class Board extends Component
                 'label' => $block->title ?? $category?->name ?? '',
                 'time' => $start->format('H:i'),
             ];
-
-            if (! $isWork && $start->greaterThan($local) && ($freeUntil === null || $start->lessThan($freeUntil))) {
-                $freeUntil = $start;
-            }
         }
 
         $to = min(24, $to);
@@ -248,10 +258,31 @@ class Board extends Component
             'now' => $local->hour + $local->minute / 60,
             'segments' => $segments,
             'ticks' => $ticks,
-            'free' => $freeUntil
-                ? __('shell.free_until', ['time' => $freeUntil->format('H:i')])
-                : __('shell.free_tonight'),
+            'free' => $this->freeLabel($this->idea),
         ];
+    }
+
+    /** The free slot in words (step 3.4): "Frei bis 21:00", "Ganzer Tag frei", "Frei ab 21:30", … */
+    public function freeLabel(IdeaOffer $idea, bool $withMine = true): string
+    {
+        $slot = $idea->slot;
+        if ($slot === null) {
+            return __('shell.free.none');
+        }
+
+        $tz = UserClock::timezone($this->user, $this->now);
+        $from = $slot->from->setTimezone($tz)->format('H:i');
+        $until = $slot->until->setTimezone($tz)->format('H:i');
+
+        $label = match (true) {
+            $idea->slotIsNow && $slot->wholeDay => __('shell.free.whole_day'),
+            $idea->slotIsNow && $slot->untilMidnight => __('shell.free.until_midnight'),
+            $idea->slotIsNow => __('shell.free.until', ['time' => $until]),
+            $slot->untilMidnight => __('shell.free.from', ['time' => $from]),
+            default => __('shell.free.between', ['from' => $from, 'until' => $until]),
+        };
+
+        return $withMine && $idea->mine ? __('shell.free.mine', ['free' => $label]) : $label;
     }
 
     /** "um 19:30" today, "morgen um 07:00", or a weekday. */
@@ -296,6 +327,30 @@ class Board extends Component
     {
         $this->notice = null;
         app(Suggestions::class)->another($this->user, CarbonImmutable::now());
+        $this->fresh();
+    }
+
+    /** "Andere" on the free-time idea: the next one from Later, never one shown earlier today (F9). */
+    public function anotherIdea(): void
+    {
+        $this->notice = null;
+        app(FreeTimeIdeas::class)->another($this->user, CarbonImmutable::now());
+        $this->fresh();
+    }
+
+    /** "Meins behalten" (action keep_mine): this free slot, or the next one today, stays free. */
+    public function keepMine(): void
+    {
+        $this->notice = null;
+        app(FreeTimeIdeas::class)->keepMine($this->user, CarbonImmutable::now());
+        $this->fresh();
+    }
+
+    /** Undo of "Meins behalten". */
+    public function undoMine(): void
+    {
+        $this->notice = null;
+        app(FreeTimeIdeas::class)->undoMine($this->user, CarbonImmutable::now());
         $this->fresh();
     }
 
@@ -409,7 +464,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea'] as $computed) {
             unset($this->{$computed});
         }
     }

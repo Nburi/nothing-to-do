@@ -97,6 +97,12 @@ final class Suggestions
     /** The task that follows $afterTaskId inside a running session, or null when there is none. */
     public function nextInSession(User $user, int $afterTaskId, ?CarbonImmutable $now = null): ?int
     {
+        // A free-time idea started with "Jetzt machen" (step 3.4) never leads into work:
+        // free time is not filled by the app (R6, CONVENTIONS 12). Done ends the session.
+        if (Task::forUser($user)->whereKey($afterTaskId)->value('list') === Task::LATER) {
+            return null;
+        }
+
         $context = PlanningContext::for($user, $now, $this->reader);
         $evening = $this->evening($user, $context->today);
         $battery = $evening?->batteryLevel() ?? Battery::Okay;
