@@ -242,6 +242,18 @@ class NudgeSchedulerTest extends TestCase
         $this->assertNotNull(Evening::for($sunday, '2027-03-28')->nudge_sent_at);
     }
 
+    public function test_a_server_without_vapid_keys_runs_the_command_without_errors(): void
+    {
+        // Found in the 3.3 browser check: the dev .env has no VAPID keys, and building the
+        // notifier throws. That must cost tonight's nudge, not the scheduler run.
+        $this->app->bind(PushNotifier::class, fn () => throw new \ErrorException('[VAPID] Public key should be 65 bytes long when decoded.'));
+
+        $this->at('18:30');
+        $this->artisan('app:send-evening-nudges')->assertSuccessful();
+
+        $this->assertNotNull(Evening::for($this->user, '2026-11-09')->nudge_sent_at);
+    }
+
     public function test_the_command_is_scheduled_every_minute(): void
     {
         $this->artisan('schedule:list')->expectsOutputToContain('app:send-evening-nudges')->assertSuccessful();

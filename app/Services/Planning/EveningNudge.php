@@ -25,7 +25,8 @@ use Illuminate\Support\Facades\Log;
  * - none on a weekday without a time, none on paused days, none once tonight's reset was
  *   started or closed, none while a focus session runs (it comes after, if still in time);
  * - a late scheduler tick still sends within CATCH_UP_MINUTES, never hours later;
- * - no subscription: nothing happens. A failing push is logged and not retried tonight.
+ * - no subscription: nothing happens. A failing push (or a broken VAPID config) is logged
+ *   and not retried tonight.
  * - Nothing is counted and nothing reads nudge_sent_at beyond tonight (CONVENTIONS 11).
  *
  * Times are local "HH:MM" compared against UserClock, which uses the real IANA zone for
@@ -155,7 +156,7 @@ final class EveningNudge
      * Sends tonight's nudge when it is due. Returns true when a push went out. Two scheduler
      * runs at once cannot both send: the evening row is claimed before the push.
      */
-    public function sendIfDue(User $user, PushNotifier $push, ?CarbonImmutable $now = null): bool
+    public function sendIfDue(User $user, ?CarbonImmutable $now = null): bool
     {
         $now ??= CarbonImmutable::now();
 
@@ -171,7 +172,9 @@ final class EveningNudge
         }
 
         try {
-            $push->notify($user, [
+            // Resolved only here: a missing or broken VAPID config throws while building the
+            // notifier, and that must cost this one nudge, not the scheduler run.
+            app(PushNotifier::class)->notify($user, [
                 'title' => __('shell.nudge.push.title'),
                 'body' => __('shell.nudge.push.body'),
                 'url' => self::URL,
