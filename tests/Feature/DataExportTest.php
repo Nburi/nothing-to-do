@@ -48,7 +48,8 @@ class DataExportTest extends TestCase
         EventCategory::factory()->for($user)->create(['name' => 'Training']);
         // Projekte, Gruppen and the Agenda are gone from the app, but their rows stay
         // in the database — the export still has to hand them back.
-        $this->legacyRow('projects', $user, ['name' => 'Maturarbeit']);
+        $projectId = $this->legacyRow('projects', $user, ['name' => 'Maturarbeit']);
+        DB::table('project_stages')->insert(['project_id' => $projectId, 'name' => 'Recherche', 'target_date' => '2026-12-01', 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
         $groupId = $this->legacyRow('task_groups', $user, ['name' => 'Zimmer']);
         DB::table('group_notes')->insert(['task_group_id' => $groupId, 'content' => 'Kartons besorgen', 'created_at' => now(), 'updated_at' => now()]);
         $entryId = $this->legacyRow('agenda_entries', $user, ['type' => 'homework', 'subject' => 'Deutsch', 'title' => 'Aufsatz', 'date' => '2026-09-24']);
@@ -64,6 +65,7 @@ class DataExportTest extends TestCase
         $this->assertSame(['Maturarbeit'], collect($data['projects'])->pluck('name')->all());
         $this->assertSame(['Zimmer'], collect($data['task_groups'])->pluck('name')->all());
         $this->assertSame(['Kartons besorgen'], $data['task_groups'][0]['notes']);
+        $this->assertSame([['id' => DB::table('project_stages')->value('id'), 'name' => 'Recherche', 'target_date' => '2026-12-01']], $data['projects'][0]['stages'], 'step 4.3: the roadmap is exported');
         $this->assertSame(['Vogelhaus'], collect($data['craft_ideas'])->pluck('title')->all());
         $this->assertSame(['Training'], collect($data['event_categories'])->pluck('name')->all());
         $this->assertSame('nur für mich', $data['agenda_entries'][0]['private_note']);
