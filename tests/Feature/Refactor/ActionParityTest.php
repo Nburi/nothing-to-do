@@ -43,6 +43,9 @@ class ActionParityTest extends TestCase
             Task::forceCreate(['user_id' => $this->user->id, 'title' => $title, 'list' => $list, 'size' => $size, 'sort_order' => $i]);
         }
 
+        // Step 4.2: a hard crunch, so the crunch entry points show (they only show while there is one).
+        Task::forceCreate(['user_id' => $this->user->id, 'title' => 'Abgabe', 'list' => 'tasks', 'size' => Size::Block, 'duration_minutes' => 300, 'hard_deadline' => '2026-11-10', 'sort_order' => 9]);
+
         // Tonight's reset is behind us (step 3.2): while it shows, the board is inert and has no entry points.
         app(EveningReset::class)->close($this->user);
         app(EveningReset::class)->answerBattery($this->user, null);

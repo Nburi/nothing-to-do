@@ -26,6 +26,8 @@
     $idea = $this->idea;
     $showIdea = ! $suggestion->hasPick() && $idea->status->showsCard() && array_sum($counts) > 0;
     $freePlain = $this->freeLabel($idea, false);
+    // Step 4.2: the early warning (board: a line in the start strip; session: a quiet entry in the rail / drawer, hard only).
+    $crunch = $this->crunch;
 @endphp
 <div
     id="content"
@@ -58,6 +60,7 @@
             <div class="grid items-start gap-5 px-6 pt-4 lg:grid-cols-[minmax(0,1fr)_400px]">
                 <div class="fold-away flex min-w-0 flex-col gap-3">
                     @include('shell.timeline', ['timeline' => $timeline, 'layout' => 'werkbank', 'mode' => 'board', 'idea' => $idea])
+                    @include('shell.crunch-line', ['layout' => 'werkbank', 'crunch' => $crunch])
                     @if ($done->isNotEmpty())
                         <p class="fold-return flex items-center gap-2 self-start rounded-card bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
                             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
@@ -118,6 +121,12 @@
                             </button>
                         @endif
                     @endforeach
+                    @if ($crunch->isHard())
+                        <x-shell.action key="crunch" layout="werkbank" mode="session" wire:click="$dispatch('crunch-open')"
+                            class="flex w-full flex-col items-center gap-1 rounded-card py-2 text-[10.5px] font-semibold text-warn transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            <span class="size-2 rounded-full bg-current" aria-hidden="true"></span>{{ __('shell.crunch.dot') }}
+                        </x-shell.action>
+                    @endif
                     <button type="button" @click="peek = peek ? null : 'todos'" class="mt-auto text-center text-[11px] font-semibold leading-tight text-accent-ink hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                         x-text="peek ? @js(__('shell.session.close_board')) : @js(__('shell.session.open_board'))">{{ __('shell.session.open_board') }}</button>
                 </aside>
@@ -176,6 +185,7 @@
                         </div>
                     </div>
                     @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'board', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'fold-away'])
+                    @include('shell.crunch-line', ['layout' => 'stapel', 'crunch' => $crunch, 'class' => 'fold-away'])
                 </section>
 
                 {{-- Piles, 2 × 2: each shows its top card and its count; tap opens the list. --}}
@@ -227,6 +237,12 @@
                         class="grid size-9 place-items-center rounded-full bg-accent text-accent-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                         @include('shell.icon', ['name' => 'plus', 'class' => 'size-5'])
                     </x-shell.action>
+                    @if ($crunch->isHard())
+                        <x-shell.action key="crunch" layout="stapel" mode="session" wire:click="$dispatch('crunch-open')"
+                            class="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-warn focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            <span class="size-2 rounded-full bg-current" aria-hidden="true"></span>{{ __('shell.crunch.dot') }}
+                        </x-shell.action>
+                    @endif
                     @foreach ($columns as $list)
                         @php($drawerClass = 'rounded-full px-3 py-2 text-sm text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                         @if ($list === 'later')
@@ -262,4 +278,7 @@
     {{-- The daily sort card, the same over both layouts. --}}
     {{-- A stable key: the board re-renders after every sort, the card must keep its round. --}}
     <livewire:shell.inbox-sort :key="'inbox-sort'" />
+
+    {{-- Step 4.2: the crunch screen, the same over both layouts (panel on the right / sheet from the bottom). --}}
+    <livewire:shell.crunch :key="'crunch'" />
 </div>
