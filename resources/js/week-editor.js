@@ -24,7 +24,9 @@ document.addEventListener('alpine:init', () => {
         pause: { from: null, to: null, note: '', month: cfg.month },
 
         init() {
-            this.$nextTick(() => this.scrollToMorning());
+            // After layout (and again once fonts and styles settle), so the grid opens at the morning, not at midnight.
+            this.$nextTick(() => requestAnimationFrame(() => this.scrollToMorning()));
+            window.addEventListener("load", () => { if (this.$refs.scroller?.scrollTop === 0) this.scrollToMorning(); }, { once: true });
             this._touchMove = (e) => { if (this.drag && this.drag.active) e.preventDefault(); };
             window.addEventListener('touchmove', this._touchMove, { passive: false });
         },
@@ -36,8 +38,9 @@ document.addEventListener('alpine:init', () => {
         snap: () => cfg.snap ?? 15,
 
         pxPerHour() {
-            const col = this.$root.querySelector('[data-col]');
-            return col ? col.getBoundingClientRect().height / 24 : 40;
+            // One hour in pixels, from the grid's --ph (a hidden day column on the phone measures 0).
+            const ph = parseFloat(getComputedStyle(this.$refs.scroller ?? this.$root).getPropertyValue('--ph'));
+            return ph > 0 ? ph : 40;
         },
 
         scrollToMorning() {
@@ -258,7 +261,7 @@ document.addEventListener('alpine:init', () => {
             const offset = (first.getUTCDay() + 6) % 7;
             return Array.from({ length: 42 }, (_, i) => {
                 const d = new Date(Date.UTC(y, m - 1, 1 - offset + i));
-                return { iso: d.toISOString().slice(0, 10), n: d.getUTCDate(), out: d.getUTCMonth() !== m - 1 };
+                return { iso: d.toISOString().slice(0, 10), n: d.getUTCDate(), out: d.getUTCMonth() !== m - 1, label: d.getUTCDate() + ". " + (cfg.months?.[d.getUTCMonth()] ?? "") + " " + d.getUTCFullYear() };
             });
         },
 

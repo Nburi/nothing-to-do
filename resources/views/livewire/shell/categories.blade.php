@@ -122,7 +122,7 @@
             @endforeach
         </div>
         <label class="inline-flex h-10 items-center gap-2 text-sm text-ink-soft">
-            <input type="checkbox" wire:model="newPomodoro" class="size-4 accent-[var(--t-accent)]">{{ __('week.categories.pomodoro') }}
+            <input type="checkbox" wire:model="newPomodoro" class="size-4 accent-accent">{{ __('week.categories.pomodoro') }}
         </label>
         <button type="submit" class="{{ $btn }} h-10 bg-accent text-accent-fg hover:brightness-110" wire:loading.attr="disabled" wire:target="add">
             @include('shell.icon', ['name' => 'plus', 'class' => 'size-4']){{ __('week.categories.add') }}

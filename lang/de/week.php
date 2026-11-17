@@ -120,7 +120,7 @@ return [
         'note' => 'Notiz (optional)',
         'note_placeholder' => 'z. B. Herbstferien',
         'save' => 'Pausieren',
-        'paused_range' => 'Pausiert: :from – :to.',
+        'paused_range' => 'Pausiert: :from – :to',
         'paused_day' => ':day pausiert.',
         'resumed' => ':day ist wieder eingeschaltet.',
     ],

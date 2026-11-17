@@ -122,7 +122,8 @@ final readonly class WeekPlan
                     $template->id,
                     $template->title,
                     $change?->eventId,
-                    $change !== null,
+                    // "Changed" only when it differs: a row the old screens materialised unchanged is not an edit.
+                    $change !== null && ($change->start !== $template->start || $change->durationMinutes !== $template->durationMinutes),
                 );
             }
         }

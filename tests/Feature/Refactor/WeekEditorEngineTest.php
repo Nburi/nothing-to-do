@@ -168,6 +168,12 @@ class WeekEditorEngineTest extends TestCase
 
         [$plain] = (new WeekPlanReader)->blocks($this->user, '2026-11-11', '2026-11-11')['2026-11-11'];
         $this->assertSame([null, false], [$plain->eventId, $plain->changed]);
+
+        // A row the old screens materialised unchanged is not "changed this week".
+        ScheduleEvent::materializeRange($this->user, Carbon::parse('2026-11-12'), Carbon::parse('2026-11-12'));
+        [$materialised] = (new WeekPlanReader)->blocks($this->user, '2026-11-12', '2026-11-12')['2026-11-12'];
+        $this->assertNotNull($materialised->eventId);
+        $this->assertFalse($materialised->changed);
     }
 
     public function test_every_edit_can_be_undone_exactly(): void

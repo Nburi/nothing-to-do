@@ -292,7 +292,7 @@ class WeekEditorPageTest extends TestCase
         $title = str_repeat('Prüfungsvorbereitung Ölmalerei Ärztehaus ', 10);
         (new WeekPlanEditor)->addOnce($this->user, '2026-11-19', '16:00', '17:00', null, trim(mb_substr($title, 0, 255)));
 
-        $this->get('/board/week')->assertOk()->assertSee('Prüfungsvorbereitung Ölmalerei', false)->assertSee('line-clamp-2', false);
+        $this->get('/board/week')->assertOk()->assertSee('Prüfungsvorbereitung Ölmalerei', false)->assertSee('line-clamp-1', false);
     }
 
     public function test_the_shell_navigation_opens_the_new_editor(): void

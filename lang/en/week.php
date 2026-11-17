@@ -120,7 +120,7 @@ return [
         'note' => 'Note (optional)',
         'note_placeholder' => 'e.g. Autumn holidays',
         'save' => 'Pause',
-        'paused_range' => 'Paused: :from – :to.',
+        'paused_range' => 'Paused: :from – :to',
         'paused_day' => ':day paused.',
         'resumed' => ':day is back on.',
     ],
