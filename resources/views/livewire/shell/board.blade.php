@@ -26,6 +26,8 @@
     $idea = $this->idea;
     $showIdea = ! $suggestion->hasPick() && $idea->status->showsCard() && array_sum($counts) > 0;
     $freePlain = $this->freeLabel($idea, false);
+    // Step 4.4: Sunday and Monday, a quiet line to the Sunday review (board mode; it folds away with the board).
+    $reviewOffer = $this->reviewOffer;
 @endphp
 <div
     id="content"
@@ -58,6 +60,7 @@
             <div class="grid items-start gap-5 px-6 pt-4 lg:grid-cols-[minmax(0,1fr)_400px]">
                 <div class="fold-away flex min-w-0 flex-col gap-3">
                     @include('shell.timeline', ['timeline' => $timeline, 'layout' => 'werkbank', 'mode' => 'board', 'idea' => $idea])
+                    @include('shell.review-line', ['offer' => $reviewOffer, 'class' => 'self-start'])
                     @if ($done->isNotEmpty())
                         <p class="fold-return flex items-center gap-2 self-start rounded-card bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
                             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
@@ -176,6 +179,7 @@
                         </div>
                     </div>
                     @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'board', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'fold-away'])
+                    @include('shell.review-line', ['offer' => $reviewOffer, 'class' => 'fold-away'])
                 </section>
 
                 {{-- Piles, 2 × 2: each shows its top card and its count; tap opens the list. --}}

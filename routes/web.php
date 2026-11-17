@@ -18,6 +18,7 @@ use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\Shell\Board as ShellBoard;
 use App\Livewire\Shell\Ideas as ShellIdeas;
+use App\Livewire\Shell\Review as ShellReview;
 use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
@@ -96,6 +97,11 @@ Route::get('/board', ShellBoard::class)
 Route::get('/board/ideas', ShellIdeas::class)
     ->middleware('auth')
     ->name('shell.ideas');
+
+// Step 4.4: the quiet Sunday review (reached from a line on the board on Sunday and Monday).
+Route::get('/board/review', ShellReview::class)
+    ->middleware('auth')
+    ->name('shell.review');
 
 Route::get('/board/settings', ShellSettings::class)
     ->middleware('auth')

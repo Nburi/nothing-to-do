@@ -16,6 +16,7 @@ use App\Services\Planning\FreeTimeIdeas;
 use App\Services\Planning\IdeaOffer;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
+use App\Services\Planning\SundayReview;
 use App\Services\Planning\WeekPlanReader;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
@@ -120,6 +121,15 @@ class Board extends Component
     public function idea(): IdeaOffer
     {
         return app(FreeTimeIdeas::class)->current($this->user, $this->now);
+    }
+
+    /** Step 4.4: 'sunday' or 'monday' when the board shows the quiet line to the Sunday review, else null. */
+    #[Computed]
+    public function reviewOffer(): ?string
+    {
+        $today = CarbonImmutable::parse(UserClock::now($this->user, $this->now)->toDateString());
+
+        return SundayReview::offeredOn($today) ? ($today->isSunday() ? 'sunday' : 'monday') : null;
     }
 
     /** @return array<string, Collection<int, Task>> */

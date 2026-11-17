@@ -139,7 +139,7 @@ class SundayReviewTest extends TestCase
 
     public function test_it_lists_the_newest_finished_titles_with_their_area_and_counts_later_ideas(): void
     {
-        $area = Area::factory()->for($this->user)->create(['name' => 'Zuhause', 'color' => 'area-1']);
+        $area = Area::factory()->for($this->user)->create(['name' => 'Zuhause', 'color' => 'overprint']);
         foreach (range(1, 6) as $i) {
             $this->done('2026-11-'.(15 + $i).' 20:00', ['title' => "Aufgabe {$i}"]);  // Mon 16 … Sat 21
         }
@@ -149,7 +149,7 @@ class SundayReviewTest extends TestCase
         $past = $this->review('2026-11-22 20:00')['past'];
 
         $this->assertSame(['Aufgabe 6', 'Fahrradlicht ersetzt', 'Aufgabe 5', 'Aufgabe 4', 'Aufgabe 3'], array_column($past['done'], 'title'));
-        $this->assertSame(['Zuhause', 'area-1', '2026-11-21'], [$past['done'][1]['area'], $past['done'][1]['color'], $past['done'][1]['date']]);
+        $this->assertSame(['Zuhause', 'overprint', '2026-11-21'], [$past['done'][1]['area'], $past['done'][1]['color'], $past['done'][1]['date']]);
         $this->assertNull($past['done'][0]['area']);
         $this->assertSame(2, $past['doneMore'], 'Aufgabe 1 and 2; last week is not counted');
         $this->assertSame(7, $past['total']);
