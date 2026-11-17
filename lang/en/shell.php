@@ -210,6 +210,7 @@ return [
         'pause_days' => 'Pause days',
         'crunch' => 'Decide a crunch',
         'keep_mine' => 'Keep it mine',
+        'projects' => 'Browse projects',
     ],
     'nudge' => [
         'title' => 'Switching off in the evening',

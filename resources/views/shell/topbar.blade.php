@@ -14,6 +14,10 @@
         <x-shell.action key="browse_later" layout="werkbank" mode="board" as="a" :href="route('shell.ideas')" wire:navigate
             @class(['rounded-card px-3 py-1.5 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'bg-accent-soft text-accent-ink' => ($active ?? '') === 'ideas', 'text-ink-soft hover:text-ink' => ($active ?? '') !== 'ideas'])
             :aria-current="($active ?? '') === 'ideas' ? 'page' : null">{{ __('shell.nav.ideas') }}</x-shell.action>
+        {{-- Step 4.3: projects and groups. --}}
+        <x-shell.action key="projects" layout="werkbank" mode="board" as="a" :href="route('shell.projects')" wire:navigate
+            @class(['rounded-card px-3 py-1.5 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'bg-accent-soft text-accent-ink' => ($active ?? '') === 'projects', 'text-ink-soft hover:text-ink' => ($active ?? '') !== 'projects'])
+            :aria-current="($active ?? '') === 'projects' ? 'page' : null">{{ __('projects.nav') }}</x-shell.action>
     </nav>
     <div class="ml-auto flex items-center gap-2">
         @include('shell.capture-field', ['mode' => 'board'])

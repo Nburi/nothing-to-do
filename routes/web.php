@@ -17,7 +17,10 @@ use App\Livewire\PublicHelp;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\Shell\Board as ShellBoard;
+use App\Livewire\Shell\GroupPage as ShellGroupPage;
 use App\Livewire\Shell\Ideas as ShellIdeas;
+use App\Livewire\Shell\ProjectPage as ShellProjectPage;
+use App\Livewire\Shell\Projects as ShellProjects;
 use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
@@ -96,6 +99,21 @@ Route::get('/board', ShellBoard::class)
 Route::get('/board/ideas', ShellIdeas::class)
     ->middleware('auth')
     ->name('shell.ideas');
+
+// Step 4.3: projects (stages, next two on the board) and groups.
+Route::get('/board/projects', ShellProjects::class)
+    ->middleware('auth')
+    ->name('shell.projects');
+
+Route::get('/board/projects/{project}', ShellProjectPage::class)
+    ->middleware('auth')
+    ->whereNumber('project')
+    ->name('shell.project');
+
+Route::get('/board/groups/{group}', ShellGroupPage::class)
+    ->middleware('auth')
+    ->whereNumber('group')
+    ->name('shell.group');
 
 Route::get('/board/settings', ShellSettings::class)
     ->middleware('auth')

@@ -208,6 +208,16 @@ return [
      | and fails when a validated property is missing here.
      */
     'attributes' => [
+        // Step 4.3: projects and groups.
+        'stageName' => 'Name der Etappe',
+        'stageDate' => 'Ziel',
+        'editStageName' => 'Name der Etappe',
+        'editStageDate' => 'Ziel',
+        'newName' => 'Name',
+        'newList' => 'Liste',
+        'newStep' => 'Schritt',
+        'newStepList' => 'Liste',
+        'name' => 'Name',
         'attrName' => 'Name',
         'attrType' => 'Typ',
         'attrUnit' => 'Einheit',

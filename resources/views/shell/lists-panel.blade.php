@@ -1,6 +1,6 @@
 {{-- The four lists behind tabs: the Stapel sheet (piles, bottom tabs, drawer) and the Werkbank
      peek panel during a session. Opened by the parent's Alpine `peek` (inbox|todos|tasks|later).
-     @param $layout, $mode, $lists, $counts, $suggestedId, $locked --}}
+     @param $layout, $mode, $lists, $bundles (step 4.3), $counts, $suggestedId, $locked --}}
 <div class="flex min-h-0 flex-1 flex-col">
     <div class="flex gap-1 overflow-x-auto border-b border-line px-3 pb-2" role="tablist">
         @foreach (\App\Models\Task::LISTS as $list)
@@ -35,13 +35,17 @@
                         <a href="{{ route('shell.ideas') }}" wire:navigate class="flex min-h-11 w-full items-center justify-center gap-2 rounded-card border border-line px-4 text-sm font-semibold text-ink transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('shell.ideas.as_cards') }}</a>
                     </li>
                 @endif
-                @forelse ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
+                @foreach ($bundles[$list] as $bundle)
+                    @include('shell.bundle', ['bundle' => $bundle, 'layout' => $layout, 'mode' => $mode, 'suggestedId' => $suggestedId, 'locked' => $locked])
+                @endforeach
+                @foreach ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
                     @include('shell.item', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'suggested' => $task->id === $suggestedId, 'locked' => $locked])
-                @empty
+                @endforeach
+                @if ($counts[$list] === 0)
                     <li class="rounded-card border border-dashed border-line p-4 text-sm text-ink-faint">{{ __('shell.empty.'.$list) }}</li>
-                @endforelse
-                @if ($counts[$list] > \App\Livewire\Shell\Board::LIST_LIMIT)
-                    <li class="px-1 text-xs text-ink-faint">{{ __('shell.more_items', ['count' => $counts[$list] - \App\Livewire\Shell\Board::LIST_LIMIT]) }}</li>
+                @endif
+                @if ($lists[$list]->count() > \App\Livewire\Shell\Board::LIST_LIMIT)
+                    <li class="px-1 text-xs text-ink-faint">{{ __('shell.more_items', ['count' => $lists[$list]->count() - \App\Livewire\Shell\Board::LIST_LIMIT]) }}</li>
                 @endif
             </ul>
         @endforeach

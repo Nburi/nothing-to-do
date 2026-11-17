@@ -211,6 +211,7 @@ return [
         'pause_days' => 'Pausentage',
         'crunch' => 'Engpass entscheiden',
         'keep_mine' => 'Meins behalten',
+        'projects' => 'Projekte ansehen',
     ],
     'nudge' => [
         'title' => 'Abschalten am Abend',
