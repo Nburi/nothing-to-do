@@ -4,7 +4,7 @@
      trigger is a 9px chip inside a scrolling grid header, which is a poor
      anchor at every width and unreachable on a narrow phone. --}}
 @if ($boundsScope !== null)
-    <div class="fixed inset-0 z-60 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="day-bounds-heading" wire:key="day-bounds-sheet">
+    <div class="fixed inset-0 z-[60] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="day-bounds-heading" wire:key="day-bounds-sheet">
         <div class="absolute inset-0 bg-ink/40" wire:click="cancelDayBounds"></div>
         <div
             class="animate-rise relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-map sm:rounded-card"

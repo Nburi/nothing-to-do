@@ -140,7 +140,7 @@
                         <button
                             type="button"
                             @click.stop="dateOpen = !dateOpen"
-                            class="tnum mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-1.5 text-[11px] font-medium
+                            class="tnum mt-0.5 inline-flex items-center gap-1 rounded-sm px-1.5 py-1.5 text-[11px] font-medium
                             {{ $task->isOverdue() ? 'bg-signal-soft text-signal' : ($task->effectiveIsHard() ? 'bg-contour-soft text-contour' : 'text-ink-faint') }}"
                             aria-label="Termin ändern: {{ $task->title }}"
                         >

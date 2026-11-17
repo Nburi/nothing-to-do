@@ -328,7 +328,7 @@
                     @endfor
 
                     @if ($focused->isSameDay($today) && $nowMin >= $mStart && $nowMin <= $mEnd)
-                        <div class="pointer-events-none absolute inset-x-0 z-15 border-t-2 border-signal" style="top: {{ ($nowMin - $mStart) / $mSpan * 100 }}%">
+                        <div class="pointer-events-none absolute inset-x-0 z-[15] border-t-2 border-signal" style="top: {{ ($nowMin - $mStart) / $mSpan * 100 }}%">
                             <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-signal"></span>
                         </div>
                     @endif

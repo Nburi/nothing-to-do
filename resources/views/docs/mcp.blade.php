@@ -151,7 +151,7 @@
         <section class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-3 text-base font-medium text-ink">Fehler</h2>
             <ul class="space-y-2 text-sm leading-relaxed text-ink-soft">
-                <li>Ein unbekanntes oder nicht angebotenes Werkzeug → JSON-RPC-Protokollfehler (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">-32602</code>).</li>
+                <li>Ein unbekanntes oder nicht angebotenes Werkzeug → JSON-RPC-Protokollfehler (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">-32602</code>).</li>
                 <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei einem <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeug → ein normales Tool-Ergebnis mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
             </ul>
         </section>

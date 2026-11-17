@@ -174,7 +174,7 @@
                             @endforeach
                         </div>
                     </div>
-                    <div class="max-w-44">
+                    <div class="max-w-[11rem]">
                         <label for="qc-reminder-date" class="mb-1 block text-[11px] font-medium text-ink-faint">Oder ein anderer Tag</label>
                         <input id="qc-reminder-date" type="date" wire:model="date" class="w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
                     </div>

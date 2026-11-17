@@ -13,12 +13,11 @@
 @props(['title', 'description'])
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.theme-style')
 
         <title>{{ $title }} · nothing-to-do</title>
         <meta name="description" content="{{ $description }}">
@@ -34,7 +33,7 @@
         @include('partials.pwa-head')
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-dvh bg-paper font-sans text-ink antialiased">
+    <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
         <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-card focus:bg-forest focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">Zum Inhalt springen</a>
 
         <header class="mx-auto flex h-16 max-w-3xl items-center justify-between px-5 sm:px-8">
