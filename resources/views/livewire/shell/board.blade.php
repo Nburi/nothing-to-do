@@ -58,6 +58,7 @@
             <div class="grid items-start gap-5 px-6 pt-4 lg:grid-cols-[minmax(0,1fr)_400px]">
                 <div class="fold-away flex min-w-0 flex-col gap-3">
                     @include('shell.timeline', ['timeline' => $timeline, 'layout' => 'werkbank', 'mode' => 'board', 'idea' => $idea])
+                    @include('shell.week-links', ['layout' => 'werkbank', 'mode' => 'board', 'keys' => ['move_event', 'pause_days'], 'class' => '-mt-1'])
                     @if ($done->isNotEmpty())
                         <p class="fold-return flex items-center gap-2 self-start rounded-card bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
                             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
@@ -124,7 +125,10 @@
 
                 <main class="flex min-w-0 flex-1 flex-col gap-5 px-8 py-5">
                     <div class="fold-arrive mx-auto flex w-full max-w-[680px] items-start gap-4">
-                        <div class="min-w-0 flex-1">@include('shell.timeline', ['timeline' => $timeline, 'compact' => true, 'layout' => 'werkbank', 'mode' => 'session', 'idea' => $idea])</div>
+                        <div class="min-w-0 flex-1">
+                            @include('shell.timeline', ['timeline' => $timeline, 'compact' => true, 'layout' => 'werkbank', 'mode' => 'session', 'idea' => $idea])
+                            @include('shell.week-links', ['layout' => 'werkbank', 'mode' => 'session', 'keys' => ['week_plan', 'move_event', 'pause_days'], 'class' => 'mt-1'])
+                        </div>
                         <div class="flex shrink-0 items-center gap-2">
                             @include('shell.reset-button', ['layout' => 'werkbank', 'mode' => 'session', 'label' => true])
                             @include('shell.battery', ['layout' => 'werkbank', 'mode' => 'session', 'battery' => $suggestion->battery])
@@ -176,6 +180,7 @@
                         </div>
                     </div>
                     @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'board', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'fold-away'])
+                    @include('shell.week-links', ['layout' => 'stapel', 'mode' => 'board', 'keys' => ['move_event', 'pause_days'], 'class' => 'fold-away'])
                 </section>
 
                 {{-- Piles, 2 × 2: each shows its top card and its count; tap opens the list. --}}
@@ -201,7 +206,7 @@
             <nav class="fold-tabs fixed inset-x-0 bottom-0 z-30 flex justify-around bg-surface px-2 pt-2 pb-[max(14px,env(safe-area-inset-bottom))]" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.nav.board') }}">
                 @php($tab = 'flex min-w-16 flex-col items-center gap-0.5 rounded-card px-2 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                 <button type="button" @click="peek = null; window.scrollTo({ top: 0, behavior: 'smooth' })" class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></button>
-                <a href="{{ route('weekplan') }}" class="{{ $tab }}">@include('shell.icon', ['name' => 'calendar'])<span>{{ __('shell.tabs.calendar') }}</span></a>
+                <x-shell.action key="week_plan" layout="stapel" mode="board" as="a" :href="route('shell.week')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'calendar'])<span>{{ __('shell.tabs.calendar') }}</span></x-shell.action>
                 <x-shell.action key="browse_later" layout="stapel" mode="board" as="a" :href="route('shell.ideas')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'later'])<span>{{ __('shell.tabs.later') }}</span></x-shell.action>
                 <button type="button" @click="peek = 'inbox'" class="{{ $tab }}">@include('shell.icon', ['name' => 'inbox'])<span>{{ __('shell.tabs.inbox') }}</span></button>
             </nav>
@@ -219,6 +224,7 @@
                 <div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 pb-6">
                     @include('shell.session-card', ['layout' => 'stapel', 'session' => $session, 'task' => $this->sessionTask, 'next' => $this->nextInSession, 'timer' => $this->timer])
                     @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'session', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'justify-center text-center'])
+                    @include('shell.week-links', ['layout' => 'stapel', 'mode' => 'session', 'keys' => ['week_plan', 'move_event', 'pause_days'], 'class' => 'justify-center'])
                 </div>
                 {{-- The drawer: the piles slid away, one tap to peek. --}}
                 <nav class="fold-drawer relative flex flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-surface px-3 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-card" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.session.drawer') }}">

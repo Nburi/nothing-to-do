@@ -5,11 +5,10 @@
         <a href="{{ route('shell.board') }}" wire:navigate
             @class(['rounded-card px-3 py-1.5 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'bg-accent-soft text-accent-ink' => ($active ?? '') === 'board', 'text-ink-soft hover:text-ink' => ($active ?? '') !== 'board'])
             @if (($active ?? '') === 'board') aria-current="page" @endif>{{ __('shell.nav.board') }}</a>
-        {{-- Until the week plan editor (4.1) the old one does the job; the board already reads it. --}}
-        <a href="{{ route('weekplan') }}" class="inline-flex items-center gap-1.5 rounded-card px-3 py-1.5 text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
-            {{ __('shell.nav.week') }}
-            <span class="rounded-[4px] border border-line px-1 font-mono text-[9.5px] font-medium uppercase text-ink-faint">{{ __('shell.nav.old') }}</span>
-        </a>
+        {{-- Step 4.1: the week plan editor (Zeitplan, with the switch to the Wochenplan). --}}
+        <x-shell.action key="week_plan" layout="werkbank" mode="board" as="a" :href="route('shell.week')" wire:navigate
+            @class(['rounded-card px-3 py-1.5 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'bg-accent-soft text-accent-ink' => ($active ?? '') === 'week', 'text-ink-soft hover:text-ink' => ($active ?? '') !== 'week'])
+            :aria-current="($active ?? '') === 'week' ? 'page' : null">{{ __('shell.nav.week') }}</x-shell.action>
         {{-- Step 3.4: "Ideen", the browse view of Later. --}}
         <x-shell.action key="browse_later" layout="werkbank" mode="board" as="a" :href="route('shell.ideas')" wire:navigate
             @class(['rounded-card px-3 py-1.5 transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'bg-accent-soft text-accent-ink' => ($active ?? '') === 'ideas', 'text-ink-soft hover:text-ink' => ($active ?? '') !== 'ideas'])

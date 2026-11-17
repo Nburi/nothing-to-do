@@ -19,6 +19,7 @@ use App\Livewire\Settings;
 use App\Livewire\Shell\Board as ShellBoard;
 use App\Livewire\Shell\Ideas as ShellIdeas;
 use App\Livewire\Shell\Settings as ShellSettings;
+use App\Livewire\Shell\Week as ShellWeek;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
@@ -100,6 +101,13 @@ Route::get('/board/ideas', ShellIdeas::class)
 Route::get('/board/settings', ShellSettings::class)
     ->middleware('auth')
     ->name('shell.settings');
+
+// Step 4.1: the week plan editor. Zeitplan at /board/week (?w=Monday, ?pause=1 opens the pause sheet),
+// Wochenplan at /board/week/plan. The old /app/weekplan stays until the switch (5.4).
+Route::get('/board/week/{view?}', ShellWeek::class)
+    ->middleware('auth')
+    ->whereIn('view', ['plan'])
+    ->name('shell.week');
 
 // The capture line (step 2.3): JSON, so a dropped connection keeps the typed text.
 Route::post('/board/capture', [ShellCaptureController::class, 'store'])
