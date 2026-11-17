@@ -286,6 +286,44 @@ window.kanbanColumnSortable = function (el, wire, handle = null) {
 };
 
 /**
+ * Desktop drag for the Planer's two "Standardaufgabe" chips (see
+ * App\Livewire\Planner::openStandardTask()) — dragging "ToDos erledigen" or
+ * "Lernen" onto a day column opens the same quick-add sheet a click already
+ * does, just pre-filled with the day it was dropped on instead of defaulting
+ * to today. A chip here is a fixed,
+ * reusable trigger, not real list content that moves and disappears — so
+ * regardless of where a drag ends, the chip itself is always put straight
+ * back into its own row afterward; `sort: false` plus this manual
+ * `el.appendChild()` is simpler than a clone-pull mode for exactly that
+ * reason (nothing to actually keep in the destination, ever).
+ */
+window.standardTaskDragSource = function (el, wire) {
+    if (el._sortable) return el._sortable;
+    el._sortable = Sortable.create(el, {
+        group: { name: 'standard-task', put: false },
+        sort: false,
+        animation: 160,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ghostClass: 'board-ghost',
+        chosenClass: 'board-chosen',
+        delay: 60,
+        delayOnTouchOnly: true,
+        onEnd: (evt) => {
+            const to = evt.to;
+            const template = evt.item.dataset.standardTemplate;
+            // Always reparent back to the origin row first — a Livewire
+            // re-render will redraw this row anyway once openStandardTask
+            // below runs, but a rejected/off-target drop needs this too.
+            el.appendChild(evt.item);
+            if (to !== el && to.dataset.date !== undefined && template) {
+                wire.openStandardTask(template, to.dataset.date);
+            }
+        },
+    });
+    return el._sortable;
+};
+
+/**
  * Planer day-board — drag a task chip onto a day (see
  * App\Services\DayPlanner, App\Livewire\Planner). One Sortable instance per
  * day-column plus the backlog rail, all sharing **one** group name — a chip
@@ -422,6 +460,8 @@ window.plannerDaySortable = function (el, wire) {
             if (to.dataset.backlog !== undefined) {
                 if (evt.from !== to && evt.item.dataset.type === 'task') {
                     wire.unassignTask(parseInt(evt.item.dataset.id, 10));
+                } else if (evt.from !== to && evt.item.dataset.type === 'session') {
+                    wire.removeSession(parseInt(evt.item.dataset.id, 10)); // only this part goes; the task's other parts stay
                 }
                 return; // a backlog-internal reorder isn't persisted — order there carries no meaning
             }
@@ -609,6 +649,124 @@ function flyStreakSpark(origin, badgeEl, onArrive) {
 }
 
 /**
+ * Live header badges (see App\Livewire\HeaderBadgeRow, partials/header-badge
+ * .blade.php and the .badge-* keyframes in app.css). The badge row is a
+ * Livewire component of its own, and nothing on a page knows about it — so
+ * one global hook keeps it honest instead of every action having to say so:
+ *
+ *  - after any message that carried a real action (not a poll, a live-model
+ *    sync or a $refresh) succeeds, the row is refreshed; bursts (a drag, a
+ *    run of quick ticks) coalesce into one refresh via a short debounce;
+ *  - every 60s while the tab is visible, and the moment it becomes visible
+ *    again — the Zeitplan badge goes stale with the clock alone;
+ *  - a refresh that fails (offline, expired session) is silent: the badges
+ *    keep their last values, and Livewire's own error modal / native
+ *    "page expired" confirm never fire for a background refresh.
+ *
+ * headerBadgesSettled() lets the streak's 'celebrate' handler below wait for
+ * a pending refresh — otherwise the flame could ignite on a badge that is
+ * about to be replaced, or that doesn't exist yet (streak 0 → 1).
+ *
+ * The leaving halves of the signature moment (a badge that vanished, a value
+ * that was replaced) are rendered by the server as short-lived ghost nodes —
+ * see HeaderBadgeRow — because Livewire's morph removes keyed nodes without
+ * calling any removal hook, so nothing here could animate them out.
+ */
+const HEADER_ROW = 'header-badge-row';
+const HEADER_REFRESH_DEBOUNCE_MS = 120;
+const HEADER_REFRESH_INTERVAL_MS = 60000;
+const HEADER_IGNORED_ACTIONS = ['$refresh', '$commit', '__dispatch'];
+let headerExpecting = 0;
+let headerTimer = null;
+let headerInFlight = false;
+let headerDirty = false;
+let headerWaiters = [];
+
+const headerIsIdle = () => headerExpecting === 0 && headerTimer === null && !headerInFlight;
+
+function headerNotifyIdle() {
+    if (!headerIsIdle()) return;
+    const waiters = headerWaiters;
+    headerWaiters = [];
+    waiters.forEach((resolve) => resolve());
+}
+
+window.headerBadgesSettled = () => new Promise((resolve) => {
+    if (headerIsIdle()) resolve();
+    else headerWaiters.push(resolve);
+});
+
+function refreshHeaderBadges() {
+    const row = window.Livewire?.getByName(HEADER_ROW)[0];
+    if (!row) return headerNotifyIdle();
+    if (headerInFlight) {
+        headerDirty = true;
+        return;
+    }
+    headerInFlight = true;
+    // Safety net: never let a lost message keep the row "in flight" forever.
+    setTimeout(() => { headerInFlight = false; headerNotifyIdle(); }, 10000);
+    Promise.resolve(row.$refresh()).catch(() => {});
+}
+
+function scheduleHeaderRefresh() {
+    clearTimeout(headerTimer);
+    headerTimer = setTimeout(() => {
+        headerTimer = null;
+        refreshHeaderBadges();
+    }, HEADER_REFRESH_DEBOUNCE_MS);
+}
+
+document.addEventListener('livewire:init', () => {
+    Livewire.interceptMessage(({ message, onSuccess, onFinish }) => {
+        if (message.component.name === HEADER_ROW) {
+            headerInFlight = true;
+            onFinish(() => {
+                headerInFlight = false;
+                if (headerDirty) {
+                    headerDirty = false;
+                    scheduleHeaderRefresh();
+                }
+                headerNotifyIdle();
+            });
+            return;
+        }
+
+        const isRealAction = [...message.actions].some(
+            (action) => !HEADER_IGNORED_ACTIONS.includes(action.name) && action.metadata?.type !== 'poll'
+        );
+        if (!isRealAction) return;
+
+        headerExpecting++;
+        onSuccess(() => scheduleHeaderRefresh());
+        onFinish(() => {
+            headerExpecting = Math.max(0, headerExpecting - 1);
+            headerNotifyIdle();
+        });
+    });
+
+    Livewire.interceptRequest(({ request, onError }) => {
+        const headerOnly = [...request.messages].every((message) => message.component.name === HEADER_ROW);
+        if (headerOnly) onError(({ preventDefault }) => preventDefault());
+    });
+
+    let headerInterval = null;
+    const syncHeaderInterval = () => {
+        if (document.visibilityState === 'visible') {
+            scheduleHeaderRefresh();
+            headerInterval ??= setInterval(scheduleHeaderRefresh, HEADER_REFRESH_INTERVAL_MS);
+        } else {
+            clearInterval(headerInterval);
+            headerInterval = null;
+        }
+    };
+    document.addEventListener('visibilitychange', syncHeaderInterval);
+    if (document.visibilityState === 'visible') {
+        headerInterval = setInterval(scheduleHeaderRefresh, HEADER_REFRESH_INTERVAL_MS);
+    }
+});
+
+/**
  * Week plan ripple (see WeekPlan::saveEventForm and the .weekplan-ripple
  * keyframes in app.css) — after a block is saved spanning more than one
  * weekday, briefly flashes each affected day column in sequence, so "this
@@ -695,12 +853,20 @@ document.addEventListener('livewire:init', () => {
         const isFresh = !reducedMotion && origin && Date.now() - origin.at < 5000;
         lastCompletionOrigin = null;
 
-        document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
-            if (isFresh) {
-                flyStreakSpark(origin, el, () => ignite(el));
-            } else {
-                ignite(el);
-            }
+        // The header badge row refreshes live now (see the live-badge block
+        // above): wait for that refresh to land, so the spark flies to — and
+        // the flame ignites on — the badge as it is after this completion,
+        // including one that only exists because of it (streak 0 -> 1) and
+        // one that a later morph would otherwise wipe the ignite class from.
+        // Capped, so a slow or failed refresh only ever delays the flourish.
+        Promise.race([window.headerBadgesSettled(), new Promise((resolve) => setTimeout(resolve, 1500))]).then(() => {
+            document.querySelectorAll('[data-badge="streak"]').forEach((el) => {
+                if (isFresh) {
+                    flyStreakSpark(origin, el, () => ignite(el));
+                } else {
+                    ignite(el);
+                }
+            });
         });
     });
 });
@@ -741,10 +907,12 @@ document.addEventListener('alpine:init', () => {
      * Auto-hides itself; there is nothing to confirm or dismiss, unlike a dialog.
      *
      * Three escalating tiers, indexed 0–2: goal/record is the baseline: a
-     * perfect day is bigger and slower — the rarest, most personally-defined
-     * win short of a streak record (see CLAUDE.md's Fortschritt section); a
-     * new streak record is bigger and slower still — it's a perfect day that
-     * *also* just beat every streak ever run before it.
+     * perfect day (or a full board clear, the same visual size in a
+     * different color — see the class bindings in layouts/app.blade.php) is
+     * bigger and slower — the rarest, most personally-defined win short of a
+     * streak record (see CLAUDE.md's Fortschritt section); a new streak
+     * record is bigger and slower still — it's a perfect day that *also*
+     * just beat every streak ever run before it.
      */
     window.Alpine.store('celebration', {
         visible: false,
@@ -753,7 +921,7 @@ document.addEventListener('alpine:init', () => {
         particles: [],
         _timer: null,
         fire(kind, label) {
-            const tier = kind === 'streak-record' ? 2 : kind === 'perfect-day' ? 1 : 0;
+            const tier = kind === 'streak-record' ? 2 : (kind === 'perfect-day' || kind === 'full-clear') ? 1 : 0;
             const count = [12, 18, 24][tier];
             const distanceBase = [46, 58, 72][tier];
             const distanceRange = [36, 46, 56][tier];
@@ -827,6 +995,81 @@ document.addEventListener('alpine:init', () => {
         },
     });
     /**
+     * The command palette (Strg/⌘+K) — see App\Livewire\CommandPalette. Open/closed
+     * and the keyboard cursor are ephemeral UI state, so they live here rather than
+     * on the Livewire component: opening costs no round trip, and moving the cursor
+     * never touches the server. The cursor is simply "which [data-palette-item]
+     * currently carries aria-selected" — no index mirrored into Alpine reactive
+     * state, because Livewire re-renders the result list underneath it and a
+     * mirrored index would point at a row that no longer exists.
+     */
+    window.Alpine.store('commandPalette', {
+        open: false,
+        index: 0,
+        returnFocusTo: null,
+        items() {
+            return [...document.querySelectorAll('#command-palette-list [data-palette-item]')];
+        },
+        show(trigger = null) {
+            if (this.open) return;
+            this.returnFocusTo = trigger instanceof HTMLElement ? trigger : null;
+            this.open = true;
+            window.Livewire?.dispatch('command-palette-opened');
+            window.Alpine.nextTick(() => {
+                document.getElementById('command-palette-input')?.focus();
+                this.reset();
+            });
+        },
+        hide() {
+            if (!this.open) return;
+            this.open = false;
+            const el = this.returnFocusTo;
+            this.returnFocusTo = null;
+            if (el && document.body.contains(el)) el.focus();
+        },
+        toggle(trigger = null) {
+            this.open ? this.hide() : this.show(trigger);
+        },
+        /** Back to the first row — called whenever the result list was replaced. */
+        reset() {
+            this.select(0);
+        },
+        select(i) {
+            const items = this.items();
+            items.forEach((el) => el.setAttribute('aria-selected', 'false'));
+            if (items.length === 0) {
+                this.index = 0;
+                return;
+            }
+            this.index = Math.max(0, Math.min(i, items.length - 1));
+            const el = items[this.index];
+            el.setAttribute('aria-selected', 'true');
+            el.scrollIntoView({ block: 'nearest' });
+        },
+        move(_root, delta) {
+            const n = this.items().length;
+            if (n === 0) return;
+            this.select((this.index + delta + n) % n);
+        },
+        /** Mouse hover moves the cursor too, so ↵ always opens what is highlighted. */
+        point(_root, el) {
+            const i = this.items().indexOf(el);
+            if (i !== -1 && i !== this.index) this.select(i);
+        },
+        activate() {
+            this.items()[this.index]?.click();
+        },
+        /** "Erfassen": hand the typed sentence to the capture panel, pre-filled. */
+        capture(text) {
+            const title = String(text ?? '').trim();
+            this.hide();
+            window.Alpine.nextTick(() => window.Alpine.store('quickCapture').show(null, null, null, { title }));
+        },
+    });
+    // A navigation replaces the page but not this store — close the palette so it
+    // never greets the next page already open.
+    document.addEventListener('livewire:navigate', () => window.Alpine.store('commandPalette').hide());
+    /**
      * onboarding — step position for the new-user tutorial (App\Livewire\Onboarding).
      * The slides themselves are static content, not server data, so it needs no seeded-order bookkeeping: init() only ever sets
      * `total` (the slide count, read out of the Blade view so the two can
@@ -846,6 +1089,145 @@ document.addEventListener('alpine:init', () => {
             if (this.step > 0) this.step--;
         },
     });
+    /**
+     * Shared behaviour for the small Markdown editors on the project page (brainstorm) and the
+     * group page (note cards): an auto-growing textarea (x-ref="ta"), toolbar helpers that wrap or
+     * prefix the current selection, and a short-lived "Gespeichert" flash. The toolbar markup itself
+     * is partials/markdown-toolbar.blade.php. Spread it into a larger x-data when a page needs more
+     * state of its own: x-data="{ ...markdownEditor({ minHeight: 288 }), tab: 'tasks' }".
+     */
+    window.Alpine.data('markdownEditor', (cfg = {}) => ({
+        saved: false,
+        _t: null,
+        autosize() {
+            const ta = this.$refs.ta;
+            if (! ta) return;
+            ta.style.height = 'auto';
+            ta.style.height = Math.max(ta.scrollHeight, cfg.minHeight ?? 96) + 'px';
+        },
+        wrap(before, after) {
+            const ta = this.$refs.ta;
+            if (! ta) return;
+            const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value, sel = v.slice(s, e);
+            ta.value = v.slice(0, s) + before + sel + after + v.slice(e);
+            ta.focus();
+            ta.setSelectionRange(s + before.length, s + before.length + sel.length);
+            ta.dispatchEvent(new Event('input'));
+            this.autosize();
+        },
+        prefixLines(prefix) {
+            const ta = this.$refs.ta;
+            if (! ta) return;
+            const v = ta.value, ls = v.lastIndexOf('\n', ta.selectionStart - 1) + 1;
+            let le = v.indexOf('\n', ta.selectionEnd);
+            if (le === -1) le = v.length;
+            const block = v.slice(ls, le).split('\n').map((l) => prefix + l).join('\n');
+            ta.value = v.slice(0, ls) + block + v.slice(le);
+            ta.focus();
+            ta.setSelectionRange(ls, ls + block.length);
+            ta.dispatchEvent(new Event('input'));
+            this.autosize();
+        },
+        flashSaved() {
+            this.saved = true;
+            clearTimeout(this._t);
+            this._t = setTimeout(() => (this.saved = false), 1600);
+        },
+    }));
+
+    /**
+     * splitSheet — the "Aufteilen" sheet's 14-day strip (partials of
+     * livewire/split-task-sheet.blade.php). The selection lives here, not on
+     * the server: tapping a day is instant, and only the app's proposal
+     * (`$wire.suggest`) and saving cost a round trip.
+     *
+     * cfg: { days, deadlineOffset, selected, total, doneCount }
+     *   days[]: { date, offset, weekday, dayNumber, label, capacityTotal,
+     *             capacityUsed (without this task's own parts), locked }
+     * A part's minutes are the total divided by the number of selected days,
+     * rounded to 5 — the same rule DayPlanner::saveSplit() applies.
+     */
+    window.Alpine.data('splitSheet', (cfg = {}) => ({
+        days: cfg.days ?? [],
+        deadlineOffset: cfg.deadlineOffset ?? null,
+        doneCount: cfg.doneCount ?? 0,
+        selected: [...(cfg.selected ?? [])],
+        total: cfg.total ?? 60,
+        busy: false,
+        saving: false,
+
+        get count() { return this.selected.length; },
+        get partsAfterwards() { return this.count + this.doneCount; },
+        get per() {
+            if (this.count === 0) return 0;
+            return Math.max(5, Math.round(this.total / this.count / 5) * 5);
+        },
+        isSelected(date) { return this.selected.includes(date); },
+        isAfterDeadline(day) { return this.deadlineOffset !== null && this.deadlineOffset >= 0 && day.offset > this.deadlineOffset; },
+        isDeadlineDay(day) { return this.deadlineOffset !== null && day.offset === this.deadlineOffset; },
+        free(day) {
+            return day.capacityTotal - day.capacityUsed - (this.isSelected(day.date) ? this.per : 0);
+        },
+        /** Share of the day's Arbeit-Block time that is taken, with this task's part on top. */
+        usedPct(day) {
+            if (day.capacityTotal <= 0) return 0;
+            const used = day.capacityUsed + (this.isSelected(day.date) ? this.per : 0);
+            return Math.min(100, Math.round((used / day.capacityTotal) * 100));
+        },
+        partPct(day) {
+            if (day.capacityTotal <= 0 || ! this.isSelected(day.date)) return 0;
+            return Math.min(100, Math.round((this.per / day.capacityTotal) * 100));
+        },
+        overflows(day) {
+            return day.capacityTotal > 0 && this.isSelected(day.date) && day.capacityUsed + this.per > day.capacityTotal;
+        },
+        toggle(day) {
+            if (day.locked) return;
+            if (this.isSelected(day.date)) {
+                this.selected = this.selected.filter((d) => d !== day.date);
+            } else {
+                this.selected = [...this.selected, day.date].sort();
+            }
+        },
+        get lateCount() {
+            return this.days.filter((d) => this.isSelected(d.date) && this.isAfterDeadline(d)).length;
+        },
+        get tightCount() {
+            return this.days.filter((d) => this.overflows(d)).length;
+        },
+        get blocklessCount() {
+            return this.days.filter((d) => this.isSelected(d.date) && d.capacityTotal === 0).length;
+        },
+        get canSave() {
+            return this.partsAfterwards >= 2 && this.count >= 1 && ! this.saving;
+        },
+        async propose(parts) {
+            this.busy = true;
+            try {
+                const dates = await this.$wire.suggest(Math.max(1, parts), this.total);
+                if (Array.isArray(dates) && dates.length) this.selected = dates;
+            } finally {
+                this.busy = false;
+            }
+        },
+        step(delta) {
+            const next = Math.min(this.days.filter((d) => ! d.locked).length, Math.max(1, this.count + delta));
+            if (next !== this.count) this.propose(next);
+        },
+        bump(deltaMinutes) {
+            this.total = Math.min(this.count * 600, Math.max(15, this.total + deltaMinutes));
+        },
+        async save() {
+            if (! this.canSave) return;
+            this.saving = true;
+            try {
+                await this.$wire.save(this.selected, this.total);
+            } finally {
+                this.saving = false;
+            }
+        },
+    }));
+
     /**
      * swipeCard — native-feeling horizontal swipe for mobile task cards.
      * Tracks the finger 1:1, locks to the horizontal axis (vertical scroll still
@@ -970,6 +1352,26 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
+     * The height the lift raises a block to, and below which it lifts at all.
+     *
+     * NOT the same number as the `@container (min-height: 46px)` threshold in
+     * resources/css/app.css, and deliberately so: a container query sizes
+     * against the container's CONTENT box, while this is a min-height on the
+     * wrapper, a border box. The body's 1px border top and bottom makes a 46px
+     * wrapper a 44px container — two pixels short of its own threshold, so the
+     * pencil the lift exists to reveal would never appear. 46 for the
+     * threshold, 2 for the border, 2 of slack. Kept in step by hand with
+     * DayWindow::LIFT_MIN_PX; neither can read the other.
+     */
+    const LIFT_MIN_PX = 50;
+
+    /** How long a tap-lifted block stays up before lying back down. */
+    const LIFT_HOLD_MS = 2600;
+
+    /** "HH:MM" from minutes since midnight, for the live labels below. */
+    const fmtHM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+    /**
      * scheduleEvent — drag an event on the timeline grid. Body drag moves it
      * (duration preserved); the top/bottom handles resize it. Times snap to 5'.
      * A double-tap opens the edit sheet (mobile); desktop uses the hover pencil.
@@ -983,6 +1385,8 @@ document.addEventListener('alpine:init', () => {
         id: cfg.id,
         start: cfg.start ?? 0,
         end: cfg.end ?? 0,
+        bufBefore: cfg.bufBefore ?? 0,
+        bufAfter: cfg.bufAfter ?? 0,
         ppm: 1,
         dayStart: 360,
         span: 1020,
@@ -990,10 +1394,25 @@ document.addEventListener('alpine:init', () => {
         minLen: 10,
         kind: null,
         sy: 0,
+        sx: 0,
+        // Week view only: the day columns a body drag can land in (each carries
+        // data-drop-date), the one the block started in, and the one it is over now.
+        // dx is the px offset that snaps the block into the hovered column.
+        dropCols: [],
+        homeDate: null,
+        targetDate: null,
+        dx: 0,
         origStart: 0,
         origEnd: 0,
         moved: false,
         lastTap: 0,
+        lifted: false,
+        // True from the end of a drag until its save has come back: the live
+        // labels stay up until then, so the old time never flashes back in
+        // between releasing and the server's re-render.
+        pending: false,
+        pointerType: 'mouse',
+        _liftT: null,
 
         init() {
             const grid = this.$el.closest('[data-grid]');
@@ -1010,12 +1429,100 @@ document.addEventListener('alpine:init', () => {
             return ((this.end - this.start) / this.span) * 100;
         },
 
+        /**
+         * Position, plus the lift. `min-height` rather than a height override:
+         * a block already tall enough cannot move, and the top edge — which
+         * is the start time — stays put either way.
+         */
+        get blockStyle() {
+            let style = `top:${this.top}%; height:${this.height}%;`;
+            if (this.lifted) {
+                // Resizing a lifted block from its bottom grip: the lifted
+                // height itself grows/shrinks by exactly the dragged amount,
+                // so the grip stays under the pointer 1:1. Without this the
+                // block sat at >= LIFT_MIN_PX for the whole drag and the user
+                // never saw it get shorter. (Top-resize and move need nothing:
+                // the top edge is true geometry and already follows.)
+                const grow = this.kind === 'bottom' ? (this.end - this.origEnd) * this.ppm : 0;
+                style += ` min-height:${Math.max(16, LIFT_MIN_PX + grow)}px;`;
+            }
+            // Dragging into another day column (week view only) slides the block
+            // sideways; `dx` stays 0 for every other gesture.
+            if (this.dx) style += ` transform:translateX(${this.dx}px);`;
+            return style;
+        },
+
+        /** Live labels — they follow a drag instead of showing the time it started at. */
+        get timeLabel() {
+            return `${fmtHM(this.start)}\u2013${fmtHM(this.end)}`;
+        },
+        get startLabel() {
+            return fmtHM(this.start);
+        },
+        get departureLabel() {
+            return fmtHM(Math.max(0, this.start - this.bufBefore));
+        },
+
+        /**
+         * Weg-/Pufferzeit bands, in percent of the *block*, not of the grid —
+         * so they follow a drag-move and a drag-resize for free, without a
+         * second set of geometry to keep in sync.
+         */
+        get bufBeforeStyle() {
+            const pct = (this.bufBefore / Math.max(1, this.end - this.start)) * 100;
+            return `top:${-pct}%; height:${pct}%;`;
+        },
+        get bufAfterStyle() {
+            const pct = (this.bufAfter / Math.max(1, this.end - this.start)) * 100;
+            return `top:100%; height:${pct}%;`;
+        },
+
+        /**
+         * Raise a block that is too short to carry its own content. Measured,
+         * not derived from its duration: the same 30 minutes is a different
+         * number of pixels on the phone, in the desktop week, and at any
+         * other Tagesrahmen (see DayWindow::ppm).
+         *
+         * `auto` is the touch path — nothing will ever fire a "pointerleave"
+         * there, so the lift settles itself.
+         */
+        lift(auto) {
+            if (!this.lifted && this.$el.getBoundingClientRect().height >= LIFT_MIN_PX) return;
+            // Only ever one block lifted at a time. Dispatched before the flag
+            // is set, so the listener below settling *this* block is a no-op.
+            if (!this.lifted) window.dispatchEvent(new CustomEvent('schedule-block-settle'));
+            this.lifted = true;
+            clearTimeout(this._liftT);
+            if (auto) this._liftT = setTimeout(() => { this.lifted = false; }, LIFT_HOLD_MS);
+        },
+
+        settle() {
+            clearTimeout(this._liftT);
+            this.lifted = false;
+        },
+
         begin(kind, e) {
             if (e.button != null && e.button !== 0) return;
+            // Remembered for tap(): only a touch needs the lift to time itself
+            // out, because only a mouse will ever fire a pointerleave.
+            this.pointerType = e.pointerType || 'mouse';
+            // A drag on a tap-lifted block must not have the lift time out from
+            // under it halfway through — the grip would jump away mid-gesture.
+            clearTimeout(this._liftT);
             const grid = this.$el.closest('[data-grid]');
             if (grid) this.ppm = grid.getBoundingClientRect().height / this.span;
             this.kind = kind;
             this.sy = e.clientY;
+            this.sx = e.clientX;
+            this.dx = 0;
+            this.dropCols = [];
+            this.homeDate = this.targetDate = grid?.dataset.dropDate ?? null;
+            if (kind === 'move' && this.homeDate) {
+                this.dropCols = [...document.querySelectorAll('[data-grid][data-drop-date]')].map((el) => {
+                    const r = el.getBoundingClientRect();
+                    return { date: el.dataset.dropDate, left: r.left, right: r.right };
+                });
+            }
             this.origStart = this.start;
             this.origEnd = this.end;
             this.moved = false;
@@ -1026,7 +1533,7 @@ document.addEventListener('alpine:init', () => {
         drag(e) {
             if (!this.kind) return;
             const dy = e.clientY - this.sy;
-            if (Math.abs(dy) > 3) this.moved = true;
+            if (Math.abs(dy) > 3 || (this.kind === 'move' && Math.abs(e.clientX - this.sx) > 3)) this.moved = true;
             const dMin = Math.round(dy / this.ppm / this.snap) * this.snap;
             const dur = this.origEnd - this.origStart;
 
@@ -1034,6 +1541,16 @@ document.addEventListener('alpine:init', () => {
                 const ns = Math.max(0, Math.min(1440 - dur, this.origStart + dMin));
                 this.start = ns;
                 this.end = ns + dur;
+
+                if (this.dropCols.length > 1) {
+                    const home = this.dropCols.find((c) => c.date === this.homeDate);
+                    // The column under the pointer; past either edge, the nearest one.
+                    const over =
+                        this.dropCols.find((c) => e.clientX >= c.left && e.clientX < c.right) ??
+                        (e.clientX < this.dropCols[0].left ? this.dropCols[0] : this.dropCols[this.dropCols.length - 1]);
+                    this.targetDate = over.date;
+                    this.dx = Math.round(over.left - home.left);
+                }
             } else if (this.kind === 'bottom') {
                 this.end = Math.max(this.origStart + this.minLen, Math.min(1440, this.origEnd + dMin));
             } else if (this.kind === 'top') {
@@ -1053,20 +1570,47 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            // A block that was actually dragged lies back down: its new
+            // neighbourhood is what the user wants to look at now.
+            this.settle();
+
             const hhmm = (m) =>
                 `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-            if (kind === 'move') this.$wire.moveEvent(this.id, hhmm(this.start));
-            else this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+            const crossDay = kind === 'move' && this.targetDate && this.targetDate !== this.homeDate;
+
+            this.pending = true;
+            const saved = kind === 'move'
+                ? (crossDay
+                    ? this.$wire.moveEvent(this.id, hhmm(this.start), this.targetDate)
+                    : this.$wire.moveEvent(this.id, hhmm(this.start)))
+                : this.$wire.resizeEvent(this.id, hhmm(this.start), hhmm(this.end));
+            // Hold the block over its new column — and keep the dragged time
+            // label — until the server has re-rendered it there.
+            Promise.resolve(saved).finally(() => {
+                this.dx = 0;
+                this.pending = false;
+            });
         },
 
+        /**
+         * A single tap used to do nothing at all — it only armed the 320ms
+         * double-tap window below. It now also lifts the block, which is how
+         * touch reaches the edit pencil: `group-hover` never fires there, so
+         * on a phone the pencil simply did not exist. The double-tap stays
+         * exactly as it was, as the shortcut for anyone who knows it.
+         */
         tap() {
             const now = Date.now();
             if (now - this.lastTap < 320) {
+                this.settle();
                 this.$wire.startEditEvent(this.id);
                 this.lastTap = 0;
             } else {
                 this.lastTap = now;
+                // A mouse click on a hovered block must NOT arm the auto-settle:
+                // the block would drop back down under a cursor that never left.
+                this.lift(this.pointerType !== 'mouse');
             }
         },
     }));
@@ -1168,15 +1712,81 @@ document.addEventListener('alpine:init', () => {
     }));
 
     /**
+     * Shared 250ms heartbeat for every focus ring. Driven by a Web Worker on
+     * purpose: browsers throttle (and, after a few minutes, nearly freeze)
+     * main-thread timers on a page that is hidden or covered by another window —
+     * exactly the "timer on my second screen" case — while a worker's timers
+     * keep their pace. Falls back to a plain interval if workers are unavailable
+     * (e.g. blocked by CSP). Ring state is derived from an absolute deadline, not
+     * counted tick by tick, so even a late tick lands on the right second.
+     */
+    const focusTicker = (() => {
+        const subscribers = new Set();
+        let worker = null;
+        let fallback = null;
+
+        const run = () => subscribers.forEach((fn) => fn());
+        const startFallback = () => {
+            if (fallback === null) fallback = setInterval(run, 250);
+        };
+        const ensureRunning = () => {
+            if (worker !== null || fallback !== null) return;
+            try {
+                const url = URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 250)'], { type: 'text/javascript' }));
+                worker = new Worker(url);
+                worker.onmessage = run;
+                worker.onerror = () => {
+                    worker?.terminate();
+                    worker = null;
+                    startFallback();
+                };
+            } catch (e) {
+                startFallback();
+            }
+        };
+        const stopIfIdle = () => {
+            if (subscribers.size > 0) return;
+            worker?.terminate();
+            worker = null;
+            if (fallback !== null) clearInterval(fallback);
+            fallback = null;
+        };
+
+        // Catch up the instant the tab/window becomes visible again.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') run();
+        });
+
+        return {
+            subscribe(fn) {
+                subscribers.add(fn);
+                ensureRunning();
+            },
+            unsubscribe(fn) {
+                subscribers.delete(fn);
+                stopIfIdle();
+            },
+        };
+    })();
+
+    /**
      * focusTimer — a live, client-side Pomodoro countdown for the header ring.
-     * Seeded with the seconds left + the phase length; ticks each second and
-     * exposes the mm:ss label and the SVG stroke-dashoffset for the ring fill.
-     * Chimes when it reaches 0 and calls the server's handlePhaseComplete —
-     * which either continues into the next phase (autostart enabled) or
-     * freezes awaiting a manual continue (disabled). Either way, the
-     * server-driven re-render that follows swaps in fresh state (see wire:key
-     * on the ring in schedule-strip.blade.php, keyed on phase+cycle so a
-     * transition always reinitialises this component with a fresh seed).
+     * Seeded with the seconds left + the phase length; derives the mm:ss label
+     * and the SVG stroke-dashoffset for the ring fill from an absolute deadline
+     * (so it counts second by second and never drifts, whatever the browser does
+     * to timers). Chimes when it reaches 0 and calls the server's
+     * handlePhaseComplete — which either continues into the next phase
+     * (autostart enabled) or freezes awaiting a manual continue (disabled).
+     * Either way, the server-driven re-render that follows swaps in fresh state
+     * (see wire:key on the ring in schedule-strip.blade.php, keyed on
+     * phase+cycle so a transition always reinitialises this component with a
+     * fresh seed). If that call fails or lands a hair early, it is retried
+     * every few seconds until the ring is replaced — it never stays stuck at 0:00.
+     *
+     * The ring element carries data-remaining, refreshed by the 5s poll; when the
+     * server's figure disagrees with the local clock by more than a couple of
+     * seconds (clock skew, another device paused/changed the session) the
+     * deadline is re-anchored to the server.
      *
      * cfg: { id, remaining, total, circ }
      */
@@ -1185,22 +1795,45 @@ document.addEventListener('alpine:init', () => {
         remaining: Math.max(0, cfg.remaining ?? 0),
         total: Math.max(1, cfg.total ?? 1),
         circ: cfg.circ ?? 264,
-        timer: null,
+        endsAt: 0,
+        lastServerRemaining: Math.max(0, cfg.remaining ?? 0),
+        completedAt: null,
+        _tick: null,
 
         init() {
-            this.timer = setInterval(() => {
-                if (this.remaining > 0) {
-                    this.remaining--;
-                    if (this.remaining === 0) {
-                        this.chime();
-                        clearInterval(this.timer);
-                        this.$wire.call('handlePhaseComplete', this.id);
-                    }
-                }
-            }, 1000);
+            this.endsAt = Date.now() + this.remaining * 1000;
+            this._tick = () => this.tick();
+            focusTicker.subscribe(this._tick);
         },
         destroy() {
-            clearInterval(this.timer);
+            if (this._tick) focusTicker.unsubscribe(this._tick);
+            this._tick = null;
+        },
+        tick() {
+            const now = Date.now();
+
+            // Re-anchor when a poll brought a server figure that disagrees with us.
+            const server = parseInt(this.$el?.dataset?.remaining ?? '', 10);
+            if (Number.isFinite(server) && server !== this.lastServerRemaining) {
+                this.lastServerRemaining = server;
+                const local = Math.max(0, Math.ceil((this.endsAt - now) / 1000));
+                if (Math.abs(server - local) > 2) {
+                    this.endsAt = now + server * 1000;
+                }
+            }
+
+            const left = Math.max(0, Math.ceil((this.endsAt - now) / 1000));
+            if (left !== this.remaining) this.remaining = left;
+            if (left > 0) return;
+
+            // Reached zero: chime once, then keep (re)trying the server hand-off.
+            if (this.completedAt === null) {
+                try { this.chime(); } catch (e) { /* audio is optional */ }
+            } else if (now - this.completedAt < 3000) {
+                return;
+            }
+            this.completedAt = now;
+            Promise.resolve(this.$wire.call('handlePhaseComplete', this.id)).catch(() => {});
         },
         get mmss() {
             const m = Math.floor(this.remaining / 60);
@@ -1295,6 +1928,38 @@ document.addEventListener('alpine:init', () => {
 })();
 
 /**
+ * "Strg/⌘+K" (or a bare "/") opens the command palette from anywhere. The modifier
+ * form fires even while typing — a modified K is never text — and intentionally
+ * takes over the browser's own Strg+K (focus search bar); the bare "/" gets the same
+ * typing guards as "N" below, since it is a real character.
+ */
+document.addEventListener('keydown', (event) => {
+    const store = window.Alpine?.store('commandPalette');
+    if (!store) return;
+
+    const isModK = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && (event.key === 'k' || event.key === 'K');
+    if (isModK) {
+        event.preventDefault();
+        // The capture panel sits at the same z-index — never stack the two.
+        if (window.Alpine.store('quickCapture')?.open) return;
+        store.toggle(event.target instanceof HTMLElement ? event.target : null);
+        return;
+    }
+
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+
+    const el = event.target;
+    if (el instanceof HTMLElement) {
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) return;
+    }
+    if (store.open || window.Alpine.store('quickCapture')?.open) return;
+
+    event.preventDefault();
+    store.show(el instanceof HTMLElement ? el : null);
+});
+
+/**
  * "N" opens the capture panel from anywhere in the app. Deliberately a bare key
  * (no modifier): every modifier combination in the 1–9/letter range is already
  * spoken for by the browser itself. The guards below are what make that safe —
@@ -1377,4 +2042,21 @@ window.addEventListener('theme-applied', (event) => {
             meta.setAttribute('content', dark ? chrome.dark : chrome.light);
         });
     }
+});
+
+/**
+ * A lifted timeline block (see the `lift()` in the scheduleEvent component)
+ * lies back down as soon as the next pointer lands anywhere that is not a
+ * block. Touches that start *on* a block are deliberately skipped: that tap
+ * is on its way to lifting one, and its own lift() settles every other block
+ * itself, so handling it here too would drop a block mid-hover on desktop.
+ *
+ * Bubble phase, not capture, on purpose — the edit pencil's own
+ * `@pointerdown.stop` has to be able to keep this from firing while it is
+ * being clicked, or the pencil would be hidden again before the click lands.
+ */
+document.addEventListener('pointerdown', (e) => {
+    if (e.target instanceof Element && e.target.closest('[data-schedule-block]')) return;
+
+    window.dispatchEvent(new CustomEvent('schedule-block-settle'));
 });

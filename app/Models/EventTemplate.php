@@ -26,6 +26,8 @@ class EventTemplate extends Model
         'name',
         'color',
         'duration',
+        'buffer_before',
+        'buffer_after',
         'default_start',
         'is_recurring',
         'recurrence',
@@ -37,6 +39,8 @@ class EventTemplate extends Model
         return [
             'is_recurring' => 'boolean',
             'duration' => 'integer',
+            'buffer_before' => 'integer',
+            'buffer_after' => 'integer',
             'sort_order' => 'integer',
         ];
     }
@@ -100,6 +104,20 @@ class EventTemplate extends Model
     public function endMinutes(): int
     {
         return $this->startMinutes() + $this->duration;
+    }
+
+    /**
+     * The block's full footprint on the timeline, Weg-/Pufferzeit included —
+     * what DayWindow has to keep visible, as opposed to the block itself.
+     */
+    public function occupiedStartMinutes(): int
+    {
+        return max(0, $this->startMinutes() - (int) $this->buffer_before);
+    }
+
+    public function occupiedEndMinutes(): int
+    {
+        return min(1440, $this->endMinutes() + (int) $this->buffer_after);
     }
 
     /** The live category name, falling back to the template's own snapshot. */

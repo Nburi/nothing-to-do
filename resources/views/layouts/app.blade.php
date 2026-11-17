@@ -12,7 +12,7 @@
         @include('partials.theme-style')
         @include('partials.pwa-head')
 
-        <title>{{ config('app.name', 'nothing-to-do') }}</title>
+        <title>{{ filled($title ?? null) ? $title.' · ' : '' }}{{ config('app.name', 'nothing-to-do') }}</title>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
@@ -46,14 +46,29 @@
             Zum Inhalt springen
         </a>
 
-        <div class="min-h-dvh">
-            <header class="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-xs">
+        <div class="min-h-[100dvh]">
+            {{-- z-40, not the header's old z-30: the mobile bottom nav (board,
+                 group page) is `fixed inset-x-0 bottom-0 z-30` too — an exact
+                 tie, resolved by DOM order in the bottom nav's favour since it
+                 renders later in the page. That never mattered while the
+                 header's own painted area stayed within its h-16 bar at the
+                 top, but the avatar dropdown can now grow tall enough (see
+                 its own max-h-[calc(100dvh-5rem)] comment below) to visually
+                 reach down to where the bottom nav sits, and the bottom nav
+                 was winning that tie — covering the dropdown's own bottom
+                 rows (Abmelden included) even though they were still
+                 genuinely reachable by scroll. z-40 ties with the floating
+                 quick-capture FAB and the announcement toast instead, which
+                 never overlap the header's own screen region (top vs.
+                 bottom), so that tie is harmless; sheets/modals stay z-50,
+                 still safely above the header either way. --}}
+            <header class="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-xs">
                 <div class="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6">
                     {{-- The wordmark hides on mobile like every other text label in this
                          header (avatar name, "Mehr" label) — the logo icon alone already
                          carries the brand, and the freed width matters more on a narrow
                          screen than the extra word does. --}}
-                    <a href="{{ url('/app') }}" class="flex items-center gap-2.5" wire:navigate>
+                    <a href="{{ url('/app') }}" class="-m-2 flex items-center gap-2.5 p-2" wire:navigate>
                         <x-logo class="h-6 w-6 text-forest" />
                         <span class="hidden text-[15px] font-medium tracking-tight sm:inline">nothing-to-do</span>
                     </a>
@@ -75,25 +90,56 @@
                         @endphp
                         <div class="flex items-center gap-1.5">
                         {{-- The header badge row — a user-configured, ordered set of ambient
-                             shortcuts (Settings' "Header-Badges" card). Each one only takes up
-                             space once it actually has something to show — no sad 0/empty state
-                             — and disappears entirely otherwise. overflow-x-auto is the safety
-                             net for a wide selection on a narrow phone . See App\Services\HeaderBadges. --}}
-                        @php $headerBadges = \App\Services\HeaderBadges::visibleFor(auth()->user()); @endphp
-                        @if (count($headerBadges) > 0)
-                            {{-- max-w-[45vw]: bumped up from the original 38vw now that the
-                                 wordmark hides and "Mehr" folds into the avatar menu on
-                                 mobile (see both below) — there's more real width to spare
-                                 before this needs to fall back to its own horizontal scroll,
-                                 without risking the header itself overflowing on a narrow
-                                 (~320px) phone. Still capped, still scrollable — the safety
-                                 net for a wide badge selection stays exactly as before. --}}
-                            <div class="flex max-w-[45vw] items-center gap-1.5 overflow-x-auto sm:max-w-none">
-                                @foreach ($headerBadges as $badge)
-                                    @include('partials.header-badge', ['badge' => $badge])
-                                @endforeach
-                            </div>
-                        @endif
+                             shortcuts (Settings' "Header-Badges" card). A Livewire component of
+                             its own so it can refresh live after any action on the page (see
+                             App\Livewire\HeaderBadgeRow and the live-badge block in app.js);
+                             each badge only takes up space once it has something to show. --}}
+                        <livewire:header-badge-row />
+
+                        {{-- Tagesüberblick entry point — deliberately not part of the
+                             configurable header-badges row above (that's opt-in/user-ordered;
+                             this is a fixed, always-reachable surface, same "core, never
+                             hideable" precedent as the Board/Settings themselves, see
+                             App\Services\AppModules's own docblock). A silent dot, not a
+                             count or a toast — it disappears the instant the page is opened
+                             (see User::hasSeenDayPreviewToday()), whatever time of day that is.
+                             The launch-burst class is the first half of the day-preview
+                             Signature Moment; the destination page's streak pill plays the
+                             matching arrival half (day-preview.blade.php's `day-preview-arrive`
+                             class) — two one-shot CSS animations standing in for a continuous
+                             cross-page morph, since a real wire:navigate SPA jump can't reliably
+                             track one shared element through the swap. --}}
+                        {{-- Command palette (Strg/⌘+K, or "/"). Header icon from sm up;
+                             below sm the same action lives at the top of the avatar menu,
+                             where a phone user already looks for "the rest" — the mobile
+                             header row has no width to spare for another round button. --}}
+                        <button
+                            type="button"
+                            x-data
+                            @click="$store.commandPalette.show($el)"
+                            aria-label="Suche und Befehle öffnen (Strg+K)"
+                            title="Suche — Strg+K"
+                            class="hidden h-8 w-8 flex-none items-center justify-center rounded-full text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint sm:flex"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg>
+                        </button>
+
+                        <a
+                            href="{{ route('today') }}"
+                            wire:navigate
+                            x-data
+                            @click="$el.classList.add('day-preview-launch')"
+                            aria-label="Tagesüberblick{{ auth()->user()->hasSeenDayPreviewToday() ? '' : ' — neu' }}"
+                            class="relative flex h-10 w-10 flex-none items-center justify-center rounded-full text-ink-soft sm:h-8 sm:w-8 transition hover:bg-surface hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="4"/>
+                                <path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+                            </svg>
+                            @unless (auth()->user()->hasSeenDayPreviewToday())
+                                <span class="absolute right-0.5 top-0.5 h-2 w-2 rounded-full border-2 border-paper bg-overprint" aria-hidden="true"></span>
+                            @endunless
+                        </a>
 
                         {{-- One "Mehr" dropdown replaces the old per-feature header pills
                              (Zeitplan), styled like the avatar
@@ -158,7 +204,7 @@
                             x-data
                             @click="$store.quickCapture.show($event.currentTarget)"
                             @class([
-                                'h-8 w-8 place-items-center rounded-card border border-line bg-surface text-ink-soft transition hover:border-ink-faint/60 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest',
+                                'h-10 w-10 place-items-center rounded-card border border-line bg-surface text-ink-soft sm:h-8 sm:w-8 transition hover:border-ink-faint/60 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest',
                                 'hidden sm:grid' => $showCaptureFab,
                                 'grid' => !$showCaptureFab,
                             ])
@@ -172,7 +218,7 @@
                                 type="button"
                                 @click="open = !open"
                                 @keydown.escape.window="open = false"
-                                class="flex items-center gap-2 rounded-card px-2.5 py-1.5 text-sm text-ink-soft transition hover:bg-surface hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
+                                class="flex items-center gap-2 rounded-card px-2.5 py-2 text-sm text-ink-soft transition sm:py-1.5 hover:bg-surface hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                                 :aria-expanded="open"
                                 aria-haspopup="true"
                                 aria-label="Konto{{ $anyMehrNavVisible ? ' & weitere Funktionen' : '' }}"
@@ -183,17 +229,39 @@
                                 <span class="hidden sm:inline">{{ Str::of(auth()->user()->name)->before(' ') }}</span>
                             </button>
 
+                            {{-- max-h + overflow-y-auto (not a bare overflow-hidden): since the
+                                 mobile header redesign folded the whole "Weitere Funktionen"
+                                 section into this panel, its worst-case height (user info + up
+                                 to 7 nav links + Profil/Einstellungen/Fortschritt/Hilfe/Abmelden
+                                 + 3 admin links) comfortably exceeds most phone viewports.
+                                 overflow-hidden alone made the excess content not just
+                                 invisible but unreachable — no scrollbar, no way to tap it. The
+                                 cap leaves roughly the header's own height plus a little
+                                 breathing room, so the panel never runs past the bottom of the
+                                 screen; overflow-y-auto still clips to rounded-card's corners
+                                 exactly like overflow-hidden did (an overflow value other than
+                                 "visible" always clips to the border-radius), so the rounded
+                                 look is unchanged. overscroll-contain stops a reached scroll
+                                 boundary from chaining into the page behind it. --}}
                             <div
                                 x-show="open"
                                 x-transition.opacity.duration.150ms
                                 @click.outside="open = false"
-                                class="absolute right-0 mt-2 w-52 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-map"
+                                class="absolute right-0 mt-2 w-52 max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-card border border-line bg-surface py-1 shadow-map"
                                 style="display: none;"
                             >
                                 <div class="border-b border-line px-4 py-2.5">
                                     <p class="truncate text-sm font-medium text-ink">{{ auth()->user()->name }}</p>
                                     <p class="truncate text-xs text-ink-faint">{{ auth()->user()->email }}</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    @click="open = false; $store.commandPalette.show()"
+                                    class="flex w-full items-center gap-2 border-b border-line px-4 py-2.5 text-left text-sm text-ink-soft transition hover:bg-paper hover:text-ink sm:hidden"
+                                >
+                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg>
+                                    Suchen &amp; springen
+                                </button>
                                 {{-- Mobile only: the "Mehr" feature links, folded in here
                                      since the standalone desktop trigger is hidden below sm.
                                      Same partial the desktop panel uses (see above), so the
@@ -205,14 +273,14 @@
                                     @include('partials.mehr-nav-links', ['stagger' => true])
                                 </div>
                                 @endif
-                                <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('profile.edit') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Profil
                                 </a>
-                                <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('settings') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Einstellungen
                                 </a>
                                 @if ($showProgressNav)
-                                <a href="{{ route('progress') }}" wire:navigate class="flex items-center justify-between gap-2 px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('progress') }}" wire:navigate class="flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Fortschritt
                                     @if ($currentStreak > 0)
                                         <span @class([
@@ -225,20 +293,20 @@
                                     @endif
                                 </a>
                                 @endif
-                                <a href="{{ route('help') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('help') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Hilfe
                                 </a>
                                 @if (auth()->user()->is_admin)
-                                <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.announcements') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Ankündigungen verwalten
                                 </a>
-                                <a href="{{ route('admin.help') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.help') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Hilfe-Center verwalten
                                 </a>
-                                <a href="{{ route('admin.support') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.support') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Support-Anfragen
                                 </a>
-                                <a href="{{ route('admin.errors') }}" wire:navigate class="block px-4 py-2 text-sm text-ink-soft transition hover:bg-paper hover:text-ink">
+                                <a href="{{ route('admin.errors') }}" wire:navigate class="block px-4 py-2.5 text-sm text-ink-soft sm:py-2 transition hover:bg-paper hover:text-ink">
                                     Fehler-Statistiken
                                 </a>
                                 @endif
@@ -256,6 +324,13 @@
             </header>
 
             <main id="content">
+                {{-- Board only: every list concept lives on this one route, so a single
+                     include here covers Simple/3 Things/Eisenhower/Kanban alike. --}}
+                @auth
+                    @if (request()->routeIs('app'))
+                        <livewire:overdue-rescue />
+                    @endif
+                @endauth
                 {{ $slot }}
             </main>
         </div>
@@ -284,6 +359,15 @@
             @endif
 
             <livewire:quick-capture />
+            <livewire:command-palette />
+
+            {{-- "Aufteilen": spread a task over several days. Mounted once, opened from any page
+                 via Livewire.dispatch('open-split-sheet', { taskId }). Only exists with the Planer on. --}}
+            @if (auth()->user()->planner_enabled)
+                <livewire:split-task-sheet />
+            @endif
+            {{-- "Nicht vergessen": the list behind the chips above the Zeitstrahl, opened with Livewire.dispatch('open-reminders'). --}}
+            <livewire:reminder-sheet />
 
             {{-- "Here's what's new" toast — see App\Livewire\FeatureAnnouncementToast.
                  Mounted once here, same reasoning as the celebration overlay below:
@@ -310,6 +394,7 @@
                                     :class="{
                                         'celebrate-ring--record': $store.celebration.kind === 'record',
                                         'celebrate-ring--perfect-day': $store.celebration.kind === 'perfect-day',
+                                        'celebrate-ring--full-clear': $store.celebration.kind === 'full-clear',
                                         'celebrate-ring--streak-record': $store.celebration.kind === 'streak-record',
                                     }"
                                     :style="`animation-delay: ${(n - 1) * 140}ms`"
@@ -321,6 +406,7 @@
                                     :class="{
                                         'celebrate-particle--record': $store.celebration.kind === 'record',
                                         'celebrate-particle--perfect-day': $store.celebration.kind === 'perfect-day',
+                                        'celebrate-particle--full-clear': $store.celebration.kind === 'full-clear',
                                         'celebrate-particle--streak-record': $store.celebration.kind === 'streak-record',
                                     }"
                                     :style="`--dx: ${p.dx}px; --dy: ${p.dy}px; --rotate: ${p.rotate}deg; animation-delay: ${p.delay}ms`"
@@ -332,7 +418,7 @@
                             :class="{
                                 'bg-overprint text-white': $store.celebration.kind === 'record',
                                 'bg-contour text-white': $store.celebration.kind === 'perfect-day' || $store.celebration.kind === 'streak-record',
-                                'bg-forest text-white': $store.celebration.kind === 'goal',
+                                'bg-forest text-white': $store.celebration.kind === 'goal' || $store.celebration.kind === 'full-clear',
                             }"
                             x-text="$store.celebration.label"
                         ></p>
