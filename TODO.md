@@ -47,7 +47,10 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
 ## Open questions for Niels
-- **`refactor/refactor` is 21 migrations behind `main`** (task_sessions, reminders, repeat rules, OAuth, day bounds, buffers, …). Prod data lives in those tables; the refactor has to land on top of them. Merge `main` into `refactor/refactor` soon, or decide per table what happens to it — the longer this waits, the bigger the 5.4 switch gets.
+- `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
+  - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
+  - Prod categories linked to a project, group or Agenda entry (`task_source` project / group / agenda_entry / agenda_generic) now show no link and fall back to the normal suggestion. Decide in 5.4 whether to clear them or turn them into a text link.
+  - `main` (prod) also has `phpseclib/phpseclib` 4.0.1 (CPU-exhaustion advisory, pulled in by Passport). Fixed here (4.0.3); prod needs the same patch update as a hotfix.
 - Answered 2026-11-08: "status" in step 1.1 is dropped (nobody knew what it meant; `list` + `is_completed` cover it). Instead, step 1.4 adds a soft-deadline slip counter (G2), and the crunch decision "drop" moves a task to Later instead of deleting it.
 - Answered 2026-11-09: move to **Tailwind 4** at the start of 2.1 (Niels: "Yes laravel 4 is fine", meaning Tailwind 4). Done in 2.1 (`feature/theme-tokens`); every old view was migrated by the upgrade tool and still builds and renders.
 - The app has no version number yet (global rule 9). Introduce one (e.g. `config/app.php` `version`, shown in settings)? Suggestion: start the refactor at `2.0.0_1`.

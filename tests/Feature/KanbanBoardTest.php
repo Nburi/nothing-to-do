@@ -350,4 +350,22 @@ class KanbanBoardTest extends TestCase
         $this->assertFalse($task->is_today);
         $this->assertFalse($task->is_completed);
     }
+
+    // (regression: a project captured while Kanban was active used to be
+    // fully persisted but had no UI path back to it at all — see
+    // partials/projects-quick-access.blade.php)
+
+    public function test_renders_cleanly_with_no_groups_at_all(): void
+    {
+        $user = $this->kanbanUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
+    }
+
+    public function test_renders_cleanly_with_no_projects_at_all(): void
+    {
+        $user = $this->kanbanUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
+    }
 }

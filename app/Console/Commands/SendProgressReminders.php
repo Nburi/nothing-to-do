@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\StreakDayOutcome;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\ProgressStats;
@@ -103,16 +104,16 @@ class SendProgressReminders extends Command
         }
 
         $todayStats = ProgressStats::todayListStatsByDay($user);
-        $successMap = ProgressStats::dailySuccessMap($todayStats);
+        $outcomeMap = ProgressStats::dailyOutcomeMap($user, $todayStats);
 
-        if ($successMap[$today->toDateString()] ?? false) {
+        if (($outcomeMap[$today->toDateString()] ?? null) === StreakDayOutcome::OUTCOME_PERFECT) {
             return false; // today is already a perfect day
         }
 
         // currentStreak() starts counting from yesterday whenever today isn't
         // (yet) a success — which we just confirmed above — so this is exactly
         // the trailing streak that's actually at risk of breaking tonight.
-        $streak = ProgressStats::currentStreak($user, $successMap);
+        $streak = ProgressStats::currentStreak($user, $outcomeMap);
 
         if ($streak === 0) {
             return false; // nothing trailing to protect

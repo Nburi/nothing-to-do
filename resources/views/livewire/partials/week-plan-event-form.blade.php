@@ -44,7 +44,7 @@
                             type="button"
                             wire:click="$set('eventKind', '{{ $val }}')"
                             @class([
-                                'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
+                                'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
                                 'bg-forest text-white shadow-xs' => $eventKind === $val,
                                 'text-ink-soft hover:text-ink' => $eventKind !== $val,
                             ])
@@ -71,7 +71,12 @@
                                             'border-line text-ink-soft hover:border-ink-faint/60' => $eventCategoryId !== $cat->id,
                                         ])
                                     >
-                                        <span class="h-2.5 w-2.5 rounded-full {{ $swatches[$cat->color] ?? 'bg-contour' }}"></span>
+                                        <span
+                                            @class([
+                                                'h-2.5 w-2.5 rounded-full transition', $swatches[$cat->color] ?? 'bg-contour',
+                                                'ring-2 ring-offset-1 ring-offset-surface ring-ink/60' => $eventCategoryId === $cat->id,
+                                            ])
+                                        ></span>
                                         {{ $cat->name }}
                                     </button>
                                 @endforeach
@@ -121,6 +126,30 @@
                     </div>
                 </div>
                 @error('eventEnd') <p class="-mt-2 text-xs text-signal">{{ $message }}</p> @enderror
+
+                {{-- Weg-/Pufferzeit on the template itself, so every occurrence it
+                     materialises brings it along — see ScheduleEvent::materializeRange(). --}}
+                <div>
+                    <label class="mb-1.5 block text-[11px] font-medium text-ink-faint">Weg- und Pufferzeit</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input id="wpBufferBefore" type="number" min="0" max="240" step="5" wire:model="eventBufferBefore" class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="wpBufferBefore" class="mt-1 block text-[11px] text-ink-faint">davor — Hinweg</label>
+                            @error('eventBufferBefore') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <input id="wpBufferAfter" type="number" min="0" max="240" step="5" wire:model="eventBufferAfter" class="tnum w-full rounded-card border-line bg-paper text-sm text-ink focus:border-overprint focus:ring-0" />
+                                <span class="flex-none text-xs text-ink-faint">Min</span>
+                            </div>
+                            <label for="wpBufferAfter" class="mt-1 block text-[11px] text-ink-faint">danach — Rückweg</label>
+                            @error('eventBufferAfter') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
 
                 @if ($eventKind === 'appointment')
                     <div>

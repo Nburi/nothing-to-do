@@ -8,6 +8,7 @@ use App\Models\SupportRequest;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -16,6 +17,7 @@ use Livewire\Component;
  * CLAUDE.md, "Hilfe-Center & Support".
  */
 #[Layout('layouts.app')]
+#[Title('Hilfe')]
 class Help extends Component
 {
     public ?int $selectedArticleId = null;

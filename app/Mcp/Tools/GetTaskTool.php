@@ -41,6 +41,6 @@ class GetTaskTool extends McpTool
     {
         $task = $this->ownedTask($user, $arguments['id'] ?? null);
 
-        return (new TaskResource($task))->resolve();
+        return (new TaskResource($task->load('sessions')))->resolve();
     }
 }

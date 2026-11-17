@@ -45,6 +45,33 @@ abstract class McpTool
         return null;
     }
 
+    /** Label of the opt-in feature gating this tool (docs page only; the real gate is isEnabledFor). */
+    public function requiredFeatureLabel(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Per-account switch for a feature that has its own on/off setting rather than an
+     * AppModules entry (the Planer: users.planner_enabled). Like a hidden module, a
+     * disabled feature simply has no tools — structurally absent, same unknown-tool error.
+     */
+    public function isEnabledFor(User $user): bool
+    {
+        return true;
+    }
+
+    /**
+     * Admin-only tools (support queue, Hilfe-Center, announcements) are offered
+     * exclusively to accounts with users.is_admin. Like a missing ability or a
+     * hidden module, a non-admin gets neither the tool in tools/list nor a
+     * distinguishable error from tools/call � it simply does not exist for them.
+     */
+    public function requiresAdmin(): bool
+    {
+        return false;
+    }
+
     /**
      * Run the tool. Returns a plain, JSON-serialisable array — the transport
      * layer wraps it into the MCP `content`/`structuredContent` shape.
