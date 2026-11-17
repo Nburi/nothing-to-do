@@ -406,7 +406,7 @@ final class WeekPlanEditor
             $rules['weekdays.*'] = ['integer', 'between:1,7'];
         }
         if (array_key_exists('categoryId', $input)) {
-            $rules['categoryId'] = ['nullable', 'integer', 'exists:event_categories,id,user_id,'.$user->id];
+            $rules['categoryId'] = ['nullable', 'integer', \Illuminate\Validation\Rule::exists('event_categories', 'id')->where('user_id', $user->id)->whereNull('deleted_at')];
             if (array_key_exists('title', $input)) {
                 $rules['title'] = ['required_without:categoryId', 'nullable', 'string', 'max:255'];
                 $rules['color'] = ['nullable', 'in:'.implode(',', ScheduleEvent::EVENT_COLORS)];

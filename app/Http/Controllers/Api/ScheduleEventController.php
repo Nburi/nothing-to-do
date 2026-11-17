@@ -83,7 +83,7 @@ class ScheduleEventController extends Controller
         ];
 
         if ($request->input('kind') === 'category') {
-            $rules['category_id'] = ['required', Rule::exists('event_categories', 'id')->where('user_id', $request->user()->id)];
+            $rules['category_id'] = ['required', Rule::exists('event_categories', 'id')->where('user_id', $request->user()->id)->whereNull('deleted_at')];
         } else {
             $rules['title'] = ['required', 'string', 'max:255'];
             $rules['color'] = ['required', Rule::in(ScheduleEvent::EVENT_COLORS)];
@@ -198,7 +198,7 @@ class ScheduleEventController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'category_id' => ['sometimes', 'nullable', Rule::exists('event_categories', 'id')->where('user_id', $user->id)],
+            'category_id' => ['sometimes', 'nullable', Rule::exists('event_categories', 'id')->where('user_id', $user->id)->whereNull('deleted_at')],
             'title' => ['sometimes', 'string', 'max:255'],
             'color' => ['sometimes', Rule::in(ScheduleEvent::EVENT_COLORS)],
             'date' => ['sometimes', 'date'],

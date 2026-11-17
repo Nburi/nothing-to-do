@@ -45,7 +45,7 @@ class EventCategoryTest extends TestCase
         $category = EventCategory::factory()->for($user)->create();
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')->create();
 
-        $category->delete();
+        $category->forceDelete();
 
         $this->assertNull($event->refresh()->category_id);
     }
@@ -56,7 +56,7 @@ class EventCategoryTest extends TestCase
         $category = EventCategory::factory()->for($user)->create();
         $template = EventTemplate::factory()->create(['user_id' => $user->id, 'category_id' => $category->id]);
 
-        $category->delete();
+        $category->forceDelete();
 
         $this->assertNull($template->refresh()->category_id);
     }
@@ -70,7 +70,7 @@ class EventCategoryTest extends TestCase
         $category = EventCategory::factory()->for($user)->create(['task_source' => 'tasks']);
         $category->pinnedTasks()->attach($task->id, ['sort_order' => 0]);
 
-        $category->delete();
+        $category->forceDelete();
 
         $this->assertNotNull($task->fresh());
     }

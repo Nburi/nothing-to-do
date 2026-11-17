@@ -137,7 +137,7 @@ class EventCategoryController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $request->user()->eventCategories()->whereKey($id)->delete();
+        $request->user()->eventCategories()->whereKey($id)->forceDelete(); // API keeps its hard delete; only the new settings soft-delete with undo (step 4.1)
 
         return response()->json(null, 204);
     }

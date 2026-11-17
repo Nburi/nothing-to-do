@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A reusable, user-configured category (e.g. "Schule", "Training", "Arbeiten").
@@ -22,6 +23,10 @@ class EventCategory extends Model
 {
     /** @use HasFactory<EventCategoryFactory> */
     use HasFactory;
+
+    // Step 4.1: deleting is undoable. A deleted category drops out of every list and the engine;
+    // its blocks keep their stored name and colour and no longer count as work time.
+    use SoftDeletes;
 
     protected $fillable = [
         'name',
