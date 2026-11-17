@@ -51,6 +51,12 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
+## Refactor: phase 4, step 4.1 (2026-11-17)
+- [x] 4.1 Week plan editor (`feature/week-editor`): Zeitplan `/board/week`, Wochenplan `/board/week/plan`, drawing, pause calendar, undo, categories in the settings. Notes in `docs/steps/4.1.md`.
+- [ ] 4.1 open for Niels: TESTBERICHT C17–C22 (C17 is the phase gate "a holiday takes under a minute"); check the decisions in `docs/steps/4.1.md`.
+- [ ] 4.1 later: resize a block by dragging its edge; move a block to another day by dragging on the phone; rename / delete areas.
+- [ ] 5.4: retire `/app/weekplan` and `/app/schedule` (the shell no longer links them).
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
