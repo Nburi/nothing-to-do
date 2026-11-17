@@ -26,6 +26,23 @@ class TaskApiTest extends TestCase
         $this->assertDatabaseHas('tasks', ['user_id' => $user->id, 'title' => 'Vokabeln lernen', 'list' => 'inbox']);
     }
 
+    public function test_it_sets_and_clears_a_duration_estimate(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $id = $this->postJson('/api/tasks', ['title' => 'Lernen', 'duration_minutes' => 40])
+            ->assertCreated()
+            ->assertJsonPath('data.duration_minutes', 40)
+            ->json('data.id');
+
+        $this->patchJson("/api/tasks/{$id}", ['duration_minutes' => null])
+            ->assertOk()
+            ->assertJsonPath('data.duration_minutes', null);
+
+        $this->patchJson("/api/tasks/{$id}", ['duration_minutes' => 601])->assertUnprocessable();
+    }
+
     public function test_a_blank_title_is_rejected(): void
     {
         $user = User::factory()->create();
@@ -64,6 +81,25 @@ class TaskApiTest extends TestCase
         $task->refresh();
         $this->assertTrue($task->is_completed);
         $this->assertNotNull($task->completed_at);
+    }
+
+    /**
+     * There's no browser here to show a celebration to, but the streak's own
+     * data integrity can't depend on that — see App\Support\TaskMutator's
+     * class docblock and CLAUDE.md §10's "a second, parallel implementation"
+     * trap this guards against.
+     */
+    public function test_completing_the_only_board_task_via_the_api_persists_a_streak_outcome(): void
+    {
+        $user = User::factory()->create(['daily_task_goal' => 20]); // goal out of reach
+        $task = Task::factory()->for($user)->todos()->create();
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/tasks/{$task->id}", ['is_completed' => true])->assertOk();
+
+        $this->assertDatabaseHas('streak_day_outcomes', [
+            'user_id' => $user->id, 'outcome' => 'perfect', 'reason' => 'full_clear',
+        ]);
     }
 
     public function test_it_sets_today_focus_only_for_todos_and_tasks(): void

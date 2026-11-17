@@ -6,6 +6,7 @@ use App\Models\ScheduleEvent;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Persists Pomodoro phase transitions and sends the matching push
@@ -206,7 +207,7 @@ class PomodoroSessionService
             default => ['Kurze Pause', 'Zeit für eine kurze Pause'],
         };
 
-        $this->pushNotifier->notify($user, ['title' => $title, 'body' => $body, 'url' => '/app/schedule']);
+        $this->sendDeferred($user, $title, $body);
     }
 
     /**
@@ -230,6 +231,25 @@ class PomodoroSessionService
             default => ['Fokus-Session beendet', 'Zeit für eine kurze Pause'],
         };
 
-        $this->pushNotifier->notify($user, ['title' => $title, 'body' => $body, 'url' => '/app/schedule']);
+        $this->sendDeferred($user, $title, $body);
+    }
+
+    /**
+     * Pushes after the HTTP response has been sent, never inside the request.
+     * Delivery is a synchronous outbound call to the push service (often
+     * several seconds), and the client's handlePhaseComplete() request is the
+     * one that swaps the "0:00" ring for the continue button — waiting on the
+     * push there froze the UI at 0:00 until the notification went out. A
+     * failed push is only logged: nothing the user is looking at depends on it.
+     */
+    private function sendDeferred(User $user, string $title, string $body): void
+    {
+        defer(function () use ($user, $title, $body) {
+            try {
+                $this->pushNotifier->notify($user, ['title' => $title, 'body' => $body, 'url' => '/app/schedule']);
+            } catch (\Throwable $e) {
+                Log::warning('Deferred Pomodoro push failed: '.$e->getMessage());
+            }
+        });
     }
 }

@@ -206,6 +206,69 @@
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">deadline</code> / <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">due_date</code> funktionieren weiter und zeigen dieselben Daten.
                     </p>
                 </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PUT /tasks/{id}/split</p>
+                    <p class="mt-1 text-ink-soft">
+                        Teilt eine lange Aufgabe auf mehrere Tage auf (Planer &laquo;Aufteilen&raquo;; nur mit eingeschaltetem Planer, sonst 422).
+                        Entweder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">dates</code> (Liste von <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>,
+                        heute bis heute+13) oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">parts</code> (Anzahl &ndash; die App schlägt die Tage vor).
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">total_minutes</code> ist die noch zu planende Arbeit, gleichmässig auf die offenen Teile verteilt.
+                        Pro Tag höchstens ein Teil, mindestens zwei Teile; erledigte Teile bleiben unangetastet. Antwort: die Aufgabe inkl.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">sessions</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">date</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">minutes</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">done</code>);
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">GET /tasks/{id}</code> liefert sie ebenfalls.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /tasks/{id}/split</p>
+                    <p class="mt-1 text-ink-soft">Hebt die Aufteilung auf: alle Teile weg, die Aufgabe kehrt in &laquo;Nicht eingeplant&raquo; zurück.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PATCH /task-sessions/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"done": true}</code> hakt einen Teil ab, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">false</code> öffnet ihn wieder.
+                        Der letzte Teil erledigt die Aufgabe <em>nicht</em> automatisch.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        {{-- Erinnerungen --}}
+        <section id="reminders" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Erinnerungen</h2>
+            <p class="mb-4 text-sm text-ink-soft">
+                &laquo;Nicht vergessen&raquo;: eine kurze Notiz für einen bestimmten Tag &mdash; bewusst keine Aufgabe. Ab zwei Tagen vorher als Chip über dem Zeitstrahl,
+                dazu auf Wunsch ein Push am Vorabend und am Tag selbst.
+            </p>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /reminders</p>
+                    <p class="mt-1 text-ink-soft">Alle Erinnerungen ab heute, früheste zuerst. <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">?done=0</code> lässt bereits Abgehakte weg.</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /reminders</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code> (max. 120 Zeichen) und
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">remind_on</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>, heute bis in einem Jahr); optional
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notify_evening_before</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notify_on_day</code> (beide standardmässig <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">true</code>).
+                        Pushes gehen nur an Geräte, die Push aktiviert haben.
+                    </p>
+                    <pre class="mt-2 overflow-x-auto rounded-card bg-paper p-3 font-mono text-xs text-ink"><code>curl -X POST {{ url('/api/reminders') }} \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" -H "Content-Type: application/json" \
+  -d '{"title": "Turnschuhe mitnehmen", "remind_on": "2026-10-28"}'</code></pre>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /reminders/{id}</p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PATCH /reminders/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Felder ändern, oder mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"acknowledged": true}</code> &laquo;Hab ich&raquo; setzen (danach kommt kein Push mehr),
+                        mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">false</code> wieder öffnen. Ein neuer Tag öffnet die Erinnerung wieder und schärft die Pushes neu.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /reminders/{id}</p>
+                </div>
             </div>
         </section>
 
@@ -244,6 +307,7 @@
                     <p class="font-mono text-xs text-overprint">PATCH /schedule-events/{id}</p>
                     <p class="mt-1 text-ink-soft">
                         Teil-Update — deckt auch Verschieben/Grösse ändern ab (einfach <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>/<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">end_time</code> setzen).
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">linked_task_ids</code> bindet Tasks an genau dieses eine Vorkommen (geordnete Liste; die Reihenfolge ist die Vorschlags-Reihenfolge im Fokus-Timer, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">[]</code> löst alle). Wird auch bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">POST</code> akzeptiert, aber nicht für eine wiederkehrende Serie — gelesen kommt es als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">linked_task_ids</code> zurück.
                         Ein wiederkehrendes Vorkommen auf ein anderes Datum verschieben löst es aus der Serie und hinterlässt einen Tombstone, damit es nicht neu entsteht.
                     </p>
                 </div>
@@ -299,6 +363,18 @@
                     <p class="mt-1 text-ink-soft">Umbenennen/umfärben wirkt live auf alle vergangenen und zukünftigen Blöcke dieser Kategorie.</p>
                 </div>
                 <div><p class="font-mono text-xs text-overprint">DELETE /event-categories/{id}</p></div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PUT /event-categories/{id}/task-link</p>
+                    <p class="mt-1 text-ink-soft">
+                        Was die Fokus-Sessions dieser Kategorie vorschlagen (nur mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_enabled</code>). <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">source</code> ist eines von:
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tasks</code> + <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task_ids</code> (geordnet) oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">text</code> + <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">text</code>.
+                        Ersetzt eine bestehende Verknüpfung komplett; die Kategorie zeigt sie als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task_source</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">linked_*</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pinned_task_ids</code>.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">DELETE /event-categories/{id}/task-link</p>
+                    <p class="mt-1 text-ink-soft">Entfernt die Verknüpfung.</p>
+                </div>
             </div>
         </section>
 

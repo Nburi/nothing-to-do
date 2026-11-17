@@ -65,11 +65,14 @@
                         'font-medium text-ink' => !$task->is_completed && $task->is_important,
                         'text-ink' => !$task->is_completed && !$task->is_important,
                     ])>
+                        @include('livewire.partials.task-repeat-marker', ['task' => $task])
                         {{ $task->title }}
                     </span>
                 </button>
             </div>
         </div>
+
+        @include('livewire.partials.task-session-pill', ['task' => $task])
 
         @if (!$task->is_completed)
             @if ($label = $task->effectiveDateLabel())

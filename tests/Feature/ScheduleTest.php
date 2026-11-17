@@ -122,6 +122,48 @@ class ScheduleTest extends TestCase
             ->assertHasErrors(['eventCategoryId']);
     }
 
+    public function test_the_missing_category_error_is_shown_in_german_not_english(): void
+    {
+        // Same regression as WeekPlanTest's own version — the "+ Termin"
+        // full form on the Zeitplan page shares the exact same category
+        // picker markup and validation rule. See lang/de/validation.php.
+        $user = $this->actingUser();
+        EventCategory::factory()->for($user)->create(['name' => 'Training']);
+
+        $component = Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventDate', '2026-06-26')
+            ->set('eventStart', '14:00')
+            ->set('eventEnd', '15:00')
+            ->call('saveEventForm');
+
+        $message = $component->errors()->first('eventCategoryId');
+
+        $this->assertStringNotContainsString('field is required', $message);
+        $this->assertSame('Das Feld Kategorie muss ausgefüllt werden.', $message);
+    }
+
+    public function test_the_chosen_category_chip_gets_a_visible_ring_not_just_its_own_colour(): void
+    {
+        // Same fix as WeekPlanTest's own version — see that test's docblock.
+        $user = $this->actingUser();
+        $chosen = EventCategory::factory()->for($user)->create(['name' => 'Training']);
+        $other = EventCategory::factory()->for($user)->create(['name' => 'Schule']);
+
+        $html = Livewire::test(Schedule::class)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $chosen->id)
+            ->html();
+
+        $chosenAnchor = strpos($html, "\$set('eventCategoryId', {$chosen->id})");
+        $otherAnchor = strpos($html, "\$set('eventCategoryId', {$other->id})");
+        $this->assertNotFalse($chosenAnchor);
+        $this->assertNotFalse($otherAnchor);
+
+        $this->assertStringContainsString('ring-2 ring-offset-1', substr($html, $chosenAnchor, 400));
+        $this->assertStringNotContainsString('ring-2 ring-offset-1', substr($html, $otherAnchor, 400));
+    }
+
     public function test_a_user_cannot_use_another_users_category(): void
     {
         $this->actingUser();
@@ -274,6 +316,82 @@ class ScheduleTest extends TestCase
         $event->refresh();
         $this->assertSame('10:30', $event->start_time);
         $this->assertSame('11:30', $event->end_time); // 60' preserved
+    }
+
+    public function test_dragging_a_block_into_another_day_column_moves_its_date(): void
+    {
+        $user = $this->actingUser();
+        $event = ScheduleEvent::factory()->for($user)->at('08:00', '09:00')->create(['date' => '2026-06-26']);
+
+        Livewire::test(Schedule::class)->call('moveEvent', $event->id, '10:30', '2026-06-29');
+
+        $event->refresh();
+        $this->assertSame('2026-06-29', $event->date->toDateString());
+        $this->assertSame('10:30', $event->start_time);
+        $this->assertSame('11:30', $event->end_time);
+    }
+
+    public function test_moving_to_another_day_makes_the_event_notify_again(): void
+    {
+        $user = $this->actingUser();
+        $event = ScheduleEvent::factory()->for($user)->at('08:00', '09:00')->create([
+            'date' => '2026-06-26', 'notified_at' => now(), 'notified_upcoming_at' => now(),
+        ]);
+
+        Livewire::test(Schedule::class)->call('moveEvent', $event->id, '08:00', '2026-06-27');
+
+        $event->refresh();
+        $this->assertNull($event->notified_at);
+        $this->assertNull($event->notified_upcoming_at);
+    }
+
+    public function test_a_malformed_or_absurd_target_date_is_ignored(): void
+    {
+        $user = $this->actingUser();
+        $event = ScheduleEvent::factory()->for($user)->at('08:00', '09:00')->create(['date' => '2026-06-26']);
+
+        foreach (['2026-13-40', 'tomorrow', '2026-6-27', '1999-01-01'] as $bad) {
+            Livewire::test(Schedule::class)->call('moveEvent', $event->id, '10:00', $bad);
+        }
+
+        $event->refresh();
+        $this->assertSame('2026-06-26', $event->date->toDateString());
+        $this->assertSame('08:00', $event->start_time);
+    }
+
+    public function test_a_recurring_occurrence_leaves_its_series_and_the_old_day_stays_empty(): void
+    {
+        $user = $this->actingUser();
+        $template = EventTemplate::factory()->recurring('5')->create([ // Fridays
+            'user_id' => $user->id, 'name' => 'Training', 'duration' => 60, 'default_start' => '17:00',
+        ]);
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-26'), Carbon::parse('2026-06-28'));
+        $occurrence = ScheduleEvent::where('template_id', $template->id)->whereDate('date', '2026-06-26')->firstOrFail();
+
+        Livewire::test(Schedule::class)->call('moveEvent', $occurrence->id, '18:00', '2026-06-27');
+
+        $moved = $occurrence->fresh();
+        $this->assertNull($moved->template_id);
+        $this->assertSame('2026-06-27', $moved->date->toDateString());
+        $this->assertSame('18:00', $moved->start_time);
+
+        // Re-materialising must not bring the Friday block back.
+        ScheduleEvent::materializeRange($user, Carbon::parse('2026-06-26'), Carbon::parse('2026-06-28'));
+        $friday = ScheduleEvent::where('template_id', $template->id)->whereDate('date', '2026-06-26')->get();
+        $this->assertCount(1, $friday);
+        $this->assertTrue($friday->first()->is_cancelled);
+        $this->assertCount(1, ScheduleEvent::forUser($user)->visible()->forDay(Carbon::parse('2026-06-26'))->get()->concat(
+            ScheduleEvent::forUser($user)->visible()->forDay(Carbon::parse('2026-06-27'))->get()
+        ));
+    }
+
+    public function test_a_foreign_event_cannot_be_dragged_into_another_day(): void
+    {
+        $this->actingUser();
+        $other = ScheduleEvent::factory()->create(['date' => '2026-06-26']);
+
+        Livewire::test(Schedule::class)->call('moveEvent', $other->id, '10:00', '2026-06-27')
+            ->assertStatus(404);
     }
 
     public function test_resize_guards_a_minimum_length(): void
