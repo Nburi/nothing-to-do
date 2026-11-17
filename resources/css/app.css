@@ -1067,6 +1067,8 @@ body.shell-returning .shell .fold-return {
     transition: none !important;
     animation: none !important;
   }
+}
+
 /* Below `sm`, every text-entry control is 16px. iOS Safari zooms the whole page in when a
    field with a smaller computed font-size gets focus, and never zooms back out by itself —
    and most of this app's inputs are `text-sm` (14px). Unlayered on purpose: it must beat
