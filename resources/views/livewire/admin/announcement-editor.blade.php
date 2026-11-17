@@ -83,7 +83,7 @@
                             wire:click="$set('formLinkType', '{{ $key }}')"
                             @class([
                                 'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
-                                'bg-ink text-white shadow-xs' => $formLinkType === $key,
+                                'bg-ink text-white shadow-sm' => $formLinkType === $key,
                                 'bg-paper text-ink-soft hover:text-ink' => $formLinkType !== $key,
                             ])
                         >{{ $label }}</button>
@@ -119,7 +119,7 @@
                                         wire:click="$set('formOnlyForModuleUsers', false)"
                                         @class([
                                             'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
-                                            'bg-ink text-white shadow-xs' => ! $formOnlyForModuleUsers,
+                                            'bg-ink text-white shadow-sm' => ! $formOnlyForModuleUsers,
                                             'bg-paper text-ink-soft hover:text-ink' => $formOnlyForModuleUsers,
                                         ])
                                     >Alle Personen</button>
@@ -128,7 +128,7 @@
                                         wire:click="$set('formOnlyForModuleUsers', true)"
                                         @class([
                                             'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
-                                            'bg-ink text-white shadow-xs' => $formOnlyForModuleUsers,
+                                            'bg-ink text-white shadow-sm' => $formOnlyForModuleUsers,
                                             'bg-paper text-ink-soft hover:text-ink' => ! $formOnlyForModuleUsers,
                                         ])
                                     >Nur {{ $this->moduleOptions[$formRelatedModule]['label'] }}-Nutzer</button>

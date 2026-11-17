@@ -110,6 +110,7 @@ Route::delete('/board/capture/{task}', [ShellCaptureController::class, 'destroy'
     ->middleware(['auth', 'throttle:60,1'])
     ->whereNumber('task')
     ->name('shell.capture.undo');
+
 // Public, guest-readable mirror of the Hilfe-Center — see App\Livewire\
 // PublicHelp for why this is a separate route/component from /app/help
 // rather than that one made guest-safe. Deliberately outside /app, so

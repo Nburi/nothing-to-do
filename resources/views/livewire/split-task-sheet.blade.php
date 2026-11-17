@@ -78,7 +78,7 @@
                         :disabled="day.locked"
                         :aria-pressed="isSelected(day.date) ? 'true' : 'false'"
                         :aria-label="`${day.label}${day.locked ? ', Teil bereits erledigt' : isSelected(day.date) ? ', Teil geplant, antippen zum Entfernen' : ', antippen für einen Teil'}${day.capacityTotal > 0 ? `, ${Math.max(0, free(day))} Minuten Arbeitsblock frei` : ', kein Arbeitsblock'}`"
-                        class="relative flex min-h-18 flex-col items-center gap-1 rounded-card border px-1 pb-1.5 pt-1.5 text-center transition active:scale-[0.97] disabled:cursor-not-allowed"
+                        class="relative flex min-h-[4.5rem] flex-col items-center gap-1 rounded-card border px-1 pb-1.5 pt-1.5 text-center transition active:scale-[0.97] disabled:cursor-not-allowed"
                         :class="[
                             isSelected(day.date) ? (overflows(day) ? 'border-contour bg-contour-soft' : 'border-forest bg-forest-soft') : 'border-line bg-paper hover:border-ink-faint/50',
                             isAfterDeadline(day) && ! isSelected(day.date) ? 'opacity-45' : '',
@@ -99,7 +99,7 @@
                         </template>
 
                         <template x-if="isSelected(day.date)">
-                            <span class="split-pop absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full px-1 text-[10px] font-medium leading-[1.1rem] text-white tnum" :class="overflows(day) ? 'bg-contour' : 'bg-forest'" x-text="per"></span>
+                            <span class="split-pop absolute -right-1 -top-1 grid min-w-[1.25rem] place-items-center rounded-full px-1 text-[10px] font-medium leading-[1.1rem] text-white tnum" :class="overflows(day) ? 'bg-contour' : 'bg-forest'" x-text="per"></span>
                         </template>
                         <template x-if="day.locked">
                             <span class="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-forest text-white" aria-hidden="true">
@@ -114,7 +114,7 @@
             </div>
 
             {{-- Live verdict: does it fit? --}}
-            <div class="mt-5 min-h-10 text-sm" aria-live="polite">
+            <div class="mt-5 min-h-[2.5rem] text-sm" aria-live="polite">
                 <p class="text-ink" x-show="count > 0">
                     <span class="tnum font-medium" x-text="count"></span> <span x-text="count === 1 ? 'Teil' : 'Teile'"></span> · je <span class="tnum font-medium" x-text="per"></span> min
                     <template x-if="doneCount > 0"><span class="text-ink-faint">· <span x-text="doneCount"></span> schon erledigt</span></template>

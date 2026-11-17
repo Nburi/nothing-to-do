@@ -31,7 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // when the unauthenticated POST answers 401 with a WWW-Authenticate
         // header, and a redirect silently ends the handshake before it starts.
         $exceptions->shouldRenderJsonWhen(
-            // board/capture: the new app's capture line talks JSON (step 2.3).
+            // board/capture: the new app's capture line talks JSON (step 2.3); mcp: the OAuth MCP endpoint.
             fn (Request $request) => $request->is('api/*') || $request->is('mcp') || $request->is('board/capture*'),
         );
 

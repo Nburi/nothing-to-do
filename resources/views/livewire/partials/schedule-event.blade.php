@@ -69,7 +69,7 @@
     @class([
         'tl-block group absolute min-h-[16px] select-none text-left',
         'inset-x-1' => $compact,
-        'left-15 right-2' => ! $compact,
+        'left-[3.75rem] right-2' => ! $compact,
     ])
     :class="(kind ? 'z-20 cursor-grabbing tl-block-dragging' : 'cursor-grab') + (lifted ? ' tl-block-lifted' : '')"
 >
@@ -100,9 +100,9 @@
          when to leave is the whole point of having entered one, and it would
          otherwise only be readable by opening the form. --}}
     @unless($compact)
-        <span class="tnum absolute left-[-3.6rem] top-0 w-[3.2rem] text-right text-[11px] font-medium text-ink"><span x-show="!kind && !pending">{{ $event->start_time }}</span><span x-show="kind || pending" x-text="startLabel" style="display: none"></span></span>
+        <span class="tnum absolute -left-[3.6rem] top-0 w-[3.2rem] text-right text-[11px] font-medium text-ink"><span x-show="!kind && !pending">{{ $event->start_time }}</span><span x-show="kind || pending" x-text="startLabel" style="display: none"></span></span>
         @if ($bufferBefore > 0)
-            <span class="tnum absolute left-[-3.6rem] top-[-0.95rem] w-[3.2rem] text-right text-[10px] {{ $styles['tx'] }} opacity-80"><span x-show="!kind && !pending">{{ $event->departureTime() }}</span><span x-show="kind || pending" x-text="departureLabel" style="display: none"></span></span>
+            <span class="tnum absolute -left-[3.6rem] -top-[0.95rem] w-[3.2rem] text-right text-[10px] {{ $styles['tx'] }} opacity-80"><span x-show="!kind && !pending">{{ $event->departureTime() }}</span><span x-show="kind || pending" x-text="departureLabel" style="display: none"></span></span>
         @endif
     @endunless
 

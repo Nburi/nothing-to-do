@@ -153,7 +153,7 @@
                         wire:click="setDefaultPage('{{ $option['key'] }}')"
                         @class([
                             'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
-                            'bg-forest text-white shadow-xs' => $defaultPage === $option['key'],
+                            'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
                             'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                         ])
                     >{{ $option['label'] }}</button>
@@ -773,7 +773,7 @@
             </div>
 
             @if ($notifyDayPreview)
-                <div class="max-w-40 pb-2">
+                <div class="max-w-[10rem] pb-2">
                     <label for="dayPreviewNotificationTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
                     <input
                         id="dayPreviewNotificationTime"

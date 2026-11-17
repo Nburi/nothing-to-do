@@ -45,7 +45,7 @@
                             wire:click="$set('eventKind', '{{ $val }}')"
                             @class([
                                 'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
-                                'bg-forest text-white shadow-xs' => $eventKind === $val,
+                                'bg-forest text-white shadow-sm' => $eventKind === $val,
                                 'text-ink-soft hover:text-ink' => $eventKind !== $val,
                             ])
                         >{{ $lbl }}</button>
@@ -261,7 +261,7 @@
                                                 <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                                             </button>
                                         @endif
-                                        <span class="max-w-44 truncate">{{ $picked['title'] }}</span>
+                                        <span class="max-w-[11rem] truncate">{{ $picked['title'] }}</span>
                                         @if (count($eventLinkedTasks) > 1)
                                             <button type="button" wire:click="moveEventLinkedTask({{ $picked['id'] }}, 'down')" @disabled($loop->last) aria-label="„{{ $picked['title'] }}“ später vorschlagen" class="grid h-4 w-4 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-line/60 hover:text-ink disabled:pointer-events-none disabled:opacity-30">
                                                 <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>

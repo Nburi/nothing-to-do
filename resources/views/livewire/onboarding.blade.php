@@ -203,7 +203,7 @@
                                 wire:click="setDefaultPage('{{ $option['key'] }}')"
                                 @class([
                                     'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
-                                    'bg-forest text-white shadow-xs' => $defaultPage === $option['key'],
+                                    'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
                                     'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                                 ])
                             >{{ $option['label'] }}</button>

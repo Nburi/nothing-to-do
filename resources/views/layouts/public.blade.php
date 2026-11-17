@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.theme-style')
 
         <title>{{ $title ?? 'nothing-to-do' }}</title>
         <meta name="description" content="{{ $description ?? '' }}">
@@ -28,7 +27,7 @@
             <script type="application/ld+json">{!! $jsonLd !!}</script>
         @endisset
     </head>
-    <body class="min-h-dvh bg-paper font-sans text-ink antialiased">
+    <body class="min-h-[100dvh] bg-paper font-sans text-ink antialiased">
         <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-card focus:bg-forest focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">Zum Inhalt springen</a>
 
         {{-- Same header shell as welcome.blade.php — a public reader arriving

@@ -46,7 +46,7 @@
             Zum Inhalt springen
         </a>
 
-        <div class="min-h-dvh">
+        <div class="min-h-[100dvh]">
             {{-- z-40, not the header's old z-30: the mobile bottom nav (board,
                  group page) is `fixed inset-x-0 bottom-0 z-30` too — an exact
                  tie, resolved by DOM order in the bottom nav's favour since it

@@ -9,7 +9,7 @@
     x-cloak
     @command-palette-opened.window="typed = ''"
     @command-palette-results.window="$nextTick(() => $store.commandPalette.reset($root))"
-    class="fixed inset-0 z-60 flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
+    class="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
     role="dialog"
     aria-modal="true"
     aria-label="Suche und Befehle"
