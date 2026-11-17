@@ -51,6 +51,12 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
+## Refactor: phase 4, step 4.4 (2026-11-17)
+- [x] 4.4 Quiet Sunday review (`feature/sunday-review`): `/board/review`, variant A "two halves", a quiet line on the board on Sunday and Monday. Notes in `docs/steps/4.4.md`.
+- [ ] 4.4 open for Niels: TESTBERICHT C34–C36; check the decisions in `docs/steps/4.4.md` (Sunday judged like a finished week, "noch in der Inbox" instead of "sortiert", no session count, the line stays after a visit).
+- [ ] 4.4 after 4.1 and 4.2 are merged: "Woche anpassen" switches to `/board/week` and "Ansehen" opens the crunch screen by themselves; check both once, and add a link to the review from the week editor if Niels wants one there.
+- [ ] 5.4: redirect the old `/app/review` to `/board/review` (Niels, 2026-11-17); `get_week_review` (MCP) keeps answering from `WeekReview`.
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
