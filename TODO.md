@@ -51,10 +51,18 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
+## Refactor: phase 4, step 4.3 (started 2026-11-17)
+- [x] 4.3a Projects and groups with their next two steps (`feature/projects-next-step`): stages, "wartet auf", board cards, Projekte page, mixed old groups become projects. Notes in `docs/steps/4.3.md`.
+- [ ] 4.3a open for Niels: TESTBERICHT C29–C32; the decisions in `docs/steps/4.3.md`.
+- [ ] 4.3b Notes as cards ("Lose" pile, drag onto a stage, note → step) and shared `#tags` (preview round 2, approved 2026-11-17). The old `brainstorm` text becomes the first note card.
+- [ ] Projects/groups: delete, reorder stages, move an existing board task into a project or group (same gap as "editing, moving and deleting single items").
+- [ ] Projects: should a stage's target date become the soft deadline of its steps (early warning)? Ask Niels.
+- [ ] Projects in the API/MCP of the new model (the old project tools on `main` speak the old model).
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
-  - Prod categories linked to a project, group or Agenda entry (`task_source` project / group / agenda_entry / agenda_generic) now show no link and fall back to the normal suggestion. Decide in 5.4 whether to clear them or turn them into a text link.
+  - Prod categories linked to a project, group or Agenda entry (`task_source` project / group / agenda_entry / agenda_generic) now show no link and fall back to the normal suggestion. Decide in 5.4 whether to clear them or turn them into a text link. Since 4.3 projects and groups are back, so a project/group link could become "suggest this project's next steps in this block".
   - `main` (prod) also has `phpseclib/phpseclib` 4.0.1 (CPU-exhaustion advisory, pulled in by Passport). Fixed here (4.0.3); prod needs the same patch update as a hotfix.
 - The app has no version number yet (global rule 9). Introduce one (e.g. `config/app.php` `version`, shown in settings)? Suggestion: start the refactor at `2.0.0_1`.
 - The security hotfix for the live app (#7, Laravel TokenGuard advisory, Livewire XSS) is merged into `main`; deploy it to prod if not done yet.
