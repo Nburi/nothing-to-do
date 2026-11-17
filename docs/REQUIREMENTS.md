@@ -20,7 +20,7 @@ Origin tags: `PROMPT` = Niels' words, `CODEBASE` = carried over from the old app
 | R2 | PROMPT | **A short reset starts the evening and triggers itself.** | iPhone Shortcut on home Wi-Fi calls an authenticated URL, the app sends a Web Push. Fallback: time guess from the week plan. One nudge per evening, none on paused days, none after the reset is done. Skipping is silent. |
 | R3 | PROMPT | **Capture is one gesture; typed first, voice later.** | One line reachable from every page on both layouts. Everything lands in the Inbox. A daily sort (about two minutes) moves items to To-do, Task or Later with size and dates. |
 | R4 | PROMPT + CODEBASE | **Week plan with one-off changes and holidays.** | Repeating template, "this week only" vs "every week" as an explicit choice, pause days for ranges with single days switchable back on. Same per-date model as the old app. |
-| R5 | PROMPT | **Hard and soft deadlines plus size decide the order. No priority field.** | Start-by date from size; hard beats soft; early warning for overloaded days; soft deadlines are suggested to slip first; the user decides in a crunch (shrink, move, drop, ask for more time). |
+| R5 | PROMPT | **Hard and soft deadlines plus size decide the order; one „Wichtig" marker is the only priority.** | Start-by date from size; hard beats soft; early warning for overloaded days; soft deadlines are suggested to slip first; the user decides in a crunch (shrink, move, drop, ask for more time). Order of the suggestion: deadline tiers → „Wichtig" → the user's board order (one shared order for tasks and the next steps of projects and groups; higher up = more important). „Wichtig" (decided 2026-11-17) is for urgent things that must not be forgotten: the task is highlighted, sits at the top of the board, and stays visible outside pomodoro blocks and while the board is folded away. Marking a task without a date offers an optional „Bis wann?". The existing `tasks.is_important` carries over. |
 | R6 | PROMPT | **Ideas come back only in real free time; a slot can be kept "mine".** | Later items are offered only outside pomodoro blocks and when deadline work is covered. "Do it now" is always the primary button, "Keep it mine" the second, on every battery level. Whole free days get a bolder suggestion, still only a suggestion. Bastelideen remains the browse view of Later. |
 | R7 | PROMPT | **Every feature on desktop and mobile.** | One action registry; every action has an entry point in both layouts, in board and in session mode. A test fails if one is missing. |
 | R8 | CODEBASE | **Existing users lose nothing.** | Two-step migrations, dry run on a production copy, rollback path. Everyone is switched to the new app (no opt-in), with all data carried over. |
@@ -49,7 +49,7 @@ Origin tags: `PROMPT` = Niels' words, `CODEBASE` = carried over from the old app
 4. Task marked done with **≥ 5 minutes** left: the next suggested task starts **inside the same session**.
 5. Task marked done with **< 5 minutes** left: the **break starts immediately**; the next session gets a fresh 25 minutes.
 6. Pause and resume are possible; a session is stored on the server, so a reload or the other device shows the running session.
-7. Sessions are planned into blocks of pomodoro categories (section 4). **Outside those blocks the idle board suggests no work** (decided 2026-11-06): no "Start here" card; the start strip shows when the next pomodoro block begins, and in free time an idea from Later may be offered (R6). Starting a session manually from any task stays possible.
+7. Sessions are planned into blocks of pomodoro categories (section 4). **Outside those blocks the idle board suggests no work** (decided 2026-11-06): no "Start here" card; the start strip shows when the next pomodoro block begins, and in free time an idea from Later may be offered (R6). Starting a session manually from any task stays possible. Tasks marked „Wichtig" stay visible there as a reminder (R5), but they are not turned into a "Start here" card.
 8. The long break counter (every fourth session) resets each day.
 
 ## 4. Categories, areas and capacity
@@ -70,6 +70,7 @@ Details and the migration path for every column: [REFACTOR_PLAN.md § Data](REFA
 | `tasks.list` (inbox, todos, tasks, later) | kept, plus `size` (quick, short, long, block) |
 | `tasks.deadline` | `hard_deadline` (two-step rename) |
 | `tasks.due_date` | `soft_deadline` ("finished by") |
+| `tasks.is_important` | kept as the „Wichtig" marker (R5) |
 | task groups | projects with one visible next step |
 | event templates, schedule events, schedule pauses | kept as the week plan |
 | event categories | categories with pomodoro switch and linked areas |
