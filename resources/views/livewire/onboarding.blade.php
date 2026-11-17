@@ -131,7 +131,7 @@
                                 type="button"
                                 wire:click="setListConcept('{{ $row['key'] }}')"
                                 wire:key="onboarding-concept-tab-{{ $row['key'] }}"
-                                class="flex-1 rounded-[0.45rem] px-2 py-1.5 text-xs font-medium transition"
+                                class="flex-1 rounded-[0.45rem] px-2 py-2.5 sm:py-1.5 text-xs font-medium transition"
                                 @class([
                                     'bg-forest text-white shadow-xs' => $row['current'],
                                     'text-ink-soft hover:text-ink' => ! $row['current'],
@@ -178,7 +178,7 @@
                                 type="button"
                                 wire:click="toggleModule('{{ $row['key'] }}')"
                                 @class([
-                                    'relative h-6 w-10 flex-none rounded-full transition',
+                                    'relative hit-area h-6 w-10 flex-none rounded-full transition',
                                     'bg-forest' => ! $row['hidden'],
                                     'bg-line' => $row['hidden'],
                                 ])
@@ -202,8 +202,8 @@
                                 type="button"
                                 wire:click="setDefaultPage('{{ $option['key'] }}')"
                                 @class([
-                                    'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                                    'bg-forest text-white shadow-xs' => $defaultPage === $option['key'],
+                                    'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
+                                    'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
                                     'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                                 ])
                             >{{ $option['label'] }}</button>
@@ -228,7 +228,7 @@
                     @if ($this->listConcept === 'three_things')
                         <p>Bleibt eine Aufgabe klein und in einem Rutsch erledigt → <span class="font-medium text-ink">To-Do</span>. Braucht sie mehr Zeit oder Konzentration, bleibt aber ein einzelner Schritt → <span class="font-medium text-ink">Task</span>.</p>
                     @elseif ($this->listConcept === 'kanban')
-                        <p>Jede Karte hat einen Status — <span class="font-medium text-ink">Offen</span>, <span class="font-medium text-ink">In Arbeit</span> oder <span class="font-medium text-ink">Erledigt</span>. Die Grösse einer Aufgabe (To-Do/Task) bleibt dabei bestehen — nur der Status ändert sich, wenn du eine Karte in die nächste Spalte ziehst.</p>
+                        <p>Jede Karte hat einen Status — <span class="font-medium text-ink">Backlog</span>, <span class="font-medium text-ink">In Arbeit</span> oder <span class="font-medium text-ink">Erledigt</span>. Die Grösse einer Aufgabe (To-Do/Task) bleibt dabei bestehen — nur der Status ändert sich, wenn du eine Karte in die nächste Spalte ziehst.</p>
                     @elseif ($this->listConcept === 'eisenhower')
                         <p>„Wichtig" setzt du per Tipp auf den Titel, eine <span class="font-medium text-ink">Frist</span> per Tipp aufs Datum. Beides zusammen landet im Feld „Sofort", keins von beidem im Feld „Später".</p>
                     @elseif ($this->listConcept === 'simple')

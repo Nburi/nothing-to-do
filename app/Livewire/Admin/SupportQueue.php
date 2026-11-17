@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -15,6 +16,7 @@ use Livewire\Component;
  * AnnouncementEditor. See CLAUDE.md, "Hilfe-Center & Support".
  */
 #[Layout('layouts.app')]
+#[Title('Support-Anfragen')]
 class SupportQueue extends Component
 {
     /** A key into SupportRequest::STATUSES, or null for "alle". */

@@ -6,10 +6,12 @@ use App\Models\CraftIdea;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
+#[Title('Bastelideen')]
 class CraftIdeas extends Component
 {
     /** The idea currently featured as "Mach doch das". Null once every idea is done. */

@@ -29,6 +29,9 @@
     $fixedWidth = $fixedWidth ?? null;
     $subject = $subject ?? null;
     $list = $list ?? null;
+    $plannedDateLabel = $plannedDateLabel ?? null;
+    $partLabel = $partLabel ?? null;
+    $isPart = $type === 'session';
     $listLabel = ['todos' => 'To-Do', 'tasks' => 'Task'][$list] ?? null;
 @endphp
 <div
@@ -56,6 +59,9 @@
         @elseif ($listLabel)
             <span class="mb-0.5 inline-block rounded-full bg-line px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink-faint">{{ $listLabel }}</span>
         @endif
+        @if ($partLabel)
+            <span class="mb-0.5 inline-block rounded-full bg-forest-soft px-1.5 py-0.5 text-[10px] font-medium leading-none text-forest">{{ $partLabel }}</span>
+        @endif
         <span class="chip-title block truncate text-sm text-ink">
             @if ($isImportant)<span class="text-overprint">★ </span>@endif{{ $title }}
         </span>
@@ -66,13 +72,38 @@
             @elseif ($deadlineLabel)
                 <span class="text-contour">· fällig {{ $deadlineLabel }}</span>
             @endif
+            @if ($plannedDateLabel)
+                <span class="text-signal">· war für {{ $plannedDateLabel }} geplant</span>
+            @endif
         </span>
     </span>
+    @if ($isPart && $showRemove)
+        <button
+            type="button"
+            wire:click="completeSession({{ $id }})"
+            class="grid h-5 w-5 flex-none place-items-center rounded-sm text-ink-faint transition hover:bg-forest-soft hover:text-forest"
+            aria-label="{{ $title }}, {{ $partLabel }} erledigt"
+        >
+            <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7"/></svg>
+        </button>
+    @endif
+    @if ($type === 'task' && ! $showRemove)
+        {{-- Backlog chip: split it over several days instead of placing it whole. --}}
+        <button
+            type="button"
+            @click.stop="Livewire.dispatch('open-split-sheet', { taskId: {{ $id }} })"
+            class="grid h-5 w-5 flex-none place-items-center rounded-sm text-ink-faint transition hover:bg-forest-soft hover:text-forest"
+            aria-label="{{ $title }} auf mehrere Tage aufteilen"
+            title="Auf mehrere Tage aufteilen"
+        >
+            <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h3M11 4h3M2 8h12M2 12h1.5M6.5 12h3M12.5 12H14"/></svg>
+        </button>
+    @endif
     @if ($showRemove)
         <button
             type="button"
-            wire:click="unassignTask({{ $id }})"
-            class="grid h-5 w-5 flex-none place-items-center rounded-sm text-ink-faint transition hover:bg-signal-soft hover:text-signal"
+            wire:click="{{ $isPart ? 'removeSession' : 'unassignTask' }}({{ $id }})"
+            class="grid h-5 w-5 flex-none place-items-center rounded text-ink-faint transition hover:bg-signal-soft hover:text-signal"
             aria-label="{{ $title }} nicht mehr für diesen Tag einplanen"
         >
             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>

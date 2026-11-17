@@ -12,10 +12,12 @@ use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
+#[Title('Board')]
 class TaskBoard extends Component
 {
     use ManagesTasks;
@@ -116,7 +118,7 @@ class TaskBoard extends Component
         return Task::query()
             ->forUser(auth()->user())
             ->inList($list)
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -182,7 +184,7 @@ class TaskBoard extends Component
             ->forUser(auth()->user())
             ->active()
             ->where('is_today', true)
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->boardOrdered()
             ->get();
     }
@@ -205,7 +207,7 @@ class TaskBoard extends Component
 
         return Task::query()
             ->forUser(auth()->user())
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -248,7 +250,7 @@ class TaskBoard extends Component
 
         $tasks = Task::query()
             ->forUser(auth()->user())
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {
@@ -299,7 +301,7 @@ class TaskBoard extends Component
 
         $tasks = Task::query()
             ->forUser(auth()->user())
-            ->with('dayPlan')
+            ->with(['dayPlan', 'sessions'])
             ->where(function ($q) use ($windowStart) {
                 $q->where('is_completed', false)
                     ->orWhere(function ($q2) use ($windowStart) {

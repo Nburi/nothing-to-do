@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -19,6 +20,7 @@ use Livewire\Component;
  * Feature-Ankündigungen.
  */
 #[Layout('layouts.app')]
+#[Title('Ankündigungen verwalten')]
 class AnnouncementEditor extends Component
 {
     /** Null while creating; the announcement's id while editing. */

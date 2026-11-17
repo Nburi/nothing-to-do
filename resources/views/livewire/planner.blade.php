@@ -7,7 +7,7 @@
 <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div class="flex items-center gap-3">
-            <a href="{{ url('/app') }}" wire:navigate class="grid h-8 w-8 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink" aria-label="Zurück zum Board">
+            <a href="{{ url('/app') }}" wire:navigate class="grid h-10 w-10 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink sm:h-8 sm:w-8" aria-label="Zurück zum Board">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
             </a>
             <div>
@@ -16,16 +16,38 @@
             </div>
         </div>
 
-        @if ($this->backlog->isNotEmpty())
-            <button
-                type="button"
-                wire:click="autoFillBacklog"
-                class="inline-flex flex-none items-center gap-1.5 rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:text-ink active:scale-[0.98]"
-            >
-                <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"/></svg>
-                Rest automatisch einplanen
-            </button>
-        @endif
+        {{-- max-w-full + no flex-none below sm: a flex-none wrapping group never wraps (it takes its
+             full single-line width), which made the whole page scroll sideways on a phone. --}}
+        <div class="flex max-w-full flex-wrap items-center gap-2 sm:flex-none">
+            {{-- Draggable on desktop (drop onto a day column to pre-fill its date in the sheet below), still a
+                 plain click target on every breakpoint — see standardTaskDragSource in app.js. --}}
+            <div x-data x-init="window.standardTaskDragSource($el, $wire)" class="flex flex-wrap items-center gap-2">
+                @foreach (\App\Services\PlannerStandardTasks::CATALOG as $key => $template)
+                    <button
+                        type="button"
+                        data-standard-template="{{ $key }}"
+                        wire:click="openStandardTask('{{ $key }}')"
+                        wire:key="standard-task-chip-{{ $key }}"
+                        title="Ziehen oder klicken"
+                        class="inline-flex cursor-grab items-center gap-1.5 rounded-card border border-dashed border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:border-forest/40 hover:text-ink active:scale-[0.98] active:cursor-grabbing"
+                    >
+                        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+                        {{ $template['label'] }}
+                    </button>
+                @endforeach
+            </div>
+
+            @if ($this->backlog->isNotEmpty())
+                <button
+                    type="button"
+                    wire:click="autoFillBacklog"
+                    class="inline-flex items-center gap-1.5 rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:text-ink active:scale-[0.98]"
+                >
+                    <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3"/></svg>
+                    Rest automatisch einplanen
+                </button>
+            @endif
+        </div>
     </div>
 
     {{-- Conflict banner — always visible when non-empty; this is the page's actual point. --}}
@@ -45,6 +67,26 @@
     @endif
 
     <div class="flex flex-col gap-4">
+        {{-- Liegengeblieben: read-only in the sense that nothing here moves a task on its own — the chip is draggable/tappable exactly like a backlog chip, the user relocates it themselves. --}}
+        @if ($this->rollover->isNotEmpty())
+            <aside class="flex w-full flex-col gap-2.5 rounded-card border border-dashed border-signal/40 bg-signal-soft/40 p-3">
+                <div class="flex items-baseline justify-between gap-2">
+                    <h2 class="text-sm font-medium text-ink">Liegengeblieben</h2>
+                    <span class="tnum text-xs text-ink-faint">{{ $this->rollover->count() }}</span>
+                </div>
+                <div
+                    data-backlog
+                    x-data
+                    x-init="window.plannerDaySortable($el, $wire)"
+                    class="flex min-h-[3rem] flex-row flex-wrap items-start gap-1.5"
+                >
+                    @foreach ($this->rollover as $item)
+                        @include('livewire.partials.planner-task-chip', [...$item, 'showRemove' => false, 'fixedWidth' => 'max-w-56'])
+                    @endforeach
+                </div>
+            </aside>
+        @endif
+
         <aside class="flex w-full flex-col gap-2.5 rounded-card border border-dashed border-line bg-surface p-3">
             <div class="flex items-baseline justify-between gap-2">
                 <h2 class="text-sm font-medium text-ink">Nicht eingeplant</h2>
@@ -89,4 +131,5 @@
     </div>
 
     @include('livewire.partials.planner-day-picker-sheet')
+    @include('livewire.partials.planner-standard-task-sheet')
 </div>
