@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Mcp\McpAbility;
 use App\Services\AppModules;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,20 +18,25 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
     'name', 'email', 'password', 'task_reset_time',
+    'day_start_time', 'day_end_time', 'weekday_day_bounds',
     'pomodoro_work', 'pomodoro_short_break', 'pomodoro_long_break', 'pomodoro_long_every', 'pomodoro_autostart',
     'notify_event_start', 'notify_pomo_start', 'notify_break_start', 'notify_event_upcoming',
     'timezone_offset', 'timezone_auto_dst',
+    'day_preview_seen_on',
+    'notify_day_preview', 'day_preview_notification_time', 'day_preview_notification_sent_on',
+    'reminder_evening_time', 'reminder_morning_time', 'reminder_smart_timing',
     'last_seen_at', 'show_presence',
     'deadline_preview_enabled', 'deadline_preview_days',
     'daily_task_goal',
     'notify_daily_reminder', 'daily_reminder_time', 'daily_reminder_sent_on',
-    'notify_streak_risk', 'streak_risk_sent_on',
+    'notify_streak_risk', 'streak_risk_sent_on', 'streak_last_evaluated_date',
     'header_badges',
     'planner_enabled',
     'hidden_modules', 'default_page', 'onboarding_completed_at',
     'is_admin',
     'last_login_at',
     'list_concept',
+    'mcp_oauth_write', 'mcp_oauth_delete',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -58,12 +64,30 @@ class User extends Authenticatable
         'notify_streak_risk' => false,
         'default_page' => 'app',
         'list_concept' => 'three_things',
+        'mcp_oauth_write' => true,
+        'mcp_oauth_delete' => false,
+        // Same fresh-model guard as the rest of this list: DayWindow reads
+        // these on a brand-new account (the register → onboarding → Zeitplan
+        // path) before the row has ever been reloaded, and a null here would
+        // silently fall back to a different default than the column's own.
+        'day_start_time' => '06:00',
+        'day_end_time' => '23:00',
+        // Reminder pushes (App\Services\Reminders) read these on a brand-new account too.
+        'reminder_evening_time' => '19:00',
+        'reminder_morning_time' => '07:00',
+        'reminder_smart_timing' => true,
     ];
 
     /** @return HasMany<Task, $this> */
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    /** @return HasMany<Reminder, $this> */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
     }
 
     /** @return HasMany<ScheduleEvent, $this> */
@@ -120,6 +144,12 @@ class User extends Authenticatable
         return $this->hasMany(SchedulePause::class);
     }
 
+    /** @return HasMany<ScheduleDayBound, $this> */
+    public function scheduleDayBounds(): HasMany
+    {
+        return $this->hasMany(ScheduleDayBound::class);
+    }
+
     /** @return HasMany<CraftIdea, $this> */
     public function craftIdeas(): HasMany
     {
@@ -136,6 +166,12 @@ class User extends Authenticatable
     public function moduleVisits(): HasMany
     {
         return $this->hasMany(ModuleVisit::class);
+    }
+
+    /** Decided (perfect/frozen) streak days — see StreakDayOutcome, App\Services\ProgressStats. */
+    public function streakDayOutcomes(): HasMany
+    {
+        return $this->hasMany(StreakDayOutcome::class);
     }
 
     /** Help-Center articles this user has authored — only ever populated for an admin. */
@@ -342,6 +378,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Whether the Tagesüberblick (App\Livewire\DayPreview) has already been opened
+     * today — deliberately time-of-day-independent (unlike Vorbereitung's own
+     * morning/evening window): the first visit of the local calendar day is what
+     * clears the header's silent dot, whether that happens at 08:00 or 14:00.
+     */
+    public function hasSeenDayPreviewToday(): bool
+    {
+        return $this->day_preview_seen_on?->toDateString() === $this->localToday()->toDateString();
+    }
+
+    public function markDayPreviewSeen(): void
+    {
+        $this->update(['day_preview_seen_on' => $this->localToday()]);
+    }
+
+    /**
      * How many tasks completed in one local calendar day counts as "hit the daily
      * goal" — drives the progress ring and the "goal reached" celebration (see
      * ProgressStats::celebrationFor()).
@@ -402,6 +454,32 @@ class User extends Authenticatable
     /**
      * @return array<string, string>
      */
+    /**
+     * What an OAuth-connected AI client may do over the MCP server at /mcp.
+     *
+     * The Sanctum endpoint (/api/mcp) answers the same question from the
+     * token's own abilities, because a personal access token is created with
+     * "Schreiben erlauben"/"Löschen erlauben" checkboxes. An OAuth connection
+     * has no such moment: Laravel MCP advertises a single `mcp:use` scope and
+     * uses OAuth purely as a translation layer to this user, so there is
+     * nothing per-connection to encode the split into. The account carries it
+     * instead (Einstellungen → "Shortcuts, API & MCP"), which also means
+     * revoking Claude's ability to delete is one toggle and does not require
+     * disconnecting and reconnecting the connector.
+     *
+     * Reading is unconditional: an MCP connection that cannot read is not a
+     * connection, and the same is already true of a token (McpAbility::READ).
+     */
+    public function mcpOAuthCan(string $ability): bool
+    {
+        return match ($ability) {
+            McpAbility::READ => true,
+            McpAbility::WRITE => (bool) $this->mcp_oauth_write,
+            McpAbility::DELETE => (bool) $this->mcp_oauth_delete,
+            default => false,
+        };
+    }
+
     protected function casts(): array
     {
         return [
@@ -414,6 +492,10 @@ class User extends Authenticatable
             'notify_pomo_start' => 'boolean',
             'notify_break_start' => 'boolean',
             'notify_event_upcoming' => 'boolean',
+            'day_preview_seen_on' => 'date',
+            'notify_day_preview' => 'boolean',
+            'reminder_smart_timing' => 'boolean',
+            'day_preview_notification_sent_on' => 'date',
             'last_seen_at' => 'datetime',
             'show_presence' => 'boolean',
             'deadline_preview_enabled' => 'boolean',
@@ -423,11 +505,15 @@ class User extends Authenticatable
             'daily_reminder_sent_on' => 'date',
             'notify_streak_risk' => 'boolean',
             'streak_risk_sent_on' => 'date',
+            'streak_last_evaluated_date' => 'date',
             'header_badges' => 'array',
+            'weekday_day_bounds' => 'array',
             'planner_enabled' => 'boolean',
             'hidden_modules' => 'array',
             'onboarding_completed_at' => 'datetime',
             'is_admin' => 'boolean',
+            'mcp_oauth_write' => 'boolean',
+            'mcp_oauth_delete' => 'boolean',
             'last_login_at' => 'datetime',
         ];
     }

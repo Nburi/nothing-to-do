@@ -2,8 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\EventCategory;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Passport;
 use Minishlink\WebPush\WebPush;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,6 +19,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Set in register(), not boot(): Passport registers its routes from
+        // its own boot(), and by then this flag decides whether the
+        // /oauth/device/* routes exist at all. Claude never uses the device
+        // grant — it is a browser-redirect client — so those routes would
+        // only be unreviewed surface area.
+        Passport::$deviceCodeGrantEnabled = false;
+
         $this->app->singleton(WebPush::class, fn () => new WebPush([
             'VAPID' => [
                 'subject' => config('webpush.vapid.subject'),
@@ -27,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every id in a URL is a database id. Without this, "/api/tasks/abc" reached
+        // controllers whose action takes `int $id` and died with a TypeError - a 500
+        // (and an error-level log line) for what is simply "no such task". A
+        // non-numeric segment now fails route matching itself: a plain 404.
+        foreach (['task', 'project', 'group', 'entry', 'event', 'category', 'template'] as $param) {
+            Route::pattern($param, '[0-9]+');
+        }
+
         // Production sits behind a reverse proxy that terminates TLS — `trustProxies(at: '*')`
         // in bootstrap/app.php already makes Laravel trust its X-Forwarded-Proto header, so
         // url()/route() generation *should* already come out https without this. Forcing the
@@ -38,5 +59,39 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
+
+        $this->configureMcpOAuth();
+    }
+
+    /**
+     * Passport exists in this app for exactly one reason: claude.ai and
+     * Claude Desktop can only authenticate a custom MCP connector via OAuth
+     * (see routes/ai.php). Everything about it is therefore narrowed down to
+     * that job — no self-service client-management API, and a consent screen
+     * that looks like the rest of the product instead of Passport's stock one.
+     */
+    private function configureMcpOAuth(): void
+    {
+        // Passport ships JSON routes under /oauth/* for managing clients,
+        // scopes and personal access tokens from a first-party SPA. This app
+        // has no such SPA — token management lives in Settings and goes
+        // through Sanctum — so leaving them registered would be unreviewed
+        // surface area for no gain.
+        Passport::$registersJsonApiRoutes = false;
+
+        // Claude refreshes reactively on a 401 and keeps a connection alive
+        // for a long time, so a short access token plus a long refresh token
+        // is the shape that fits: revoking a connection takes effect within
+        // the hour instead of whenever a long-lived token happens to expire.
+        Passport::tokensExpireIn(now()->addHour());
+        Passport::refreshTokensExpireIn(now()->addMonths(6));
+
+        Passport::authorizationView(fn (array $parameters) => view('mcp.authorize', $parameters));
+
+        // The throttle:mcp middleware Mcp::web() is given in routes/ai.php.
+        // Generous enough that a model working through a list of tasks never
+        // trips it, low enough to bound a runaway agent loop.
+        RateLimiter::for('mcp', fn (Request $request) => Limit::perMinute(120)
+            ->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
     }
 }

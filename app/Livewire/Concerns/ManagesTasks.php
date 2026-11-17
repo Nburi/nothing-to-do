@@ -3,11 +3,13 @@
 namespace App\Livewire\Concerns;
 
 use App\Models\Task;
+use App\Services\DayPlanner;
 use App\Services\ProgressStats;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 
 /**
  * Shared task mutations + the inline edit sheet. Used by the board (and any other
@@ -26,6 +28,9 @@ trait ManagesTasks
     public ?string $editDueDate = null;
 
     public ?int $editDuration = null;
+
+    /** One of Task::REPEAT_RULES' keys, or null for a task that does not repeat. */
+    public ?string $editRepeat = null;
 
     public string $editNotes = '';
 
@@ -64,6 +69,32 @@ trait ManagesTasks
         $this->redirectRoute('planner', navigate: true);
     }
 
+    /**
+     * "Teil erledigt" on a split task's card (see partials/task-session-pill):
+     * ticks that part off. Ticking a part never completes the task itself —
+     * that stays an explicit tap on the checkbox or on "Aufgabe abhaken?".
+     * Ownership is checked inside DayPlanner (the part must belong to one of
+     * the user's open tasks), so a foreign id is simply a no-op.
+     */
+    public function completeTaskPart(int $sessionId): void
+    {
+        $result = DayPlanner::completeSession(auth()->user(), $sessionId);
+
+        if ($result !== null && $result['celebration'] !== null) {
+            $this->dispatch('celebrate', kind: $result['celebration']['kind'], label: $result['celebration']['label']);
+        }
+    }
+
+    /**
+     * The split sheet lives outside every page component, so a save there only
+     * reaches the page behind it as this event. Handling it is the re-render —
+     * every read is a computed property that re-evaluates on the way out.
+     */
+    #[On('plan-changed')]
+    public function refreshAfterPlanChange(): void
+    {
+    }
+
     public function toggleComplete(int $id): void
     {
         $task = $this->userTask($id);
@@ -79,6 +110,8 @@ trait ManagesTasks
             'completed_at' => $done ? now() : null,
         ]);
 
+        $task->syncRepeat($user, $done);
+
         if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
             $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
         }
@@ -92,6 +125,7 @@ trait ManagesTasks
         $this->editDeadline = $task->deadline?->toDateString();
         $this->editDueDate = $task->due_date?->toDateString();
         $this->editDuration = $task->duration_minutes;
+        $this->editRepeat = $task->repeat_rule;
         $this->editNotes = (string) ($task->notes ?? '');
         $this->editList = in_array($task->list, Task::LISTS, true) ? $task->list : 'tasks';
     }
@@ -109,6 +143,7 @@ trait ManagesTasks
             'editDeadline' => ['nullable', 'date'],
             'editDueDate' => ['nullable', 'date'],
             'editDuration' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'editRepeat' => ['nullable', Rule::in(array_keys(Task::REPEAT_RULES))],
             'editNotes' => ['nullable', 'string', 'max:5000'],
             'editList' => ['required', Rule::in(Task::LISTS)],
         ]);
@@ -122,6 +157,7 @@ trait ManagesTasks
             'deadline' => $data['editDeadline'] ?: null,
             'due_date' => $data['editDueDate'] ?: null,
             'duration_minutes' => $data['editDuration'] ?: null,
+            'repeat_rule' => $data['editRepeat'] ?: null,
             'notes' => $notes !== '' ? $notes : null,
         ];
 
@@ -177,7 +213,7 @@ trait ManagesTasks
 
     public function cancelEdit(): void
     {
-        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editDuration', 'editNotes', 'editList']);
+        $this->reset(['editingId', 'editTitle', 'editDeadline', 'editDueDate', 'editDuration', 'editRepeat', 'editNotes', 'editList']);
     }
 
     public function deleteTask(int $id): void

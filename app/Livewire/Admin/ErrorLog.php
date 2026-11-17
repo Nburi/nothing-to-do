@@ -7,6 +7,7 @@ use App\Services\ErrorStats;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -17,6 +18,7 @@ use Livewire\Component;
  * ErrorStats for how these rows get written in the first place.
  */
 #[Layout('layouts.app')]
+#[Title('Fehler-Statistiken')]
 class ErrorLog extends Component
 {
     /** A status code to filter the recent list by, or null for "alle". */

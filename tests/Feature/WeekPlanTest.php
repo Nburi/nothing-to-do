@@ -111,6 +111,66 @@ class WeekPlanTest extends TestCase
             ->assertHasErrors(['eventCategoryId']);
     }
 
+    public function test_the_missing_category_error_is_shown_in_german_not_englisch(): void
+    {
+        // Regression: this project had no lang/ directory at all, so this
+        // exact validation failure (no category picked on the Kategorie
+        // tab) rendered Laravel's raw English default — "The event
+        // category id field is required." — inside an otherwise fully
+        // German UI. See lang/de/validation.php.
+        $user = $this->actingUser();
+        EventCategory::factory()->for($user)->create(['name' => 'Training']);
+
+        $component = Livewire::test(WeekPlan::class)
+            ->set('eventKind', 'category')
+            ->set('eventStart', '17:00')
+            ->set('eventEnd', '19:00')
+            ->set('eventDays', [3])
+            ->call('saveEventForm');
+
+        $component->assertHasErrors(['eventCategoryId']);
+
+        $message = $component->errors()->first('eventCategoryId');
+
+        $this->assertStringNotContainsString('field is required', $message);
+        $this->assertSame('Das Feld Kategorie muss ausgefüllt werden.', $message);
+    }
+
+    public function test_the_chosen_category_chip_gets_a_visible_ring_not_just_its_own_colour(): void
+    {
+        // UX finding: a category chip's dot always shows that category's own
+        // assigned colour, selected or not — with exactly one category (the
+        // common case right after creating the first one), that read as
+        // "already selected" and was the direct cause of the previous test's
+        // regression. A ring around the dot, matching the plain colour
+        // picker's own already-established selected-state language a few
+        // lines below in the same form, makes "selected" unambiguous
+        // regardless of the category's own colour.
+        $user = $this->actingUser();
+        $chosen = EventCategory::factory()->for($user)->create(['name' => 'Training']);
+        $other = EventCategory::factory()->for($user)->create(['name' => 'Schule']);
+
+        $html = Livewire::test(WeekPlan::class)
+            ->set('eventKind', 'category')
+            ->set('eventCategoryId', $chosen->id)
+            ->html();
+
+        // Anchor on the chip's own wire:click call (unique per category and
+        // only present in the picker, not the page's separate quick-create
+        // footer, which also shows the category name) rather than the bare
+        // name, so the window can't land on the wrong "Training" chip.
+        $chosenAnchor = strpos($html, "\$set('eventCategoryId', {$chosen->id})");
+        $otherAnchor = strpos($html, "\$set('eventCategoryId', {$other->id})");
+        $this->assertNotFalse($chosenAnchor);
+        $this->assertNotFalse($otherAnchor);
+
+        $chosenChip = substr($html, $chosenAnchor, 400);
+        $otherChip = substr($html, $otherAnchor, 400);
+
+        $this->assertStringContainsString('ring-2 ring-offset-1', $chosenChip);
+        $this->assertStringNotContainsString('ring-2 ring-offset-1', $otherChip);
+    }
+
     public function test_editing_a_template_updates_its_shape(): void
     {
         $user = $this->actingUser();
@@ -361,5 +421,32 @@ class WeekPlanTest extends TestCase
         Livewire::test(WeekPlan::class)->call('unpauseRange', '2026-07-20', '2026-07-22');
 
         $this->assertSame(0, SchedulePause::forUser($user)->count());
+    }
+
+    public function test_unpausing_an_impossible_date_is_ignored_not_a_server_error(): void
+    {
+        $user = $this->actingUser();
+        SchedulePause::pauseRange($user, Carbon::parse('2026-07-20'), Carbon::parse('2026-07-22'), null);
+
+        // Well-formed to the eye, not a calendar date: used to reach Carbon::parse() and throw.
+        foreach (['2026-13-45', '2026-02-30', '0000-00-00', 'garbage'] as $bad) {
+            Livewire::test(WeekPlan::class)->call('unpauseDate', $bad)->assertHasNoErrors();
+            Livewire::test(WeekPlan::class)->call('unpauseRange', $bad, '2026-07-22')->assertHasNoErrors();
+        }
+
+        $this->assertSame(3, SchedulePause::forUser($user)->count());
+    }
+
+    public function test_unpausing_a_range_longer_than_a_year_or_backwards_does_nothing(): void
+    {
+        $user = $this->actingUser();
+        SchedulePause::pauseRange($user, Carbon::parse('2026-07-20'), Carbon::parse('2026-07-22'), null);
+
+        // A pause can never be created longer than a year (savePauseRange), so a longer
+        // unpause can only be hand-made — and would materialise every day of it.
+        Livewire::test(WeekPlan::class)->call('unpauseRange', '1900-01-01', '2999-12-31');
+        Livewire::test(WeekPlan::class)->call('unpauseRange', '2026-07-22', '2026-07-20');
+
+        $this->assertSame(3, SchedulePause::forUser($user)->count());
     }
 }

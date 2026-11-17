@@ -139,265 +139,6 @@
   }
 }
 
-@utility shadow-map {
-  /* Tinted elevation — never a pure-black shadow on map paper. */
-  box-shadow: var(--shadow-map);
-}
-
-@utility tnum {
-  /* Tabular figures for dates, counts, control codes. */
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-}
-
-@utility prose-topo {
-  /* Rendered Brainstorming Markdown — typeset onto the Topografie map. */
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--color-ink);
-  overflow-wrap: break-word;
-  & > :first-child {
-    margin-top: 0;
-  }
-  & > :last-child {
-    margin-bottom: 0;
-  }
-  & h1 {
-    margin: 1.35em 0 0.5em;
-    font-weight: 500;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-    color: var(--color-ink);
-  }
-  & h2 {
-    margin: 1.35em 0 0.5em;
-    font-weight: 500;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-    color: var(--color-ink);
-  }
-  & h3 {
-    margin: 1.35em 0 0.5em;
-    font-weight: 500;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-    color: var(--color-ink);
-  }
-  & h4 {
-    margin: 1.35em 0 0.5em;
-    font-weight: 500;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-    color: var(--color-ink);
-  }
-  & h1 {
-    font-size: 1.4em;
-  }
-  & h2 {
-    font-size: 1.2em;
-  }
-  & h3 {
-    font-size: 1.05em;
-  }
-  & p {
-    margin: 0.7em 0;
-  }
-  & a {
-    color: var(--color-overprint);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    text-decoration-thickness: 1px;
-  }
-  & a:hover {
-    text-decoration-thickness: 2px;
-  }
-  & strong {
-    font-weight: 700;
-    color: var(--color-ink);
-  }
-  & em {
-    font-style: italic;
-  }
-  & u {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  & ul {
-    margin: 0.7em 0;
-    padding-left: 1.4em;
-  }
-  & ol {
-    margin: 0.7em 0;
-    padding-left: 1.4em;
-  }
-  & ul {
-    list-style: disc;
-  }
-  & ol {
-    list-style: decimal;
-  }
-  & li {
-    margin: 0.3em 0;
-  }
-  & li::marker {
-    color: var(--color-ink-faint);
-  }
-  /* GitHub-flavoured task lists. */
-  & ul:has(input[type='checkbox']) {
-    padding-left: 0.2em;
-    list-style: none;
-  }
-  & li:has(> input[type='checkbox']) {
-    display: flex;
-    align-items: baseline;
-    gap: 0.15em;
-  }
-  & input[type='checkbox'] {
-    margin-right: 0.45em;
-    accent-color: var(--color-forest);
-    transform: translateY(1px);
-  }
-  & blockquote {
-    margin: 0.9em 0;
-    padding-left: 0.9em;
-    border-left: 2px solid var(--color-contour);
-    color: var(--color-ink-soft);
-    font-style: italic;
-  }
-  & code {
-    padding: 0.08em 0.34em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.88em;
-    background: var(--color-paper);
-    border: 1px solid var(--color-line);
-    border-radius: 0.3rem;
-  }
-  & pre {
-    margin: 0.9em 0;
-    padding: 0.85em 1em;
-    overflow-x: auto;
-    background: var(--color-paper);
-    border: 1px solid var(--color-line);
-    border-radius: 0.625rem;
-  }
-  & pre code {
-    padding: 0;
-    font-size: 0.86em;
-    background: none;
-    border: 0;
-  }
-  & hr {
-    margin: 1.4em 0;
-    border: 0;
-    border-top: 1px solid var(--color-line);
-  }
-  /* GitHub-flavoured tables (Bibliothek articles). */
-  & table {
-    width: 100%;
-    margin: 0.9em 0;
-    border-collapse: collapse;
-    font-size: 0.92em;
-  }
-  & th {
-    padding: 0.45em 0.7em;
-    border: 1px solid var(--color-line);
-    text-align: left;
-  }
-  & td {
-    padding: 0.45em 0.7em;
-    border: 1px solid var(--color-line);
-    text-align: left;
-  }
-  & th {
-    background: var(--color-paper);
-    font-weight: 600;
-    color: var(--color-ink);
-  }
-}
-
-@utility board-ghost {
-  /* Drag & drop: the drop target reads like a course leg — a dashed overprint outline. */
-  & > * {
-    opacity: 0;
-  }
-  position: relative;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 1.5px dashed var(--color-overprint);
-    background: var(--color-overprint-soft);
-    border-radius: 0.625rem;
-  }
-}
-
-@utility board-chosen {
-  cursor: grabbing;
-}
-
-@utility tier-free {
-  /* Planer day-board: which days are available for the chip currently
-       being dragged (see plannerWave in app.js) — applied in a short
-       left-to-right stagger from today outwards, not all at once. Border/
-       background need !important: they override the Tailwind utilities
-       (border-line, bg-surface) already on the same element, which would
-       otherwise win the cascade regardless of source order once Tailwind's
-       own layer is injected. */
-  border-color: color-mix(in srgb, var(--color-forest) 55%, transparent) !important;
-  background-color: color-mix(in srgb, var(--color-forest-soft) 55%, transparent) !important;
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--color-forest) 14%, transparent),
-    var(--shadow-map);
-  transition:
-    border-color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-@utility tier-tight {
-  border-color: color-mix(in srgb, var(--color-contour) 60%, transparent) !important;
-  background-color: color-mix(in srgb, var(--color-contour-soft) 55%, transparent) !important;
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--color-contour) 16%, transparent),
-    var(--shadow-map);
-  transition:
-    border-color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-@utility tier-past {
-  opacity: 0.5;
-  transition: opacity 180ms ease;
-}
-
-@utility pin-card {
-  /* Bastelideen pinboard: each card's resting tilt comes from an inline rotate(); a
-       plain class rule (not a Tailwind rotate utility, which would fight the inline
-       transform) straightens it on hover/focus. !important is required to beat the
-       inline style — see CLAUDE.md's cascade note if this ever looks like it "does
-       nothing". */
-  transition:
-    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.2s ease;
-  &:hover {
-    transform: translateY(-2px) rotate(0deg) !important;
-    box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
-  }
-  &:focus-within {
-    transform: translateY(-2px) rotate(0deg) !important;
-    box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
-  }
-  @variant dark {
-    &:hover {
-      box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
-    }
-    &:focus-within {
-      box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
-    }
-  }
-}
-
 @utility celebrate-ring {
   /* Milestone celebration (ProgressStats::celebrationFor) — concentric topographic
        rings plus a handful of flying line-mark particles. Positioning (inset/left/top)
@@ -415,15 +156,6 @@
   border-color: var(--color-overprint);
 }
 
-@utility celebrate-ring--perfect-day {
-  /* Perfect day (every today-task cleared) is the rarest, most personally-
-       defined win — a warmer, more spread-out burst than goal/record, not
-       just a recolor. See the 'celebration' store's `big` branch in app.js. */
-  border-color: var(--color-contour);
-  animation-name: celebrate-ring-big;
-  animation-duration: 1.6s;
-}
-
 @utility celebrate-ring--streak-record {
   /* A streak record is a perfect day that also just beat every streak ever
        run before it — the rarest of the four kinds, so it escalates once
@@ -435,31 +167,6 @@
   animation-duration: 2.1s;
 }
 
-@utility celebrate-particle {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 3px;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--color-forest);
-  animation: celebrate-particle 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) both;
-}
-
-@utility celebrate-particle--record {
-  background: var(--color-overprint);
-}
-
-@utility celebrate-particle--perfect-day {
-  background: var(--color-contour);
-  animation-duration: 1.3s;
-}
-
-@utility celebrate-particle--streak-record {
-  background: var(--color-contour);
-  animation-duration: 1.7s;
-}
-
 @utility weekplan-ripple {
   /* Week plan ripple (WeekPlan::saveEventForm, via resources/js/app.js's
        "weekplan-ripple" Livewire listener) — a brief light sweep across a day
@@ -468,22 +175,6 @@
        a chip list about. Respects prefers-reduced-motion via the global
        animation-collapse rule below — nothing extra needed here. */
   animation: weekplan-ripple 650ms ease-out;
-}
-
-@utility badge-jump-highlight {
-  /* Header badge "proof of destination" (see HeaderBadges::scheduleBadge()
-       and Schedule::$highlightEventId) — the block the Zeitplan badge was
-       showing pulses once on arrival, slower and calmer than the weekplan
-       ripple above since it's greeting a page load, not confirming a save. */
-  animation: badge-jump-highlight 1400ms ease-out;
-}
-
-@utility announcement-highlight {
-  /* Feature-announcement "highlight_selector" (see FeatureAnnouncement::linkHref()
-       and the `highlight` query-param handler in app.js) — an admin-picked CSS
-       selector gets the same "arriving at a page" wash as the header badge above,
-       just for an arbitrary element instead of one specific schedule block. */
-  animation: announcement-highlight 1400ms ease-out;
 }
 
 @utility eisenhower-crisis-ring {
@@ -761,6 +452,224 @@
 }
 
 @layer components {
+    /* Tinted elevation — never a pure-black shadow on map paper. */
+    .shadow-map {
+        box-shadow: var(--shadow-map);
+    }
+
+    /* Invisible extended tap area for controls whose visible size is deliberately small
+       (checkboxes, toggles, text links). Only below `sm` — on desktop the pointer is precise
+       and an oversized hit box would just overlap neighbours' hover states. The host needs a
+       positioned box, so the class sets `relative` itself; a utility like `absolute` still
+       wins (utilities load after components), for the few hosts that are already positioned.
+       Sized to reach ~44px from a 24px control; `-sm` (6px) is for tightly packed rows. */
+    @media (max-width: 639px) {
+        .hit-area {
+            position: relative;
+        }
+        .hit-area::before {
+            content: '';
+            position: absolute;
+            inset: -10px;
+        }
+        .hit-area-sm::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+        }
+        .hit-area-sm {
+            position: relative;
+        }
+    }
+
+    /* Tabular figures for dates, counts, control codes. */
+    .tnum {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: 'tnum' 1;
+    }
+
+    /* Rendered Brainstorming Markdown — typeset onto the Topografie map. */
+    .prose-topo {
+        font-size: 15px;
+        line-height: 1.7;
+        color: var(--color-ink);
+        overflow-wrap: break-word;
+    }
+    .prose-topo > :first-child {
+        margin-top: 0;
+    }
+    .prose-topo > :last-child {
+        margin-bottom: 0;
+    }
+    .prose-topo h1,
+    .prose-topo h2,
+    .prose-topo h3,
+    .prose-topo h4 {
+        margin: 1.35em 0 0.5em;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--color-ink);
+    }
+    .prose-topo h1 { font-size: 1.4em; }
+    .prose-topo h2 { font-size: 1.2em; }
+    .prose-topo h3 { font-size: 1.05em; }
+    .prose-topo p { margin: 0.7em 0; }
+    .prose-topo a {
+        color: var(--color-overprint);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        text-decoration-thickness: 1px;
+    }
+    .prose-topo a:hover { text-decoration-thickness: 2px; }
+    .prose-topo strong { font-weight: 700; color: var(--color-ink); }
+    .prose-topo em { font-style: italic; }
+    .prose-topo u { text-decoration: underline; text-underline-offset: 2px; }
+    .prose-topo ul,
+    .prose-topo ol {
+        margin: 0.7em 0;
+        padding-left: 1.4em;
+    }
+    .prose-topo ul { list-style: disc; }
+    .prose-topo ol { list-style: decimal; }
+    .prose-topo li { margin: 0.3em 0; }
+    .prose-topo li::marker { color: var(--color-ink-faint); }
+    /* GitHub-flavoured task lists. */
+    .prose-topo ul:has(input[type='checkbox']) {
+        padding-left: 0.2em;
+        list-style: none;
+    }
+    .prose-topo li:has(> input[type='checkbox']) {
+        display: flex;
+        align-items: baseline;
+        gap: 0.15em;
+    }
+    .prose-topo input[type='checkbox'] {
+        margin-right: 0.45em;
+        accent-color: var(--color-forest);
+        transform: translateY(1px);
+    }
+    .prose-topo blockquote {
+        margin: 0.9em 0;
+        padding-left: 0.9em;
+        border-left: 2px solid var(--color-contour);
+        color: var(--color-ink-soft);
+        font-style: italic;
+    }
+    .prose-topo code {
+        padding: 0.08em 0.34em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.88em;
+        background: var(--color-paper);
+        border: 1px solid var(--color-line);
+        border-radius: 0.3rem;
+    }
+    .prose-topo pre {
+        margin: 0.9em 0;
+        padding: 0.85em 1em;
+        overflow-x: auto;
+        background: var(--color-paper);
+        border: 1px solid var(--color-line);
+        border-radius: 0.625rem;
+    }
+    .prose-topo pre code {
+        padding: 0;
+        font-size: 0.86em;
+        background: none;
+        border: 0;
+    }
+    .prose-topo hr {
+        margin: 1.4em 0;
+        border: 0;
+        border-top: 1px solid var(--color-line);
+    }
+    /* GitHub-flavoured tables (Bibliothek articles). */
+    .prose-topo table {
+        width: 100%;
+        margin: 0.9em 0;
+        border-collapse: collapse;
+        font-size: 0.92em;
+    }
+    .prose-topo th,
+    .prose-topo td {
+        padding: 0.45em 0.7em;
+        border: 1px solid var(--color-line);
+        text-align: left;
+    }
+    .prose-topo th {
+        background: var(--color-paper);
+        font-weight: 600;
+        color: var(--color-ink);
+    }
+
+    /* Drag & drop: the drop target reads like a course leg — a dashed overprint outline. */
+    .board-ghost > * {
+        opacity: 0;
+    }
+    .board-ghost {
+        position: relative;
+    }
+    .board-ghost::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 1.5px dashed var(--color-overprint);
+        background: var(--color-overprint-soft);
+        border-radius: 0.625rem;
+    }
+    .board-chosen {
+        cursor: grabbing;
+    }
+
+    /* Planer day-board: which days are available for the chip currently
+       being dragged (see plannerWave in app.js) — applied in a short
+       left-to-right stagger from today outwards, not all at once. Border/
+       background need !important: they override the Tailwind utilities
+       (border-line, bg-surface) already on the same element, which would
+       otherwise win the cascade regardless of source order once Tailwind's
+       own layer is injected. */
+    .tier-free {
+        border-color: color-mix(in srgb, var(--color-forest) 55%, transparent) !important;
+        background-color: color-mix(in srgb, var(--color-forest-soft) 55%, transparent) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-forest) 14%, transparent), var(--shadow-map);
+        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+    .tier-tight {
+        border-color: color-mix(in srgb, var(--color-contour) 60%, transparent) !important;
+        background-color: color-mix(in srgb, var(--color-contour-soft) 55%, transparent) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-contour) 16%, transparent), var(--shadow-map);
+        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+    .tier-past {
+        opacity: 0.5;
+        transition: opacity 180ms ease;
+    }
+
+    /* Bastelideen pinboard: each card's resting tilt comes from an inline rotate(); a
+       plain class rule (not a Tailwind rotate utility, which would fight the inline
+       transform) straightens it on hover/focus. !important is required to beat the
+       inline style — see CLAUDE.md's cascade note if this ever looks like it "does
+       nothing". */
+    .pin-card {
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    }
+    .pin-card:hover,
+    .pin-card:focus-within {
+        transform: translateY(-2px) rotate(0deg) !important;
+        box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+    }
+    @variant dark {
+        .pin-card:hover,
+        .pin-card:focus-within {
+            box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+        }
+    }
+
+    /* Milestone celebration (ProgressStats::celebrationFor) — concentric topographic
+       rings plus a handful of flying line-mark particles. Positioning (inset/left/top)
+       lives here so the Alpine template only needs to set the per-particle --dx/--dy/
+       --rotate custom properties. Respects prefers-reduced-motion via the global
+       animation-collapse rule in @layer utilities below — nothing extra needed here. */
     @keyframes celebrate-ring {
         0% { transform: scale(0.5); opacity: 0.9; }
         100% { transform: scale(1.9); opacity: 0; }
@@ -769,6 +678,24 @@
         0% { transform: scale(0.5); opacity: 0.9; }
         100% { transform: scale(2.5); opacity: 0; }
     }
+    .celebrate-ring--perfect-day {
+        border-color: var(--color-contour);
+        animation-name: celebrate-ring-big;
+        animation-duration: 1.6s;
+    }
+    /* Full board clear (every active Inbox/To-Do/Task done) — same "big" size
+       as a perfect day, but forest-toned like goal/record: it's fundamentally
+       a volume/completeness win, not the today-set-shaped one perfect-day is. */
+    .celebrate-ring--full-clear {
+        border-color: var(--color-forest);
+        animation-name: celebrate-ring-big;
+        animation-duration: 1.6s;
+    }
+    /* A streak record is a perfect day that also just beat every streak ever
+       run before it — the rarest of the four kinds, so it escalates once
+       more past perfect-day rather than introducing a new color: this app's
+       four-tone Topografie palette has no fifth tone to spare, and forest/
+       overprint are already goal/record's own colors. */
     @keyframes celebrate-ring-huge {
         0% { transform: scale(0.5); opacity: 0.9; }
         100% { transform: scale(3.1); opacity: 0; }
@@ -777,6 +704,38 @@
         0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
         100% { transform: translate(calc(-50% + var(--dx, 40px)), calc(-50% + var(--dy, 40px))) rotate(var(--rotate, 90deg)); opacity: 0; }
     }
+    .celebrate-particle {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 3px;
+        height: 10px;
+        border-radius: 2px;
+        background: var(--color-forest);
+        animation: celebrate-particle 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) both;
+    }
+    .celebrate-particle--record {
+        background: var(--color-overprint);
+    }
+    .celebrate-particle--perfect-day {
+        background: var(--color-contour);
+        animation-duration: 1.3s;
+    }
+    .celebrate-particle--full-clear {
+        background: var(--color-forest);
+        animation-duration: 1.3s;
+    }
+    .celebrate-particle--streak-record {
+        background: var(--color-contour);
+        animation-duration: 1.7s;
+    }
+
+    /* Week plan ripple (WeekPlan::saveEventForm, via resources/js/app.js's
+       "weekplan-ripple" Livewire listener) — a brief light sweep across a day
+       column the instant a block is confirmed to repeat on it, so "this now
+       applies here too" is something you see, not something you have to trust
+       a chip list about. Respects prefers-reduced-motion via the global
+       animation-collapse rule below — nothing extra needed here. */
     @keyframes weekplan-ripple {
         0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-forest) 22%, transparent); }
         100% { box-shadow: inset 0 0 0 9999px transparent; }
@@ -785,10 +744,121 @@
         0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-contour) 28%, transparent); }
         100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
+    .badge-jump-highlight {
+        animation: badge-jump-highlight 1400ms ease-out;
+    }
+
+    /* Live header badges — Signature Moment "die Zahl rollt" (see
+       App\Livewire\HeaderBadgeRow, partials/header-badge.blade.php and the
+       live-badge block in app.js). A changed value slides up into place while
+       the old one slides out, and the pill takes one soft inset wash in its
+       tone (inset, like the ripples above: the row scrolls, so an outward
+       ring would be clipped). A badge that just gained something to show
+       grows in; one that lost it is rendered once more by the server and
+       collapses away (HeaderBadgeRow), lingering invisible until the next refresh.
+       Respects prefers-reduced-motion via the global animation-collapse rule
+       below — nothing extra needed here. */
+    @keyframes badge-value-in {
+        0% { transform: translateY(0.75em); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+    .badge-value-in {
+        animation: badge-value-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes badge-value-out {
+        0% { transform: translateY(-50%); opacity: 1; }
+        100% { transform: translateY(calc(-50% - 0.75em)); opacity: 0; }
+    }
+    /* The replaced value, rendered once more by the server (see the header-badge
+       partial) and pinned over where the new one sits — right-aligned, since the
+       value is the pill's last item. Lingers invisible until the next refresh. */
+    .badge-value-out {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        pointer-events: none;
+        animation: badge-value-out 260ms ease-in forwards;
+    }
+    @keyframes badge-wash {
+        0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-forest) 30%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
+    }
+    @keyframes badge-wash-signal {
+        0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-signal) 30%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
+    }
+    .badge-wash {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        pointer-events: none;
+        animation: badge-wash 900ms ease-out;
+    }
+    .badge-wash--signal {
+        animation-name: badge-wash-signal;
+    }
+    @keyframes badge-grow-in {
+        0% { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
+        99% { overflow: hidden; }
+        100% { max-width: 12rem; opacity: 1; }
+    }
+    .badge-grow-in {
+        animation: badge-grow-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes badge-collapse-out {
+        0% { max-width: 12rem; opacity: 1; margin-right: 0; }
+        100% { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; margin-right: -0.375rem; overflow: hidden; }
+    }
+    .badge-collapse-out {
+        overflow: hidden;
+        pointer-events: none;
+        animation: badge-collapse-out 280ms ease-in forwards;
+    }
+
+    /* Feature-announcement "highlight_selector" (see FeatureAnnouncement::linkHref()
+       and the `highlight` query-param handler in app.js) — an admin-picked CSS
+       selector gets the same "arriving at a page" wash as the header badge above,
+       just for an arbitrary element instead of one specific schedule block. */
     @keyframes announcement-highlight {
         0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-contour) 28%, transparent); }
         100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
+    .announcement-highlight {
+        animation: announcement-highlight 1400ms ease-out;
+    }
+
+    /* Tagesüberblick entry — Signature Moment: the silent header dot doesn't
+       just vanish on click, it bursts outward from the icon (played via the
+       @click handler on the header link in layouts/app.blade.php) while the
+       destination page's streak pill pops in to match (day-preview.blade.php)
+       — a two-part stand-in for a continuous cross-page morph, since a real
+       Livewire wire:navigate SPA jump can't reliably track one shared element
+       through the swap. Respects prefers-reduced-motion via the global
+       animation-collapse rule below — nothing extra needed here. */
+    @keyframes day-preview-launch {
+        0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-overprint) 55%, transparent); }
+        100% { box-shadow: 0 0 0 14px transparent; }
+    }
+    .day-preview-launch {
+        animation: day-preview-launch 450ms ease-out;
+    }
+
+    @keyframes day-preview-arrive {
+        0% { transform: scale(0.4); opacity: 0; }
+        60% { transform: scale(1.12); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .day-preview-arrive {
+        animation: day-preview-arrive 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* "Eisenhower" concept's "Krisenring" signature moment (see
+       TaskBoard::trackEisenhowerCrisisEntries(), the "eisenhower-crisis"
+       Livewire listener in app.js) — a slow, calm wash across the "Wichtig &
+       Dringend" quadrant the instant a task genuinely lands there (drag,
+       star-tap, a date change, or a fresh quadrant-tap capture), in the
+       star's own tone (overprint) rather than this app's danger tone
+       (signal) — an acknowledgment, not an alarm. */
     @keyframes eisenhower-crisis-ring {
         0% { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-overprint) 22%, transparent); }
         100% { box-shadow: inset 0 0 0 9999px transparent; }
@@ -851,4 +921,214 @@
             scroll-behavior: auto !important;
         }
     }
+}
+
+/* Below `sm`, every text-entry control is 16px. iOS Safari zooms the whole page in when a
+   field with a smaller computed font-size gets focus, and never zooms back out by itself —
+   and most of this app's inputs are `text-sm` (14px). Unlayered on purpose: it must beat
+   the `text-sm` / `text-[15px]` utilities without resorting to !important. Checkboxes,
+   radios and range/colour pickers have no text to zoom for. */
+@media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Timeline blocks (Zeitplan, Wochenplan, Vorbereitung Schritt 3)
+
+   A block is exactly as tall as its duration; its content never was. One
+   title row needs ~28px, and so does the hover pencil — which at the old
+   fixed 0.6 px/min meant every block under ~47 minutes rendered its content
+   *outside* its own bounds, over the next block. Two halves to the fix:
+
+   1. The block is split into a wrapper (`.tl-block`: position, gestures,
+      never clipped — the day view's start-time label deliberately hangs
+      outside it) and a clipped body (`.tl-body`).
+   2. How much the body shows is decided by the body's own height, via
+      container queries — NOT by a duration in minutes. Minutes stopped being
+      a usable proxy the moment DayWindow made the scale depend on the day's
+      length, and they were never one across desktop / phone / week view.
+
+   Unlayered on purpose: Tailwind tree-shakes `@layer components` rules by
+   class name, and a nested `@container` at-rule is exactly the shape that is
+   risky to hand to that scanner (see CLAUDE.md §10 on JS-only classes being
+   silently purged). Everything here is plain CSS, so it passes through
+   untouched.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.tl-body {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+}
+
+@supports (container-type: size) {
+    .tl-body { container-type: size; }
+
+    /* Optional rows start hidden and are switched on once there is room. */
+    .tl-opt { display: none; }
+
+    /* The compact stand-in: a 'select' attribute's colour dots ride in the
+       title row when there is no room for the full attribute line. Shown by
+       default and hidden once the full line appears, rather than gated by a
+       second `max-height` query — two complementary queries would leave a
+       sub-pixel gap in which neither matched. */
+    .tl-opt-dots { display: flex; }
+
+    @container (min-height: 30px) {
+        .tl-opt-time { display: block; }
+    }
+
+    @container (min-height: 46px) {
+        .tl-opt-attrs { display: flex; }
+        .tl-opt-pencil { display: grid; }
+        .tl-opt-dots { display: none; }
+    }
+
+    @container (max-height: 29px) {
+        .tl-title { font-size: 11px; line-height: 14px; }
+        .tl-pad { padding-top: 0; padding-bottom: 0; }
+    }
+}
+
+/* Signature moment: a block too short to carry its own content lifts to
+   exactly the height it needs — hover on a mouse, a single tap on touch
+   (where the pencil never existed at all before). `min-height` rather than a
+   height override so a block that is already tall enough cannot move, and so
+   the top edge — the start time — stays exactly where it is. 46px is the
+   same number as the `min-height: 46px` container query above and as
+   LIFT_MIN_PX in resources/js/app.js; the three cannot share a constant, so
+   they are kept in step by hand (DayWindow::LIFT_MIN_PX documents it). */
+.tl-block {
+    transition:
+        min-height 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.22s ease;
+}
+
+/* The pencil draws at 24px, which is a poor touch target — and touch is the
+   one path where it is the *only* way in, since group-hover never fires there.
+   A transparent ::after widens the tappable area without touching the look.
+   It stops at the body's own edges (overflow: hidden clips hit-testing too),
+   so this buys the sides and the bottom, not the top. */
+.tl-opt-pencil::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+}
+
+/* While dragging, min-height changes on every pointermove (see blockStyle);
+   the lift's own easing would make the grip trail behind the pointer. */
+.tl-block-dragging {
+    transition: none;
+}
+
+.tl-block-lifted {
+    z-index: 40;
+    box-shadow:
+        0 1px 2px color-mix(in srgb, var(--color-ink) 12%, transparent),
+        0 8px 20px color-mix(in srgb, var(--color-ink) 16%, transparent);
+}
+
+/* ── Weg-/Pufferzeit ─────────────────────────────────────────────────────
+   A hatched extension of the block, in the block's own colour: it occupies
+   visible time without being a second entry — no title, no gestures of its
+   own, and it moves and resizes with the block because it is positioned in
+   percent of the block itself. */
+
+.tl-buf {
+    position: absolute;
+    /* Exactly as wide as the block itself — the band is an extension of it,
+       not a second object, so any inset of its own reads as a misalignment. */
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    border: 1px dashed;
+    z-index: 0;
+}
+
+.tl-buf-before { border-bottom: 0; border-radius: 7px 7px 0 0; }
+.tl-buf-after { border-top: 0; border-radius: 0 0 7px 7px; }
+
+.tl-buf-forest {
+    border-color: color-mix(in srgb, var(--color-forest) 45%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-forest) 17%, transparent) 0 3px, transparent 3px 7px);
+}
+.tl-buf-overprint {
+    border-color: color-mix(in srgb, var(--color-overprint) 45%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-overprint) 17%, transparent) 0 3px, transparent 3px 7px);
+}
+.tl-buf-signal {
+    border-color: color-mix(in srgb, var(--color-signal) 45%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-signal) 17%, transparent) 0 3px, transparent 3px 7px);
+}
+.tl-buf-ink {
+    border-color: color-mix(in srgb, var(--color-ink-faint) 45%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink-faint) 17%, transparent) 0 3px, transparent 3px 7px);
+}
+.tl-buf-contour {
+    border-color: color-mix(in srgb, var(--color-contour) 45%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-contour) 17%, transparent) 0 3px, transparent 3px 7px);
+}
+
+/* The dimmed margin above the first and below the last hour of the day
+   frame: a horizon, so an empty edge reads as "outside my day" rather than
+   as a grid that was cut off. */
+.tl-night {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: color-mix(in srgb, var(--color-ink) 5.5%, transparent);
+    pointer-events: none;
+    /* No z-index on purpose: it sits before the blocks in DOM order, and a
+       positive z-index here would paint it *over* them. */
+}
+.tl-night-top { top: 0; border-bottom: 1px dashed color-mix(in srgb, var(--color-ink-faint) 40%, transparent); }
+.tl-night-bottom { bottom: 0; border-top: 1px dashed color-mix(in srgb, var(--color-ink-faint) 40%, transparent); }
+
+.tl-night {
+    @variant dark {
+        background: rgb(0 0 0 / 0.28);
+    }
+}
+
+/* "Aufteilen" sheet: a part drops onto its day with a small spring, so choosing
+   a day feels like placing something. Plain CSS outside any @layer (Tailwind
+   would purge a class only the sheet's Alpine template mentions). Reduced
+   motion is handled by the global animation-collapse rule. */
+@keyframes split-pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+.split-pop {
+    animation: split-pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* "Nicht vergessen" signature moment ("Eingepackt"): ticking a reminder off folds its
+   chip into a check mark — the chip settles from slightly wide, the check's stroke
+   draws itself. Plain CSS outside any @layer (a class only Blade templates mention
+   would be tree-shaken otherwise); reduced motion is handled by the global
+   animation-collapse rule. */
+@keyframes reminder-fold-in {
+    0% { transform: scaleX(1.4); opacity: 0.2; }
+    100% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes reminder-check-draw {
+    from { stroke-dashoffset: 16; }
+    to { stroke-dashoffset: 0; }
+}
+
+.reminder-fold {
+    transform-origin: left center;
+    animation: reminder-fold-in 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reminder-fold path {
+    stroke-dasharray: 16;
+    animation: reminder-check-draw 380ms ease-out 140ms both;
 }
