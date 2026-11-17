@@ -39,7 +39,7 @@
 @endphp
 @if ($mehrShowScheduleNav)
 <a href="{{ route('schedule') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
-    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+    'flex items-center gap-2 px-4 py-2.5 text-sm transition hover:bg-paper sm:py-2',
     'header-menu-fan-in' => $stagger,
     'bg-paper font-medium text-ink' => request()->routeIs('schedule'),
     'text-ink-soft hover:text-ink' => !request()->routeIs('schedule'),
@@ -50,7 +50,7 @@
 @endif
 @if ($mehrShowWeekplanNav)
 <a href="{{ route('weekplan') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
-    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+    'flex items-center gap-2 px-4 py-2.5 text-sm transition hover:bg-paper sm:py-2',
     'header-menu-fan-in' => $stagger,
     'bg-paper font-medium text-ink' => request()->routeIs('weekplan'),
     'text-ink-soft hover:text-ink' => !request()->routeIs('weekplan'),
@@ -63,7 +63,7 @@
      layouts/app.blade.php's history: not part of AppModules::CATALOG. --}}
 @if (auth()->user()->planner_enabled)
     <a href="{{ route('planner') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
-        'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+        'flex items-center gap-2 px-4 py-2.5 text-sm transition hover:bg-paper sm:py-2',
         'header-menu-fan-in' => $stagger,
         'bg-paper font-medium text-ink' => request()->routeIs('planner'),
         'text-ink-soft hover:text-ink' => !request()->routeIs('planner'),
@@ -74,7 +74,7 @@
 @endif
 @if ($mehrShowCraftsNav)
 <a href="{{ route('crafts') }}" wire:navigate {!! $mehrDelayStyle() !!} @class([
-    'flex items-center gap-2 px-4 py-2 text-sm transition hover:bg-paper',
+    'flex items-center gap-2 px-4 py-2.5 text-sm transition hover:bg-paper sm:py-2',
     'header-menu-fan-in' => $stagger,
     'bg-paper font-medium text-ink' => request()->routeIs('crafts'),
     'text-ink-soft hover:text-ink' => !request()->routeIs('crafts'),

@@ -10,7 +10,7 @@
 
 <div class="mx-auto max-w-3xl px-5 py-10 sm:px-6">
     <div class="mb-5 flex items-center gap-3">
-        <a href="{{ url('/app') }}" class="grid h-8 w-8 place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink" aria-label="Zurück zum Board" wire:navigate>
+        <a href="{{ url('/app') }}" class="grid h-10 w-10 place-items-center rounded-card text-ink-faint transition hover:bg-surface hover:text-ink sm:h-8 sm:w-8" aria-label="Zurück zum Board" wire:navigate>
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
         </a>
         <h1 class="text-xl font-medium text-ink">Einstellungen</h1>
@@ -51,7 +51,7 @@
                 :class="active === '{{ $id }}'
                     ? 'bg-surface text-ink underline decoration-2 underline-offset-4 dark:text-white'
                     : 'text-ink-soft hover:bg-surface hover:text-ink'"
-                class="flex-none rounded-card px-3 py-1.5 text-sm transition"
+                class="flex-none rounded-card px-3 py-2.5 text-sm transition sm:py-1.5"
             >{{ $label }}</a>
         @endforeach
     </nav>
@@ -63,11 +63,11 @@
         <h2 class="text-lg font-medium tracking-tight text-ink">Allgemein</h2>
 
         {{-- Aussehen (refactor step 2.1): theme and light/dark, saved per user. --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <livewire:theme-picker />
         </div>
 
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Erledigte Aufgaben</h3>
         <p class="mb-5 text-sm text-ink-soft leading-relaxed">
             Erledigte Aufgaben bleiben bis zu dieser Uhrzeit sichtbar — danach verschwinden sie automatisch.
@@ -94,7 +94,7 @@
              (not just in the header) so the effect is confirmed without ever
              leaving Settings, and the counter above the list updates with
              it. See App\Services\AppModules. --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <div class="mb-1 flex items-baseline justify-between gap-3">
                 <h3 class="text-base font-medium text-ink">Module</h3>
                 <p
@@ -121,7 +121,7 @@
                             type="button"
                             wire:click="toggleModule('{{ $row['key'] }}')"
                             @class([
-                                'relative h-6 w-10 flex-none rounded-full transition',
+                                'relative hit-area h-6 w-10 flex-none rounded-full transition',
                                 'bg-forest' => ! $row['hidden'],
                                 'bg-line' => $row['hidden'],
                             ])
@@ -139,7 +139,7 @@
         </div>
 
         {{-- Startseite --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Startseite</h3>
             <p class="mb-5 text-sm text-ink-soft leading-relaxed">
                 Diese Seite öffnet sich, wenn du die App startest oder dich anmeldest — z. B. direkt den
@@ -152,8 +152,8 @@
                         type="button"
                         wire:click="setDefaultPage('{{ $option['key'] }}')"
                         @class([
-                            'rounded-[0.45rem] px-3.5 py-1.5 text-sm transition',
-                            'bg-forest text-white shadow-xs' => $defaultPage === $option['key'],
+                            'rounded-[0.45rem] px-3.5 py-2.5 sm:py-1.5 text-sm transition',
+                            'bg-forest text-white shadow-sm' => $defaultPage === $option['key'],
                             'text-ink-soft hover:text-ink' => $defaultPage !== $option['key'],
                         ])
                     >{{ $option['label'] }}</button>
@@ -170,7 +170,7 @@
              data — so switching is "try it on", not a blind label pick.
              Concepts not built yet show "Bald verfügbar" and can't be
              selected (their session flips `available` when it lands). --}}
-        <div id="list-concept" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div id="list-concept" class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Listen-Konzept</h3>
             <p class="mb-5 text-sm text-ink-soft leading-relaxed">
                 Wie deine Liste organisiert ist. Deine Aufgaben bleiben dabei immer erhalten — nur die
@@ -217,7 +217,7 @@
         {{-- Tutorial — always offered, whether this account finished it, skipped
              it, or never even had it (see App\Livewire\Onboarding). Re-running it
              never resets anything here; it just re-stamps "last viewed on". --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-ink">Tutorial</p>
@@ -238,14 +238,15 @@
         </div>
 
         {{-- Planer --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-ink">Planer</p>
                     <p class="mt-0.5 text-xs text-ink-soft leading-relaxed">
-                        Verteilt offene Aufgaben, To-Dos und Hausaufgaben automatisch auf deine nächsten
-                        Pomodoro-Arbeitsblöcke, damit du früh siehst, ob alles rechtzeitig fertig wird — statt es
-                        erst am Tag der Deadline zu merken. Standardmässig aus.
+                        Ein Tagesbrett für die nächsten zwei Wochen: Zieh Aufgaben und To-Dos auf den
+                        Tag, an dem du sie erledigen willst — so siehst du früh, ob alles vor der Deadline Platz
+                        hat, statt es erst am Tag selbst zu merken. Auf Wunsch verteilt „Rest automatisch
+                        einplanen" den Rest für dich. Standardmässig aus.
                     </p>
                     @if ($plannerEnabled)
                         <a href="{{ route('planner') }}" wire:navigate class="mt-2 inline-block text-xs font-medium text-overprint hover:underline">Zum Planer →</a>
@@ -255,7 +256,7 @@
                     type="button"
                     wire:click="togglePlannerEnabled"
                     @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $plannerEnabled,
                         'bg-line' => ! $plannerEnabled,
                     ])
@@ -271,7 +272,7 @@
         </div>
 
         {{-- Zeitzone --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Zeitzone</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Stunden-Versatz zu UTC — z. B. <span class="font-medium text-ink">+1</span> für die Schweizer Winterzeit
@@ -286,7 +287,7 @@
                         type="button"
                         x-data
                         @click="const d = window.detectTimezoneDefaults(); $wire.applyDetectedTimezone(d.offset, d.autoDst)"
-                        class="flex-none text-xs font-medium text-overprint hover:underline"
+                        class="hit-area flex-none text-xs font-medium text-overprint hover:underline"
                     >Automatisch erkennen</button>
                 </div>
                 <input
@@ -313,7 +314,7 @@
                     type="button"
                     wire:click="toggleTimezoneAutoDst"
                     @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $timezoneAutoDst,
                         'bg-line' => ! $timezoneAutoDst,
                     ])
@@ -333,7 +334,7 @@
              what order. Drag reorders the whole list (enabled and disabled
              rows alike, same as Kategorien below); the switch toggles one row
              without disturbing its position. See App\Services\HeaderBadges. --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Header-Badges</h3>
             <p class="mb-5 text-sm text-ink-soft leading-relaxed">
                 Kleine Kurzwahl-Symbole oben im Header — ein Klick springt direkt zur passenden Seite.
@@ -359,7 +360,7 @@
                             type="button"
                             wire:click="toggleHeaderBadge('{{ $row['key'] }}')"
                             @class([
-                                'relative h-6 w-10 flex-none rounded-full transition',
+                                'relative hit-area h-6 w-10 flex-none rounded-full transition',
                                 'bg-forest' => $row['enabled'],
                                 'bg-line' => ! $row['enabled'],
                             ])
@@ -382,8 +383,50 @@
     <section id="schedule" class="scroll-mt-28 space-y-5">
         <h2 class="text-lg font-medium tracking-tight text-ink">Zeitplan &amp; Fokus</h2>
 
+        <div id="day-frame" class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
+            <h3 class="mb-1 text-base font-medium text-ink">Dein Tag</h3>
+            <p class="mb-4 text-sm text-ink-soft">
+                Wo die Zeitachse beginnt und endet. Einzelne Wochentage änderst du im Wochenplan,
+                einen einzelnen Tag direkt im Zeitplan — beide fallen hierauf zurück.
+            </p>
+            <div class="grid max-w-sm grid-cols-2 gap-3">
+                <div>
+                    <label for="dayStartTime" class="mb-1 block text-xs text-ink-faint">Ich stehe auf um</label>
+                    <select
+                        id="dayStartTime"
+                        wire:model="dayStartTime"
+                        wire:change="saveDayFrame"
+                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
+                    >
+                        @foreach ($this->dayFrameOptions(true) as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('dayStartTime') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="dayEndTime" class="mb-1 block text-xs text-ink-faint">Ich gehe ins Bett um</label>
+                    <select
+                        id="dayEndTime"
+                        wire:model="dayEndTime"
+                        wire:change="saveDayFrame"
+                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
+                    >
+                        @foreach ($this->dayFrameOptions(false) as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('dayEndTime') <p class="mt-1 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-ink-faint">
+                Ein kürzerer Tag macht die Blöcke grösser, nicht die Seite kürzer. Ein Termin ausserhalb
+                bleibt trotzdem sichtbar — die Achse weitet sich dann von selbst.
+            </p>
+        </div>
+
         {{-- Kategorien --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Kategorien</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Wiederverwendbare Kategorien für den Zeitplan — z. B. Schule oder Training. Umbenennen oder Umfärben
@@ -421,7 +464,7 @@
                         type="button"
                         wire:click="toggleCategoryPomodoro({{ $category->id }})"
                         @class([
-                            'relative h-6 w-10 flex-none rounded-full transition',
+                            'relative hit-area h-6 w-10 flex-none rounded-full transition',
                             'bg-forest' => $category->pomodoro_enabled,
                             'bg-line' => ! $category->pomodoro_enabled,
                         ])
@@ -484,21 +527,21 @@
             @endforelse
         </div>
 
-        <form wire:submit="addCategory" class="mt-4 flex items-center gap-2 border-t border-line pt-4">
+        <form wire:submit="addCategory" class="mt-4 flex flex-wrap items-center gap-x-2 gap-y-3 border-t border-line pt-4 sm:flex-nowrap">
             <input
                 type="text"
                 wire:model="newCategoryName"
                 placeholder="Neue Kategorie — z. B. Lesen"
                 autocomplete="off"
-                class="min-w-0 flex-1 rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
+                class="min-w-0 basis-full rounded-card sm:basis-0 sm:flex-1 border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0"
             />
-            <div class="flex flex-none gap-1.5">
+            <div class="flex flex-none gap-2 sm:gap-1.5">
                 @foreach ($swatches as $token => $bg)
                     <button
                         type="button"
                         wire:click="$set('newCategoryColor', '{{ $token }}')"
                         @class([
-                            'h-6 w-6 rounded-full transition', $bg,
+                            'h-8 w-8 rounded-full transition sm:h-6 sm:w-6', $bg,
                             'ring-2 ring-offset-2 ring-offset-surface ring-ink/60' => $newCategoryColor === $token,
                             'hover:scale-110' => $newCategoryColor !== $token,
                         ])
@@ -506,7 +549,7 @@
                     ></button>
                 @endforeach
             </div>
-            <button type="submit" class="flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">
+            <button type="submit" class="ml-auto min-h-10 flex-none rounded-card bg-forest px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] sm:ml-0 sm:min-h-0">
                 Hinzufügen
             </button>
         </form>
@@ -517,7 +560,7 @@
         @include('livewire.partials.category-attributes-sheet')
 
         {{-- Pomodoro --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Pomodoro</h3>
             <p class="mb-5 text-sm leading-relaxed text-ink-soft">
                 Der Rhythmus, mit dem der Fokus-Timer einer Kategorie Arbeits- und Pausenphasen abwechselt.
@@ -553,7 +596,7 @@
                     type="button"
                     wire:click="togglePomodoroAutostart"
                     @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $pAutostart,
                         'bg-line' => ! $pAutostart,
                     ])
@@ -569,10 +612,10 @@
         </div>
 
         {{-- Vorschau auf fällige Termine --}}
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
             <h3 class="mb-1 text-base font-medium text-ink">Vorschau auf Termine</h3>
             <p class="mb-5 text-sm leading-relaxed text-ink-soft">
-                Deadlines, Hausaufgaben und Prüfungen erscheinen im Zeitplan an ihrem eigenen Tag — zusätzlich
+                Deadlines erscheinen im Zeitplan an ihrem eigenen Tag — zusätzlich
                 schon einige Tage vorher als Vorschau, damit nichts überraschend kommt. Ein Wunschtermin (weich)
                 erscheint nur an seinem eigenen Tag.
             </p>
@@ -583,7 +626,7 @@
                     type="button"
                     wire:click="toggleDeadlinePreviewEnabled"
                     @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $deadlinePreviewEnabled,
                         'bg-line' => ! $deadlinePreviewEnabled,
                     ])
@@ -611,12 +654,12 @@
     <section id="progress" class="scroll-mt-28 space-y-5">
         <h2 class="text-lg font-medium tracking-tight text-ink">Fortschritt</h2>
 
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Tagesziel</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Wie viele Aufgaben an einem Tag als "Ziel erreicht" zählen — treibt den Ring auf der
-            <a href="{{ route('progress') }}" class="text-overprint hover:underline" wire:navigate>Fortschritt</a>-Seite
-            und eine der beiden Feier-Animationen.
+            <a href="{{ route('progress') }}" class="hit-area text-overprint hover:underline" wire:navigate>Fortschritt</a>-Seite
+            und die Feier „Tagesziel erreicht".
         </p>
 
         <div class="max-w-32">
@@ -634,7 +677,7 @@
         </div>
         </div>
 
-        <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+        <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <h3 class="mb-1 text-base font-medium text-ink">Erinnerungen</h3>
         <p class="mb-5 text-sm leading-relaxed text-ink-soft">
             Zwei unabhängige Stupser, falls am Tag noch nichts (genug) passiert ist.
@@ -650,7 +693,7 @@
                     type="button"
                     wire:click="toggleNotifyDailyReminder"
                     @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $notifyDailyReminder,
                         'bg-line' => ! $notifyDailyReminder,
                     ])
@@ -690,7 +733,7 @@
                     type="button"
                     wire:click="toggleNotifyStreakRisk"
                     @class([
-                        'relative h-6 w-10 flex-none rounded-full transition',
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
                         'bg-forest' => $notifyStreakRisk,
                         'bg-line' => ! $notifyStreakRisk,
                     ])
@@ -703,6 +746,45 @@
                     ])></span>
                 </button>
             </div>
+
+            <div class="flex items-center justify-between gap-3 py-2">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Dein Tag ist bereit</p>
+                    <p class="text-xs text-ink-soft">
+                        Morgens ein kurzer Überblick — wie viele Aufgaben, Termine und Fälligkeiten heute anstehen.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleNotifyDayPreview"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $notifyDayPreview,
+                        'bg-line' => ! $notifyDayPreview,
+                    ])
+                    aria-label="Tagesüberblick-Erinnerung {{ $notifyDayPreview ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-[1.125rem]' => $notifyDayPreview,
+                        'left-0.5' => ! $notifyDayPreview,
+                    ])></span>
+                </button>
+            </div>
+
+            @if ($notifyDayPreview)
+                <div class="max-w-[10rem] pb-2">
+                    <label for="dayPreviewNotificationTime" class="mb-1.5 block text-sm font-medium text-ink">Uhrzeit</label>
+                    <input
+                        id="dayPreviewNotificationTime"
+                        type="time"
+                        wire:model="dayPreviewNotificationTime"
+                        wire:change="saveDayPreviewNotificationTime"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
+                    />
+                    @error('dayPreviewNotificationTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            @endif
         </div>
         </div>
     </section>
@@ -711,7 +793,7 @@
     <section id="notifications" class="scroll-mt-28 space-y-5">
     <h2 class="text-lg font-medium tracking-tight text-ink">Benachrichtigungen</h2>
     <div
-        class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8"
+        class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8"
         x-data="{
             vapidPublicKey: @js(config('webpush.vapid.public_key')),
             permission: (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'),
@@ -784,14 +866,14 @@
              the notify_* toggles below, to isolate delivery problems (VAPID config, network,
              a push service rejecting the request) from "which moments should notify". --}}
         <div class="mb-5 rounded-card border border-line bg-paper/60 px-3 py-2.5">
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p class="text-sm text-ink-soft">Testet alle Geräte auf diesem Account, unabhängig von den Reglern unten.</p>
                 <button
                     type="button"
                     wire:click="sendTestPush"
                     wire:loading.attr="disabled"
                     wire:target="sendTestPush"
-                    class="flex-none rounded-card border border-line px-3.5 py-2 text-sm font-medium text-ink-soft transition hover:bg-signal-soft hover:text-signal disabled:opacity-60"
+                    class="min-h-11 flex-none rounded-card sm:min-h-0 border border-line px-3.5 py-2 text-sm font-medium text-ink-soft transition hover:bg-signal-soft hover:text-signal disabled:opacity-60"
                 >
                     <span wire:loading.remove wire:target="sendTestPush">Test-Benachrichtigung senden</span>
                     <span wire:loading wire:target="sendTestPush">Sende …</span>
@@ -840,7 +922,7 @@
                         type="button"
                         wire:click="{{ $row['action'] }}"
                         @class([
-                            'relative h-6 w-10 flex-none rounded-full transition',
+                            'relative hit-area h-6 w-10 flex-none rounded-full transition',
                             'bg-forest' => auth()->user()->{$row['key']},
                             'bg-line' => ! auth()->user()->{$row['key']},
                         ])
@@ -855,20 +937,78 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- "Nicht vergessen": when reminder pushes arrive. Which push a reminder gets is chosen per reminder. --}}
+        <div class="mt-5 space-y-3 border-t border-line pt-5">
+            <div>
+                <p class="text-sm font-medium text-ink">Erinnerungen („Nicht vergessen“)</p>
+                <p class="text-xs text-ink-soft">
+                    Wann sie dich erreichen. Ob eine Erinnerung am Vorabend und/oder am Tag selbst kommt, legst du bei der Erinnerung selbst fest.
+                </p>
+            </div>
+            <div class="grid max-w-sm grid-cols-2 gap-3">
+                <div>
+                    <label for="reminderEveningTime" class="mb-1.5 block text-xs font-medium text-ink">Am Vorabend um</label>
+                    <input
+                        id="reminderEveningTime"
+                        type="time"
+                        wire:model="reminderEveningTime"
+                        wire:change="saveReminderTimes"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
+                    />
+                    @error('reminderEveningTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="reminderMorningTime" class="mb-1.5 block text-xs font-medium text-ink">Am Tag spätestens um</label>
+                    <input
+                        id="reminderMorningTime"
+                        type="time"
+                        wire:model="reminderMorningTime"
+                        wire:change="saveReminderTimes"
+                        class="block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
+                    />
+                    @error('reminderMorningTime') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            <div class="flex items-center justify-between gap-3 py-1">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Rechtzeitig vor dem Losgehen</p>
+                    <p class="text-xs text-ink-soft">
+                        Beginnt dein erster Block früher als diese Uhrzeit, kommt die Erinnerung davor — mit Weg-/Pufferzeit und 30 Minuten Vorlauf, aber nie vor 05:00.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleReminderSmartTiming"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $reminderSmartTiming,
+                        'bg-line' => ! $reminderSmartTiming,
+                    ])
+                    aria-label="Erinnerung vor dem Losgehen {{ $reminderSmartTiming ? 'deaktivieren' : 'aktivieren' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-[1.125rem]' => $reminderSmartTiming,
+                        'left-0.5' => ! $reminderSmartTiming,
+                    ])></span>
+                </button>
+            </div>
+        </div>
     </div>
     </section>
 
     {{-- Shortcuts, API & MCP --}}
     <section id="developer" class="scroll-mt-28 space-y-5">
     <h2 class="text-lg font-medium tracking-tight text-ink">Entwickler</h2>
-    <div class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+    <div class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
         <div class="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <h3 class="text-base font-medium text-ink">Shortcuts, API & MCP</h3>
             <span class="flex gap-3 text-sm font-medium">
-                <a href="{{ route('docs.api') }}" class="text-overprint hover:underline" wire:navigate>
+                <a href="{{ route('docs.api') }}" class="hit-area text-overprint hover:underline" wire:navigate>
                     API-Doku →
                 </a>
-                <a href="{{ route('docs.mcp') }}" class="text-overprint hover:underline" wire:navigate>
+                <a href="{{ route('docs.mcp') }}" class="hit-area text-overprint hover:underline" wire:navigate>
                     MCP-Doku →
                 </a>
             </span>
@@ -978,6 +1118,101 @@
             </div>
         </form>
         @error('newTokenName') <p class="mt-1.5 text-xs text-signal">{{ $message }}</p> @enderror
+    </div>
+
+    {{-- KI-Clients via OAuth (MCP) --}}
+    <div id="mcp-oauth" class="rounded-card border border-line bg-surface p-5 shadow-map sm:p-8">
+        <h3 class="mb-1 text-base font-medium text-ink">Per OAuth verbinden</h3>
+        <p class="mb-5 text-sm leading-relaxed text-ink-soft">
+            claude.ai und Claude Desktop können kein Token eintragen — dort gibt es beim Hinzufügen
+            eines eigenen Connectors nur ein Feld für die Server-URL. Das gilt für jeden MCP-Client, der
+            OAuth statt eines Tokens erwartet, nicht nur für Claude. Darum meldet sich so ein Client
+            stattdessen per OAuth an: du fügst <code class="rounded-sm bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">{{ url('/mcp') }}</code>
+            als Connector hinzu, bestätigst einmal hier im Browser, fertig. Die Rechte dafür stellst du
+            unten ein — sie gelten für jede OAuth-Verbindung, unabhängig vom Tool, und lassen sich
+            jederzeit ändern, ohne die Verbindung neu aufzubauen.
+        </p>
+
+        <div class="space-y-4">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Schreiben erlauben</p>
+                    <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">
+                        Aufgaben anlegen, ändern, abhaken und Einstellungen setzen. Alles davon ist
+                        umkehrbar.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleMcpOauthWrite"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-forest' => $mcpOauthWrite,
+                        'bg-line' => ! $mcpOauthWrite,
+                    ])
+                    aria-label="Schreiben über OAuth {{ $mcpOauthWrite ? 'verbieten' : 'erlauben' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-[1.125rem]' => $mcpOauthWrite,
+                        'left-0.5' => ! $mcpOauthWrite,
+                    ])></span>
+                </button>
+            </div>
+
+            <div class="flex items-start justify-between gap-4 border-t border-line pt-4">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-ink">Löschen erlauben</p>
+                    <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">
+                        Aufgaben endgültig entfernen. Standardmässig aus — abhaken reicht fast immer,
+                        und ein Löschvorgang lässt sich nicht rückgängig machen.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    wire:click="toggleMcpOauthDelete"
+                    @class([
+                        'relative hit-area h-6 w-10 flex-none rounded-full transition',
+                        'bg-signal' => $mcpOauthDelete,
+                        'bg-line' => ! $mcpOauthDelete,
+                    ])
+                    aria-label="Löschen über OAuth {{ $mcpOauthDelete ? 'verbieten' : 'erlauben' }}"
+                >
+                    <span @class([
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition',
+                        'left-[1.125rem]' => $mcpOauthDelete,
+                        'left-0.5' => ! $mcpOauthDelete,
+                    ])></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-5 border-t border-line pt-4">
+            <p class="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">Verbundene Clients</p>
+
+            @forelse ($this->mcpConnections as $connection)
+                <div class="flex items-center justify-between gap-3 border-b border-line py-2.5 last:border-0">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-medium text-ink">{{ $connection->client->name }}</p>
+                        <p class="text-xs text-ink-faint">
+                            Verbunden {{ $connection->created_at?->format('d.m.Y') }}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        x-data="{ armed: false, _t: null }"
+                        @click="if (armed) { $wire.revokeMcpConnection(@js($connection->client_id)); clearTimeout(_t); armed = false; } else { armed = true; clearTimeout(_t); _t = setTimeout(() => armed = false, 2000); }"
+                        @click.outside="armed = false; clearTimeout(_t)"
+                        @keydown.escape.window="armed = false; clearTimeout(_t)"
+                        :class="armed ? 'bg-signal text-white' : 'text-ink-faint hover:bg-signal-soft hover:text-signal'"
+                        class="hit-area flex-none rounded-card px-2.5 py-1 text-xs font-medium transition"
+                        x-text="armed ? 'Wirklich trennen?' : 'Trennen'"
+                    >Trennen</button>
+                </div>
+            @empty
+                <p class="text-sm text-ink-faint">Noch nichts verbunden.</p>
+            @endforelse
+        </div>
     </div>
     </section>
 

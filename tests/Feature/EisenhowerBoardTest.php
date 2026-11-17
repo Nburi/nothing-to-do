@@ -398,4 +398,18 @@ class EisenhowerBoardTest extends TestCase
             ->call('reorderEisenhower', false, false, [$task->id])
             ->assertNotDispatched('eisenhower-crisis');
     }
+
+    public function test_renders_cleanly_with_no_groups_at_all(): void
+    {
+        $user = $this->eisenhowerUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
+    }
+
+    public function test_renders_cleanly_with_no_projects_at_all(): void
+    {
+        $user = $this->eisenhowerUser();
+
+        Livewire::actingAs($user)->test(TaskBoard::class)->assertOk();
+    }
 }

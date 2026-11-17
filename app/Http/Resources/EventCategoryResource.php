@@ -18,6 +18,20 @@ class EventCategoryResource extends JsonResource
             'pomodoro_enabled' => $this->pomodoro_enabled,
             'area_ids' => $this->areas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'sort_order' => $this->sort_order,
+            // What the category's Pomodoro focus sessions suggest (Kategorie-Aufgaben-Verknüpfung).
+            // task_source is null (no link) or one of tasks|project|group|agenda_entry|agenda_generic|text.
+            'task_source' => $this->task_source,
+            'task_source_label' => $this->taskSourceLabel(),
+            'linked_text' => $this->linked_text,
+            // The category's custom-field schema (Kategorie-Attribute); values live on each event.
+            'attributes' => $this->whenLoaded('customAttributes', fn () => $this->customAttributes->map(fn ($attr) => [
+                'id' => $attr->id,
+                'name' => $attr->name,
+                'type' => $attr->type,
+                'unit' => $attr->unit,
+                'options' => $attr->optionsList(),
+            ])->values()->all()),
+            'pinned_task_ids' => $this->whenLoaded('pinnedTasks', fn () => $this->pinnedTasks->pluck('id')->all()),
         ];
     }
 }
