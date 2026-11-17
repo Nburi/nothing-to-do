@@ -121,13 +121,15 @@ final readonly class WeekPlan
                     $template->categoryId,
                     $template->id,
                     $template->title,
+                    $change?->eventId,
+                    $change !== null,
                 );
             }
         }
 
         foreach ($this->oneOffs as $oneOff) {
             if ($oneOff->date === $date) {
-                $blocks[] = $this->block($date, $oneOff->start, $oneOff->durationMinutes, $oneOff->categoryId, null, $oneOff->title);
+                $blocks[] = $this->block($date, $oneOff->start, $oneOff->durationMinutes, $oneOff->categoryId, $oneOff->templateId, $oneOff->title, $oneOff->eventId, $oneOff->templateId !== null);
             }
         }
 
@@ -137,7 +139,7 @@ final readonly class WeekPlan
         return $blocks;
     }
 
-    private function block(string $date, string $start, int $duration, ?int $categoryId, ?int $templateId, ?string $title): Block
+    private function block(string $date, string $start, int $duration, ?int $categoryId, ?int $templateId, ?string $title, ?int $eventId = null, bool $changed = false): Block
     {
         [$h, $m] = array_map('intval', explode(':', $start));
         $endMinutes = $h * 60 + $m + $duration;
@@ -151,6 +153,8 @@ final readonly class WeekPlan
             $categoryId,
             $templateId,
             $title,
+            $eventId,
+            $changed,
         );
     }
 }

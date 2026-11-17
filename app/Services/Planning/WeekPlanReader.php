@@ -61,12 +61,12 @@ final class WeekPlanReader
 
             if ($template !== null && $template->occursOn($row->date)) {
                 $recategorised = ! $row->is_cancelled && $row->category_id !== $template->category_id;
-                $changes[] = new OneOffChange($template->id, $date, $row->start_time, $row->durationMinutes(), $row->is_cancelled || $recategorised);
+                $changes[] = new OneOffChange($template->id, $date, $row->start_time, $row->durationMinutes(), $row->is_cancelled || $recategorised, $row->id);
 
                 // This week only with another category: the occurrence becomes a
                 // block of its own, still hidden by a pause like any template row.
                 if ($recategorised && ! in_array($date, $paused, true)) {
-                    $oneOffs[] = new OneOffBlock($date, $row->start_time, $row->durationMinutes(), $row->category_id, $row->title);
+                    $oneOffs[] = new OneOffBlock($date, $row->start_time, $row->durationMinutes(), $row->category_id, $row->title, $row->id, $template->id);
                 }
 
                 continue;
@@ -76,7 +76,7 @@ final class WeekPlanReader
                 continue;
             }
 
-            $oneOffs[] = new OneOffBlock($date, $row->start_time, $row->durationMinutes(), $row->category_id, $row->title);
+            $oneOffs[] = new OneOffBlock($date, $row->start_time, $row->durationMinutes(), $row->category_id, $row->title, $row->id);
         }
 
         return new WeekPlan(

@@ -170,7 +170,78 @@ final class WeekPlanEditor
         $template = $this->template($user, $templateId);
         $date = $this->validated(['date' => $date], $user, date: true)['date'];
 
-        ScheduleEvent::forUser($user)->where('template_id', $template->id)->whereDate('date', $date)->delete();
+        // One model at a time, so the undo journal (step 4.1) sees the row it removes.
+        ScheduleEvent::forUser($user)->where('template_id', $template->id)->whereDate('date', $date)->get()->each->delete();
+    }
+
+    /** Change a block that exists on one date only (a Termin or a one-off category block). */
+    public function updateOnce(User $user, int $eventId, string $date, string $start, string $end, ?int $categoryId, ?string $title = null, ?string $color = null): ScheduleEvent
+    {
+        $row = $this->oneOff($user, $eventId);
+        $data = $this->validated(compact('date', 'start', 'end', 'categoryId', 'title', 'color'), $user, date: true);
+        [$name, $colour] = $this->label($user, $data);
+
+        $row->update($row->withNotifiedReset([
+            'category_id' => $data['categoryId'],
+            'title' => $name,
+            'color' => $colour,
+            'date' => $data['date'],
+            'start_time' => $data['start'],
+            'end_time' => $data['end'],
+        ]));
+
+        return $row;
+    }
+
+    /** Remove a block that exists on one date only. (Undoable through WeekPlanJournal.) */
+    public function deleteOnce(User $user, int $eventId): void
+    {
+        $this->oneOff($user, $eventId)->delete();
+    }
+
+    /**
+     * Change a repeating block in the Wochenplan: weekdays, time, category or name, every week
+     * from tomorrow on. Same rules as "every week" in changeOccurrence: dates changed on purpose
+     * keep their change, future rows on a weekday the block no longer has go.
+     *
+     * @param  list<int>  $weekdays  ISO 1 = Monday … 7 = Sunday
+     */
+    public function updateTemplate(User $user, int $templateId, array $weekdays, string $start, string $end, ?int $categoryId, ?string $title = null, ?string $color = null): EventTemplate
+    {
+        $template = $this->template($user, $templateId);
+        $data = $this->validated(compact('weekdays', 'start', 'end', 'categoryId', 'title', 'color'), $user, weekdays: true);
+        [$name, $colour] = $this->label($user, $data);
+
+        DB::transaction(function () use ($user, $template, $data, $name, $colour) {
+            $before = $this->snapshot($template);
+            $template->update([
+                'category_id' => $data['categoryId'],
+                'name' => $name,
+                'color' => $colour,
+                'default_start' => $data['start'],
+                'duration' => $this->minutes($data['end']) - $this->minutes($data['start']),
+                'is_recurring' => true,
+                'recurrence' => implode(',', $this->weekdays($data['weekdays'])),
+            ]);
+            $this->followTemplate($user, $template->fresh(), $before);
+        });
+
+        return $template->fresh();
+    }
+
+    /**
+     * Take a block out of the Wochenplan: it stops repeating from tomorrow on. The template and
+     * its past rows stay as history (same rule as removing its last weekday).
+     */
+    public function stopTemplate(User $user, int $templateId): void
+    {
+        $template = $this->template($user, $templateId);
+
+        DB::transaction(function () use ($user, $template) {
+            $before = $this->snapshot($template);
+            $template->update(['is_recurring' => false]);
+            $this->followTemplate($user, $template->fresh(), $before);
+        });
     }
 
     /** Pause every date from $from to $to (holidays, sick days). */
@@ -186,7 +257,10 @@ final class WeekPlanEditor
             }
         })->validate();
 
+        $already = SchedulePause::forUser($user)->forRange($data['from'], $data['to'])->get()
+            ->map(fn (SchedulePause $p) => $p->date->toDateString())->all();
         SchedulePause::pauseRange($user, Carbon::parse($data['from']), Carbon::parse($data['to']), $data['note'] ?? null);
+        WeekPlanJournal::notePaused(array_values(array_diff(WeekPlanReader::dates($data['from'], $data['to']), $already)));
     }
 
     /** Switch dates back on (one date, or a range). */
@@ -197,7 +271,10 @@ final class WeekPlanEditor
             'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
         ])->validate();
 
-        SchedulePause::forUser($user)->forRange($data['from'], $data['to'])->delete();
+        $pauses = SchedulePause::forUser($user)->forRange($data['from'], $data['to']);
+        WeekPlanJournal::noteResumed($pauses->clone()->get()
+            ->map(fn (SchedulePause $p) => ['date' => $p->date->toDateString(), 'note' => $p->note])->all());
+        $pauses->delete();
     }
 
     // ── internals ────────────────────────────────────────────────────
@@ -282,6 +359,21 @@ final class WeekPlanEditor
     private function template(User $user, int $id): EventTemplate
     {
         return EventTemplate::forUser($user)->findOrFail($id);
+    }
+
+    /**
+     * A row of the user that stands on its own date: no template, or a template that no longer
+     * repeats on that weekday (the reader shows those as one-offs too). An occurrence of a
+     * repeating block is changed through changeOccurrence instead.
+     */
+    private function oneOff(User $user, int $id): ScheduleEvent
+    {
+        $row = ScheduleEvent::forUser($user)->with('template')->findOrFail($id);
+        if ($row->template !== null && $row->template->occursOn($row->date)) {
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(ScheduleEvent::class, [$id]);
+        }
+
+        return $row;
     }
 
     /** @return array{0:string,1:string} title and colour of a new block */
