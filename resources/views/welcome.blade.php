@@ -198,6 +198,11 @@
                     <span>nothing-to-do</span>
                 </div>
                 <p>Drei Listen. Ein Tag. Nichts zu tun.</p>
+                <div class="flex items-center gap-4">
+                    <a href="{{ route('impressum') }}" class="transition hover:text-ink">Impressum</a>
+                    <a href="{{ route('datenschutz') }}" class="transition hover:text-ink">Datenschutz</a>
+                    <a href="{{ url('/hilfe') }}" class="transition hover:text-ink">Hilfe</a>
+                </div>
             </div>
         </footer>
 

@@ -34,6 +34,8 @@ class ScheduleEvent extends Model
         'date',
         'start_time',
         'end_time',
+        'buffer_before',
+        'buffer_after',
         'is_cancelled',
         'pomodoro_started_at',
         'pomodoro_phase',
@@ -47,6 +49,8 @@ class ScheduleEvent extends Model
     {
         return [
             'date' => 'date',
+            'buffer_before' => 'integer',
+            'buffer_after' => 'integer',
             'is_cancelled' => 'boolean',
             'pomodoro_started_at' => 'datetime',
             'pomodoro_cycle' => 'integer',
@@ -91,6 +95,22 @@ class ScheduleEvent extends Model
             ->orderBy('schedule_event_task_links.sort_order');
     }
 
+    /**
+     * Replaces this occurrence's bound tasks with $taskIds, in that order (the order becomes the
+     * pivot's sort_order, i.e. suggestion order). Duplicates collapse to their first position.
+     * Callers verify ownership of every id first.
+     *
+     * @param  list<int>  $taskIds
+     */
+    public function syncLinkedTaskIds(array $taskIds): void
+    {
+        $this->linkedTasks()->sync(
+            collect($taskIds)->unique()->values()
+                ->mapWithKeys(fn (int $id, int $order) => [$id => ['sort_order' => $order]])
+                ->all()
+        );
+    }
+
     /** The next open bound task, in pivot order — what TaskSuggestor prefers, skipping completed ones without unpinning them. */
     public function nextLinkedTask(): ?Task
     {
@@ -112,6 +132,30 @@ class ScheduleEvent extends Model
     {
         return $this->belongsToMany(CategoryAttribute::class, 'schedule_event_attribute_values')
             ->withPivot('value');
+    }
+
+    /**
+     * Replace this occurrence's attribute values from a raw {attribute id => value}
+     * map. Only attributes of the event's CURRENT category count, each value is
+     * normalised by its own type, and an empty/invalid one leaves no row at all
+     * (the app-wide "unfilled means no row" rule) — so a stray key, a value for a
+     * previous category or garbage input is silently ignored, never persisted.
+     *
+     * @param  array<int|string, mixed>  $raw
+     */
+    public function syncAttributeValues(array $raw): void
+    {
+        $attributes = $this->category_id === null
+            ? collect()
+            : CategoryAttribute::query()->where('event_category_id', $this->category_id)->get();
+
+        $sync = $attributes
+            ->mapWithKeys(fn (CategoryAttribute $attr) => [$attr->id => $attr->normalizeValue($raw[$attr->id] ?? $raw[(string) $attr->id] ?? null)])
+            ->filter(fn (?string $value) => $value !== null)
+            ->map(fn (string $value) => ['value' => $value])
+            ->all();
+
+        $this->attributeValues()->sync($sync);
     }
 
     /**
@@ -231,6 +275,30 @@ class ScheduleEvent extends Model
     public function durationMinutes(): int
     {
         return max(0, $this->endMinutes() - $this->startMinutes());
+    }
+
+    /**
+     * The entry's full footprint on the timeline, Weg-/Pufferzeit included.
+     * Deliberately distinct from start/endMinutes(), which stay the entry
+     * itself: the Pomodoro timer, the focus strip and the Planer's capacity
+     * all still read those — on the way there, nothing is worked on. Only
+     * the timeline's own frame (DayWindow) and the "you have to leave now"
+     * notification care about the footprint.
+     */
+    public function occupiedStartMinutes(): int
+    {
+        return max(0, $this->startMinutes() - (int) $this->buffer_before);
+    }
+
+    public function occupiedEndMinutes(): int
+    {
+        return min(1440, $this->endMinutes() + (int) $this->buffer_after);
+    }
+
+    /** When you have to leave, as "HH:MM" — the start time when there is no travel time. */
+    public function departureTime(): string
+    {
+        return self::fromMinutes($this->occupiedStartMinutes());
     }
 
     /**
@@ -448,6 +516,12 @@ class ScheduleEvent extends Model
                     'date' => $date->toDateString(),
                     'start_time' => $startTime,
                     'end_time' => self::fromMinutes(self::toMinutes($startTime) + $template->duration),
+                    // A recurring block carries its Weg-/Pufferzeit onto every
+                    // occurrence — unlike linked tasks or attribute values,
+                    // which belong to one concrete occurrence only. The way to
+                    // training is the same length every Wednesday.
+                    'buffer_before' => (int) $template->buffer_before,
+                    'buffer_after' => (int) $template->buffer_after,
                     'is_cancelled' => false,
                     'created_at' => $now,
                     'updated_at' => $now,

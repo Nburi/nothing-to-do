@@ -48,6 +48,7 @@ class TaskCelebrationTest extends TestCase
         $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 5]);
         $this->actingAs($user);
 
+        Task::factory()->for($user)->todos()->create(); // decoy: keeps the board non-empty, isolating this from a full-clear
         $task = Task::factory()->for($user)->todos()->create();
 
         Livewire::test(TaskBoard::class)
@@ -87,10 +88,24 @@ class TaskCelebrationTest extends TestCase
         $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 1]);
         $this->actingAs($user);
 
+        Task::factory()->for($user)->todos()->create(); // decoy: keeps the board non-empty throughout
         $first = Task::factory()->for($user)->todos()->create();
         $second = Task::factory()->for($user)->todos()->create();
 
         Livewire::test(TaskBoard::class)->call('toggleComplete', $first->id)->assertDispatched('celebrate');
         Livewire::test(TaskBoard::class)->call('toggleComplete', $second->id)->assertNotDispatched('celebrate');
+    }
+
+    public function test_clearing_the_whole_board_celebrates_as_a_full_clear(): void
+    {
+        Carbon::setTestNow('2026-08-16 18:00:00');
+        $user = User::factory()->create(['timezone_offset' => 0, 'daily_task_goal' => 20]); // goal/record out of reach
+        $this->actingAs($user);
+
+        $task = Task::factory()->for($user)->todos()->create(); // the only active board task
+
+        Livewire::test(TaskBoard::class)
+            ->call('toggleComplete', $task->id)
+            ->assertDispatched('celebrate', fn (string $name, array $params) => $params['kind'] === 'full-clear');
     }
 }

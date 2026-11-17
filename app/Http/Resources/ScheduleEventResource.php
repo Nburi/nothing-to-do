@@ -22,12 +22,29 @@ class ScheduleEventResource extends JsonResource
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
             'duration_minutes' => $this->durationMinutes(),
+            // Weg-/Pufferzeit: the timeline's footprint is wider than start/end, so a
+            // client planning around this event must read these too.
+            'buffer_before' => (int) $this->buffer_before,
+            'buffer_after' => (int) $this->buffer_after,
             'is_recurring' => $this->template_id !== null,
             'is_cancelled' => $this->is_cancelled,
             'pomodoro_enabled' => (bool) $this->category?->pomodoro_enabled,
             'pomodoro_phase' => $this->pomodoro_phase,
             'pomodoro_cycle' => $this->pomodoro_cycle,
             'pomodoro_started_at' => $this->pomodoro_started_at?->toIso8601String(),
+            // Tasks bound to this one occurrence, in suggestion order (Zeitplan-Eintrag-Aufgaben-Verknüpfung).
+            'linked_task_ids' => $this->whenLoaded('linkedTasks', fn () => $this->linkedTasks->pluck('id')->all()),
+            // This occurrence's own values for its category's custom attributes (non-empty ones only).
+            'attribute_values' => $this->whenLoaded('attributeValues', fn () => $this->attributeValues
+                ->sortBy('sort_order')
+                ->filter(fn ($attr) => $attr->pivot->value !== null && $attr->pivot->value !== '')
+                ->map(fn ($attr) => [
+                    'attribute_id' => $attr->id,
+                    'name' => $attr->name,
+                    'type' => $attr->type,
+                    'value' => $attr->pivot->value,
+                    'unit' => $attr->unit,
+                ])->values()->all()),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
         ];
