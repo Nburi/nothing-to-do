@@ -8,10 +8,12 @@ use App\Livewire\Admin\ErrorLog;
 use App\Livewire\Admin\HelpEditor;
 use App\Livewire\Admin\SupportQueue;
 use App\Livewire\CraftIdeas;
+use App\Livewire\DayPreview;
 use App\Livewire\Help;
 use App\Livewire\Onboarding;
 use App\Livewire\Planner;
 use App\Livewire\Progress;
+use App\Livewire\PublicHelp;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\Shell\Board as ShellBoard;
@@ -19,7 +21,9 @@ use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
+use App\Livewire\WeekReviewPage;
 use App\Mcp\McpServer;
+use App\Models\HelpArticle;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -38,15 +42,43 @@ Route::get('/robots.txt', function () {
 })->name('robots');
 
 Route::get('/sitemap.xml', function () {
-    $sitemapUrl = url('/');
+    $entries = [
+        ['loc' => url('/'), 'changefreq' => 'monthly', 'priority' => '1.0'],
+        ['loc' => url('/hilfe'), 'changefreq' => 'weekly', 'priority' => '0.7'],
+        ['loc' => url('/impressum'), 'changefreq' => 'yearly', 'priority' => '0.3'],
+        ['loc' => url('/datenschutz'), 'changefreq' => 'yearly', 'priority' => '0.3'],
+    ];
+
+    // Every published Hilfe-Center article gets its own entry — this is the
+    // whole reason the public Hilfe-Center route exists (see App\Livewire\
+    // PublicHelp): real, indexable content beyond the single landing page.
+    // A row somehow missing a slug (shouldn't happen — see HelpArticle::
+    // generateSlug()) is skipped rather than emitting a broken /hilfe/ URL.
+    foreach (HelpArticle::published()->whereNotNull('slug')->get() as $article) {
+        $entries[] = [
+            'loc' => url('/hilfe/'.$article->slug),
+            'changefreq' => 'weekly',
+            'priority' => '0.6',
+            'lastmod' => $article->updated_at->toDateString(),
+        ];
+    }
+
+    $urls = collect($entries)->map(function ($entry) {
+        $lastmod = isset($entry['lastmod']) ? "\n            <lastmod>{$entry['lastmod']}</lastmod>" : '';
+
+        return <<<XML
+            <url>
+                <loc>{$entry['loc']}</loc>{$lastmod}
+                <changefreq>{$entry['changefreq']}</changefreq>
+                <priority>{$entry['priority']}</priority>
+            </url>
+        XML;
+    })->implode("\n");
+
     $xml = <<<XML
     <?xml version="1.0" encoding="UTF-8"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-        <url>
-            <loc>{$sitemapUrl}</loc>
-            <changefreq>monthly</changefreq>
-            <priority>1.0</priority>
-        </url>
+    {$urls}
     </urlset>
     XML;
 
@@ -72,6 +104,19 @@ Route::delete('/board/capture/{task}', [ShellCaptureController::class, 'destroy'
     ->middleware(['auth', 'throttle:60,1'])
     ->whereNumber('task')
     ->name('shell.capture.undo');
+
+// Public, guest-readable mirror of the Hilfe-Center — see App\Livewire\
+// PublicHelp for why this is a separate route/component from /app/help
+// rather than that one made guest-safe. Deliberately outside /app, so
+// robots.txt's blanket "Disallow: /app" doesn't also block this.
+Route::get('/hilfe/{slug?}', PublicHelp::class)
+    ->name('help.public');
+
+// Static legal pages — no auth, no Livewire needed (plain content), reachable
+// from the footer of every legal/public page and from the login/register
+// screens. See resources/views/components/legal-layout.blade.php.
+Route::view('/impressum', 'legal.impressum')->name('impressum');
+Route::view('/datenschutz', 'legal.datenschutz')->name('datenschutz');
 
 Route::get('/app', TaskBoard::class)
     ->middleware('auth')
@@ -136,6 +181,18 @@ Route::get('/app/progress', Progress::class)
     ->middleware('auth')
     ->name('progress');
 
+// Wochenrückblick — part of the Fortschritt module (hidden with it, see WeekReviewPage::mount()).
+Route::get('/app/review', WeekReviewPage::class)
+    ->middleware('auth')
+    ->name('review');
+
+// Tagesüberblick — deliberately not in AppModules::CATALOG (see the model docblocks
+// on DayPreview/User::hasSeenDayPreviewToday()): a silent header dot is the only
+// entry point, never a hideable nav link.
+Route::get('/app/today', DayPreview::class)
+    ->middleware('auth')
+    ->name('today');
+
 // Presence heartbeat — see PresenceController and the heartbeat block in app.js.
 Route::post('/app/heartbeat', PresenceController::class)
     ->middleware('auth')
@@ -147,7 +204,8 @@ Route::view('/docs/api', 'docs.api', ['apiBase' => url('/api')])
 
 Route::get('/docs/mcp', function () {
     return view('docs.mcp', [
-        'mcpUrl' => url('/api/mcp'),
+        'mcpUrl' => url('/mcp'),
+        'mcpTokenUrl' => url('/api/mcp'),
         'tools' => app(McpServer::class)->allToolDefinitions(),
     ]);
 })->middleware('auth')->name('docs.mcp');
@@ -164,6 +222,8 @@ Route::get('/dashboard', function () {
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Throttled: building the file reads every table the user has rows in.
+    Route::get('/profile/export', [ProfileController::class, 'export'])->middleware('throttle:6,1')->name('profile.export');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
@@ -15,6 +16,7 @@ use Livewire\Component;
  * "Hilfe-Center & Support".
  */
 #[Layout('layouts.app')]
+#[Title('Support')]
 class SupportCenter extends Component
 {
     public string $formType = SupportRequest::DEFAULT_TYPE;

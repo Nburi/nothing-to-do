@@ -10,22 +10,34 @@ use App\Models\EventCategory;
 use App\Models\PushSubscription;
 use App\Models\ScheduleEvent;
 use App\Models\Task;
+use App\Services\DayWindow;
 use App\Services\HeaderBadges;
 use App\Services\PushNotifier;
+use Laravel\Passport\Passport;
+use Laravel\Passport\Token;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
+#[Title('Einstellungen')]
 class Settings extends Component
 {
     use ManagesModuleSettings;
     use ManagesListConceptSettings;
 
     public string $resetTime = '01:00';
+
+    // Tagesrahmen — the default start/end of the day on every timeline grid.
+    // Per-weekday overrides live in the Wochenplan, per-date ones in the
+    // Zeitplan; both fall back to this (see DayWindow).
+    public string $dayStartTime = '06:00';
+
+    public string $dayEndTime = '23:00';
 
     // Pomodoro rhythm
     public int $pWork = 25;
@@ -62,6 +74,17 @@ class Settings extends Component
 
     public bool $notifyStreakRisk = false;
 
+    public bool $notifyDayPreview = false;
+
+    public string $dayPreviewNotificationTime = '07:30';
+
+    /** "Nicht vergessen" push times — see App\Services\Reminders. */
+    public string $reminderEveningTime = '19:00';
+
+    public string $reminderMorningTime = '07:00';
+
+    public bool $reminderSmartTiming = true;
+
     // Add-category form
     public string $newCategoryName = '';
 
@@ -93,6 +116,8 @@ class Settings extends Component
         $user = auth()->user();
 
         $this->resetTime = $user->task_reset_time ?? '01:00';
+        $this->dayStartTime = DayWindow::format(DayWindow::defaultSetting($user)['start']);
+        $this->dayEndTime = DayWindow::format(DayWindow::defaultSetting($user)['end']);
         $this->pWork = $user->pomodoro_work ?? 25;
         $this->pShortBreak = $user->pomodoro_short_break ?? 5;
         $this->pLongBreak = $user->pomodoro_long_break ?? 15;
@@ -100,6 +125,8 @@ class Settings extends Component
         $this->pAutostart = $user->pomodoro_autostart ?? false;
         $this->deadlinePreviewEnabled = $user->deadline_preview_enabled ?? true;
         $this->deadlinePreviewDays = $user->deadline_preview_days ?? 2;
+        $this->mcpOauthWrite = $user->mcp_oauth_write ?? true;
+        $this->mcpOauthDelete = $user->mcp_oauth_delete ?? false;
         $this->plannerEnabled = (bool) $user->planner_enabled;
         $this->timezoneOffset = (float) ($user->timezone_offset ?? 0);
         $this->timezoneAutoDst = $user->timezone_auto_dst ?? false;
@@ -107,6 +134,11 @@ class Settings extends Component
         $this->notifyDailyReminder = (bool) $user->notify_daily_reminder;
         $this->dailyReminderTime = $user->daily_reminder_time ?? '19:00';
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+        $this->notifyDayPreview = (bool) $user->notify_day_preview;
+        $this->dayPreviewNotificationTime = $user->day_preview_notification_time ?? '07:30';
+        $this->reminderEveningTime = $user->reminder_evening_time ?? '19:00';
+        $this->reminderMorningTime = $user->reminder_morning_time ?? '07:00';
+        $this->reminderSmartTiming = (bool) ($user->reminder_smart_timing ?? true);
     }
 
     /** Autosaves on change — see the "Erledigte Aufgaben" card. */
@@ -117,6 +149,51 @@ class Settings extends Component
         ]);
 
         auth()->user()->update(['task_reset_time' => $data['resetTime']]);
+    }
+
+    /**
+     * Autosaves on change — see the "Dein Tag" card. A day shorter than
+     * DayWindow::MIN_SPAN is rejected with a message rather than silently
+     * clamped: the two selects are the only place the user states this
+     * outright, so quietly changing what they picked would be a lie.
+     */
+    public function saveDayFrame(): void
+    {
+        $data = $this->validate([
+            'dayStartTime' => ['required', 'date_format:H:i'],
+            'dayEndTime' => ['required', 'date_format:H:i', 'after:dayStartTime'],
+        ]);
+
+        $span = DayWindow::toMinutes($data['dayEndTime'], -1) - DayWindow::toMinutes($data['dayStartTime'], -1);
+
+        if ($span < DayWindow::MIN_SPAN) {
+            $this->addError('dayEndTime', 'Ein Tag muss mindestens '.intdiv(DayWindow::MIN_SPAN, 60).' Stunden lang sein.');
+
+            return;
+        }
+
+        DayWindow::setDefault(auth()->user(), $data['dayStartTime'], $data['dayEndTime']);
+    }
+
+    /**
+     * Half-hour options for the two "Dein Tag" selects — the same list the
+     * Zeitplan's and the Wochenplan's own popover offers, so the three can
+     * never disagree about what a day may be set to.
+     *
+     * @return array<string, string>
+     */
+    public function dayFrameOptions(bool $forStart): array
+    {
+        $from = $forStart ? DayWindow::EARLIEST_START : DayWindow::EARLIEST_START + DayWindow::MIN_SPAN;
+        $to = $forStart ? DayWindow::LATEST_END - DayWindow::MIN_SPAN : DayWindow::LATEST_END;
+
+        $options = [];
+
+        for ($minutes = $from; $minutes <= $to; $minutes += 30) {
+            $options[DayWindow::format($minutes)] = DayWindow::format($minutes);
+        }
+
+        return $options;
     }
 
     /** Autosaves on change — see the "Pomodoro" card. Autostart is a separate immediate toggle, togglePomodoroAutostart(). */
@@ -202,6 +279,46 @@ class Settings extends Component
         $user = auth()->user();
         $user->update(['notify_streak_risk' => ! $user->notify_streak_risk]);
         $this->notifyStreakRisk = (bool) $user->notify_streak_risk;
+    }
+
+    /** Morning push ("Dein Tag ist bereit") once dayPreviewNotificationTime has passed — see App\Console\Commands\SendDayPreviewNotifications. */
+    public function toggleNotifyDayPreview(): void
+    {
+        $user = auth()->user();
+        $user->update(['notify_day_preview' => ! $user->notify_day_preview]);
+        $this->notifyDayPreview = (bool) $user->notify_day_preview;
+    }
+
+    /** Only relevant while the reminder above is on — saves on change, no separate submit button (mirrors saveDailyReminderTime). */
+    public function saveDayPreviewNotificationTime(): void
+    {
+        $data = $this->validate([
+            'dayPreviewNotificationTime' => ['required', 'date_format:H:i'],
+        ]);
+
+        auth()->user()->update(['day_preview_notification_time' => $data['dayPreviewNotificationTime']]);
+    }
+
+    /** The two clock times of the reminder pushes; saves on change, no submit button (like the other time fields here). */
+    public function saveReminderTimes(): void
+    {
+        $data = $this->validate([
+            'reminderEveningTime' => ['required', 'date_format:H:i'],
+            'reminderMorningTime' => ['required', 'date_format:H:i'],
+        ]);
+
+        auth()->user()->update([
+            'reminder_evening_time' => $data['reminderEveningTime'],
+            'reminder_morning_time' => $data['reminderMorningTime'],
+        ]);
+    }
+
+    /** Lets today's reminder arrive before the first block's departure instead of at a fixed time — see Reminders::onDayDueMinute(). */
+    public function toggleReminderSmartTiming(): void
+    {
+        $user = auth()->user();
+        $user->update(['reminder_smart_timing' => ! $user->reminder_smart_timing]);
+        $this->reminderSmartTiming = (bool) $user->reminder_smart_timing;
     }
 
     // ── Header badges ─────────────────────────────────────────────────
@@ -708,6 +825,24 @@ class Settings extends Component
         unset($this->linkingCategory);
     }
 
+    /** Moves one pinned task earlier/later in the category's suggestion order ('up'|'down'). */
+    public function movePinnedTask(int $id, int $taskId, string $direction): void
+    {
+        if (! in_array($direction, ['up', 'down'], true)) {
+            return;
+        }
+
+        $category = auth()->user()->eventCategories()->findOrFail($id);
+
+        if ($category->task_source !== 'tasks') {
+            return;
+        }
+
+        $category->movePinnedTask($taskId, $direction);
+
+        unset($this->linkingCategory);
+    }
+
     // ── Shortcuts, API & MCP tokens ──────────────────────────────────────
 
     public string $newTokenName = '';
@@ -721,6 +856,10 @@ class Settings extends Component
      * armed-double-click pattern, moved to token-creation time since a
      * headless MCP tool call has no click to arm.
      */
+    public bool $mcpOauthWrite = true;
+
+    public bool $mcpOauthDelete = false;
+
     public bool $newTokenCanWrite = true;
 
     public bool $newTokenCanDelete = false;
@@ -768,6 +907,78 @@ class Settings extends Component
     {
         auth()->user()->tokens()->whereKey($id)->delete();
         unset($this->apiTokens);
+    }
+
+    /**
+     * What an OAuth-connected AI client (claude.ai, Claude Desktop) may do —
+     * the account-level equivalent of a personal access token's own
+     * "Schreiben/Löschen erlauben" checkboxes, because Laravel MCP's OAuth
+     * layer only ever advertises a single `mcp:use` scope and has nowhere to
+     * carry the split. Immediate-save, like every other toggle in Settings.
+     * See App\Models\User::mcpOAuthCan().
+     */
+    public function toggleMcpOauthWrite(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->mcp_oauth_write;
+
+        $user->update(['mcp_oauth_write' => $enabled]);
+        $this->mcpOauthWrite = $enabled;
+    }
+
+    public function toggleMcpOauthDelete(): void
+    {
+        $user = auth()->user();
+        $enabled = ! $user->mcp_oauth_delete;
+
+        $user->update(['mcp_oauth_delete' => $enabled]);
+        $this->mcpOauthDelete = $enabled;
+    }
+
+    /**
+     * One row per connected OAuth client, not per token: a live connection
+     * keeps minting fresh access tokens off its refresh token (they expire
+     * hourly — see AppServiceProvider), so listing tokens would show the same
+     * Claude connection several times over and make it look as if it had
+     * connected again and again.
+     *
+     * Deliberately queried through Passport's own token model rather than
+     * $user->tokens(), which on this User is Sanctum's relation — the two
+     * token systems live side by side here and must never be confused.
+     *
+     * @return Collection<int, Token>
+     */
+    #[Computed]
+    public function mcpConnections(): Collection
+    {
+        return Passport::tokenModel()::query()
+            ->where('user_id', auth()->id())
+            ->where('revoked', false)
+            ->with('client')
+            ->latest('created_at')
+            ->get()
+            ->filter(fn (Token $token): bool => $token->client !== null && ! $token->client->revoked)
+            ->unique('client_id')
+            ->values();
+    }
+
+    /**
+     * Disconnect one AI client. Revokes every token it holds, refresh tokens
+     * included — without those the connection cannot mint a new access token
+     * and is genuinely over, rather than merely expiring within the hour.
+     */
+    public function revokeMcpConnection(string $clientId): void
+    {
+        Passport::tokenModel()::query()
+            ->where('user_id', auth()->id())
+            ->where('client_id', $clientId)
+            ->with('refreshToken')
+            ->each(function (Token $token): void {
+                $token->refreshToken?->revoke();
+                $token->revoke();
+            });
+
+        unset($this->mcpConnections);
     }
 
     public function render()

@@ -104,6 +104,27 @@ class ThemeSettingTest extends TestCase
         }
     }
 
+    public function test_every_view_that_loads_the_stylesheet_also_loads_the_theme(): void
+    {
+        // Without the --t-* variables a page has no colours, fonts or corners at all.
+        $missing = [];
+        $views = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views')));
+
+        foreach ($views as $file) {
+            if (! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+            $source = file_get_contents($file->getPathname());
+            if (str_contains($source, "@vite(['resources/css/app.css'") && ! str_contains($source, 'partials.theme-style')) {
+                $missing[] = str_replace(resource_path('views').DIRECTORY_SEPARATOR, '', $file->getPathname());
+            }
+        }
+
+        $this->assertSame([], $missing);
+        $this->get('/impressum')->assertOk()->assertSee('<style id="theme-vars">', false);
+        $this->get('/datenschutz')->assertOk()->assertSee('<style id="theme-vars">', false);
+    }
+
     public function test_the_head_style_cannot_be_broken_out_of(): void
     {
         $this->assertStringNotContainsString('</style', Theme::css('tinte', 'system'));

@@ -42,6 +42,25 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_the_invalid_credentials_error_is_shown_in_german_not_english(): void
+    {
+        // Regression: this project had no lang/ directory at all, so this
+        // exact failure rendered Laravel/Breeze's raw English default —
+        // "These credentials do not match our records." — on an otherwise
+        // fully German login page. See lang/de/auth.php.
+        $user = User::factory()->create();
+
+        $response = $this->from('/login')->post('/login', [
+            'email' => $user->email,
+            'password' => 'wrong-password',
+        ]);
+
+        $response->assertSessionHasErrors(['email' => 'Diese Zugangsdaten wurden nicht gefunden.']);
+
+        $message = $response->getSession()->get('errors')->getBag('default')->first('email');
+        $this->assertStringNotContainsString('do not match our records', $message);
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();
