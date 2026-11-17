@@ -192,6 +192,9 @@
                     @if ($formPublishedAt)
                         <span class="text-xs text-ink-faint">seit {{ $formPublishedAt }}</span>
                     @endif
+                    @if ($formSlug)
+                        <span class="hidden text-xs text-ink-faint sm:inline">/hilfe/{{ $formSlug }}</span>
+                    @endif
                 </div>
                 <div class="flex flex-none items-center gap-1.5">
                     <button type="button" wire:click="togglePreview" @class(['rounded-card border border-line bg-paper px-3 py-1.5 text-xs transition hover:border-ink-faint/60', 'text-ink border-ink-faint/60' => $showPreview, 'text-ink-soft' => ! $showPreview])>Vorschau</button>

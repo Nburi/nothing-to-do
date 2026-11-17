@@ -25,6 +25,10 @@
             </div>
 
             <p class="mt-8 text-xs text-ink-faint">Drei Listen. Ein Tag. Nichts zu tun.</p>
+            <p class="mt-2 flex items-center gap-3 text-xs text-ink-faint">
+                <a href="{{ route('impressum') }}" class="transition hover:text-ink-soft">Impressum</a>
+                <a href="{{ route('datenschutz') }}" class="transition hover:text-ink-soft">Datenschutz</a>
+            </p>
         </div>
 
         @livewireScripts

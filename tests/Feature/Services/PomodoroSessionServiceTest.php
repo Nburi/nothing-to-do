@@ -248,6 +248,30 @@ class PomodoroSessionServiceTest extends TestCase
         $this->assertNull($event->pomodoro_started_at); // frozen
     }
 
+    public function test_handle_tick_does_not_wait_for_the_push_to_be_delivered(): void
+    {
+        // Delivery is a slow outbound HTTP call; the freeze must be persisted and
+        // handleTick() must return before it happens (it runs after the response).
+        $this->withDefer();
+        $this->mock(PushNotifier::class, function ($mock) {
+            $mock->shouldReceive('notify')->never();
+        });
+
+        $user = User::factory()->create([
+            'pomodoro_work' => 25, 'pomodoro_short_break' => 5, 'pomodoro_long_break' => 15, 'pomodoro_long_every' => 4,
+            'pomodoro_autostart' => false, 'notify_break_start' => true,
+        ]);
+        $category = EventCategory::factory()->for($user)->create(['pomodoro_enabled' => true]);
+        $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
+            ->create(['pomodoro_phase' => 'work', 'pomodoro_cycle' => 1, 'pomodoro_started_at' => '2026-06-26 14:00:00']);
+
+        Carbon::setTestNow('2026-06-26 14:25:00');
+
+        app(PomodoroSessionService::class)->handleTick($event, $user);
+
+        $this->assertNull($event->fresh()->pomodoro_started_at);
+    }
+
     public function test_handle_tick_freeze_does_not_notify_when_disabled(): void
     {
         $this->mock(PushNotifier::class, function ($mock) {

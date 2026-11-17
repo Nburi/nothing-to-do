@@ -44,6 +44,9 @@ class EventTemplateController extends Controller
             'date' => $data['date'],
             'start_time' => $startTime,
             'end_time' => ScheduleEvent::fromMinutes(ScheduleEvent::toMinutes($startTime) + $template->duration),
+            // A template's Weg-/Pufferzeit travels with it (same as the Zeitplan's own applyTemplate()).
+            'buffer_before' => (int) $template->buffer_before,
+            'buffer_after' => (int) $template->buffer_after,
         ]);
 
         return (new ScheduleEventResource($event->fresh()))->response()->setStatusCode(201);

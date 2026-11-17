@@ -44,7 +44,7 @@
                     <button
                         type="button"
                         wire:click="cancelEdit"
-                        class="grid h-7 w-7 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                        class="grid h-9 w-9 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint sm:h-7 sm:w-7"
                         aria-label="Bearbeiten abbrechen"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -52,7 +52,7 @@
                 @endif
                 <button
                     type="submit"
-                    class="grid h-7 w-7 flex-none place-items-center rounded-card {{ $editingId ? 'bg-overprint' : 'bg-forest' }} text-white transition hover:brightness-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                    class="grid h-9 w-9 flex-none place-items-center rounded-card sm:h-7 sm:w-7 {{ $editingId ? 'bg-overprint' : 'bg-forest' }} text-white transition hover:brightness-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
                     aria-label="{{ $editingId ? 'Änderungen speichern' : 'Idee hinzufügen' }}"
                 >
                     @if ($editingId)

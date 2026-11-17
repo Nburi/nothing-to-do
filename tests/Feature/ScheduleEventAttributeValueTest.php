@@ -237,7 +237,17 @@ class ScheduleEventAttributeValueTest extends TestCase
         $this->assertSame(0, $event->attributeValues()->count());
     }
 
-    public function test_a_long_enough_block_renders_the_full_line_in_both_the_day_and_week_view(): void
+    /**
+     * Which of the two attribute tiers a block shows is no longer decided in PHP.
+     * It used to be a duration threshold (>=30 min), which stopped being a usable
+     * proxy the moment the Tagesrahmen made the scale depend on the day's length —
+     * the same 30 minutes is a different number of pixels on the phone, in the
+     * desktop week view, and at any other frame. Both tiers are now always in the
+     * DOM and the @container queries in app.css pick one by the block body's own
+     * measured height, so what a server-side test can assert is that both tiers
+     * render, correctly classed, inside a container element.
+     */
+    public function test_both_attribute_tiers_render_and_are_classed_for_the_container_query(): void
     {
         $user = $this->actingUser();
         $category = $this->trainingCategory($user);
@@ -248,14 +258,16 @@ class ScheduleEventAttributeValueTest extends TestCase
         $response = $this->get('/app/schedule');
 
         $response->assertOk();
-        // The full "label + value" line renders for both the day view and the compact desktop
-        // week view instance of this same event — >=30min is room enough in either.
-        $response->assertSeeInOrder(['mt-0.5 flex flex-wrap', 'mt-0.5 flex flex-wrap'], false);
-        // The compact dots-only preview never renders once the full line already fits.
-        $response->assertDontSee('title="Lauf"', false);
+        // The container the queries resolve against.
+        $response->assertSee('tl-body', false);
+        // The full "label + value" line, shown from 46px up.
+        $response->assertSee('tl-opt tl-opt-attrs', false);
+        // The compact dots-only stand-in, shown below that.
+        $response->assertSee('tl-opt-dots', false);
+        $response->assertSee('title="Lauf"', false);
     }
 
-    public function test_a_short_block_only_renders_the_compact_dots(): void
+    public function test_a_short_block_renders_the_same_tiers_as_a_long_one(): void
     {
         $user = $this->actingUser();
         $category = $this->trainingCategory($user);
@@ -266,7 +278,7 @@ class ScheduleEventAttributeValueTest extends TestCase
         $response = $this->get('/app/schedule');
 
         $response->assertOk();
-        $response->assertDontSee('mt-0.5 flex flex-wrap', false);
+        $response->assertSee('tl-opt tl-opt-attrs', false);
         $response->assertSee('title="Lauf"', false);
         $response->assertSee('aria-label="Lauf"', false);
     }

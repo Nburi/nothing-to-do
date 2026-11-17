@@ -2,26 +2,28 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\ManagesDayBounds;
+use App\Livewire\Concerns\ManagesDeadlineItems;
 use App\Livewire\Concerns\ManagesSchedule;
+use App\Models\ScheduleDayBound;
 use App\Models\SchedulePause;
 use App\Models\ScheduleEvent;
-use App\Models\Task;
-use App\Services\ProgressStats;
+use App\Services\DayWindow;
+use App\Services\DeadlineItems;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
+#[Title('Zeitplan')]
 class Schedule extends Component
 {
+    use ManagesDayBounds;
+    use ManagesDeadlineItems;
     use ManagesSchedule;
-
-    /** The visible window of a day on the timeline (minutes from midnight). */
-    public const DAY_START = 6 * 60;   // 06:00
-
-    public const DAY_END = 23 * 60;    // 23:00
 
     /** Monday of the visible week. */
     public string $weekStart = '';
@@ -89,6 +91,53 @@ class Schedule extends Component
         return $this->events->get($this->focusedDate, collect());
     }
 
+    /**
+     * The week's own day-frame overrides, keyed by Y-m-d — loaded once rather
+     * than re-queried per column by DayWindow::settingForDate().
+     *
+     * @return array<string, ScheduleDayBound>
+     */
+    #[Computed]
+    public function dayBoundOverrides(): array
+    {
+        $start = Carbon::parse($this->weekStart);
+
+        return ScheduleDayBound::forUser(auth()->user())
+            ->forRange($start, $start->copy()->endOfWeek())
+            ->get()
+            ->keyBy(fn (ScheduleDayBound $bound) => $bound->date->toDateString())
+            ->all();
+    }
+
+    /**
+     * Each visible day's resolved Tagesrahmen (date override -> weekday
+     * override -> default), keyed by Y-m-d. Drives the chip under every day
+     * header; the grid itself shares one frame across the week, since seven
+     * columns cannot have seven scales next to one hour gutter.
+     *
+     * @return array<string, array{start: int, end: int, source: string}>
+     */
+    #[Computed]
+    public function daySettings(): array
+    {
+        $user = auth()->user();
+        $overrides = $this->dayBoundOverrides;
+        $settings = [];
+
+        foreach ($this->weekDays as $day) {
+            $key = $day->toDateString();
+            $settings[$key] = DayWindow::settingForDate($user, $day, $overrides[$key] ?? false);
+        }
+
+        return $settings;
+    }
+
+    /** Recomputed after a Tagesrahmen write, so the same request renders the new frame. */
+    protected function afterDayBoundsChanged(): void
+    {
+        unset($this->dayBoundOverrides, $this->daySettings);
+    }
+
     /** Paused (Wochenplan "Ferien") dates within the visible week, as Y-m-d strings. */
     #[Computed]
     public function pausedDates(): array
@@ -114,48 +163,9 @@ class Schedule extends Component
     #[Computed]
     public function deadlineItems(): Collection
     {
-        $user = auth()->user();
         $weekStart = Carbon::parse($this->weekStart)->startOfDay();
-        $weekEnd = $weekStart->copy()->endOfWeek();
-        $previewEnabled = (bool) $user->deadline_preview_enabled;
-        $previewDays = max(0, (int) $user->deadline_preview_days);
 
-        $items = collect();
-
-        Task::forUser($user)->active()
-            ->where(fn ($q) => $q->whereNotNull('deadline')->orWhereNotNull('due_date'))
-            ->get()
-            ->each(function (Task $task) use ($items, $previewEnabled, $previewDays) {
-                $date = $task->effectiveDate();
-
-                if ($date === null) {
-                    return;
-                }
-
-                $isHard = $task->effectiveIsHard();
-                $base = [
-                    'kind' => 'task',
-                    'subtype' => $isHard ? 'deadline' : 'due',
-                    'id' => $task->id,
-                    'title' => $task->title,
-                ];
-
-                $items->push($base + ['date' => $date->copy(), 'isPreview' => false]);
-
-                if ($isHard && $previewEnabled && $previewDays > 0) {
-                    $items->push($base + [
-                        'date' => $date->copy()->subDays($previewDays),
-                        'isPreview' => true,
-                        'daysUntil' => $previewDays,
-                    ]);
-                }
-            });
-
-        return $items
-            ->filter(fn (array $item) => $item['date']->between($weekStart, $weekEnd))
-            ->sortBy('title')
-            ->sortBy(fn (array $item) => $item['isPreview'] ? 1 : 0)
-            ->groupBy(fn (array $item) => $item['date']->toDateString());
+        return DeadlineItems::forRange(auth()->user(), $weekStart, $weekStart->copy()->endOfWeek());
     }
 
     /** Deadline items for the mobile single-day view. */
@@ -163,29 +173,6 @@ class Schedule extends Component
     public function focusedDeadlineItems(): Collection
     {
         return $this->deadlineItems->get($this->focusedDate, collect());
-    }
-
-    /**
-     * Ticks a task off straight from the Zeitplan strip. Deliberately duplicates
-     * ManagesTasks::toggleComplete() rather than pulling in the whole trait (its edit-sheet state
-     * isn't needed here) — the same small-duplication call is acceptable here.
-     */
-    public function toggleDeadlineTaskDone(int $id): void
-    {
-        $task = auth()->user()->tasks()->findOrFail($id);
-        $done = ! $task->is_completed;
-        $user = auth()->user();
-
-        $before = $done ? ProgressStats::todayCount($user) : null;
-
-        $task->update([
-            'is_completed' => $done,
-            'completed_at' => $done ? now() : null,
-        ]);
-
-        if ($done && ($celebration = ProgressStats::celebrationFor($user, $task, $before)) !== null) {
-            $this->dispatch('celebrate', kind: $celebration['kind'], label: $celebration['label']);
-        }
     }
 
     public function prevWeek(): void
@@ -235,9 +222,23 @@ class Schedule extends Component
             Carbon::parse($this->weekStart)->endOfWeek(),
         );
 
+        $user = auth()->user();
+        $settings = $this->daySettings;
+
         return view('livewire.schedule', [
-            'dayStart' => self::DAY_START,
-            'dayEnd' => self::DAY_END,
+            // One frame for the whole week grid — the widest setting in it,
+            // expanded around anything that would otherwise fall outside.
+            'weekFrame' => DayWindow::frame(
+                $settings === [] ? DayWindow::defaultSetting($user)['start'] : min(array_column($settings, 'start')),
+                $settings === [] ? DayWindow::defaultSetting($user)['end'] : max(array_column($settings, 'end')),
+                DayWindow::rangesFrom($this->events->flatten()),
+            ),
+            // The mobile day view shows one day, so it gets that day's own frame.
+            'dayFrame' => DayWindow::frame(
+                $settings[$this->focusedDate]['start'] ?? DayWindow::defaultSetting($user)['start'],
+                $settings[$this->focusedDate]['end'] ?? DayWindow::defaultSetting($user)['end'],
+                DayWindow::rangesFrom($this->focusedEvents),
+            ),
         ]);
     }
 }

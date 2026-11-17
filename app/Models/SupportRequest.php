@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SupportNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,6 +55,18 @@ class SupportRequest extends Model
         'response',
         'responded_by',
     ];
+
+    protected static function booted(): void
+    {
+        // Push: admins on a new request, the submitter once an answer is saved (or edited).
+        static::created(fn (self $request) => app(SupportNotifier::class)->notifyAdminsOfNewRequest($request));
+
+        static::updated(function (self $request) {
+            if ($request->wasChanged('response') && filled($request->response)) {
+                app(SupportNotifier::class)->notifyUserOfResponse($request);
+            }
+        });
+    }
 
     public function user(): BelongsTo
     {
