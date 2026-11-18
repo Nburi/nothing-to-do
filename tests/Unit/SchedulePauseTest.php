@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use App\Models\EventTemplate;
+use App\Models\ScheduleEvent;
 use App\Models\SchedulePause;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,5 +74,18 @@ class SchedulePauseTest extends TestCase
 
         $this->assertSame(0, SchedulePause::forUser($user)->count());
         $this->assertSame(1, SchedulePause::forUser($other)->count());
+    }
+
+    public function test_pause_hides_a_template_occurrence_that_was_saved_through_eloquent(): void
+    {
+        $user = User::factory()->create();
+        $template = EventTemplate::factory()->recurring('1')->create(['user_id' => $user->id]);
+
+        // Saved through Eloquent (the event form), so SQLite stores "2026-07-20 00:00:00" ...
+        ScheduleEvent::factory()->for($user)->on('2026-07-20')->create(['template_id' => $template->id]);
+        // ... while the pause is a raw insert holding plain "2026-07-20".
+        SchedulePause::pauseRange($user, Carbon::parse('2026-07-20'), Carbon::parse('2026-07-20'), null);
+
+        $this->assertSame(0, ScheduleEvent::forUser($user)->visible()->forDay('2026-07-20')->count());
     }
 }
