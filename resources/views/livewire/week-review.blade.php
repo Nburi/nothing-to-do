@@ -15,7 +15,7 @@
 
     {{-- Week pager --}}
     <div class="flex items-center justify-between gap-3">
-        <button type="button" wire:click="previousWeek" class="grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest" aria-label="Vorherige Woche">
+        <button type="button" wire:click="previousWeek" class="grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest" aria-label="Vorherige Woche">
             <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m10 3.5-4.5 4.5L10 12.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="text-center">
@@ -30,7 +30,7 @@
                 @endif
             </p>
         </div>
-        <button type="button" wire:click="nextWeek" @disabled($weekOffset >= 0) class="grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest disabled:cursor-not-allowed disabled:opacity-40" aria-label="Nächste Woche">
+        <button type="button" wire:click="nextWeek" @disabled($weekOffset >= 0) class="grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest disabled:cursor-not-allowed disabled:opacity-40" aria-label="Nächste Woche">
             <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
     </div>

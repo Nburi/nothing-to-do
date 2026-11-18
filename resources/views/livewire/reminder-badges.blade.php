@@ -46,7 +46,7 @@
                         <button
                             type="button"
                             @click="Livewire.dispatch('open-reminders', { id: {{ $reminder->id }} })"
-                            class="flex min-w-0 items-center gap-1.5 py-1 text-left focus:outline-none focus-visible:underline"
+                            class="flex min-w-0 items-center gap-1.5 py-1 text-left focus:outline-hidden focus-visible:underline"
                             aria-label="Nicht vergessen {{ $reminder->dateLabel($today) }}: {{ $reminder->title }}. Antippen zum Bearbeiten"
                         >
                             <svg class="h-3.5 w-3.5 flex-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5l-1.5 2.75L11.5 8.5H4"/></svg>
@@ -58,7 +58,7 @@
                             wire:click="acknowledge({{ $reminder->id }})"
                             wire:loading.attr="disabled"
                             wire:target="acknowledge({{ $reminder->id }})"
-                            class="flex-none rounded-full px-2.5 py-1.5 font-medium transition hover:bg-surface/60 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest disabled:opacity-50"
+                            class="flex-none rounded-full px-2.5 py-1.5 font-medium transition hover:bg-surface/60 active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest disabled:opacity-50"
                             aria-label="{{ $reminder->title }}: hab ich"
                         >Hab ich</button>
                     </div>
@@ -70,7 +70,7 @@
                 <button
                     type="button"
                     @click="Livewire.dispatch('open-reminders')"
-                    class="rounded-full px-2.5 py-1.5 text-xs text-ink-faint transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="rounded-full px-2.5 py-1.5 text-xs text-ink-faint transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                 >{{ $this->reminders->isEmpty() ? ($this->laterCount === 1 ? '1 Erinnerung geplant' : $this->laterCount.' Erinnerungen geplant') : '+'.$this->laterCount.' geplant' }}</button>
             @endif
         </div>

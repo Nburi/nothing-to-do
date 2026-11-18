@@ -43,11 +43,11 @@
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
-                            <input type="checkbox" wire:model="formEvening" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            <input type="checkbox" wire:model="formEvening" class="h-4 w-4 rounded-sm border-line text-forest focus:ring-forest" />
                             Am Vorabend erinnern
                         </label>
                         <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
-                            <input type="checkbox" wire:model="formOnDay" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            <input type="checkbox" wire:model="formOnDay" class="h-4 w-4 rounded-sm border-line text-forest focus:ring-forest" />
                             Am Tag selbst erinnern
                         </label>
                     </div>

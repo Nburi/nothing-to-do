@@ -52,7 +52,7 @@
                 @keydown.enter.prevent="$store.commandPalette.activate($root)"
                 class="min-w-0 flex-1 border-0 bg-transparent p-0 py-2 text-[15px] text-ink placeholder:text-ink-faint focus:ring-0 sm:py-0"
             />
-            <kbd class="hidden flex-none rounded border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-faint sm:block">Esc</kbd>
+            <kbd class="hidden flex-none rounded-sm border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-faint sm:block">Esc</kbd>
         </div>
 
         {{-- Results. The list root is keyed on the query so a fresh result set
