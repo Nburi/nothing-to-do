@@ -60,6 +60,22 @@ final class NoteEditor
         $note->save();
     }
 
+    /** A drop on desktop: into the stage (null = "Lose") at position $index of that pile. */
+    public function place(Note $note, ?ProjectStage $stage, int $index): void
+    {
+        $this->assertStage($note->project_id, $stage);
+
+        DB::transaction(function () use ($note, $stage, $index) {
+            $note->forceFill(['stage_id' => $stage?->id]);
+            $ids = $this->pile($note)->whereKeyNot($note->id)->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
+            array_splice($ids, max(0, min($index, count($ids))), 0, [$note->id]);
+            $note->save();
+            foreach ($ids as $order => $id) {
+                Note::whereKey($id)->update(['sort_order' => $order]);
+            }
+        });
+    }
+
     /** Everything needed to bring a deleted note back. */
     public function snapshot(Note $note): array
     {

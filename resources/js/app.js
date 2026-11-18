@@ -2456,3 +2456,75 @@ document.addEventListener('pointerdown', (e) => {
 
     window.dispatchEvent(new CustomEvent('schedule-block-settle'));
 });
+
+/*
+ * Step 4.3b: note cards on project and group pages.
+ * - noteComposer: Enter saves (Shift+Enter = new line); typing "#" offers the user's tags.
+ * - notePile: drag a note between the "Lose" pile and the stage piles (desktop; on the phone the
+ *   stage chip opens a sheet instead). The server decides; Livewire re-renders the piles.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('noteComposer', (cfg = {}) => ({
+        tags: cfg.tags ?? [],
+        matches: [],
+        active: 0,
+        query() {
+            const el = this.$refs.field;
+            const before = el.value.slice(0, el.selectionStart);
+            const m = before.match(/(?:^|[\s(])#([\p{L}\p{N}_-]*)$/u);
+            return m ? m[1].toLowerCase() : null;
+        },
+        suggest() {
+            const q = this.query();
+            this.matches = q === null ? [] : this.tags.filter((t) => t.startsWith(q) && t !== q).slice(0, 6);
+            this.active = 0;
+        },
+        pick(tag) {
+            const el = this.$refs.field;
+            const pos = el.selectionStart;
+            const before = el.value.slice(0, pos).replace(/#([\p{L}\p{N}_-]*)$/u, '#' + tag + ' ');
+            el.value = before + el.value.slice(pos);
+            el.setSelectionRange(before.length, before.length);
+            el.dispatchEvent(new Event('input'));
+            this.matches = [];
+            el.focus();
+        },
+        key(e) {
+            if (this.matches.length && ['ArrowDown', 'ArrowUp', 'Tab'].includes(e.key)) {
+                e.preventDefault();
+                if (e.key === 'Tab') return this.pick(this.matches[this.active]);
+                this.active = (this.active + (e.key === 'ArrowDown' ? 1 : this.matches.length - 1)) % this.matches.length;
+                return;
+            }
+            if (e.key === 'Escape' && this.matches.length) {
+                e.preventDefault();
+                this.matches = [];
+                return;
+            }
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                e.preventDefault();
+                if (this.matches.length) return this.pick(this.matches[this.active]);
+                this.$el.closest('form').requestSubmit();
+            }
+        },
+    }));
+
+    window.Alpine.data('notePile', () => ({
+        init() {
+            if (!window.Sortable || this.$el._sortable) return;
+            this.$el._sortable = window.Sortable.create(this.$el, {
+                group: 'notes',
+                animation: 160,
+                handle: '[data-note-grip]',
+                draggable: '[data-note]',
+                ghostClass: 'board-ghost',
+                onEnd: (evt) => {
+                    const id = Number(evt.item.dataset.note);
+                    const to = evt.to.dataset.pile;
+                    if (evt.from === evt.to && evt.oldDraggableIndex === evt.newDraggableIndex) return;
+                    this.$wire.setNoteStage(id, to, evt.newDraggableIndex);
+                },
+            });
+        },
+    }));
+});

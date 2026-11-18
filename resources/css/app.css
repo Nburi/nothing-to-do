@@ -1300,3 +1300,10 @@ body.shell-returning .shell .fold-return {
     transition: none !important;
   }
 }
+
+/* Step 4.3b: a #tag inside a rendered note (NoteTags::mark). */
+.note-tag {
+  color: var(--t-accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}

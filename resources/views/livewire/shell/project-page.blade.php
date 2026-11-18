@@ -30,7 +30,7 @@
         </div>
     @endif
 
-    <main class="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 pt-2 pb-12 wb:px-6 wb:pt-6">
+    <main class="mx-auto flex w-full max-w-4xl flex-col gap-5 lg:max-w-6xl px-4 pt-2 pb-12 wb:px-6 wb:pt-6">
         <a href="{{ route('shell.projects') }}" wire:navigate class="hidden items-center gap-1 self-start text-sm font-semibold text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent wb:inline-flex">
             @include('shell.icon', ['name' => 'back', 'class' => 'size-4']) {{ __('projects.title') }}
         </a>
@@ -100,6 +100,14 @@
             @endif
         </section>
 
+        {{-- Step 4.3b: steps left, notes right (from 1024 px); on the phone a switch between them. --}}
+        <div x-data="{ tab: 'steps' }" class="flex flex-col gap-4">
+            <div class="inline-flex self-start rounded-full bg-surface p-1 wb:hidden" style="border: var(--t-bw) solid var(--t-line)" role="tablist">
+                <button type="button" role="tab" @click="tab = 'steps'" :aria-selected="tab === 'steps'" :class="tab === 'steps' ? 'bg-ink text-paper' : 'text-ink-soft'" class="rounded-full px-4 py-1.5 text-sm font-semibold">{{ __('projects.notes.tab_steps') }}</button>
+                <button type="button" role="tab" @click="tab = 'notes'" :aria-selected="tab === 'notes'" :class="tab === 'notes' ? 'bg-ink text-paper' : 'text-ink-soft'" class="rounded-full px-4 py-1.5 text-sm font-semibold">{{ __('projects.notes.title') }} <span class="font-mono text-xs opacity-70">{{ $this->notes->count() }}</span></button>
+            </div>
+            <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+            <div :class="tab === 'steps' ? 'flex' : 'hidden'" class="flex-col gap-5 wb:flex">
         {{-- Stages with their steps, then the steps in no stage. --}}
         @foreach ([...$groups, ['key' => 'none', 'stage' => null, 'steps' => $loose]] as $g)
             @php
@@ -173,6 +181,12 @@
                 </form>
             </section>
         @endforeach
+            </div>
+            <div :class="tab === 'notes' ? 'block' : 'hidden'" class="wb:block lg:sticky lg:top-20">
+                @include('shell.notes-panel', ['notes' => $this->notes, 'stages' => $stages, 'userTags' => $this->userTags, 'noteTag' => $noteTag, 'editingNote' => $editingNote])
+            </div>
+            </div>
+        </div>
     </main>
 
     @include('shell.projects-chrome', ['part' => 'tabs'])

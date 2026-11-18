@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Shell;
 
+use App\Livewire\Concerns\ManagesNotes;
 use App\Models\Project;
 use App\Models\ProjectStage;
 use App\Models\Task;
@@ -28,11 +29,13 @@ use Livewire\Component;
  * Step 4.3: one project. Roadmap of stages on top, then each stage with its steps (the next two
  * marked, the waiting ones quiet), then the steps in no stage. Stages are the coarse
  * dependencies (stage 2 waits on stage 1); "wartet auf" covers the rare single step.
- * Notes and tags come in 4.3b.
+ * Step 4.3b: note cards with #tags in a column beside the stages (ManagesNotes).
  */
 #[Layout('layouts.shell')]
 class ProjectPage extends Component
 {
+    use ManagesNotes;
+
     #[Locked]
     public int $projectId;
 
@@ -275,6 +278,8 @@ class ProjectPage extends Component
                 return;
             }
             TaskMutator::applyUpdate($task, $this->user, ['is_completed' => false]);
+        } elseif (($undo['kind'] ?? null) === 'note') {
+            $this->undoNote($undo);
         } elseif (($undo['kind'] ?? null) === 'stage') {
             $stage = $this->project->stages()->create(['name' => $undo['name'], 'target_date' => $undo['date'], 'sort_order' => $undo['order']]);
             Task::forUser($this->user)->where('project_id', $this->projectId)->whereIn('id', $undo['steps'])->whereNull('stage_id')->update(['stage_id' => $stage->id]);
@@ -290,6 +295,11 @@ class ProjectPage extends Component
     }
 
     // ---- helpers -----------------------------------------------------------------------------
+
+    protected function noteOwner(): Project
+    {
+        return $this->project;
+    }
 
     private function stage(?int $id): ProjectStage
     {

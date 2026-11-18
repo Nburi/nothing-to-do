@@ -218,6 +218,8 @@ return [
         'newStep' => 'Schritt',
         'newStepList' => 'Liste',
         'name' => 'Name',
+        'noteDraft' => 'Notiz',
+        'editNoteBody' => 'Notiz',
         'attrName' => 'Name',
         'attrType' => 'Typ',
         'attrUnit' => 'Einheit',

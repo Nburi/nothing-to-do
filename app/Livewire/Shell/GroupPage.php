@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Shell;
 
+use App\Livewire\Concerns\ManagesNotes;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
@@ -23,18 +24,21 @@ use Livewire\Component;
 
 /**
  * Step 4.3: one group. A few tasks of one list in the group's order; the first two are what the
- * board shows. New steps land in the group's list.
+ * board shows. New steps land in the group's list. Step 4.3b: note cards with #tags (ManagesNotes).
  */
 #[Layout('layouts.shell')]
 class GroupPage extends Component
 {
+    use ManagesNotes;
+
     #[Locked]
     public int $groupId;
 
     public ?string $notice = null;
 
+    /** What the notice's "Rückgängig" restores. */
     #[Locked]
-    public ?int $undoId = null;
+    public ?array $undo = null;
 
     public bool $editingName = false;
 
@@ -133,15 +137,24 @@ class GroupPage extends Component
     {
         $this->guard(function () use ($id) {
             $task = TaskMutator::applyUpdate($this->step($id), $this->user, ['is_completed' => true]);
-            $this->undoId = $task->id;
+            $this->undo = ['kind' => 'done', 'id' => $task->id];
             $this->notice = __('projects.done_notice', ['title' => Str::limit($task->title, 60)]);
         });
     }
 
     public function undoLast(): void
     {
-        $task = $this->undoId === null ? null : $this->group->tasks()->whereKey($this->undoId)->first();
-        $this->undoId = null;
+        $undo = $this->undo;
+        $this->undo = null;
+
+        if (($undo['kind'] ?? null) === 'note') {
+            $this->undoNote($undo);
+            $this->notice = __('projects.undone');
+
+            return;
+        }
+
+        $task = ($undo['kind'] ?? null) === 'done' ? $this->group->tasks()->whereKey($undo['id'])->first() : null;
         if ($task === null) {
             $this->gone();
 
@@ -156,7 +169,7 @@ class GroupPage extends Component
     public function dismiss(): void
     {
         $this->notice = null;
-        $this->undoId = null;
+        $this->undo = null;
     }
 
     private function step(int $id): Task
@@ -177,9 +190,14 @@ class GroupPage extends Component
         $this->fresh();
     }
 
+    protected function noteOwner(): TaskGroup
+    {
+        return $this->group;
+    }
+
     private function gone(): void
     {
-        $this->undoId = null;
+        $this->undo = null;
         $this->notice = __('projects.gone');
         $this->fresh();
     }
