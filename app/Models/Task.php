@@ -139,6 +139,30 @@ class Task extends Model
         return $this->belongsTo(Area::class);
     }
 
+    /** Step 4.3: the project this task is a step of (null = a loose task). */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    /** Step 4.3: the small group this task belongs to (one list per group). */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(TaskGroup::class, 'group_id');
+    }
+
+    /** Step 4.3: the project stage this step belongs to (null = not in a stage). */
+    public function stage(): BelongsTo
+    {
+        return $this->belongsTo(ProjectStage::class, 'stage_id');
+    }
+
+    /** Step 4.3: the one task this step waits on ("wartet auf …"). */
+    public function waitsOn(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'waits_on_id');
+    }
+
     /**
      * Transition reads (until the old columns are dropped): the mirror in
      * booted() only runs on save, so an unsaved or freshly filled model can hold

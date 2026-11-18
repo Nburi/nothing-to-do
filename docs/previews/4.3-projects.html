@@ -1,0 +1,231 @@
+<title>Projekte mit nächstem Schritt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: decisions strip, then mock (board / project page, desktop / phone) beside the open questions. Tokens = the app's Topografie theme. */
+:root{
+  --bg:#F1EDE2;--surface:#FCFBF7;--ink:#23291F;--soft:#4E5345;--faint:#6A6E59;--line:#E3DECF;
+  --accent:#1F6B3B;--accent-fg:#FFFFFF;--accent-soft:#E2EDE3;--warn:#895C1F;--area1:#A4197D;--area3:#8F5F1F;
+  --shadow:0 1px 2px rgba(35,41,31,.08),0 2px 8px rgba(35,41,31,.05);
+  --display:'Space Grotesk',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--r:10px;--rl:16px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10140E;--surface:#191E16;--ink:#E8EADF;--soft:#A7AC99;--faint:#858A77;--line:#2C3326;--accent:#57A972;--accent-fg:#0B1A10;--accent-soft:#1E3324;--warn:#D29A4E;--area1:#D96BB8;--area3:#C79552;--shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.3);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10140E;--surface:#191E16;--ink:#E8EADF;--soft:#A7AC99;--faint:#858A77;--line:#2C3326;--accent:#57A972;--accent-fg:#0B1A10;--accent-soft:#1E3324;--warn:#D29A4E;--area1:#D96BB8;--area3:#C79552;--shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.3);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:14px;line-height:1.45;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+p{margin:0}
+.wrap{max-width:1280px;margin:0 auto;display:grid;gap:20px}
+.top{display:grid;gap:8px;max-width:80ch}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.lede{color:var(--soft)}
+.mono{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.dec{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.d{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;display:grid;gap:3px}
+.d b{font-size:14px}.d p{color:var(--soft);font-size:12.5px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:20px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{display:grid;gap:10px;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px}
+.seg button{all:unset;cursor:pointer;padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--soft)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button:focus-visible,.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.frame{background:var(--bg);border:1px solid var(--line);border-radius:var(--rl);box-shadow:var(--shadow);overflow-x:auto}
+.caption{font-size:12px;color:var(--soft)}
+.qs{display:grid;gap:12px}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:14px;display:grid;gap:9px}
+.q h3{font-size:14px;font-weight:600}.q .why{color:var(--soft);font-size:12.5px}
+.opts{display:grid;gap:6px}
+.opt{all:unset;cursor:pointer;display:grid;gap:2px;border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;background:var(--bg)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opt b{font-size:13px;font-weight:600}.opt span{font-size:12px;color:var(--soft)}
+.rec{font-family:var(--mono);font-size:9.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
+.out{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:14px;display:grid;gap:8px}
+.out code{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-word;display:block}
+.btn{all:unset;cursor:pointer;border-radius:999px;padding:6px 14px;font-weight:600;font-size:12.5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);justify-self:start}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+/* board */
+.wb{min-width:860px;padding:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.col{display:grid;gap:8px;align-content:start}
+.colh{display:flex;justify-content:space-between;font-weight:600;font-size:12.5px;padding:0 2px}.colh span{color:var(--faint)}
+.it{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;display:flex;gap:9px;font-size:12.5px;align-items:flex-start}
+.ring{width:15px;height:15px;border-radius:50%;border:2px solid var(--faint);flex:none;margin-top:1px;opacity:.7}
+.it .m{display:block;font-size:11px;color:var(--faint)}
+.box{border:1px solid var(--line);border-left:3px solid var(--faint);border-radius:var(--rl);background:var(--surface);padding:10px;display:grid;gap:8px}
+.box.p{border-left-color:var(--accent)}
+.bh{display:flex;align-items:center;gap:7px;font-size:13px}
+.bh svg{width:15px;height:15px;color:var(--soft);flex:none}
+.bh b{text-decoration:underline dotted var(--faint);text-underline-offset:3px}
+.bh .n{color:var(--faint);font-variant-numeric:tabular-nums}
+.bh .chev{margin-left:auto;color:var(--faint)}
+.sub{font-size:11.5px;color:var(--soft);margin-top:-4px;padding-left:22px}
+.prog{height:5px;border-radius:3px;background:var(--line);overflow:hidden}.prog i{display:block;height:100%;background:var(--accent);opacity:.8;border-radius:3px}
+.box .it{background:var(--bg)}
+.it.wait{opacity:.55}
+.more{font-size:11.5px;color:var(--faint);padding-left:2px}
+.hl{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent-soft)}
+/* phone */
+.phone{width:360px;max-width:100%;margin:16px auto;border:1px solid var(--line);border-radius:28px;background:var(--bg);overflow:hidden;position:relative}
+.sheet{padding:14px 12px 70px;display:grid;gap:10px}
+.sheet h4{font-size:16px;display:flex;justify-content:space-between}.sheet h4 span{color:var(--faint);font-weight:500}
+.tabs{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around;background:var(--surface);border-top:1px solid var(--line);padding:8px 4px 12px;font-size:10.5px;font-weight:600;color:var(--soft)}
+.tabs .on{color:var(--accent)}
+/* project page */
+.pp{min-width:860px;padding:18px;display:grid;gap:14px}
+.pp.narrow{min-width:0;padding:14px 12px 70px}
+.ph{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.ph h2{font-size:21px}
+.road{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:14px 16px 10px;display:grid;gap:6px}
+.road svg{width:100%;height:auto;display:block}
+.cols2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+.narrow .cols2{grid-template-columns:minmax(0,1fr)}
+.stg{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:12px;display:grid;gap:7px}
+.stg.cur{border-color:var(--accent)}
+.stg.later{opacity:.75}
+.sh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.sh b{font-size:14px}.sh span{font-size:11.5px;color:var(--faint)}
+.sh .st{margin-left:auto;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11px;color:var(--soft);background:var(--surface)}
+.chip.w{color:var(--warn);border-color:currentColor}
+.nextlbl{font-family:var(--mono);font-size:9.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.notes{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:12px;display:grid;gap:9px}
+.qn{border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:var(--faint);font-size:12.5px;background:var(--bg)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{all:unset;cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:11.5px;color:var(--soft);background:var(--bg)}
+.tag[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.tag:focus-visible{outline:2px solid var(--accent)}
+.pile{display:grid;gap:6px}
+.note{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;font-size:12.5px;display:grid;gap:4px}
+.note .nm{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--faint)}
+.note .nm .act{margin-left:auto;color:var(--accent);font-weight:600}
+.ht{color:var(--accent);font-weight:600}
+.drop{border:1px dashed var(--line);border-radius:var(--r);padding:6px 8px;font-size:11px;color:var(--faint)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="mono">Refactor 4.3 · Runde 2</span>
+    <h1>Gruppen, Projekte, Etappen</h1>
+    <p class="lede">Das haben wir im Brainstorming festgelegt. Rechts sind die letzten offenen Punkte. Board und Projekt-Seite kannst du auf Desktop und Handy umschalten; auf der Projekt-Seite filtern die Tags wirklich.</p>
+  </header>
+
+  <section class="dec" aria-label="Entschieden">
+    <div class="d"><span class="mono">Gruppe</span><b>Klein, eine Liste</b><p>Alle Tasks in derselben Liste (z.B. nur Tasks). Auf dem Board die nächsten zwei, Fortschritt über die ganze Gruppe.</p></div>
+    <div class="d"><span class="mono">Projekt</span><b>Gross, Inbox bis Tasks</b><p>Auf dem Board die nächsten zwei, die auf nichts warten. Fortschritt nur der aktuellen Etappe; ohne Etappen kein Balken.</p></div>
+    <div class="d"><span class="mono">Etappen</span><b>Roadmap = Abhängigkeit</b><p>Etappe 2 wartet auf Etappe 1. Datum optional. Selten: Chip „wartet auf …“ an einem Schritt.</p></div>
+    <div class="d"><span class="mono">Notizen</span><b>Karten, Lose, Tags</b><p>Eine Zeile schnell rein, landet bei „Lose“. Später auf eine Etappe ziehen, mit #tag filtern, zu einem Schritt machen.</p></div>
+    <div class="d"><span class="mono">Runde 1</span><b>Bleibt</b><p>Vorschlag darf Projektschritte wählen · leere Projekte ruhen unten · Brainstorm-Text wird erste Notizkarte.</p></div>
+  </section>
+
+  <div class="grid">
+    <div class="stage">
+      <div class="bar">
+        <div class="seg" role="group" aria-label="Ansicht"><button type="button" data-view="board" aria-pressed="true">Board</button><button type="button" data-view="project" aria-pressed="false">Projekt-Seite</button></div>
+        <div class="seg" role="group" aria-label="Gerät"><button type="button" data-dev="wb" aria-pressed="true">Desktop</button><button type="button" data-dev="st" aria-pressed="false">Handy</button></div>
+      </div>
+      <div class="frame" id="mock"></div>
+      <p class="caption" id="cap"></p>
+    </div>
+
+    <div class="qs">
+      <div id="qs" class="qs"></div>
+      <div class="out"><span class="mono">Deine Wahl</span><code id="summary"></code><button type="button" class="btn" id="copy">Kopieren</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const Q=[
+ {id:'split',title:'Ein PR oder zwei?',why:'Das ist inzwischen mehr als ein M-Schritt.',opts:[
+  {k:'two',t:'4.3a jetzt, 4.3b danach',d:'4.3a: Gruppen, Projekte, Etappen, nächste zwei auf dem Board (löst F10). 4.3b: Notizen und Tags, nur auf der Projekt-Seite.',rec:1},
+  {k:'one',t:'Alles in einem PR',d:'Später fertig und schwerer zu reviewen.'}]},
+ {id:'tags',title:'Tags über alle Projekte oder pro Projekt?',why:'Getippt im Notiztext (#bug), mit Vorschlägen beim Tippen.',opts:[
+  {k:'shared',t:'Gemeinsam',d:'#idee heisst überall dasselbe. Gefiltert wird vorerst nur im Projekt.',rec:1},
+  {k:'own',t:'Pro Projekt',d:'Jedes Projekt hat seine eigene Tag-Liste.'}]},
+ {id:'pick',title:'Welche Projektschritte darf der Vorschlag wählen?',why:'Runde 1: ja, Projektschritte dürfen vorgeschlagen werden. Jetzt sind zwei sichtbar.',opts:[
+  {k:'two',t:'Beide sichtbaren',d:'Die zwei, die auf nichts warten. Was du siehst, kann auch vorgeschlagen werden.',rec:1},
+  {k:'first',t:'Nur den ersten',d:'Der zweite ist nur Vorschau.'}]},
+ {id:'mixed',title:'Alte Gruppen mit Tasks in mehreren Listen?',why:'Deine zwei Gruppen haben nur Tasks. Bei anderen Nutzern kann eine Gruppe To-dos und Tasks mischen; neu darf eine Gruppe nur eine Liste haben.',opts:[
+  {k:'project',t:'Wird beim Umstieg ein Projekt',d:'Nichts wird verschoben; Name, Notizkarten und Tasks gehen mit. Gruppen-Tabelle bleibt.',rec:1},
+  {k:'majority',t:'Bleibt Gruppe, Rest wandert',d:'Die Liste mit den meisten Tasks gewinnt, die anderen Tasks wechseln in diese Liste.'}]},
+];
+const S={split:'two',tags:'shared',pick:'two',mixed:'project',view:'board',dev:'wb',tag:null};
+const I={grp:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2 6h12"/></svg>',
+ prj:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V4M2 4h9l-1.5 2.5L11 9H2"/></svg>'};
+const it=(t,m,cls='')=>`<div class="it ${cls}"><span class="ring"></span><div>${t}${m?`<span class="m">${m}</span>`:''}</div></div>`;
+
+function groupBox(){return `<div class="box"><div class="bh">${I.grp}<b>Notion för Vocj</b><span class="n">2/5</span><span class="chev">›</span></div><div class="prog"><i style="width:40%"></i></div>
+ ${it('Notion: CLAUDE.md neui Regle mache, damit Claude immer Changelog schribt')}${it('Notion fülle')}<span class="more">+1 weitere in dieser Gruppe</span></div>`}
+function projBox(hl){return `<div class="box p"><div class="bh">${I.prj}<b>Enderdragon</b><span class="n">Etappe 1/3</span><span class="chev">›</span></div><p class="sub">Bugs fixen · bis 30.11.</p><div class="prog"><i style="width:25%"></i></div>
+ ${it('Fix: Spear Swap geht nicht','kurz',hl?'hl':'')}${it('Fix: Bubble Lift geht nicht','kurz')}<span class="more">+5 weitere in diesem Projekt</span></div>`}
+function projNoStage(){return `<div class="box p"><div class="bh">${I.prj}<b>nothing-to-do</b><span class="n">läuft</span><span class="chev">›</span></div>${it('Dev-Server anlegen','mittel')}</div>`}
+
+function board(){
+ if(S.dev==='st') return `<div class="phone"><div class="sheet"><h4>Tasks <span>3 + 3 Bündel</span></h4>${projBox(S.pick)}${groupBox()}${projNoStage()}${it('Mathe-Serie 7 fertig','Schule · mittel')}${it('Bewerbung Ferienjob','lang · weich Fr')}</div>
+  <div class="tabs"><span>Pult</span><span>Kalender</span><span>Später</span><span>Projekte</span><span>Inbox</span></div></div>`;
+ return `<div class="wb">
+  <div class="col"><div class="colh">Inbox <span>2</span></div>${it('Velo-Licht kaufen','roh')}${it('Enderdragon: Whitelist-Mails','roh · gehört zu Enderdragon')}</div>
+  <div class="col"><div class="colh">To-dos <span>2</span></div>${it('Mail an Frau Keller','kurz')}${it('Zimmer lüften','kurz')}</div>
+  <div class="col"><div class="colh">Tasks <span>3</span></div>${projBox(S.pick)}${groupBox()}${projNoStage()}${it('Mathe-Serie 7 fertig','Schule · mittel')}</div>
+  <div class="col"><div class="colh">Später <span>3</span></div>${it('Lampe aus Holz bauen','Idee')}</div></div>`;
+}
+
+const notes=[
+ {t:'Salvador ist wegen Offline-Bot gestorben, Items weg. Pos x=700 z=-691',tags:['bug'],where:'Lose'},
+ {t:'Minecraft-Server mit Fabric-Lifesteal-Mod.',tags:[],where:'Lose',from:'aus Brainstorm'},
+ {t:'Spear Swap nur im Nether reproduzierbar',tags:['bug'],where:'Bugs fixen'},
+ {t:'Event-Idee: Drachenkampf am Eröffnungsabend',tags:['idee'],where:'Event'},
+ {t:'Fabric-Doku Lifesteal: modrinth.com/mod/lifesteal',tags:['link'],where:'Server öffnen'},
+];
+function noteHtml(n){const txt=n.t.replace(/#(\w+)/g,'<span class="ht">#$1</span>');return `<div class="note">${txt}<div class="nm">${n.tags.map(t=>`<span class="ht">#${t}</span>`).join(' ')}${n.from?`<span>${n.from}</span>`:''}<span class="act">→ Schritt</span></div></div>`}
+function notesPanel(){
+ const f=notes.filter(n=>!S.tag||n.tags.includes(S.tag));
+ const groups=['Lose','Bugs fixen','Server öffnen','Event'];
+ return `<aside class="notes"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>Notizen</b><span class="mono">${S.split==='two'?'kommt in 4.3b':'in 4.3'}</span></div>
+  <div class="qn">Notiz … (Enter speichert, #tag geht direkt)</div>
+  <div class="tags">${['bug','idee','link'].map(t=>`<button type="button" class="tag" data-tag="${t}" aria-pressed="${S.tag===t}">#${t}</button>`).join('')}${S.tags==='shared'?'<span class="caption" style="align-self:center">gemeinsam mit allen Projekten</span>':''}</div>
+  ${groups.map(g=>{const ns=f.filter(n=>n.where===g);if(!ns.length&&g!=='Lose')return '';return `<div class="pile"><span class="mono">${g==='Lose'?'Lose · noch keiner Etappe zugeordnet':'Etappe: '+g}</span>${ns.map(noteHtml).join('')||'<div class="drop">Keine Notiz mit diesem Tag</div>'}</div>`}).join('')}
+  <div class="drop">Notiz auf eine Etappe links ziehen, um sie einzuordnen.</div></aside>`;
+}
+function roadmap(){
+ return `<div class="road"><span class="mono">Roadmap · heute 17.11.</span><svg viewBox="0 0 600 70" role="img" aria-label="Drei Etappen: Bugs fixen bis 30.11., Server öffnen bis 14.12., Event ohne Datum">
+  <line x1="20" y1="30" x2="580" y2="30" stroke="var(--line)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="20" y1="30" x2="120" y2="30" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="60" y1="16" x2="60" y2="44" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="3 3"/><text x="60" y="58" text-anchor="middle" font-size="10" fill="var(--warn)" font-family="IBM Plex Mono,monospace">heute</text>
+  <circle cx="200" cy="30" r="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/><text x="200" y="12" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)" font-family="Space Grotesk,sans-serif">Bugs fixen</text><text x="200" y="58" text-anchor="middle" font-size="10" fill="var(--faint)" font-family="IBM Plex Mono,monospace">30.11.</text>
+  <circle cx="420" cy="30" r="8" fill="var(--surface)" stroke="var(--faint)" stroke-width="3"/><text x="420" y="12" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)" font-family="Space Grotesk,sans-serif">Server öffnen</text><text x="420" y="58" text-anchor="middle" font-size="10" fill="var(--faint)" font-family="IBM Plex Mono,monospace">14.12.</text>
+  <circle cx="540" cy="30" r="8" fill="var(--surface)" stroke="var(--faint)" stroke-width="3" stroke-dasharray="3 2"/><text x="540" y="12" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)" font-family="Space Grotesk,sans-serif">Event</text><text x="540" y="58" text-anchor="middle" font-size="10" fill="var(--faint)" font-family="IBM Plex Mono,monospace">ohne Datum</text>
+ </svg><p class="caption">Etappen mit Datum stehen nach Datum, ohne Datum einfach danach. Das Datum wird zur weichen Deadline der Schritte darin.</p></div>`;
+}
+function stages(){
+ return `<div style="display:grid;gap:10px">
+  <section class="stg cur"><div class="sh"><b>1 · Bugs fixen</b><span>bis 30.11. · 1/4 erledigt</span><span class="st" style="color:var(--accent)">jetzt</span></div><div class="prog"><i style="width:25%"></i></div>
+   <span class="nextlbl">Als Nächstes</span>${it('Fix: Spear Swap geht nicht','Tasks · kurz')}${it('Fix: Bubble Lift geht nicht','Tasks · kurz')}
+   <span class="mono">Danach</span>${it('Fix: Rüstung bei Lifesteal','Tasks · <span class="chip w">wartet auf: Spear Swap</span>','wait')}${it('Enderdragon: Whitelist-Mails','Inbox · noch nicht sortiert')}</section>
+  <section class="stg later"><div class="sh"><b>2 · Server öffnen</b><span>bis 14.12.</span><span class="st" style="color:var(--faint)">wartet auf Etappe 1</span></div>${it('Backup-Skript testen','To-dos · kurz','wait')}${it('Ankündigung im Discord','To-dos · kurz','wait')}</section>
+  <section class="stg later"><div class="sh"><b>3 · Event</b><span>ohne Datum</span><span class="st" style="color:var(--faint)">wartet auf Etappe 2</span></div>${it('Drachenkampf vorbereiten','Tasks · lang','wait')}</section>
+  <div class="drop">+ Etappe · + Schritt</div></div>`;
+}
+function project(){
+ const narrow=S.dev==='st';
+ const body=`<div class="pp ${narrow?'narrow':''}"><div class="ph"><h2>Enderdragon</h2><span class="caption">Projekt · Inbox, To-dos und Tasks · Etappe 1 von 3</span></div>${roadmap()}<div class="cols2">${stages()}${notesPanel()}</div></div>`;
+ return narrow?`<div class="phone">${body}<div class="tabs"><span>Pult</span><span>Kalender</span><span>Später</span><span class="on">Projekte</span><span>Inbox</span></div></div>`:body;
+}
+function render(){
+ document.getElementById('qs').innerHTML=Q.map((q,i)=>`<section class="q"><h3>${i+1}. ${q.title}</h3><p class="why">${q.why}</p><div class="opts">${q.opts.map(o=>`<button type="button" class="opt" data-q="${q.id}" data-k="${o.k}" aria-pressed="${S[q.id]===o.k}"><b>${o.t}${o.rec?'<span class="rec">Vorschlag</span>':''}</b><span>${o.d}</span></button>`).join('')}</div></section>`).join('');
+ document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view));
+ document.querySelectorAll('[data-dev]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.dev===S.dev));
+ document.getElementById('mock').innerHTML=S.view==='board'?board():project();
+ document.getElementById('cap').textContent=S.view==='board'
+  ?(S.pick==='two'?'Projekt- und Gruppenkarten stehen in der Spalte ihrer Schritte. Grün umrandet: der aktuelle Vorschlag (beide sichtbaren Projektschritte dürfen es sein). Ein Projektschritt in der Inbox bleibt dort, bis er sortiert ist.':'Projekt- und Gruppenkarten stehen in der Spalte ihrer Schritte. Nur der erste Projektschritt darf vorgeschlagen werden.')
+  :'Projekt-Seite: Roadmap oben, Etappen links (nächste zwei oben, Wartende blass), Notizen rechts. Tipp auf einen Tag filtert.';
+ document.getElementById('summary').textContent=`4.3 Runde 2: PR ${S.split} · Tags ${S.tags} · Vorschlag ${S.pick} · gemischte Gruppen ${S.mixed}`;
+}
+document.addEventListener('click',e=>{
+ const o=e.target.closest('.opt');if(o){S[o.dataset.q]=o.dataset.k;render();return}
+ const v=e.target.closest('[data-view]');if(v){S.view=v.dataset.view;render();return}
+ const d=e.target.closest('[data-dev]');if(d){S.dev=d.dataset.dev;render();return}
+ const t=e.target.closest('[data-tag]');if(t){S.tag=S.tag===t.dataset.tag?null:t.dataset.tag;render();return}
+ if(e.target.id==='copy'){const b=e.target;navigator.clipboard.writeText(document.getElementById('summary').textContent).then(()=>{b.textContent='Kopiert';setTimeout(()=>b.textContent='Kopieren',1500)}).catch(()=>{const r=document.createRange();r.selectNodeContents(document.getElementById('summary'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Markiert, Strg+C'})}
+});
+render();
+</script>
