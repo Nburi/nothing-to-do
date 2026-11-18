@@ -18,6 +18,11 @@ final readonly class Block
         public ?int $categoryId,
         public ?int $templateId = null,
         public ?string $title = null,
+        // Step 4.1: the editor needs to know which row a block comes from. Both are additive and
+        // ignored by the engine: the schedule_events row (a one-off, or an occurrence changed
+        // "this week only"), and whether that occurrence differs from its template this week.
+        public ?int $eventId = null,
+        public bool $changed = false,
     ) {}
 
     /** Real elapsed minutes, which is what sessions and capacity are measured in. */

@@ -36,7 +36,7 @@
         data-date="{{ $dateKey }}"
         x-data
         x-init="window.plannerDaySortable($el, $wire)"
-        class="flex min-h-[3rem] flex-1 flex-col gap-1.5"
+        class="flex min-h-12 flex-1 flex-col gap-1.5"
     >
         @forelse ($day['tasks'] as $item)
             @include('livewire.partials.planner-task-chip', [...$item, 'showRemove' => true])

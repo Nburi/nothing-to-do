@@ -290,6 +290,12 @@ return [
         'dayEndTime' => 'Schlafenszeit',
         'eventBufferBefore' => 'Wegzeit davor',
         'eventBufferAfter' => 'Wegzeit danach',
+
+        // Step 4.1: categories in the shell settings and the week plan editor.
+        'newName' => 'Name',
+        'newColor' => 'Farbe',
+        'newPomodoro' => 'Pomodoro-Sessions',
+        'areaName' => 'Name des Bereichs',
     ],
 
 ];

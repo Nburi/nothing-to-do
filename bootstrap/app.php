@@ -31,7 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // when the unauthenticated POST answers 401 with a WWW-Authenticate
         // header, and a redirect silently ends the handshake before it starts.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->is('mcp'),
+            // board/capture: the new app's capture line talks JSON (step 2.3); mcp: the OAuth MCP endpoint.
+            fn (Request $request) => $request->is('api/*') || $request->is('mcp') || $request->is('board/capture*'),
         );
 
         // Every rendered HTML error page (404/403/419/500/...) is counted for
@@ -53,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:send-event-start-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-event-upcoming-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-progress-reminders')->everyMinute()->withoutOverlapping();
+        $schedule->command('app:send-evening-nudges')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-day-preview-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:send-reminder-notifications')->everyMinute()->withoutOverlapping();
         $schedule->command('app:promote-day-plans-to-today')->everyMinute()->withoutOverlapping();

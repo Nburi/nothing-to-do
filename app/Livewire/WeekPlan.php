@@ -212,7 +212,7 @@ class WeekPlan extends Component
         ];
 
         if ($this->eventKind === 'category') {
-            $rules['eventCategoryId'] = ['required', Rule::exists('event_categories', 'id')->where('user_id', auth()->id())];
+            $rules['eventCategoryId'] = ['required', Rule::exists('event_categories', 'id')->where('user_id', auth()->id())->whereNull('deleted_at')];
         } else {
             $this->eventTitle = trim($this->eventTitle);
             $rules['eventTitle'] = ['required', 'string', 'max:255'];

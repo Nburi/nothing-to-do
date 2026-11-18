@@ -12,10 +12,10 @@
             <div class="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3 shadow-map" role="status">
                 <p class="min-w-0 text-sm text-ink-soft">{{ $appliedLabel }}</p>
                 <div class="flex flex-none items-center gap-1">
-                    <button type="button" wire:click="undo" class="rounded-full px-3 py-1.5 text-sm font-medium text-forest transition hover:bg-forest-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-forest sm:py-1">
+                    <button type="button" wire:click="undo" class="rounded-full px-3 py-1.5 text-sm font-medium text-forest transition hover:bg-forest-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest sm:py-1">
                         Rückgängig
                     </button>
-                    <button type="button" wire:click="acknowledge" class="grid h-8 w-8 place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest" aria-label="Schliessen">
+                    <button type="button" wire:click="acknowledge" class="grid h-8 w-8 place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest" aria-label="Schliessen">
                         <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     </button>
                 </div>
@@ -49,7 +49,7 @@
                     <button
                         type="button"
                         wire:click="dismiss"
-                        class="grid h-8 w-8 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                        class="grid h-8 w-8 flex-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest"
                         aria-label="Heute nicht mehr anzeigen"
                         title="Heute nicht mehr anzeigen"
                     >
@@ -64,14 +64,14 @@
                             wire:click="reschedule('{{ $when }}')"
                             wire:loading.attr="disabled"
                             wire:target="reschedule"
-                            class="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-ink-faint focus:outline-none focus-visible:ring-2 focus-visible:ring-forest disabled:opacity-60 sm:py-1"
+                            class="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-ink-faint focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest disabled:opacity-60 sm:py-1"
                         >{{ $label }}</button>
                     @endforeach
                     <button
                         type="button"
                         @click="open = !open"
                         :aria-expanded="open"
-                        class="rounded-full px-2.5 py-1.5 text-xs text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest sm:py-1"
+                        class="rounded-full px-2.5 py-1.5 text-xs text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest sm:py-1"
                     >
                         <span x-text="open ? 'Liste ausblenden' : 'Welche?'"></span>
                     </button>

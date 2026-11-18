@@ -15,6 +15,7 @@ final readonly class OneOffChange
         public ?string $start = null,
         public ?int $durationMinutes = null,
         public bool $cancelled = false,
+        public ?int $eventId = null, // step 4.1, editor only: the row that holds this change
     ) {}
 
     public function key(): string

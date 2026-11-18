@@ -14,5 +14,9 @@ final readonly class OneOffBlock
         public int $durationMinutes,
         public ?int $categoryId = null,
         public ?string $title = null,
+        // Step 4.1 (editor only): the schedule_events row, and the template of an occurrence that
+        // was moved into another category this week only (the reader turns it into a one-off).
+        public ?int $eventId = null,
+        public ?int $templateId = null,
     ) {}
 }

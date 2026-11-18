@@ -48,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
             Route::pattern($param, '[0-9]+');
         }
 
+        // Step 4.1: the week plan editor's "Rückgängig" journal listens to week plan model events.
+        \App\Services\Planning\WeekPlanJournal::boot();
+
         // Production sits behind a reverse proxy that terminates TLS — `trustProxies(at: '*')`
         // in bootstrap/app.php already makes Laravel trust its X-Forwarded-Proto header, so
         // url()/route() generation *should* already come out https without this. Forcing the
