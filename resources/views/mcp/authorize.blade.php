@@ -69,7 +69,7 @@
             @csrf
             @method('DELETE')
             <input type="hidden" name="auth_token" value="{{ $authToken }}">
-            <button type="submit" class="w-full rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
+            <button type="submit" class="w-full rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
                 Abbrechen
             </button>
         </form>
@@ -77,7 +77,7 @@
         <form method="POST" action="{{ route('passport.authorizations.approve') }}" class="flex-1">
             @csrf
             <input type="hidden" name="auth_token" value="{{ $authToken }}">
-            <button type="submit" class="w-full rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white transition hover:bg-forest/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
+            <button type="submit" class="w-full rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white transition hover:bg-forest/90 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
                 Verbinden
             </button>
         </form>

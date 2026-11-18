@@ -108,6 +108,31 @@ class WeekReview
             return [null, 'Diese Woche liegt noch vor dir.'];
         }
 
+        ['kind' => $kind, 'average' => $average] = self::judge($counts, $monday, $total, $isCurrent);
+
+        return [$average, match ($kind) {
+            'nothing' => $isCurrent ? 'Diese Woche ist noch nichts erledigt — es ist noch Zeit.' : 'In dieser Woche wurde nichts erledigt.',
+            'running' => "Bisher {$total} erledigt — dein Schnitt der letzten Wochen liegt bei {$average}.",
+            'running_first' => "Bisher {$total} erledigt. Die Woche läuft noch.",
+            'best' => 'Deine stärkste Woche bisher.',
+            'first' => 'Deine erste Woche mit erledigten Aufgaben.',
+            'above' => "Über deinem Schnitt — sonst waren es etwa {$average}.",
+            'below' => "Ruhiger als sonst — üblich sind etwa {$average}.",
+            'usual' => "Ziemlich genau dein Schnitt (etwa {$average}).",
+        }];
+    }
+
+    /**
+     * The judgement behind the sentence, without its words, so other screens can phrase it from
+     * lang files (the Sunday review, refactor step 4.4, judges the week on its last day).
+     * Kinds: nothing, running, running_first (a week that has begun but is not over: never
+     * compared), best, first, above, below, usual. The average is of the COMPARE_WEEKS before.
+     *
+     * @param  array<string, int>  $counts  completions per local date
+     * @return array{kind: string, average: int}
+     */
+    public static function judge(array $counts, Carbon $monday, int $total, bool $running): array
+    {
         $weekTotals = [];
         foreach ($counts as $date => $n) {
             $weekKey = Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString();
@@ -127,29 +152,17 @@ class WeekReview
             }
         }
 
-        if ($total === 0) {
-            return [$average, $isCurrent ? 'Diese Woche ist noch nichts erledigt — es ist noch Zeit.' : 'In dieser Woche wurde nichts erledigt.'];
-        }
+        $kind = match (true) {
+            $total === 0 => 'nothing',
+            $running => $average > 0 ? 'running' : 'running_first',
+            $bestBefore > 0 && $total > $bestBefore => 'best',
+            $average === 0 => 'first',
+            $total >= $average * 1.15 => 'above',
+            $total <= $average * 0.85 => 'below',
+            default => 'usual',
+        };
 
-        if ($isCurrent) {
-            return [$average, $average > 0
-                ? "Bisher {$total} erledigt — dein Schnitt der letzten Wochen liegt bei {$average}."
-                : "Bisher {$total} erledigt. Die Woche läuft noch."];
-        }
-
-        if ($bestBefore > 0 && $total > $bestBefore) {
-            return [$average, 'Deine stärkste Woche bisher.'];
-        }
-
-        if ($average === 0) {
-            return [$average, 'Deine erste Woche mit erledigten Aufgaben.'];
-        }
-
-        return [$average, match (true) {
-            $total >= $average * 1.15 => "Über deinem Schnitt — sonst waren es etwa {$average}.",
-            $total <= $average * 0.85 => "Ruhiger als sonst — üblich sind etwa {$average}.",
-            default => "Ziemlich genau dein Schnitt (etwa {$average}).",
-        }];
+        return ['kind' => $kind, 'average' => $average];
     }
 
     /**

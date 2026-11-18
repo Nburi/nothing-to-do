@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ShellCaptureController;
 use App\Livewire\Admin\AnnouncementEditor;
 use App\Livewire\Admin\ErrorLog;
 use App\Livewire\Admin\HelpEditor;
@@ -15,6 +16,10 @@ use App\Livewire\Progress;
 use App\Livewire\PublicHelp;
 use App\Livewire\Schedule;
 use App\Livewire\Settings;
+use App\Livewire\Shell\Board as ShellBoard;
+use App\Livewire\Shell\Ideas as ShellIdeas;
+use App\Livewire\Shell\Review as ShellReview;
+use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
 use App\Livewire\WeekPlan;
@@ -81,6 +86,36 @@ Route::get('/sitemap.xml', function () {
 
     return response($xml)->header('Content-Type', 'application/xml');
 })->name('sitemap');
+
+// The new app of the refactor (phase 2 on): Werkbank on desktop, Stapel on mobile. It lives
+// beside the old screens until the switch (step 5.4) makes it the only one.
+Route::get('/board', ShellBoard::class)
+    ->middleware('auth')
+    ->name('shell.board');
+
+// Step 3.4: "Ideen", the browse view of Later (the old Bastelideen).
+Route::get('/board/ideas', ShellIdeas::class)
+    ->middleware('auth')
+    ->name('shell.ideas');
+
+// Step 4.4: the quiet Sunday review (reached from a line on the board on Sunday and Monday).
+Route::get('/board/review', ShellReview::class)
+    ->middleware('auth')
+    ->name('shell.review');
+
+Route::get('/board/settings', ShellSettings::class)
+    ->middleware('auth')
+    ->name('shell.settings');
+
+// The capture line (step 2.3): JSON, so a dropped connection keeps the typed text.
+Route::post('/board/capture', [ShellCaptureController::class, 'store'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('shell.capture');
+
+Route::delete('/board/capture/{task}', [ShellCaptureController::class, 'destroy'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->whereNumber('task')
+    ->name('shell.capture.undo');
 
 // Public, guest-readable mirror of the Hilfe-Center — see App\Livewire\
 // PublicHelp for why this is a separate route/component from /app/help

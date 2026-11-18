@@ -100,7 +100,7 @@
             </div>
         </div>
 
-        <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/90 backdrop-blur-sm">
+        <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/90 backdrop-blur-xs">
             <div class="mx-auto grid max-w-md grid-cols-4">
                 @php
                     $tabs = [

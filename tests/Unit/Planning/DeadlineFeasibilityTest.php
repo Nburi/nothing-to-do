@@ -128,6 +128,31 @@ class DeadlineFeasibilityTest extends TestCase
     }
 
     /** @param  list<PlannedTask>  $tasks */
+    public function test_too_much_hard_work_never_makes_an_earlier_hard_deadline_late(): void
+    {
+        // Monday 20:10: 2 sessions left tonight, 4 on Tuesday, 4 on Wednesday. Found by EveningFlowTest (step 1.8):
+        // planning hard work as late as possible used to push the Tuesday task out as well.
+        $result = $this->check([
+            new PlannedTask(1, Size::Long, hardDeadline: '2026-11-10'),
+            new PlannedTask(2, Size::Block, estimatedSessions: 12, hardDeadline: '2026-11-11'),
+        ], now: '2026-11-09 20:10');
+
+        $this->assertSame([2], $result->lateTaskIds, 'only the task that really cannot fit');
+        $this->assertSame('2026-11-10', $result->finishesOn[1]);
+    }
+
+    public function test_soft_work_still_gives_way_when_that_keeps_every_hard_deadline(): void
+    {
+        $result = $this->check([
+            new PlannedTask(1, Size::Block, estimatedSessions: 10, hardDeadline: '2026-11-11'),
+            new PlannedTask(2, Size::Block, estimatedSessions: 4, softDeadline: '2026-11-10'),
+            new PlannedTask(3, Size::Short, hardDeadline: '2026-11-09'),
+        ]);
+
+        $this->assertSame([2], $result->lateTaskIds);
+        $this->assertSame([2], $result->slippedSoftTaskIds);
+    }
+
     private function check(array $tasks, string $now = '2026-11-09 08:00', ?WeekPlan $plan = null): FeasibilityResult
     {
         $plan ??= Fixtures::week();

@@ -16,6 +16,7 @@ class EventCategoryResource extends JsonResource
             'name' => $this->name,
             'color' => $this->color,
             'pomodoro_enabled' => $this->pomodoro_enabled,
+            'area_ids' => $this->areas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'sort_order' => $this->sort_order,
             // What the category's Pomodoro focus sessions suggest (Kategorie-Aufgaben-Verknüpfung).
             // task_source is null (no link) or one of tasks|project|group|agenda_entry|agenda_generic|text.
