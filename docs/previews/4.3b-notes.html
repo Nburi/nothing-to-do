@@ -1,0 +1,208 @@
+<title>Projekt-Notizen und Tags</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: decided strip, then the live mock (project page, desktop/phone) beside the open questions. Tokens = the app's Topografie theme. */
+:root{
+  --bg:#F1EDE2;--surface:#FCFBF7;--ink:#23291F;--soft:#4E5345;--faint:#6A6E59;--line:#E3DECF;
+  --accent:#1F6B3B;--accent-fg:#FFFFFF;--accent-soft:#E2EDE3;--warn:#895C1F;--warn-soft:#F3E8D6;
+  --shadow:0 1px 2px rgba(35,41,31,.08),0 2px 8px rgba(35,41,31,.05);
+  --display:'Space Grotesk',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--r:10px;--rl:16px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10140E;--surface:#191E16;--ink:#E8EADF;--soft:#A7AC99;--faint:#858A77;--line:#2C3326;--accent:#57A972;--accent-fg:#0B1A10;--accent-soft:#1E3324;--warn:#D29A4E;--warn-soft:#33281A;--shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.3);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10140E;--surface:#191E16;--ink:#E8EADF;--soft:#A7AC99;--faint:#858A77;--line:#2C3326;--accent:#57A972;--accent-fg:#0B1A10;--accent-soft:#1E3324;--warn:#D29A4E;--warn-soft:#33281A;--shadow:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.3);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:14px;line-height:1.45;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+h1,h2,h3,h4{text-wrap:balance;margin:0}p{margin:0}
+.wrap{max-width:1280px;margin:0 auto;display:grid;gap:20px}
+.top{display:grid;gap:8px;max-width:80ch}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.lede{color:var(--soft)}
+.mono{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.dec{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.d{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;display:grid;gap:3px}
+.d b{font-size:14px}.d p{color:var(--soft);font-size:12.5px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:20px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{display:grid;gap:10px;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px}
+.seg button{all:unset;cursor:pointer;padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--soft)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button:focus-visible,.opt:focus-visible,.tagf:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.frame{background:var(--bg);border:1px solid var(--line);border-radius:var(--rl);box-shadow:var(--shadow);overflow-x:auto}
+.caption{font-size:12px;color:var(--soft)}
+.qs{display:grid;gap:12px}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:14px;display:grid;gap:9px}
+.q h3{font-size:14px;font-weight:600}.q .why{color:var(--soft);font-size:12.5px}
+.opts{display:grid;gap:6px}
+.opt{all:unset;cursor:pointer;display:grid;gap:2px;border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;background:var(--bg)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opt b{font-size:13px;font-weight:600}.opt span{font-size:12px;color:var(--soft)}
+.rec{font-family:var(--mono);font-size:9.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
+.out{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:14px;display:grid;gap:8px}
+.out code{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-word;display:block}
+.btn{all:unset;cursor:pointer;border-radius:999px;padding:6px 14px;font-weight:600;font-size:12.5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);justify-self:start}
+/* mock */
+.pp{min-width:860px;padding:18px;display:grid;gap:14px}
+.pp.narrow{min-width:0;padding:14px 12px 70px}
+.ph{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.ph h2{font-size:21px}
+.cols2{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;align-items:start}
+.one{display:grid;gap:12px}
+.stg{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:12px;display:grid;gap:7px}
+.stg.cur{border-color:var(--accent)}
+.sh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.sh b{font-size:14px}.sh span{font-size:11.5px;color:var(--faint)}
+.it{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;display:flex;gap:9px;font-size:12.5px;align-items:flex-start}
+.it.next{border-color:var(--accent)}
+.it .m{display:block;font-size:11px;color:var(--faint)}
+.ring{width:14px;height:14px;border-radius:50%;border:2px solid var(--faint);flex:none;margin-top:1px;opacity:.7}
+.notes{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:12px;display:grid;gap:9px;align-content:start}
+.qn{border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;color:var(--faint);font-size:12.5px;background:var(--bg);display:flex;justify-content:space-between;gap:8px}
+.qn kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tagf{all:unset;cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:11.5px;color:var(--soft);background:var(--bg)}
+.tagf[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.pile{display:grid;gap:6px}
+.note{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;font-size:12.5px;display:grid;gap:5px;position:relative}
+.note .nm{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--faint)}
+.note .act{margin-left:auto;display:flex;gap:6px}
+.note .act span{color:var(--accent);font-weight:600}
+.grip{position:absolute;left:-1px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--line)}
+.ht{color:var(--accent);font-weight:600}
+.chipstage{border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--soft);background:var(--surface)}
+.drop{border:1px dashed var(--line);border-radius:var(--r);padding:6px 8px;font-size:11px;color:var(--faint)}
+.lose{border:1px dashed var(--warn);background:var(--warn-soft);border-radius:var(--rl);padding:10px;display:grid;gap:6px}
+.phone{width:360px;max-width:100%;margin:16px auto;border:1px solid var(--line);border-radius:28px;background:var(--bg);overflow:hidden;position:relative}
+.tabs{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around;background:var(--surface);border-top:1px solid var(--line);padding:8px 4px 12px;font-size:10.5px;font-weight:600;color:var(--soft)}
+.tabs .on{color:var(--accent)}
+.subtabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px;justify-self:start}
+.subtabs span{padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;color:var(--soft)}
+.subtabs .on{background:var(--ink);color:var(--bg)}
+.sheet{position:absolute;left:0;right:0;bottom:56px;background:var(--surface);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:12px;display:grid;gap:8px;box-shadow:var(--shadow)}
+.sheet .row{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;font-size:12.5px}
+.sheet .row.on{border-color:var(--accent);background:var(--accent-soft)}
+.groupbox{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--faint);border-radius:var(--rl);padding:12px;display:grid;gap:8px}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="mono">Refactor 4.3b · Vorschau</span>
+    <h1>Notizen und Tags in Projekten</h1>
+    <p class="lede">Das Konzept steht seit Runde 2. Offen sind nur noch Platz, Sortieren auf dem Handy, Gruppen und was „→ Schritt“ genau macht. Die Tags filtern im Mock wirklich.</p>
+  </header>
+
+  <section class="dec" aria-label="Schon entschieden">
+    <div class="d"><span class="mono">Schnell</span><b>Eine Zeile, Enter</b><p>Feld „Notiz …“, Enter speichert. Neue Notizen landen bei „Lose“.</p></div>
+    <div class="d"><span class="mono">Ordnen</span><b>Auf eine Etappe ziehen</b><p>Desktop per Drag & Drop. Notizen gehören dann zu dieser Etappe.</p></div>
+    <div class="d"><span class="mono">Tags</span><b>#tag im Text, gemeinsam</b><p>Beim Tippen von # kommen deine Tags als Vorschlag. Chips oben filtern.</p></div>
+    <div class="d"><span class="mono">Daten</span><b>Brainstorm wird Notiz</b><p>Der alte Brainstorm-Text wird die erste Karte bei „Lose“. Nichts geht verloren.</p></div>
+  </section>
+
+  <div class="grid">
+    <div class="stage">
+      <div class="bar">
+        <div class="seg" role="group" aria-label="Gerät"><button type="button" data-dev="wb" aria-pressed="true">Desktop</button><button type="button" data-dev="st" aria-pressed="false">Handy</button></div>
+        <div class="seg" role="group" aria-label="Ansicht"><button type="button" data-view="project" aria-pressed="true">Projekt</button><button type="button" data-view="group" aria-pressed="false">Gruppe</button></div>
+      </div>
+      <div class="frame" id="mock"></div>
+      <p class="caption" id="cap"></p>
+    </div>
+    <div class="qs">
+      <div id="qs" class="qs"></div>
+      <div class="out"><span class="mono">Deine Wahl</span><code id="summary"></code><button type="button" class="btn" id="copy">Kopieren</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const Q=[
+ {id:'place',title:'Wo stehen die Notizen?',why:'Runde 2 zeigte eine Spalte rechts. Alternative: direkt in den Etappen, unter den Schritten.',opts:[
+  {k:'column',t:'Eigene Spalte rechts',d:'Links Etappen und Schritte, rechts alle Notizen, gruppiert nach „Lose“ und Etappe. Auf dem Handy ein Umschalter „Schritte | Notizen“.',rec:1},
+  {k:'inline',t:'In den Etappen',d:'Unter den Schritten jeder Etappe stehen ihre Notizen; „Lose“ oben über allen Etappen. Alles in einer Liste, auch auf dem Handy.'}]},
+ {id:'phone',title:'Wie ordnest du auf dem Handy?',why:'Ziehen über eine lange Seite ist auf dem Handy fummelig.',opts:[
+  {k:'chip',t:'Tippen auf die Etappe',d:'Jede Notiz hat einen kleinen Etappen-Chip. Tippen öffnet ein Blatt mit den Etappen, ein Tipp ordnet zu.',rec:1},
+  {k:'drag',t:'Lange drücken, ziehen',d:'Wie auf dem Desktop, mit Finger. Schnell, aber ungenau bei langen Projekten.'}]},
+ {id:'groups',title:'Bekommen Gruppen auch Notizen?',why:'Die alten Gruppen hatten Notizkarten (Tabelle group_notes, echte Daten auf Prod).',opts:[
+  {k:'yes',t:'Ja, ohne Etappen',d:'Gruppen bekommen dieselben Notizkarten mit Tags, einfach ohne Etappen. Die alten Gruppen-Notizen kommen dabei zurück.',rec:1},
+  {k:'no',t:'Nein, nur Projekte',d:'Gruppen bleiben schlank. Die alten Notizkarten bleiben nur im Export.'}]},
+ {id:'step',title:'Was macht „→ Schritt“?',why:'Eine Notiz, die Arbeit ist, wird zum Schritt.',opts:[
+  {k:'move',t:'Notiz wird zum Schritt',d:'Die Notiz verschwindet und wird ein Schritt in ihrer Etappe (Lose: ohne Etappe). Rückgängig möglich.',rec:1},
+  {k:'keep',t:'Schritt dazu, Notiz bleibt',d:'Ein neuer Schritt entsteht, die Notiz bleibt stehen und zeigt „→ Schritt angelegt“.'}]},
+ {id:'text',title:'Wie viel Text in einer Notiz?',why:'Der alte Brainstorm konnte lang sein und Markdown haben.',opts:[
+  {k:'plain',t:'Einfacher Text',d:'Zeilenumbrüche bleiben (Shift+Enter), Links sind klickbar, kein Markdown. Lange Notizen klappen nach 4 Zeilen ein.',rec:1},
+  {k:'md',t:'Markdown',d:'Fett, Listen, Checkboxen wie früher im Brainstorm. Mehr Möglichkeiten, mehr Lärm.'}]},
+];
+const S={place:'column',phone:'chip',groups:'yes',step:'move',text:'plain',dev:'wb',view:'project',tag:null};
+const notes=[
+ {t:'Minecraft-Server mit Fabric-Lifesteal-Mod.',tags:[],where:'Lose',from:'aus Brainstorm'},
+ {t:'Salvador ist gestorben, Items weg. Pos x=700 z=-691 #bug',tags:['bug'],where:'Lose'},
+ {t:'Spear Swap nur im Nether reproduzierbar #bug',tags:['bug'],where:'Bugs fixen'},
+ {t:'Fabric-Doku Lifesteal: modrinth.com/mod/lifesteal #link',tags:['link'],where:'Server öffnen'},
+ {t:'Drachenkampf am Eröffnungsabend #idee',tags:['idee'],where:'Event'},
+];
+const stagesDef=[{n:'Bugs fixen',d:'bis 30.11.',steps:[['Fix: Spear Swap geht nicht',1],['Fix: Bubble Lift geht nicht',1],['Fix: Rüstung bei Lifesteal',0]]},{n:'Server öffnen',d:'bis 14.12.',steps:[['Backup-Skript testen',0]]},{n:'Event',d:'ohne Datum',steps:[['Drachenkampf vorbereiten',0]]}];
+const fmt=t=>t.replace(/(modrinth\.com\S*)/,'<u>$1</u>').replace(/#(\w+)/g,'<span class="ht">#$1</span>');
+const it=(t,next)=>`<div class="it ${next?'next':''}"><span class="ring"></span><div>${t}${next?'<span class="m" style="color:var(--accent)">ALS NÄCHSTES</span>':''}</div></div>`;
+function noteHtml(n){
+ const where = S.phone==='chip'&&S.dev==='st' ? `<span class="chipstage">${n.where==='Lose'?'Etappe wählen':n.where} ▾</span>` : '';
+ return `<div class="note">${S.dev==='wb'?'<span class="grip" aria-hidden="true"></span>':''}${fmt(n.t)}<div class="nm">${n.from?`<span>${n.from}</span>`:''}${where}<span class="act"><span>→ Schritt</span><span style="color:var(--faint);font-weight:500">⋯</span></span></div></div>`;
+}
+function visible(){return notes.filter(n=>!S.tag||n.tags.includes(S.tag))}
+function quick(){return `<div class="qn"><span>Notiz … (#tag geht direkt)</span><kbd>Enter</kbd></div>`}
+function tagRow(){return `<div class="tags">${['bug','idee','link'].map(t=>`<button type="button" class="tagf" data-tag="${t}" aria-pressed="${S.tag===t}">#${t}</button>`).join('')}<span class="caption">gemeinsam mit allen Projekten</span></div>`}
+function column(){
+ const v=visible();
+ const groups=['Lose','Bugs fixen','Server öffnen','Event'];
+ return `<aside class="notes"><b>Notizen</b>${quick()}${tagRow()}${groups.map(g=>{const ns=v.filter(n=>n.where===g);if(!ns.length&&g!=='Lose')return '';return `<div class="pile"><span class="mono">${g==='Lose'?'Lose · noch keiner Etappe':'Etappe: '+g}</span>${ns.map(noteHtml).join('')||'<div class="drop">Keine Notiz mit diesem Tag</div>'}</div>`}).join('')}${S.dev==='wb'?'<div class="drop">Ziehen auf eine Etappe ordnet die Notiz zu.</div>':''}</aside>`;
+}
+function stageBlock(s,i,withNotes){
+ const v=visible().filter(n=>n.where===s.n);
+ return `<section class="stg ${i===0?'cur':''}"><div class="sh"><b>${i+1} · ${s.n}</b><span>${s.d}</span></div>${s.steps.map(([t,n])=>it(t,n)).join('')}
+  ${withNotes?`${v.length?`<span class="mono" style="margin-top:4px">Notizen</span>${v.map(noteHtml).join('')}`:''}`:''}</section>`;
+}
+function projectMock(){
+ const narrow=S.dev==='st';
+ let body;
+ if(S.place==='column'&&!narrow){
+  body=`<div class="cols2"><div class="one">${stagesDef.map((s,i)=>stageBlock(s,i,false)).join('')}</div>${column()}</div>`;
+ } else if(S.place==='column'&&narrow){
+  body=`<div class="subtabs"><span>Schritte</span><span class="on">Notizen</span></div>${column()}`;
+ } else {
+  const lose=visible().filter(n=>n.where==='Lose');
+  body=`<div class="one"><div class="lose"><span class="mono" style="color:var(--warn)">Lose · ${lose.length} Notizen</span>${quick()}${tagRow()}${lose.map(noteHtml).join('')}</div>${stagesDef.map((s,i)=>stageBlock(s,i,true)).join('')}</div>`;
+ }
+ const sheet = narrow&&S.phone==='chip' ? `<div class="sheet"><span class="mono">Notiz einer Etappe zuordnen</span><div class="row on">Lose</div><div class="row">1 · Bugs fixen</div><div class="row">2 · Server öffnen</div><div class="row">3 · Event</div></div>` : '';
+ const inner=`<div class="pp ${narrow?'narrow':''}"><div class="ph"><h2>Enderdragon</h2><span class="caption">Projekt · Etappe 1/3</span></div>${body}</div>`;
+ return narrow?`<div class="phone" style="min-height:720px">${inner}${sheet}<div class="tabs"><span>Pult</span><span>Kalender</span><span>Später</span><span class="on">Projekte</span><span>Inbox</span></div></div>`:inner;
+}
+function groupMock(){
+ const narrow=S.dev==='st';
+ const gnotes=[{t:'Vorlage von Lena fragen #idee',tags:['idee'],where:'Lose',from:'alte Gruppen-Notiz'},{t:'notion.so/vocj-changelog #link',tags:['link'],where:'Lose'}];
+ const notesPart = S.groups==='yes' ? `<aside class="notes"><b>Notizen</b>${quick()}${gnotes.map(noteHtml).join('')}</aside>` : `<p class="caption">Gruppen haben keine Notizen. Die alten Notizkarten bleiben im Export.</p>`;
+ const inner=`<div class="pp ${narrow?'narrow':''}"><div class="ph"><h2>Notion för Vocj</h2><span class="caption">Gruppe · nur Tasks · 2/5</span></div>
+  <div class="${narrow?'one':'cols2'}"><div class="groupbox">${it('Notion: CLAUDE.md neue Regel',1)}${it('Notion füllen',1)}${it('Notion: CLAUDE.md für Niels',0)}</div>${notesPart}</div></div>`;
+ return narrow?`<div class="phone" style="min-height:560px">${inner}<div class="tabs"><span>Pult</span><span>Kalender</span><span>Später</span><span class="on">Projekte</span><span>Inbox</span></div></div>`:inner;
+}
+function render(){
+ document.getElementById('qs').innerHTML=Q.map((q,i)=>`<section class="q"><h3>${i+1}. ${q.title}</h3><p class="why">${q.why}</p><div class="opts">${q.opts.map(o=>`<button type="button" class="opt" data-q="${q.id}" data-k="${o.k}" aria-pressed="${S[q.id]===o.k}"><b>${o.t}${o.rec?'<span class="rec">Vorschlag</span>':''}</b><span>${o.d}</span></button>`).join('')}</div></section>`).join('');
+ document.querySelectorAll('[data-dev]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.dev===S.dev));
+ document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view));
+ document.getElementById('mock').innerHTML=S.view==='project'?projectMock():groupMock();
+ const caps=[];
+ if(S.view==='project') caps.push(S.place==='column'?'Notizen rechts, gruppiert nach Lose und Etappe.':'Notizen in ihren Etappen, Lose oben.');
+ if(S.dev==='st'&&S.phone==='chip') caps.push('Unten: das Blatt nach Tipp auf den Etappen-Chip einer Notiz.');
+ if(S.dev==='st'&&S.phone==='drag') caps.push('Handy: Notiz lange drücken und auf eine Etappe ziehen.');
+ caps.push(S.step==='move'?'„→ Schritt“ macht aus der Notiz einen Schritt in ihrer Etappe (rückgängig).':'„→ Schritt“ legt einen Schritt an, die Notiz bleibt.');
+ caps.push(S.text==='plain'?'Text: einfach, Links klickbar.':'Text: Markdown.');
+ document.getElementById('cap').textContent=caps.join(' ');
+ document.getElementById('summary').textContent=`4.3b Wahl: Platz ${S.place} · Handy ${S.phone} · Gruppen ${S.groups} · Schritt ${S.step} · Text ${S.text}`;
+}
+document.addEventListener('click',e=>{
+ const o=e.target.closest('.opt');if(o){S[o.dataset.q]=o.dataset.k;render();return}
+ const d=e.target.closest('[data-dev]');if(d){S.dev=d.dataset.dev;render();return}
+ const v=e.target.closest('[data-view]');if(v){S.view=v.dataset.view;render();return}
+ const t=e.target.closest('[data-tag]');if(t){S.tag=S.tag===t.dataset.tag?null:t.dataset.tag;render();return}
+ if(e.target.id==='copy'){const b=e.target;navigator.clipboard.writeText(document.getElementById('summary').textContent).then(()=>{b.textContent='Kopiert';setTimeout(()=>b.textContent='Kopieren',1500)}).catch(()=>{const r=document.createRange();r.selectNodeContents(document.getElementById('summary'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Markiert, Strg+C'})}
+});
+render();
+</script>
