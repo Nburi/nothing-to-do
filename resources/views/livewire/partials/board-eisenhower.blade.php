@@ -89,7 +89,7 @@
                                 type="button"
                                 x-data
                                 @click="$store.quickCapture.show($event.currentTarget, 'tasks', { important: @js($meta['important']), dueDate: @js($meta['urgent'] ? $urgentDueDate : null) })"
-                                class="grid h-6 w-6 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                                class="grid h-6 w-6 flex-none place-items-center rounded-card text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                                 aria-label="Aufgabe für {{ $meta['label'] }} erfassen"
                             >
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -111,7 +111,7 @@
                                         @click="pulsing = true; setTimeout(() => pulsing = false, 700)"
                                         wire:click="setTodayEisenhower({{ $task->id }}, {{ $task->is_today ? 'false' : 'true' }})"
                                         @class([
-                                            'today-toggle relative mt-2.5 flex-none whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-forest',
+                                            'today-toggle relative mt-2.5 flex-none whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[10px] font-medium transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest',
                                             'border-forest bg-forest text-white' => $task->is_today,
                                             'border-line text-ink-faint hover:border-forest hover:text-forest' => ! $task->is_today,
                                         ])

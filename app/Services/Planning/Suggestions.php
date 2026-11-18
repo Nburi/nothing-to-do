@@ -39,7 +39,12 @@ final class Suggestions
     public function current(User $user, ?CarbonImmutable $now = null): Suggestion
     {
         $context = PlanningContext::for($user, $now, $this->reader);
-        $evening = $this->evening($user, $context->today);
+
+        return $this->suggest($context, $this->evening($user, $context->today));
+    }
+
+    private function suggest(PlanningContext $context, ?Evening $evening): Suggestion
+    {
         $battery = $evening?->batteryLevel() ?? Battery::Okay;
 
         if ($context->category === null) {
@@ -60,12 +65,13 @@ final class Suggestions
     /** "Another": skip tonight's current pick and show the next one. */
     public function another(User $user, ?CarbonImmutable $now = null): Suggestion
     {
-        $current = $this->current($user, $now);
+        // One read of the plan: skipping changes the evening, not the tasks or the week.
+        $context = PlanningContext::for($user, $now, $this->reader);
+        $current = $this->suggest($context, $this->evening($user, $context->today));
         if (! $current->hasPick()) {
             return $current;
         }
 
-        $context = PlanningContext::for($user, $now, $this->reader);
         $evening = $this->eveningForWrite($user, $context->today);
         $skipped = array_values(array_unique([...$evening->skippedTaskIds(), $current->pick->taskId]));
 
@@ -75,14 +81,15 @@ final class Suggestions
 
         $evening->update(['skipped_task_ids' => $skipped]);
 
-        return $this->current($user, $now);
+        return $this->suggest($context, $evening);
     }
 
     /** The battery check-in (G4). Null = skipped, which counts as Okay. */
     public function setBattery(User $user, ?Battery $battery, ?CarbonImmutable $now = null): Suggestion
     {
         $today = UserClock::now($user, $now)->toDateString();
-        $this->eveningForWrite($user, $today)->update(['battery' => $battery?->value]);
+        // Any answer (the chip or the question after the reset) means tonight's question is done (G4).
+        $this->eveningForWrite($user, $today)->update(['battery' => $battery?->value, 'battery_asked_at' => $now ?? CarbonImmutable::now()]);
 
         return $this->current($user, $now);
     }
@@ -149,11 +156,11 @@ final class Suggestions
 
     private function evening(User $user, string $date): ?Evening
     {
-        return Evening::query()->where('user_id', $user->id)->whereDate('date', $date)->first();
+        return Evening::for($user, $date);
     }
 
     private function eveningForWrite(User $user, string $date): Evening
     {
-        return $this->evening($user, $date) ?? $user->evenings()->create(['date' => $date]);
+        return Evening::forWrite($user, $date);
     }
 }
