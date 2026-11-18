@@ -16,7 +16,7 @@ use Throwable;
  * 1. the soft-slip rule (G2) for soft deadlines that passed,
  * 2. the early warning's state (hysteresis, one warning a day).
  *
- * Only users with open work are checked. One user's error never stops the
+ * Only users with open work, or with a warning that is still on, are checked. One user's error never stops the
  * others. Sending the warning is step 4.2; until then `notify` is counted only.
  */
 class RunPlanningChecks extends Command
@@ -30,7 +30,9 @@ class RunPlanningChecks extends Command
         $totals = ['users' => 0, 'rolled' => 0, 'later' => 0, 'dropped' => 0, 'warnings' => 0, 'failed' => 0];
 
         User::query()
-            ->whereHas('tasks', fn ($q) => $q->active()->whereIn('list', Task::WORK_LISTS))
+            // Users with open work, and users whose warning is still on (their work may be gone, the warning must clear).
+            ->where(fn ($q) => $q->whereHas('tasks', fn ($t) => $t->active()->whereIn('list', Task::WORK_LISTS))
+                ->orWhereHas('crunchAlert', fn ($a) => $a->where('active', true)))
             ->chunkById(50, function ($users) use ($slips, $watch, &$totals) {
                 foreach ($users as $user) {
                     try {

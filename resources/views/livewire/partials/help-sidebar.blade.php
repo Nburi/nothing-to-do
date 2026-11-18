@@ -33,7 +33,7 @@
 <div class="rounded-card border border-line bg-surface p-3 shadow-map">
     <div class="mb-2 flex items-center gap-2 rounded-card border border-line bg-paper px-2.5 py-1.5">
         <svg class="h-3.5 w-3.5 flex-none text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="m17 17-4-4"/></svg>
-        <input x-model="query" type="search" placeholder="Hilfe durchsuchen…" aria-label="Hilfe durchsuchen" class="w-full border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-0" />
+        <input x-model="query" type="search" placeholder="Hilfe durchsuchen…" aria-label="Hilfe durchsuchen" class="w-full border-0 bg-transparent p-0 text-sm text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-0" />
     </div>
 
     <nav class="space-y-0.5">
