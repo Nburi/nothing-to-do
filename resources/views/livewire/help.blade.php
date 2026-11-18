@@ -62,7 +62,7 @@
                             <div class="mt-1 rounded-card bg-overprint-soft p-3.5" x-show="state === 'no'">
                                 @if (! $justSentFeedback)
                                     <p class="mb-2 text-sm font-medium text-overprint">Was hat gefehlt?</p>
-                                    <textarea wire:model="followupNote" rows="3" placeholder="Kurz beschreiben, was du gesucht hast (optional)…" class="block w-full resize-none rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-none focus:ring-0"></textarea>
+                                    <textarea wire:model="followupNote" rows="3" placeholder="Kurz beschreiben, was du gesucht hast (optional)…" class="block w-full resize-none rounded-card border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-hidden focus:ring-0"></textarea>
                                     <button type="button" wire:click="sendFollowupFeedback" class="mt-2 rounded-card bg-forest px-4 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98]">Als Feedback senden</button>
                                 @else
                                     <p class="text-sm font-medium text-forest">Danke — als Feedback gespeichert. Du findest es unter „Meine Anfragen".</p>

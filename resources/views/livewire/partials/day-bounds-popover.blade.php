@@ -25,7 +25,7 @@
                     <select
                         id="boundsStart"
                         wire:model="boundsStart"
-                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                     >
                         @foreach ($this->dayBoundOptions(true) as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
@@ -38,7 +38,7 @@
                     <select
                         id="boundsEnd"
                         wire:model="boundsEnd"
-                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-none focus:ring-0"
+                        class="tnum block w-full rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink focus:border-overprint focus:outline-hidden focus:ring-0"
                     >
                         @foreach ($this->dayBoundOptions(false) as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>

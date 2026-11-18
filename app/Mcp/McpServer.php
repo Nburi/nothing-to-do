@@ -4,13 +4,17 @@ namespace App\Mcp;
 
 use App\Mcp\Exceptions\McpUnknownToolException;
 use App\Mcp\Tools\CompleteTaskTool;
+use App\Mcp\Tools\ControlSessionTool;
 use App\Mcp\Tools\CreateTaskTool;
 use App\Mcp\Tools\CreateTasksTool;
 use App\Mcp\Tools\UpdateTasksTool;
 use App\Mcp\Tools\DeleteTaskTool;
 use App\Mcp\Tools\GetBoardTool;
+use App\Mcp\Tools\GetForecastTool;
 use App\Mcp\Tools\GetProgressTool;
+use App\Mcp\Tools\GetSessionTool;
 use App\Mcp\Tools\GetSettingsTool;
+use App\Mcp\Tools\GetSuggestionTool;
 use App\Mcp\Tools\GetTaskTool;
 use App\Mcp\Tools\ListCategoriesTool;
 use App\Mcp\Tools\ListTasksTool;
@@ -19,6 +23,7 @@ use App\Mcp\Tools\SetDefaultLandingPageTool;
 use App\Mcp\Tools\SetListConceptTool;
 use App\Mcp\Tools\SetModuleVisibilityTool;
 use App\Mcp\Tools\SetTaskOrderTool;
+use App\Mcp\Tools\SuggestionActionTool;
 use App\Mcp\Tools\UpdateTaskTool;
 use App\Mcp\Tools\Admin\AnswerSupportRequestTool;
 use App\Mcp\Tools\Admin\CreateAnnouncementTool;
@@ -112,6 +117,9 @@ class McpServer
             new ListCategoriesTool,
             new GetProgressTool,
             new GetSettingsTool,
+            new GetSuggestionTool,
+            new GetSessionTool,
+            new GetForecastTool,
             new ListScheduleEventsTool,
             new GetScheduleEventTool,
             new GetFocusSessionTool,
@@ -137,6 +145,8 @@ class McpServer
             new SetListConceptTool,
             new SetModuleVisibilityTool,
             new SetDefaultLandingPageTool,
+            new SuggestionActionTool,
+            new ControlSessionTool,
             new CreateScheduleEventTool,
             new UpdateScheduleEventTool,
             new ControlFocusSessionTool,
