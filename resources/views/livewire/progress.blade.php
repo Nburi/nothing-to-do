@@ -19,9 +19,9 @@
         <div class="rounded-card border border-line bg-surface p-5 shadow-map">
             <div class="flex items-center gap-3.5">
                 <svg class="h-11 w-11 flex-none -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
-                    <circle cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="rgb(var(--line))" stroke-width="3" />
+                    <circle cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="var(--color-line)" stroke-width="3" />
                     <circle
-                        cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="rgb(var(--forest))" stroke-width="3"
+                        cx="18" cy="18" r="{{ $ringRadius }}" fill="none" stroke="var(--color-forest)" stroke-width="3"
                         stroke-linecap="round" stroke-dasharray="{{ $ringDash }} {{ $ringCircumference }}"
                     />
                 </svg>
@@ -108,7 +108,7 @@
                             <button
                                 type="button"
                                 wire:click="toggleStreakTask({{ $task->id }})"
-                                class="grid h-5 w-5 flex-none place-items-center rounded-full border-2 border-line text-transparent transition hover:border-forest hover:text-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                                class="grid h-5 w-5 flex-none place-items-center rounded-full border-2 border-line text-transparent transition hover:border-forest hover:text-forest focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                                 aria-label="Erledigt markieren: {{ $task->title }}"
                             >
                                 <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -140,7 +140,7 @@
     <a
         href="{{ route('review') }}"
         wire:navigate
-        class="mt-4 flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-5 py-3.5 text-sm text-ink shadow-map transition hover:border-ink-faint focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+        class="mt-4 flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-5 py-3.5 text-sm text-ink shadow-map transition hover:border-ink-faint focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest"
     >
         <span>
             <span class="font-medium">Wochenrückblick</span>

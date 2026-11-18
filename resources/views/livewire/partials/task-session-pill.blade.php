@@ -33,7 +33,7 @@
         <button
             type="button"
             @click.stop="Livewire.dispatch('open-split-sheet', { taskId: {{ $task->id }} })"
-            class="tnum inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] font-medium transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest {{ $isLate ? 'bg-signal-soft text-signal' : 'bg-forest-soft text-forest' }}"
+            class="tnum inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-[11px] font-medium transition hover:brightness-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest {{ $isLate ? 'bg-signal-soft text-signal' : 'bg-forest-soft text-forest' }}"
             aria-label="{{ $task->title }}: in {{ $sessionProgress['total'] }} Teile aufgeteilt, {{ $sessionProgress['done'] }} erledigt. Antippen zum Ändern"
         >
             @if ($sessionProgress['total'] <= 8)
@@ -54,7 +54,7 @@
             <button
                 type="button"
                 wire:click.stop="toggleComplete({{ $task->id }})"
-                class="rounded px-1.5 py-0.5 text-[11px] font-medium text-forest underline-offset-2 transition hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+                class="rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-forest underline-offset-2 transition hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest"
             >Aufgabe abhaken?</button>
         @elseif ($isDue)
             <button
@@ -62,7 +62,7 @@
                 wire:click.stop="completeTaskPart({{ $next->id }})"
                 wire:loading.attr="disabled"
                 wire:target="completeTaskPart({{ $next->id }})"
-                class="inline-flex items-center gap-1 rounded border border-forest/40 px-1.5 py-0.5 text-[11px] font-medium text-forest transition hover:bg-forest-soft active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest disabled:opacity-50"
+                class="inline-flex items-center gap-1 rounded-sm border border-forest/40 px-1.5 py-0.5 text-[11px] font-medium text-forest transition hover:bg-forest-soft active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest disabled:opacity-50"
                 aria-label="Teil {{ $sessionProgress['position'] }} von {{ $task->title }} erledigt"
             >
                 <svg class="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.4 4.8 8.7 9.5 3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>

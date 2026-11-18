@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Planning\Battery;
 use App\Planning\Pick\Pick;
 use App\Planning\Pick\PickEngine;
+use App\Services\Projects\NextSteps;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 
@@ -27,6 +28,9 @@ use Carbon\CarbonImmutable;
  *   ranking (nextInSession); outside blocks the user chose to work, so there
  *   is no area filter then.
  *
+ * - Projects and groups (step 4.3): only the steps their card shows may be
+ *   suggested; the steps waiting on the Projekte page are excluded (NextSteps).
+ *
  * Reads never write, except the two explicit actions (battery, Another).
  */
 final class Suggestions
@@ -39,7 +43,12 @@ final class Suggestions
     public function current(User $user, ?CarbonImmutable $now = null): Suggestion
     {
         $context = PlanningContext::for($user, $now, $this->reader);
-        $evening = $this->evening($user, $context->today);
+
+        return $this->suggest($context, $this->evening($user, $context->today));
+    }
+
+    private function suggest(PlanningContext $context, ?Evening $evening): Suggestion
+    {
         $battery = $evening?->batteryLevel() ?? Battery::Okay;
 
         if ($context->category === null) {
@@ -60,12 +69,13 @@ final class Suggestions
     /** "Another": skip tonight's current pick and show the next one. */
     public function another(User $user, ?CarbonImmutable $now = null): Suggestion
     {
-        $current = $this->current($user, $now);
+        // One read of the plan: skipping changes the evening, not the tasks or the week.
+        $context = PlanningContext::for($user, $now, $this->reader);
+        $current = $this->suggest($context, $this->evening($user, $context->today));
         if (! $current->hasPick()) {
             return $current;
         }
 
-        $context = PlanningContext::for($user, $now, $this->reader);
         $evening = $this->eveningForWrite($user, $context->today);
         $skipped = array_values(array_unique([...$evening->skippedTaskIds(), $current->pick->taskId]));
 
@@ -75,14 +85,15 @@ final class Suggestions
 
         $evening->update(['skipped_task_ids' => $skipped]);
 
-        return $this->current($user, $now);
+        return $this->suggest($context, $evening);
     }
 
     /** The battery check-in (G4). Null = skipped, which counts as Okay. */
     public function setBattery(User $user, ?Battery $battery, ?CarbonImmutable $now = null): Suggestion
     {
         $today = UserClock::now($user, $now)->toDateString();
-        $this->eveningForWrite($user, $today)->update(['battery' => $battery?->value]);
+        // Any answer (the chip or the question after the reset) means tonight's question is done (G4).
+        $this->eveningForWrite($user, $today)->update(['battery' => $battery?->value, 'battery_asked_at' => $now ?? CarbonImmutable::now()]);
 
         return $this->current($user, $now);
     }
@@ -90,6 +101,12 @@ final class Suggestions
     /** The task that follows $afterTaskId inside a running session, or null when there is none. */
     public function nextInSession(User $user, int $afterTaskId, ?CarbonImmutable $now = null): ?int
     {
+        // A free-time idea started with "Jetzt machen" (step 3.4) never leads into work:
+        // free time is not filled by the app (R6, CONVENTIONS 12). Done ends the session.
+        if (Task::forUser($user)->whereKey($afterTaskId)->value('list') === Task::LATER) {
+            return null;
+        }
+
         $context = PlanningContext::for($user, $now, $this->reader);
         $evening = $this->evening($user, $context->today);
         $battery = $evening?->batteryLevel() ?? Battery::Okay;
@@ -100,10 +117,15 @@ final class Suggestions
         return $picks[0]->taskId ?? null;
     }
 
+    /** @var array<int, list<int>> hidden project and group steps per user, read once per instance */
+    private array $hidden = [];
+
     /** @return list<Pick> */
     private function rank(PlanningContext $context, Battery $battery, array $exclude): array
     {
-        return $this->engine->rank($context->candidates, $battery, $context->category, $context->startBy(), $context->today, $exclude);
+        $hidden = $this->hidden[$context->user->id] ??= app(NextSteps::class)->hiddenTaskIds($context->user);
+
+        return $this->engine->rank($context->candidates, $battery, $context->category, $context->startBy(), $context->today, [...$exclude, ...$hidden]);
     }
 
     private function suggestion(Pick $pick, PlanningContext $context, Battery $battery, int $alternatives): Suggestion
@@ -149,11 +171,11 @@ final class Suggestions
 
     private function evening(User $user, string $date): ?Evening
     {
-        return Evening::query()->where('user_id', $user->id)->whereDate('date', $date)->first();
+        return Evening::for($user, $date);
     }
 
     private function eveningForWrite(User $user, string $date): Evening
     {
-        return $this->evening($user, $date) ?? $user->evenings()->create(['date' => $date]);
+        return Evening::forWrite($user, $date);
     }
 }

@@ -43,7 +43,7 @@ class DataExport
     ];
 
     private const TASK = [
-        'id', 'title', 'list', 'project_id', 'group_id', 'area_id', 'size', 'first_step', 'is_today',
+        'id', 'title', 'list', 'project_id', 'group_id', 'stage_id', 'waits_on_id', 'area_id', 'size', 'first_step', 'is_today',
         'today_date', 'is_important', 'deadline', 'due_date', 'notes', 'duration_minutes', 'repeat_rule', 'is_completed',
         'completed_at', 'created_at', 'updated_at',
     ];
@@ -83,13 +83,23 @@ class DataExport
                 ])->all(),
             'projects' => DB::table('projects')->where('user_id', $user->id)->orderBy('id')
                 ->get(['id', 'name', 'deadline', 'brainstorm', 'external_url', 'created_at'])
-                ->map(fn ($p) => (array) $p)->all(),
+                ->map(fn ($p) => [
+                    ...(array) $p,
+                    // Step 4.3: the roadmap.
+                    'stages' => DB::table('project_stages')->where('project_id', $p->id)->orderBy('sort_order')->orderBy('id')
+                        ->get(['id', 'name', 'target_date'])->map(fn ($s) => (array) $s)->all(),
+                    // Step 4.3b: the note cards with their tags.
+                    'notes' => self::noteCards('project_id', $p->id),
+                ])->all(),
             'task_groups' => DB::table('task_groups')->where('user_id', $user->id)->orderBy('id')
-                ->get(['id', 'name', 'created_at'])
+                ->get(['id', 'name', 'list', 'project_id', 'created_at'])
                 ->map(fn ($g) => [
                     'id' => $g->id,
                     'name' => $g->name,
+                    'list' => $g->list,
+                    'became_project_id' => $g->project_id,
                     'notes' => DB::table('group_notes')->where('task_group_id', $g->id)->orderBy('id')->pluck('content')->all(),
+                    'note_cards' => self::noteCards('group_id', $g->id),
                     'created_at' => $g->created_at,
                 ])->all(),
             // Entries this person wrote, shared with a class or not — their own
@@ -117,5 +127,18 @@ class DataExport
             'schedule_pauses' => $user->schedulePauses()->orderBy('date')->get()
                 ->map(fn (Model $p) => Arr::only($p->toArray(), ['date', 'note']))->all(),
         ];
+    }
+
+    /** Step 4.3b: a project's or group's note cards in order, with their tag names. */
+    private static function noteCards(string $column, int $id): array
+    {
+        return DB::table('notes')->where($column, $id)->orderBy('stage_id')->orderBy('sort_order')->orderBy('id')
+            ->get(['id', 'body', 'stage_id'])
+            ->map(fn ($n) => [
+                'body' => $n->body,
+                'stage_id' => $n->stage_id,
+                'tags' => DB::table('note_tag')->join('tags', 'tags.id', '=', 'note_tag.tag_id')
+                    ->where('note_tag.note_id', $n->id)->orderBy('tags.name')->pluck('tags.name')->all(),
+            ])->all();
     }
 }

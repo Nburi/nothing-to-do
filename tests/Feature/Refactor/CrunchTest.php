@@ -92,6 +92,18 @@ class CrunchTest extends TestCase
         $this->assertNotNull(CrunchAlert::sole()->cleared_at);
     }
 
+    public function test_the_hourly_check_clears_a_warning_once_the_work_is_gone(): void
+    {
+        $task = $this->task(['size' => Size::Block, 'duration_minutes' => 250, 'hard_deadline' => now()->addDay()->toDateString()]);
+        (new CrunchWatch)->check($this->user);
+        $this->assertTrue(CrunchAlert::sole()->active, 'precondition');
+
+        $task->update(['is_completed' => true, 'completed_at' => now()]); // no open work left at all
+        $this->artisan('app:run-planning-checks')->assertSuccessful();
+
+        $this->assertFalse(CrunchAlert::sole()->active);
+    }
+
     public function test_a_user_without_crunch_gets_no_alert_row(): void
     {
         $this->task(['hard_deadline' => '2026-11-12']);
