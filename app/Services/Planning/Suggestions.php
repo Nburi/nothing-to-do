@@ -10,6 +10,7 @@ use App\Planning\Pick\Pick;
 use App\Planning\Pick\PickEngine;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * Refactor step 1.3: the pick engine wired to a user's tasks, week plan and
@@ -39,7 +40,12 @@ final class Suggestions
     public function current(User $user, ?CarbonImmutable $now = null): Suggestion
     {
         $context = PlanningContext::for($user, $now, $this->reader);
-        $evening = $this->evening($user, $context->today);
+
+        return $this->suggest($context, $this->evening($user, $context->today));
+    }
+
+    private function suggest(PlanningContext $context, ?Evening $evening): Suggestion
+    {
         $battery = $evening?->batteryLevel() ?? Battery::Okay;
 
         if ($context->category === null) {
@@ -60,12 +66,13 @@ final class Suggestions
     /** "Another": skip tonight's current pick and show the next one. */
     public function another(User $user, ?CarbonImmutable $now = null): Suggestion
     {
-        $current = $this->current($user, $now);
+        // One read of the plan: skipping changes the evening, not the tasks or the week.
+        $context = PlanningContext::for($user, $now, $this->reader);
+        $current = $this->suggest($context, $this->evening($user, $context->today));
         if (! $current->hasPick()) {
             return $current;
         }
 
-        $context = PlanningContext::for($user, $now, $this->reader);
         $evening = $this->eveningForWrite($user, $context->today);
         $skipped = array_values(array_unique([...$evening->skippedTaskIds(), $current->pick->taskId]));
 
@@ -75,7 +82,7 @@ final class Suggestions
 
         $evening->update(['skipped_task_ids' => $skipped]);
 
-        return $this->current($user, $now);
+        return $this->suggest($context, $evening);
     }
 
     /** The battery check-in (G4). Null = skipped, which counts as Okay. */
@@ -154,6 +161,16 @@ final class Suggestions
 
     private function eveningForWrite(User $user, string $date): Evening
     {
-        return $this->evening($user, $date) ?? $user->evenings()->create(['date' => $date]);
+        $evening = $this->evening($user, $date);
+        if ($evening !== null) {
+            return $evening;
+        }
+
+        // Two devices can arrive here at once (risk C14): the unique index decides, the loser reads the winner's row.
+        try {
+            return $user->evenings()->create(['date' => $date]);
+        } catch (UniqueConstraintViolationException) {
+            return $this->evening($user, $date);
+        }
     }
 }

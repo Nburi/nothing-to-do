@@ -13,12 +13,11 @@
 @props(['title', 'description'])
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1F6B3B">
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#57A972">
+        @include('partials.theme-style')
 
         <title>{{ $title }} · nothing-to-do</title>
         <meta name="description" content="{{ $description }}">
@@ -43,8 +42,8 @@
                 <span class="text-[15px] font-medium tracking-tight">nothing-to-do</span>
             </a>
             <nav class="flex items-center gap-1.5 sm:gap-3" aria-label="Hauptnavigation">
-                <a href="{{ route('login') }}" class="rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Anmelden</a>
-                <a href="{{ route('register') }}" class="rounded-card bg-forest px-3.5 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
+                <a href="{{ route('login') }}" class="rounded-card px-3 py-1.5 text-sm text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Anmelden</a>
+                <a href="{{ route('register') }}" class="rounded-card bg-forest px-3.5 py-1.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper">Loslegen</a>
             </nav>
         </header>
 
