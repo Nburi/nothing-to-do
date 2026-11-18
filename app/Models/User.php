@@ -36,6 +36,7 @@ use Laravel\Sanctum\HasApiTokens;
     'is_admin',
     'last_login_at',
     'list_concept',
+    'nudge_times',
     'mcp_oauth_write', 'mcp_oauth_delete',
 ])]
 #[Hidden(['password', 'remember_token'])]
@@ -100,6 +101,12 @@ class User extends Authenticatable
     public function eventTemplates(): HasMany
     {
         return $this->hasMany(EventTemplate::class);
+    }
+
+    /** @return HasOne<CrunchAlert, $this> */
+    public function crunchAlert(): HasOne
+    {
+        return $this->hasOne(CrunchAlert::class);
     }
 
     /** @return HasOne<PomodoroSession, $this> */
@@ -509,6 +516,7 @@ class User extends Authenticatable
             'mcp_oauth_write' => 'boolean',
             'mcp_oauth_delete' => 'boolean',
             'last_login_at' => 'datetime',
+            'nudge_times' => 'array',
         ];
     }
 }

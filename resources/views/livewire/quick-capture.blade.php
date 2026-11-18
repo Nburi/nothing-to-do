@@ -27,7 +27,7 @@
     @quick-capture-opened.window="typed = $event.detail?.title ?? ''; forced = null"
     x-show="$store.quickCapture.open"
     x-cloak
-    class="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
+    class="fixed inset-0 z-60 flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
     role="dialog"
     aria-modal="true"
     aria-label="Schnellerfassung"
@@ -71,7 +71,7 @@
                 />
                 <button
                     type="submit"
-                    class="flex-none rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white sm:px-3.5 sm:py-1.5 transition hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    class="flex-none rounded-card bg-forest px-4 py-2.5 text-sm font-medium text-white sm:px-3.5 sm:py-1.5 transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                     Erfassen
                 </button>
@@ -84,7 +84,7 @@
                         type="button"
                         wire:click="setTarget('{{ $t }}')"
                         @class([
-                            'rounded-full border px-3 py-2 text-xs transition focus:outline-none sm:px-2.5 sm:py-1 focus-visible:ring-2 focus-visible:ring-overprint',
+                            'rounded-full border px-3 py-2 text-xs transition focus:outline-hidden sm:px-2.5 sm:py-1 focus-visible:ring-2 focus-visible:ring-overprint',
                             'border-forest bg-forest text-white' => $target === $t,
                             'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $target !== $t,
                         ])
@@ -98,7 +98,7 @@
                     type="button"
                     x-show="$wire.target !== 'reminder'"
                     @click="forced = !showExtra"
-                    class="ml-auto flex items-center gap-1 rounded-card px-2 py-2 text-xs text-ink-faint sm:px-1.5 sm:py-1 transition hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint"
+                    class="ml-auto flex items-center gap-1 rounded-card px-2 py-2 text-xs text-ink-faint sm:px-1.5 sm:py-1 transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint"
                     :aria-expanded="showExtra"
                 >
                     <span x-text="showExtra ? 'Weniger' : 'Mehr'">Mehr</span>
@@ -132,7 +132,7 @@
 
                     {{-- Duration is narrower than deadline/due above: Inbox writes a Task
                          too, but it's untriaged and out of the Planer's scope. --}}
-                    <div x-show="$wire.target !== 'inbox'" style="display: none;" class="mt-3 max-w-[9rem]">
+                    <div x-show="$wire.target !== 'inbox'" style="display: none;" class="mt-3 max-w-36">
                         <label for="qc-duration" class="mb-1 block text-[11px] font-medium text-ink-faint">Geschätzte Dauer (Min.)</label>
                         <input id="qc-duration" type="number" min="1" max="600" step="1" wire:model="duration" placeholder="z. B. 25" class="w-full rounded-card border-line bg-paper text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:ring-0" />
                     </div>
@@ -165,7 +165,7 @@
                                     type="button"
                                     wire:click="$set('date', '{{ $option['date'] }}')"
                                     @class([
-                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-overprint',
+                                        'rounded-full border px-3 py-1 text-xs transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-overprint',
                                         'border-forest bg-forest text-white' => $date === $option['date'],
                                         'border-line bg-paper text-ink-soft hover:border-ink-faint/60 hover:text-ink' => $date !== $option['date'],
                                     ])
@@ -180,11 +180,11 @@
                     </div>
                     <div class="flex flex-wrap gap-x-5 gap-y-2">
                         <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
-                            <input type="checkbox" wire:model="reminderEvening" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            <input type="checkbox" wire:model="reminderEvening" class="h-4 w-4 rounded-sm border-line text-forest focus:ring-forest" />
                             Am Vorabend erinnern
                         </label>
                         <label class="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
-                            <input type="checkbox" wire:model="reminderOnDay" class="h-4 w-4 rounded border-line text-forest focus:ring-forest" />
+                            <input type="checkbox" wire:model="reminderOnDay" class="h-4 w-4 rounded-sm border-line text-forest focus:ring-forest" />
                             Am Tag selbst erinnern
                         </label>
                     </div>

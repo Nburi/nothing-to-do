@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CrunchAlert extends Model
 {
-    protected $fillable = ['active', 'level', 'crunch_date', 'missing_minutes', 'raised_on', 'cleared_at'];
+    protected $fillable = ['active', 'level', 'crunch_date', 'missing_minutes', 'raised_on', 'cleared_at', 'push_pending_since', 'pushed_at'];
 
     protected function casts(): array
     {
@@ -24,6 +24,8 @@ class CrunchAlert extends Model
             'missing_minutes' => 'integer',
             'raised_on' => 'date',
             'cleared_at' => 'datetime',
+            'push_pending_since' => 'datetime',
+            'pushed_at' => 'datetime',
         ];
     }
 

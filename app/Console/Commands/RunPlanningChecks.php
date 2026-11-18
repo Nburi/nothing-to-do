@@ -14,10 +14,11 @@ use Throwable;
  * being open. Hourly (bootstrap/app.php), idempotent, per user:
  *
  * 1. the soft-slip rule (G2) for soft deadlines that passed,
- * 2. the early warning's state (hysteresis, one warning a day).
+ * 2. the early warning's state (hysteresis, one warning a day),
+ * 3. step 4.2: the crunch push, when one is pending and due (CrunchWatch::pushIfDue).
  *
- * Only users with open work are checked. One user's error never stops the
- * others. Sending the warning is step 4.2; until then `notify` is counted only.
+ * Only users with open work, or with a warning that is still on, are checked. One user's error never stops the
+ * others; a failing push is logged inside pushIfDue and never fails the run.
  */
 class RunPlanningChecks extends Command
 {
@@ -27,15 +28,18 @@ class RunPlanningChecks extends Command
 
     public function handle(SoftSlips $slips, CrunchWatch $watch): int
     {
-        $totals = ['users' => 0, 'rolled' => 0, 'later' => 0, 'dropped' => 0, 'warnings' => 0, 'failed' => 0];
+        $totals = ['users' => 0, 'rolled' => 0, 'later' => 0, 'dropped' => 0, 'warnings' => 0, 'pushed' => 0, 'failed' => 0];
 
         User::query()
-            ->whereHas('tasks', fn ($q) => $q->active()->whereIn('list', Task::WORK_LISTS))
+            // Users with open work, and users whose warning is still on (their work may be gone, the warning must clear).
+            ->where(fn ($q) => $q->whereHas('tasks', fn ($t) => $t->active()->whereIn('list', Task::WORK_LISTS))
+                ->orWhereHas('crunchAlert', fn ($a) => $a->where('active', true)->orWhereNotNull('push_pending_since')))
             ->chunkById(50, function ($users) use ($slips, $watch, &$totals) {
                 foreach ($users as $user) {
                     try {
                         $counts = $slips->apply($user);
                         $decision = $watch->check($user);
+                        $pushed = $watch->pushIfDue($user);
                     } catch (Throwable $e) {
                         report($e);
                         $totals['failed']++;
@@ -48,12 +52,13 @@ class RunPlanningChecks extends Command
                     $totals['later'] += $counts['later'];
                     $totals['dropped'] += $counts['dropped'];
                     $totals['warnings'] += $decision->notify ? 1 : 0;
+                    $totals['pushed'] += $pushed ? 1 : 0;
                 }
             });
 
         $this->info(sprintf(
-            'Checked %d user(s): %d soft date(s) rolled over, %d to Later, %d soft date(s) dropped, %d new warning(s), %d failed.',
-            $totals['users'], $totals['rolled'], $totals['later'], $totals['dropped'], $totals['warnings'], $totals['failed'],
+            'Checked %d user(s): %d soft date(s) rolled over, %d to Later, %d soft date(s) dropped, %d new warning(s), %d pushed, %d failed.',
+            $totals['users'], $totals['rolled'], $totals['later'], $totals['dropped'], $totals['warnings'], $totals['pushed'], $totals['failed'],
         ));
 
         return $totals['failed'] === 0 ? self::SUCCESS : self::FAILURE;
