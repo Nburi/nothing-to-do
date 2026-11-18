@@ -33,7 +33,7 @@
                         <p class="text-sm font-medium text-ink">{{ $request->subject }}</p>
                         <p class="mt-1 text-sm text-ink-soft leading-relaxed">{{ $request->message }}</p>
                     </div>
-                    <select wire:change="setStatus({{ $request->id }}, $event.target.value)" class="flex-none rounded-card border border-line bg-paper px-2.5 py-1.5 text-xs font-medium text-ink focus:border-overprint focus:outline-none focus:ring-0">
+                    <select wire:change="setStatus({{ $request->id }}, $event.target.value)" class="flex-none rounded-card border border-line bg-paper px-2.5 py-1.5 text-xs font-medium text-ink focus:border-overprint focus:outline-hidden focus:ring-0">
                         @foreach (\App\Models\SupportRequest::STATUSES as $key => $meta)
                             <option value="{{ $key }}" @selected($request->status === $key)>{{ $meta['label'] }}</option>
                         @endforeach
@@ -42,7 +42,7 @@
 
                 @if ($respondingId === $request->id)
                     <div class="mt-3 border-t border-line pt-3">
-                        <textarea wire:model="responseDraft" rows="2" placeholder="Kurze Antwort an die einreichende Person (optional)…" class="block w-full resize-none rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-none focus:ring-0"></textarea>
+                        <textarea wire:model="responseDraft" rows="2" placeholder="Kurze Antwort an die einreichende Person (optional)…" class="block w-full resize-none rounded-card border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-overprint focus:outline-hidden focus:ring-0"></textarea>
                         <div class="mt-2 flex items-center gap-2">
                             <button type="button" wire:click="saveResponse" class="rounded-card bg-forest px-3.5 py-1.5 text-xs font-medium text-white transition hover:brightness-110">Speichern</button>
                             <button type="button" wire:click="cancelResponding" class="text-xs text-ink-soft transition hover:text-ink">Abbrechen</button>
