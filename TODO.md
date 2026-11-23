@@ -4,7 +4,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 
 ## Refactor: next up (phase 0)
 - [x] 0.5 Tooling check (merged, #2): the unused `@tailwindcss/vite` v4 removed, build runs on Tailwind 3.4 via PostCSS; npm and composer audits clean. (Superseded by the move to Tailwind 4 in 2.1.)
-- [ ] 0.1 Spike (merged): server side done (`POST /api/arrival`, narrow token via `php artisan app:arrival-token`). **Waiting for Niels:** set up the Shortcut and test five evenings, guide in `docs/spikes/0.1-arrival.md`.
+- [ ] 0.1 Spike (merged): server side done (`POST /api/arrival`, narrow token via `php artisan app:arrival-token`). Niels' first test (2026-11-17): the Wi-Fi automation failed, the **location** automation fired every time, so location is the arrival trigger now. **Waiting for Niels:** the push on the iPhone (C2, five evenings), guide in `docs/spikes/0.1-arrival.md`.
 - [x] 0.2 Spike: engine in `app/Planning`, merged. Decisions E1–E10 approved on 2026-11-08.
 - [ ] 0.3 Spike: migration dry run on a copy of production (needs a production DB dump from Niels).
 
@@ -41,7 +41,8 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 3.2 open for Niels: should a reset started by hand during a work session pause the pomodoro? (now it keeps running)
 - [x] 3.3 Nudge at a fixed time per weekday (`feature/nudge-time`). Notes in `docs/steps/3.3.md`. Time-based only; the reset is offered from the nudge time (17:00 for users who never set one).
 - [ ] 3.3 open for Niels: TESTBERICHT C13 (a real push on the iPhone from the dev server; needs VAPID keys and cron `schedule:run`), C12 updated. Check the decisions in `docs/steps/3.3.md`.
-- [ ] 3.3 later: the Wi-Fi arrival path (`POST /api/arrival`) once spike 0.1 passes C2; then it should also respect "one nudge per evening" (`evenings.nudge_sent_at`).
+- [x] 3.3 later: arrival by location instead of Wi-Fi (`feature/arrival-location`). `POST /api/arrival` now follows the nudge rules: one nudge per evening (`evenings.nudge_sent_at`, shared with the time-based nudge), none on paused days, on weekdays without a nudge time, after the reset, during a session or more than 2 h before the nudge time. Notes at the end of `docs/steps/3.3.md`, guide in `docs/spikes/0.1-arrival.md` (Wi-Fi stays as a documented fallback).
+- [ ] 3.3 later, open for Niels: C2, does the push arrive on the iPhone after a location arrival (needs VAPID keys on the dev server, like C13)? Check the decisions at the end of `docs/steps/3.3.md`.
 - [ ] The older push commands (`app:send-progress-reminders`, event notifications) inject `PushNotifier` and crash every tick on a server without VAPID keys (see ERRORS.md, 2026-11-16). Harmless on prod (keys set); fix when those commands are touched.
 - [x] 3.4 Free-time ideas, "Meins behalten", Ideen view (`feature/free-time-ideas`). Notes in `docs/steps/3.4.md`.
 - [ ] 3.4 open for Niels: TESTBERICHT C14–C16; check the decisions in `docs/steps/3.4.md` (Jetzt machen = session, soft deadlines also stop ideas, 06:00–24:00 and 30 min, Stapel tab "Später" → Ideen page).
