@@ -64,22 +64,7 @@
             @if ($stages->isEmpty())
                 <p class="text-sm text-ink-soft">{{ __('projects.roadmap_empty') }}</p>
             @else
-                <div class="overflow-x-auto">
-                    <ol class="flex min-w-max items-start pt-1 pb-1">
-                        @foreach ($stages as $i => $s)
-                            @php $state = $stateOf($i); @endphp
-                            <li wire:key="road-{{ $s->id }}" class="relative flex w-28 flex-col items-center gap-1 px-2 text-center wb:w-36">
-                                @if (! $loop->first)<span class="absolute top-[9px] right-1/2 h-1 w-full -translate-x-2 rounded-full {{ $state === 'waits' ? 'bg-line' : 'bg-accent' }}" aria-hidden="true"></span>@endif
-                                <span @class(['relative grid size-5 place-items-center rounded-full border-[3px]', 'border-accent bg-accent' => $state === 'done', 'border-accent bg-accent-soft ring-4 ring-accent-soft' => $state === 'now', 'border-ink-faint bg-surface' => $state === 'waits'])>
-                                    @if ($state === 'done')@include('shell.icon', ['name' => 'check', 'class' => 'size-3 text-accent-fg'])@endif
-                                </span>
-                                <span class="text-[13px] font-semibold leading-tight text-ink">{{ $s->name }}</span>
-                                <span class="font-mono text-[10.5px] text-ink-faint">{{ $s->target_date ? $s->target_date->format('d.m.') : __('projects.no_date') }}</span>
-                                <span class="sr-only">{{ $state === 'done' ? __('projects.stage_done') : ($state === 'now' ? __('projects.stage_now') : __('projects.stage_waits', ['number' => $i])) }}</span>
-                            </li>
-                        @endforeach
-                    </ol>
-                </div>
+                @include('shell.roadmap', ['stages' => $stages, 'states' => $stages->keys()->map($stateOf)->all()])
             @endif
 
             @if ($addingStage)
