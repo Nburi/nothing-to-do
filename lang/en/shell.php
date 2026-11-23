@@ -37,6 +37,13 @@ return [
         'long' => 'Long',
         'block' => 'Block',
     ],
+    // Step 4.6: the „Wichtig" marker (R5), the only priority.
+    'important' => [
+        'label' => 'Important',
+        'mark' => 'Mark as important',
+        'unmark' => 'Remove important mark',
+        'empty' => 'Nothing marked. The flag on a task marks what you must not forget.',
+    ],
     'hard' => 'due :date',
     'soft' => 'nice by :date',
     'parked' => 'parked :age',
@@ -210,6 +217,7 @@ return [
         'pause_days' => 'Pause days',
         'crunch' => 'Decide a crunch',
         'keep_mine' => 'Keep it mine',
+        'important' => 'Mark as important',
     ],
     'nudge' => [
         'title' => 'Switching off in the evening',

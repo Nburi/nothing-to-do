@@ -65,10 +65,11 @@ class ActionParityTest extends TestCase
         $this->assertParity($html, 'session');
     }
 
-    public function test_the_registry_holds_the_twelve_actions_of_the_plan(): void
+    public function test_the_registry_holds_the_twelve_actions_of_the_plan_and_the_important_marker(): void
     {
+        // The plan's twelve (docs/REFACTOR_PLAN.md § 1) plus "important" (step 4.6, R5 / R7).
         $this->assertSame(
-            ['capture', 'sort', 'start', 'swap', 'battery', 'browse_later', 'reset', 'move_event', 'week_plan', 'pause_days', 'crunch', 'keep_mine'],
+            ['capture', 'sort', 'start', 'swap', 'battery', 'browse_later', 'reset', 'move_event', 'week_plan', 'pause_days', 'crunch', 'keep_mine', 'important'],
             array_map(fn ($a) => $a->key, ActionRegistry::all()),
         );
 

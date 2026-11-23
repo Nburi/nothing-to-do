@@ -17,6 +17,7 @@ use App\Services\Planning\IdeaOffer;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
 use App\Services\Planning\WeekPlanReader;
+use App\Support\TaskMutator;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -43,6 +44,9 @@ class Board extends Component
 {
     /** Items shown per list before "+ N more". */
     public const LIST_LIMIT = 40;
+
+    /** Rows of the „Wichtig" reminder before "+ N more" (step 4.6); the rest sits at the top of its list. */
+    public const IMPORTANT_LIMIT = 3;
 
     /** A calm one-line message after an action (shown inline, never an alert). */
     public ?string $notice = null;
@@ -126,9 +130,10 @@ class Board extends Component
     #[Computed]
     public function lists(): array
     {
+        // „Wichtig" (step 4.6, R5) sits at the top of its list; the rest keeps the user's order.
         $tasks = Task::forUser($this->user)->active()
             ->with('area')
-            ->orderBy('sort_order')->orderBy('id')
+            ->orderByDesc('is_important')->orderBy('sort_order')->orderBy('id')
             ->get()
             ->groupBy('list');
 
@@ -138,6 +143,20 @@ class Board extends Component
         }
 
         return $out;
+    }
+
+    /**
+     * Open tasks marked „Wichtig" (step 4.6, R5): To-dos, Tasks, then the Inbox. Later is parked on
+     * purpose (R6): a dropped task keeps its mark in its list but stays out of the reminder.
+     *
+     * @return Collection<int, Task>
+     */
+    #[Computed]
+    public function important(): Collection
+    {
+        return collect(['todos', 'tasks', 'inbox'])
+            ->flatMap(fn (string $list) => $this->lists[$list]->where('is_important', true))
+            ->values();
     }
 
     /** @return array<string, int> */
@@ -393,6 +412,19 @@ class Board extends Component
         $this->fresh();
     }
 
+    /**
+     * Mark or unmark a task „Wichtig" (action `important`, step 4.6, R5). The button says which
+     * state it wants, so a double tap or a second device cannot flip it back.
+     */
+    public function setImportant(int $taskId, bool $important): void
+    {
+        $this->notice = null;
+        $this->guard(function () use ($taskId, $important) {
+            $task = Task::forUser($this->user)->active()->findOrFail($taskId);
+            TaskMutator::applyUpdate($task, $this->user, ['is_important' => $important]);
+        });
+    }
+
     public function shrink(int $taskId): void
     {
         $this->notice = null;
@@ -464,7 +496,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea'] as $computed) {
             unset($this->{$computed});
         }
     }

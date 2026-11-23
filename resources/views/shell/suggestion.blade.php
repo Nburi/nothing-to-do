@@ -25,6 +25,10 @@
                 </span>
             @endif
             <span data-fold-size class="rounded-[5px] border border-line px-1.5 py-px font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">{{ \App\Shell\TaskFace::size($task) }}</span>
+            @if ($task->is_important)
+                {{-- Step 4.6: „Wichtig" by shape and word, not by colour alone. --}}
+                <span data-important-tag class="inline-flex items-center gap-1 rounded-[5px] bg-warn-soft px-1.5 py-px font-mono text-[10.5px] font-medium uppercase tracking-wider text-warn">@include('shell.icon', ['name' => 'flag', 'class' => 'size-3', 'filled' => true]){{ __('shell.important.label') }}</span>
+            @endif
             @if ($hard = \App\Shell\TaskFace::hard($task))
                 <span class="rounded-[5px] bg-warn-soft px-1.5 py-px font-mono text-[11px] text-warn">{{ $hard }}</span>
             @elseif ($soft = \App\Shell\TaskFace::soft($task))

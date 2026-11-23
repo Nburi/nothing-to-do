@@ -14,11 +14,14 @@
         ])
         style="border: var(--t-bw) {{ $count > 0 ? 'solid' : 'dashed' }} var(--t-line); border-top: 4px solid {{ $count > 0 ? $edge : 'var(--t-line)' }}"
     >
+        @php($marked = $top && $list !== 'done' && $top->is_important)
         <b class="line-clamp-2 font-display text-[13.5px] leading-snug wrap-break-word {{ $count > 0 ? 'text-ink' : 'font-medium text-ink-faint' }}" @if ($count > 0) style="font-weight: 600" @endif>
+            @if ($marked)@include('shell.icon', ['name' => 'flag', 'class' => 'mr-1 inline size-3.5 -translate-y-px text-warn', 'filled' => true])@endif
             {{ $top?->title ?? __('shell.empty.pile') }}
         </b>
-        @if ($sub)
-            <small class="truncate text-xs text-ink-faint">{{ $sub }}</small>
+        {{-- Step 4.6: a marked top card says „Wichtig" in words as well as with the flag. --}}
+        @if ($sub || $marked)
+            <small class="truncate text-xs text-ink-faint">{{ $marked ? __('shell.important.label').($sub ? ' · '.$sub : '') : $sub }}</small>
         @endif
     </span>
 </span>

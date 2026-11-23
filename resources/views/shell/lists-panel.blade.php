@@ -1,12 +1,13 @@
-{{-- The four lists behind tabs: the Stapel sheet (piles, bottom tabs, drawer) and the Werkbank
-     peek panel during a session. Opened by the parent's Alpine `peek` (inbox|todos|tasks|later).
-     @param $layout, $mode, $lists, $counts, $suggestedId, $locked --}}
+{{-- The four lists behind tabs, plus „Wichtig" (step 4.6): the Stapel sheet (piles, bottom tabs, drawer)
+     and the Werkbank peek panel during a session. Opened by the parent's Alpine `peek`
+     (inbox|todos|tasks|later|important).
+     @param $layout, $mode, $lists, $counts, $important (open marked tasks), $suggestedId, $locked --}}
 <div class="flex min-h-0 flex-1 flex-col">
+    @php
+        $tabClass = 'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    @endphp
     <div class="flex gap-1 overflow-x-auto border-b border-line px-3 pb-2" role="tablist">
         @foreach (\App\Models\Task::LISTS as $list)
-            @php
-                $tabClass = 'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
-            @endphp
             @if ($list === 'later')
                 <x-shell.action key="browse_later" :layout="$layout" :mode="$mode" role="tab"
                     @click="peek = 'later'" x-bind:aria-selected="peek === 'later'"
@@ -18,6 +19,9 @@
                     class="{{ $tabClass }}">{{ __('shell.lists.'.$list) }} <span class="font-mono text-xs opacity-70">{{ $counts[$list] }}</span></button>
             @endif
         @endforeach
+        <button type="button" role="tab" data-peek-tab="important" @click="peek = 'important'" x-bind:aria-selected="peek === 'important'"
+            x-bind:class="peek === 'important' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink'"
+            class="{{ $tabClass }}">{{ __('shell.important.label') }} <span class="font-mono text-xs opacity-70">{{ $important->count() }}</span></button>
     </div>
     <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         @foreach (\App\Models\Task::LISTS as $list)
@@ -45,5 +49,13 @@
                 @endif
             </ul>
         @endforeach
+        {{-- Step 4.6: everything marked „Wichtig" in one place (Inbox, To-dos, Tasks; parked ideas stay out). --}}
+        <ul x-show="peek === 'important'" x-cloak data-peek-panel="important" class="flex flex-col gap-2" role="tabpanel">
+            @forelse ($important->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
+                @include('shell.item', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'suggested' => false, 'locked' => $locked, 'keyScope' => 'important', 'tagged' => false])
+            @empty
+                <li class="rounded-card border border-dashed border-line p-4 text-sm text-ink-faint">{{ __('shell.important.empty') }}</li>
+            @endforelse
+        </ul>
     </div>
 </div>
