@@ -20,20 +20,20 @@
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs">
             @if ($task->area)
-                <span class="inline-flex items-center gap-1.5 font-semibold text-ink-soft">
+                <span data-fold-area class="inline-flex items-center gap-1.5 font-semibold text-ink-soft">
                     <span class="size-2 rounded-full" style="background: {{ \App\Shell\TaskFace::areaColor($task->area->color) }}"></span>{{ $task->area->name }}
                 </span>
             @endif
-            <span class="rounded-[5px] border border-line px-1.5 py-px font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">{{ \App\Shell\TaskFace::size($task) }}</span>
+            <span data-fold-size class="rounded-[5px] border border-line px-1.5 py-px font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">{{ \App\Shell\TaskFace::size($task) }}</span>
             @if ($hard = \App\Shell\TaskFace::hard($task))
                 <span class="rounded-[5px] bg-warn-soft px-1.5 py-px font-mono text-[11px] text-warn">{{ $hard }}</span>
             @elseif ($soft = \App\Shell\TaskFace::soft($task))
                 <span class="rounded-[5px] border border-dashed border-ink-faint px-1.5 py-px font-mono text-[11px] text-ink-soft">{{ $soft }}</span>
             @endif
         </div>
-        <h2 class="font-display text-[22px] leading-tight text-balance wrap-break-word text-ink" style="font-weight: var(--t-dw)">{{ $task->title }}</h2>
+        <h2 data-fold-title class="font-display text-[22px] leading-tight text-balance wrap-break-word text-ink" style="font-weight: var(--t-dw)">{{ $task->title }}</h2>
         @if ($s->startWith)
-            <p class="text-sm text-ink-soft"><span class="mr-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">{{ __('shell.start_with') }}</span>{{ $s->startWith }}</p>
+            <p data-fold-start class="text-sm text-ink-soft"><span class="mr-1.5 font-mono text-[10.5px] font-medium uppercase tracking-wider text-accent-ink">{{ __('shell.start_with') }}</span>{{ $s->startWith }}</p>
         @endif
         @if ($s->why)
             <p class="text-sm text-ink-faint">{{ $s->why }}</p>

@@ -932,7 +932,8 @@
   in a session, so these are plain transitions on elements Livewire keeps. body.shell-folding is
   set by Alpine on the click (the fold starts before the server answers), body.shell-entering and
   body.shell-returning only for the moment of a switch, so a reload shows a session without motion.
-  The session card grows out of the started card in JS (shellFold in app.js, FLIP).
+  The session card is first drawn by the ghost card in JS (shellFold in app.js, finding C1): it
+  flies out of the started card on the click and stands with the timer when the fold ends.
 
   Unlayered on purpose: it must win over the utility classes on the same elements.
 */
@@ -1025,7 +1026,8 @@ body.shell-entering .shell .fold-rail-count {
 }
 body.shell-entering .shell .fold-arrive {
   animation: fold-rise 300ms var(--fold-ease) both;
-  animation-delay: calc(var(--fold-ms) - 200ms);
+  /* app.js sets --fold-arrive-delay to what is left of the fold, so a slow answer does not wait twice. */
+  animation-delay: var(--fold-arrive-delay, calc(var(--fold-ms) - 200ms));
 }
 body.shell-entering .shell .fold-drawer {
   animation: fold-drawer-in var(--fold-dur) var(--fold-ease) both;

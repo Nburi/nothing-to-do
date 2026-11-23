@@ -39,6 +39,9 @@
         </div>
     @endif
 
+    {{-- The session card as the browser draws it before the server has answered Start (C1). --}}
+    @include('shell.session-ghost')
+
     {{-- ════════════════════ Werkbank (desktop, ≥ 720 px) ════════════════════ --}}
     <div class="relative hidden min-h-dvh flex-col wb:flex" data-layout-root="werkbank">
         <section data-region="board" wire:key="werkbank-board" class="flex min-h-dvh flex-col" @if ($inSession) inert aria-hidden="true" @endif>

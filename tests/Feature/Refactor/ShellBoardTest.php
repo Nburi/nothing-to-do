@@ -173,6 +173,42 @@ class ShellBoardTest extends TestCase
         $this->assertStringContainsString('reducedMotion()', $js, 'no card flight under reduced motion');
     }
 
+    /**
+     * Finding C1 ("Verzögerung vor dem Timer", Niels 2026-11-17): after the fold there was a wait
+     * until the server answered and the card faded in. The fold must not wait for the server, so a
+     * ghost of the session card stands in the page (out of Livewire's morph), every start source
+     * names the title it shows, and the script flies it on the click and hands over once it landed.
+     */
+    public function test_the_ghost_card_stands_ready_so_the_timer_does_not_wait_for_the_server(): void
+    {
+        $this->block();
+        $this->task('Formular', 'todos', Size::Quick, ['first_step' => 'Seite 1 ausfüllen']);
+        $this->task('Bericht', 'tasks', Size::Long);
+
+        $board = $this->actingAs($this->user)->get('/board')->assertOk()->getContent();
+        $xpath = $this->xpath($board);
+
+        $this->assertSame(1, $xpath->query("//*[@data-session-ghost][@hidden][@inert][@aria-hidden='true']")->length, 'one hidden ghost, out of reach');
+        $this->assertStringContainsString('wire:ignore data-session-ghost', $board, "Livewire's morph must not touch it");
+        $this->assertSame(1, $xpath->query("//*[@data-session-ghost]//*[@data-ghost-digits][normalize-space()='25:00']")->length, 'the full timer, ready');
+        $this->assertSame(1, $xpath->query('//*[@data-session-ghost]//*[@data-ghost-title]')->length);
+        $this->assertSame(0, $xpath->query('//*[@data-session-ghost]//*[@data-session-card]')->length, 'the ghost is not the server card');
+
+        $cards = $xpath->query('//*[@data-fold-from]');
+        $this->assertGreaterThan(0, $cards->length);
+        foreach ($cards as $card) {
+            $this->assertSame(1, $xpath->query('.//*[@data-fold-title]', $card)->length, 'every start tells the ghost its title');
+        }
+        $this->assertGreaterThan(0, $xpath->query("//*[@data-fold-from]//*[@data-fold-start][contains(., 'Seite 1 ausfüllen')]")->length, 'and where to start');
+
+        $js = file_get_contents(resource_path('js/app.js'));
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertMatchesRegularExpression('/foldInto\(el, call\) \{.*?this\.ghost = card \? this\.launchGhost\(.*?\.then\(call\)/s', $js, 'the ghost leaves on the click, before the server is asked');
+        $this->assertMatchesRegularExpression('/launchGhost\(card, from\) \{[^}]*reducedMotion\(\)/', $js, 'no ghost under reduced motion');
+        $this->assertStringContainsString('ghost.landed.then', $js, "the server's card waits until the ghost has landed");
+        $this->assertStringContainsString('--fold-arrive-delay', $css, 'the top row does not wait twice on a slow answer');
+    }
+
     private function xpath(string $html): \DOMXPath
     {
         $dom = new \DOMDocument;
