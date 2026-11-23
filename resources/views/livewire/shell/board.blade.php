@@ -260,7 +260,7 @@
                     @endforeach
                     {{-- Step 4.6: while the board is folded, what is marked „Wichtig" stays one tap away. --}}
                     @if ($important->isNotEmpty())
-                        <button type="button" data-important-drawer @click="peek = 'important'" class="{{ $drawerClass }}">
+                        <button type="button" data-important-drawer @click="peek = 'important'" class="rounded-full px-3 py-2 text-sm text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                             <span class="inline-flex items-center gap-1">@include('shell.icon', ['name' => 'flag', 'class' => 'size-3.5 text-warn', 'filled' => true]){{ __('shell.important.label') }}</span> <b class="font-mono text-ink">{{ $important->count() }}</b>
                         </button>
                     @endif
