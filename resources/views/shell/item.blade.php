@@ -15,11 +15,11 @@
 >
     <span class="mt-0.5 size-3.5 shrink-0 rounded-full border-2 border-ink-faint" aria-hidden="true"></span>
     <div class="min-w-0 flex-1">
-        <p class="font-medium leading-snug wrap-break-word text-ink">{{ $task->title }}</p>
+        <p data-fold-title class="font-medium leading-snug wrap-break-word text-ink">{{ $task->title }}</p>
         @if ($task->area || $meta)
             <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-faint">
                 @if ($task->area)
-                    <span class="inline-flex items-center gap-1 font-medium text-ink-soft">
+                    <span data-fold-area class="inline-flex items-center gap-1 font-medium text-ink-soft">
                         <span class="size-2 rounded-full" style="background: {{ \App\Shell\TaskFace::areaColor($task->area->color) }}"></span>{{ $task->area->name }}
                     </span>
                     @if ($meta)<span aria-hidden="true">·</span>@endif
