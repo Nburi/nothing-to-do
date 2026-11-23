@@ -143,11 +143,9 @@
                     @foreach ($columns as $i => $col)
                         <div data-col data-key="{{ $col['key'] }}" data-weekday="{{ $col['weekday'] }}" data-paused="{{ $col['paused'] ? 1 : 0 }}" wire:key="col-{{ $view }}-{{ $col['key'] }}"
                             :class="day === {{ $i }} ? '' : 'max-wb:hidden'" class="relative h-[calc(var(--ph)*24)] cursor-crosshair touch-pan-y select-none"
-                            style="border-left: var(--t-bw) solid var(--t-line); background-image: linear-gradient(var(--t-line) 1px, transparent 1px){{ $col['paused'] ? ', repeating-linear-gradient(135deg, color-mix(in srgb, var(--t-warn) 9%, transparent) 0 6px, transparent 6px 12px)' : '' }}; background-size: 100% var(--ph){{ $col['paused'] ? ', auto' : '' }}"
+                            style="border-left: var(--t-bw) solid var(--t-line); background-image: linear-gradient(var(--t-line) 1px, transparent 1px); background-size: 100% var(--ph)"
                             aria-label="{{ __('week.days_long.'.$col['weekday']) }}{{ $isPlan ? '' : ' '.$short($col['date']) }}">
-                            @if ($col['paused'])
-                                <span class="pointer-events-none absolute inset-x-1 top-[calc(var(--ph)*8)] text-center font-mono text-[10.5px] uppercase tracking-widest text-warn">{{ __('week.grid.paused') }}</span>
-                            @endif
+                            {{-- A paused day is marked on its header only (hatch and "Pause · note", Niels 2026-11-17); the column stays plain. --}}
                             @if ($col['date'] === $today)
                                 @php($nowMin = \App\Support\UserClock::now($this->user)->hour * 60 + \App\Support\UserClock::now($this->user)->minute)
                                 <span class="pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-warn" style="top: calc(var(--ph) * {{ round($nowMin / 60, 3) }})" aria-hidden="true"></span>

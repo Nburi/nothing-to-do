@@ -281,6 +281,23 @@ class WeekEditorPageTest extends TestCase
         $this->assertSame(['19:30–21:30 Deep work'], $this->day('2026-11-25'));
     }
 
+    /** C6 / C17 (Niels, 2026-11-17): the pause hatch covers the day header (desktop) and the day strip tab (phone), not the whole day column. */
+    public function test_a_paused_day_is_marked_on_its_header_only(): void
+    {
+        SchedulePause::pauseRange($this->user, \Illuminate\Support\Carbon::parse('2026-11-18'), \Illuminate\Support\Carbon::parse('2026-11-18'), 'Arzt');
+
+        $html = Livewire::test(Week::class)->html();
+
+        preg_match_all('/<div data-col[^>]*>/', $html, $columns);
+        $this->assertCount(7, $columns[0]);
+        $this->assertStringContainsString('data-paused="1"', implode('', $columns[0]));
+        $this->assertStringNotContainsString('repeating-linear-gradient', implode('', $columns[0]), 'the day column stays plain');
+
+        $this->assertMatchesRegularExpression('/<button[^>]*title="Diesen Tag wieder einschalten"[^>]*repeating-linear-gradient/s', $html, 'desktop header');
+        $this->assertMatchesRegularExpression('/<button type="button" role="tab"[^>]*repeating-linear-gradient/s', $html, 'phone day strip');
+        $this->assertStringContainsString('Pause · Arzt', $html);
+    }
+
     public function test_a_pause_is_undone_without_touching_older_pauses(): void
     {
         SchedulePause::pauseRange($this->user, \Illuminate\Support\Carbon::parse('2026-11-24'), \Illuminate\Support\Carbon::parse('2026-11-24'), 'Arzt');
