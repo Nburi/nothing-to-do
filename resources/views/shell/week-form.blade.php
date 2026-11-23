@@ -1,5 +1,8 @@
 {{-- The block form of the week plan editor (step 4.1), create and edit in one (CONVENTIONS 6). A popover placed by
      weekEditor.place(): beside the block, centred when it does not fit, a bottom sheet below 720 px.
+     place() writes left / top / data-placement onto the section. wire:ignore.self keeps Livewire's morph from
+     resetting them on every re-render (a day chip, a category): without it the popover fell to the bottom of the
+     page and looked closed. The children still update; a new mode or block gets a new wire:key, so a new element.
      @param $form, $categories, $dates, $view, $btn, $chip, $short --}}
 @php
     $mode = $form['mode'];
@@ -21,7 +24,7 @@
     };
 @endphp
 <div class="fixed inset-0 z-40 bg-black/30 wb:hidden" wire:click="closeForm" aria-hidden="true"></div>
-<section x-init="place($el)" wire:key="week-form-{{ $mode }}-{{ $form['id'] ?? 'new' }}-{{ $form['date'] ?? '' }}"
+<section x-init="place($el)" wire:ignore.self wire:key="week-form-{{ $mode }}-{{ $form['id'] ?? 'new' }}-{{ $form['date'] ?? '' }}"
     class="fixed z-50 flex w-[min(27rem,calc(100vw-24px))] flex-col gap-3 bg-surface p-4 shadow-card
         max-wb:inset-x-0 max-wb:bottom-0 max-wb:w-full max-wb:max-h-[88dvh] max-wb:overflow-y-auto max-wb:rounded-t-panel max-wb:pb-[max(18px,env(safe-area-inset-bottom))]
         wb:rounded-panel data-[placement=center]:left-1/2 data-[placement=center]:top-1/2 data-[placement=center]:max-h-[calc(100dvh-24px)] data-[placement=center]:-translate-x-1/2 data-[placement=center]:-translate-y-1/2 data-[placement=center]:overflow-y-auto"

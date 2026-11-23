@@ -117,6 +117,32 @@ class WeekEditorPageTest extends TestCase
         $this->assertSame(['09:00–11:00 Deep work'], $this->day('2026-11-28'));
     }
 
+    /**
+     * C17 (Niels, 2026-11-17): in a week with one normal day and every other day paused, a click on a day chip of
+     * the form made the popover vanish. The state was fine; the cause was client side: weekEditor.place() writes
+     * left / top / data-placement onto the section, and Livewire's morph reset them on every re-render, so the
+     * popover fell to the bottom of the page. The section must be `wire:ignore.self`; a PHP test cannot run the
+     * morph, so this pins the markup and the state the chips act on.
+     */
+    public function test_the_form_stays_open_and_placed_when_day_chips_are_toggled_in_a_mostly_paused_week(): void
+    {
+        SchedulePause::pauseRange($this->user, \Illuminate\Support\Carbon::parse('2026-11-16'), \Illuminate\Support\Carbon::parse('2026-11-16'), 'Ferien');
+        SchedulePause::pauseRange($this->user, \Illuminate\Support\Carbon::parse('2026-11-18'), \Illuminate\Support\Carbon::parse('2026-11-22'), 'Ferien');
+
+        $page = Livewire::test(Week::class)
+            ->call('openNew', [2], '18:00', '19:00')
+            ->call('toggleDay', 3)->call('toggleDay', 6)
+            ->assertSet('form.mode', 'new')->assertSet('form.days', [2, 3, 6])
+            ->assertSee('Nur diese Woche')->assertSee('Jede Woche')
+            ->call('toggleDay', 3)->assertSet('form.days', [2, 6]);
+
+        $this->assertMatchesRegularExpression('/<section[^>]*\swire:ignore\.self[^>]*\sdata-week-form="new"/s', $page->html());
+
+        // One-offs may stand on paused days, so the chips of paused days work like any other.
+        $page->call('save', 'this')->assertSet('form', null);
+        $this->assertSame(['18:00–19:00 Deep work'], $this->day('2026-11-21'));
+    }
+
     public function test_a_new_block_never_saves_without_the_scope_choice(): void
     {
         Livewire::test(Week::class)->call('openNew', [6], '09:00', '11:00')->call('save')->assertNotSet('form', null);
