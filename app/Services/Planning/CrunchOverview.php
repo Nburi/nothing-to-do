@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Planning\Block;
 use App\Planning\DayLoad;
+use App\Planning\DeadlineFeasibility;
 use App\Planning\PlannedTask;
 use App\Planning\Rhythm;
 use App\Planning\SlotCalculator;
@@ -22,7 +23,9 @@ use Carbon\CarbonImmutable;
  * - The items: every open task with a deadline inside the window, because they
  *   all compete for the same sessions. Soft ones first (the ones that already
  *   gave way to hard work lead), then hard ones by deadline (R5: soft deadlines
- *   are suggested to slip first; hard ones never change by themselves).
+ *   are suggested to slip first; hard ones never change by themselves). A hard item that cannot
+ *   be met carries the first date its deadline can move to so that it fits, from the planning
+ *   engine (DeadlineFeasibility::fitDates): a proposal the user confirms, never a decision.
  * - The days of the window with capacity and load, for the bars.
  * - A suggestion for "Mehr Zeit": a one-off block before the last deadline, on
  *   the first day that has room at 19:00, else right before or after one of its
@@ -51,7 +54,11 @@ final class CrunchOverview
         private readonly WeekPlanReader $reader = new WeekPlanReader,
     ) {}
 
-    public function for(User $user, ?CarbonImmutable $now = null, bool $seen = false): CrunchView
+    /**
+     * @param  bool  $withFitDates  The crunch screen asks for the proposed dates, the board does not: they cost one
+     *                              engine run per late hard task and candidate day, and the board renders often.
+     */
+    public function for(User $user, ?CarbonImmutable $now = null, bool $seen = false, bool $withFitDates = false): CrunchView
     {
         $now = UserClock::now($user, $now);
         $context = PlanningContext::for($user, $now, $this->reader);
@@ -73,6 +80,9 @@ final class CrunchOverview
             $planned[$p->id] = $p;
         }
         $windowEnd = max($today, max(array_map(fn (int $id) => $planned[$id]->bindingDeadline() ?? $today, $late)));
+        $fitDates = $withFitDates && $forecast->hardLateTaskIds !== []
+            ? (new DeadlineFeasibility($context->categories))->fitDates($context->plannedTasks(), $context->slots, $context->now)
+            : [];
 
         return new CrunchView(
             $level,
@@ -83,7 +93,7 @@ final class CrunchOverview
             (int) ceil($missing / $sessionMinutes),
             $forecast->slackMinutes,
             $this->days($forecast->days, $windowEnd, $now),
-            $this->items($context, $planned, $forecast->slipFirst(), $windowEnd, $now),
+            $this->items($context, $planned, $forecast->slipFirst(), $fitDates, $windowEnd, $now),
             $this->moreTime($context, $planned, $late, $windowEnd, $now),
             EventCategory::forUser($user)->where('pomodoro_enabled', true)->ordered()->get(['id', 'name'])->all(),
         );
@@ -115,9 +125,10 @@ final class CrunchOverview
     /**
      * @param  array<int, PlannedTask>  $planned
      * @param  list<int>  $slipFirst
+     * @param  array<int, ?string>  $fitDates  late hard task id => the first date its deadline can move to so that it fits
      * @return list<CrunchItem>
      */
-    private function items(PlanningContext $context, array $planned, array $slipFirst, string $windowEnd, CarbonImmutable $now): array
+    private function items(PlanningContext $context, array $planned, array $slipFirst, array $fitDates, string $windowEnd, CarbonImmutable $now): array
     {
         $today = $context->today;
         $rank = array_flip($slipFirst);
@@ -143,6 +154,8 @@ final class CrunchOverview
                 // engine already moved aside: the engine keeps soft work planned when moving it would not
                 // save every hard task, yet letting it go still frees sessions for the hard work.
                 ! $hard,
+                array_key_exists($id, $fitDates),
+                $fitDates[$id] ?? null,
             );
         }
 

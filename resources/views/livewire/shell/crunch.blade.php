@@ -101,6 +101,12 @@
                                                     @class([$field, 'bg-surface', 'ring-2 ring-bad' => $errors->has('moveDate')]) style="border: var(--t-bw) solid var(--t-line)"
                                                     aria-invalid="{{ $errors->has('moveDate') ? 'true' : 'false' }}" @error('moveDate') aria-describedby="crunch-move-date-error" @enderror>
                                                 @error('moveDate') <p id="crunch-move-date-error" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                                                {{-- The engine's proposal: the first day this task fits. The date above starts out as that day; the user still confirms. --}}
+                                                @if ($item->fitDate)
+                                                    <p class="text-sm text-ink">{{ __('shell.crunch.fit_hint', ['date' => \App\Services\Planning\DayLabel::for($item->fitDate, $now), 'task' => $t->title]) }}</p>
+                                                @elseif ($item->late)
+                                                    <p class="text-sm text-ink-soft">{{ __('shell.crunch.fit_none', ['task' => $t->title]) }}</p>
+                                                @endif
                                                 <label class="flex items-start gap-2 text-sm text-ink">
                                                     <input type="checkbox" wire:model="moveSure" class="mt-0.5 size-4 accent-[var(--t-accent)]" @error('moveSure') aria-describedby="crunch-move-sure-error" @enderror>
                                                     <span>{{ __('shell.crunch.move_sure') }}<span class="block text-xs text-ink-faint">{{ __('shell.crunch.move_sure_hint') }}</span></span>
@@ -118,7 +124,8 @@
                                             <div class="flex flex-wrap gap-1.5">
                                                 <button type="button" wire:click="shrink({{ $t->id }})" class="{{ $plain }}" style="border: var(--t-bw) solid var(--t-line)" wire:loading.attr="disabled" @disabled($item->smaller === null)>{{ __('shell.crunch.smaller') }}</button>
                                                 @if ($item->hard)
-                                                    <button type="button" wire:click="startMove({{ $t->id }})" class="{{ $plain }}" style="border: var(--t-bw) solid var(--t-line)">{{ __('shell.crunch.move_hard') }}</button>
+                                                    {{-- "…" = asks first: the proposed day is only filled in, the move needs the clear yes. --}}
+                                                    <button type="button" wire:click="startMove({{ $t->id }})" class="{{ $plain }}" style="border: var(--t-bw) solid var(--t-line)">{{ $item->fitDate ? __('shell.crunch.move_fit', ['date' => \App\Services\Planning\DayLabel::for($item->fitDate, $now)]) : __('shell.crunch.move_hard') }}</button>
                                                 @elseif ($item->softMoveTo)
                                                     <button type="button" wire:click="moveSoft({{ $t->id }})" wire:loading.attr="disabled"
                                                         @class([$plain, 'font-semibold text-accent-ink' => $item->suggested])

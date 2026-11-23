@@ -177,6 +177,29 @@ class CrunchScreenTest extends TestCase
         $this->assertSame('2026-11-16', $bericht->fresh()->deadline->toDateString(), 'old column mirrored');
     }
 
+    public function test_a_late_hard_task_comes_with_the_first_date_it_fits(): void
+    {
+        [$bericht, $lesen] = $this->crunch();
+        $kurz = $this->task('Kurz', ['size' => Size::Short, 'hard_deadline' => '2026-11-11']);
+
+        $items = [];
+        foreach ((new CrunchOverview)->for($this->user, withFitDates: true)->items as $item) {
+            $items[$item->task->id] = $item;
+        }
+
+        // Thursday is the first day with room, as the engine plans it: soft work gives way to hard work.
+        $this->assertSame('2026-11-12', $items[$bericht->id]->fitDate);
+        $this->assertTrue($items[$bericht->id]->late);
+        $this->assertNull($items[$kurz->id]->fitDate, 'it fits already');
+        $this->assertFalse($items[$kurz->id]->late);
+        $this->assertNull($items[$lesen->id]->fitDate, 'soft work slips by a week instead');
+
+        // The board asks without them: its render does not pay for the engine runs.
+        $board = array_values(array_filter((new CrunchOverview)->for($this->user)->items, fn ($i) => $i->task->id === $bericht->id));
+        $this->assertNull($board[0]->fitDate);
+        $this->assertFalse($board[0]->late);
+    }
+
     // ---- A34: more time and undo ----------------------------------------------------------------
 
     public function test_more_time_adds_a_one_off_pomodoro_block_that_solves_the_hard_crunch(): void
@@ -248,7 +271,7 @@ class CrunchScreenTest extends TestCase
             ->assertSet('open', true)
             ->assertSee('Bis Mittwoch')
             ->assertSee('Fehlt: 5 Sessions')
-            ->assertSeeInOrder(['Zuerst lockern', 'Lesen', 'Auf 17.11.', 'Harte Fristen', 'Bericht', 'Verschieben …'])
+            ->assertSeeInOrder(['Zuerst lockern', 'Lesen', 'Auf 17.11.', 'Harte Fristen', 'Bericht', 'Auf Donnerstag …'])
             ->assertSee('Mehr Zeit: heute 17:30–19:30 (+4 Sessions)');
     }
 
@@ -277,14 +300,77 @@ class CrunchScreenTest extends TestCase
 
         $screen = Livewire::actingAs($this->user)->test(Crunch::class)->call('openScreen')
             ->call('startMove', $bericht->id)
-            ->assertSet('moveDate', '2026-11-18')
+            ->assertSet('moveDate', '2026-11-12') // prefilled with the first date it fits
             ->call('moveHard')
             ->assertHasErrors('moveSure');
         $this->assertSame('2026-11-11', $bericht->fresh()->hard_deadline->toDateString(), 'never silently');
 
         $screen->set('moveSure', true)->set('moveDate', '2026-11-01')->call('moveHard')->assertHasErrors('moveDate');
         $screen->set('moveDate', '2026-11-18')->call('moveHard')->assertHasNoErrors()->assertSet('moving', null);
-        $this->assertSame('2026-11-18', $bericht->fresh()->hard_deadline->toDateString());
+        $this->assertSame('2026-11-18', $bericht->fresh()->hard_deadline->toDateString(), 'the user may pick another date');
+    }
+
+    public function test_the_screen_proposes_the_fit_date_and_moves_only_after_a_clear_yes(): void
+    {
+        [$bericht] = $this->crunch();
+
+        $screen = Livewire::actingAs($this->user)->test(Crunch::class)->call('openScreen')
+            ->assertSee('Auf Donnerstag …')
+            ->assertDontSee('Verschieben …')
+            ->call('startMove', $bericht->id)
+            ->assertSet('moveDate', '2026-11-12')
+            ->assertSee('Ab Donnerstag passt «Bericht» in deinen Plan.');
+
+        $screen->call('moveHard')->assertHasErrors('moveSure');
+        $this->assertSame('2026-11-11', $bericht->fresh()->hard_deadline->toDateString(), 'no tick, no move');
+
+        $screen->set('moveSure', true)->call('moveHard')
+            ->assertHasNoErrors()->assertSet('moving', null)
+            ->assertDispatched('crunch-changed')
+            ->assertSee('«Bericht»: Frist jetzt Donnerstag');
+        $this->assertSame('2026-11-12', $bericht->fresh()->hard_deadline->toDateString());
+        $this->assertSame(Level::Soft, $this->level(), 'the hard crunch is gone; only the soft date is still tight');
+
+        $screen->call('undoAt', 0);
+        $this->assertSame('2026-11-11', $bericht->fresh()->hard_deadline->toDateString(), 'and it can be undone');
+    }
+
+    public function test_cancelling_the_fit_date_changes_nothing(): void
+    {
+        [$bericht] = $this->crunch();
+
+        Livewire::actingAs($this->user)->test(Crunch::class)->call('openScreen')
+            ->call('startMove', $bericht->id)->set('moveSure', true)
+            ->call('cancelMove')
+            ->assertSet('moving', null)->assertSet('moveDate', '')->assertSet('moveSure', false)
+            ->assertDontSee('Ab Donnerstag passt')
+            ->assertSee('Auf Donnerstag …'); // the proposal is still offered
+
+        $this->assertSame('2026-11-11', $bericht->fresh()->hard_deadline->toDateString());
+        $this->assertSame(Level::Hard, $this->level());
+    }
+
+    public function test_without_a_fit_date_the_screen_says_so_and_starts_a_week_later(): void
+    {
+        $riesig = $this->task('Riesig', ['size' => Size::Block, 'duration_minutes' => 5000, 'hard_deadline' => '2026-11-11']);
+
+        Livewire::actingAs($this->user)->test(Crunch::class)->call('openScreen')
+            ->assertSee('Verschieben …')
+            ->call('startMove', $riesig->id)
+            ->assertSet('moveDate', '2026-11-18')
+            ->assertSee('«Riesig» passt in den nächsten Wochen auf keinen Tag. Mehr Zeit oder eine kleinere Aufgabe helfen.');
+    }
+
+    public function test_a_hard_task_that_fits_has_no_fit_date_and_no_hint(): void
+    {
+        $this->crunch();
+        $kurz = $this->task('Kurz', ['size' => Size::Short, 'hard_deadline' => '2026-11-11']);
+
+        Livewire::actingAs($this->user)->test(Crunch::class)->call('openScreen')
+            ->call('startMove', $kurz->id)
+            ->assertSet('moveDate', '2026-11-18')
+            ->assertDontSee('passt «Kurz»')
+            ->assertDontSee('«Kurz» passt');
     }
 
     public function test_more_time_on_the_screen_is_prefilled_saved_and_undoable(): void

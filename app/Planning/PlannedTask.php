@@ -19,6 +19,12 @@ final readonly class PlannedTask
         public int $doneMinutes = 0,
     ) {}
 
+    /** The same task with another hard deadline, for what-if checks. Nothing is saved. */
+    public function withHardDeadline(string $date): self
+    {
+        return new self($this->id, $this->size, $this->estimatedSessions, $date, $this->softDeadline, $this->areaId, $this->doneMinutes);
+    }
+
     public function remainingMinutes(): int
     {
         return max(0, $this->size->workMinutes($this->estimatedSessions) - $this->doneMinutes);

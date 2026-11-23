@@ -76,7 +76,7 @@ class Crunch extends Component
     #[Computed]
     public function view(): CrunchView
     {
-        return app(CrunchOverview::class)->for($this->user, CarbonImmutable::now(), seen: true);
+        return app(CrunchOverview::class)->for($this->user, CarbonImmutable::now(), seen: true, withFitDates: true);
     }
 
     #[On('crunch-open')]
@@ -139,7 +139,8 @@ class Crunch extends Component
             return;
         }
         $this->moving = $task->id;
-        $this->moveDate = CarbonImmutable::parse($task->hardDeadline()->toDateString())->addWeek()->toDateString();
+        // The first date the task fits (from the engine); a week later when there is none or the task is not late itself.
+        $this->moveDate = $this->fitDateOf($task->id) ?? CarbonImmutable::parse($task->hardDeadline()->toDateString())->addWeek()->toDateString();
         $this->moveSure = false;
     }
 
@@ -257,6 +258,17 @@ class Crunch extends Component
         }
 
         $this->changed();
+    }
+
+    private function fitDateOf(int $taskId): ?string
+    {
+        foreach ($this->view->items as $item) {
+            if ($item->task->id === $taskId) {
+                return $item->fitDate;
+            }
+        }
+
+        return null;
     }
 
     private function refreshGone(): void

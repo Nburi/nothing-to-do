@@ -20,5 +20,9 @@ final readonly class CrunchItem
         public ?string $softMoveTo,
         /** Soft work in the crunch window: suggested to let go first (R5). */
         public bool $suggested,
+        /** Hard only: the work cannot be done by the deadline with the sessions that are left. */
+        public bool $late = false,
+        /** Hard and late only: the first date the deadline can move to so that it fits; null when no day does. */
+        public ?string $fitDate = null,
     ) {}
 }

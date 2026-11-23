@@ -5,6 +5,7 @@ namespace Tests\Unit\Planning;
 use App\Planning\DeadlineFeasibility;
 use App\Planning\FeasibilityResult;
 use App\Planning\PlannedTask;
+use App\Planning\SessionSlot;
 use App\Planning\Size;
 use App\Planning\SlotCalculator;
 use App\Planning\WeekPlan;
@@ -153,7 +154,67 @@ class DeadlineFeasibilityTest extends TestCase
         $this->assertSame([2], $result->slippedSoftTaskIds);
     }
 
-    private function check(array $tasks, string $now = '2026-11-09 08:00', ?WeekPlan $plan = null): FeasibilityResult
+    // ---- Fit dates (step 4.2, C24): where a late hard deadline can move to ----------------------
+
+    public function test_a_late_hard_deadline_gets_the_first_date_it_fits(): void
+    {
+        // Mon+Tue hold 8 sessions, Wednesday brings it to 12, Thursday to 16: 13 sessions due Tuesday fit from Thursday.
+        $fit = $this->fitDates([new PlannedTask(1, Size::Block, estimatedSessions: 13, hardDeadline: '2026-11-10')]);
+
+        $this->assertSame([1 => '2026-11-12'], $fit);
+    }
+
+    public function test_only_late_hard_tasks_get_a_fit_date(): void
+    {
+        $fit = $this->fitDates([
+            new PlannedTask(1, Size::Short, hardDeadline: '2026-11-11'),
+            new PlannedTask(2, Size::Block, estimatedSessions: 20, softDeadline: '2026-11-10'),
+            new PlannedTask(3, Size::Short),
+        ]);
+
+        $this->assertSame([], $fit, 'on time, soft and undated work get none');
+    }
+
+    public function test_a_date_that_only_moves_the_crunch_to_another_hard_deadline_is_skipped(): void
+    {
+        // Task 1 (5 sessions, due Monday) is one session short. Due Tuesday it would fit, but then task 2
+        // (16 sessions, due Friday, exactly fits today) loses a session. The same holds until task 1 is due
+        // after task 2: from Saturday on, task 2 goes first and both fit.
+        $fit = $this->fitDates([
+            new PlannedTask(1, Size::Block, estimatedSessions: 5, hardDeadline: '2026-11-09'),
+            new PlannedTask(2, Size::Block, estimatedSessions: 16, hardDeadline: '2026-11-13'),
+        ]);
+
+        $this->assertSame([1 => '2026-11-14'], $fit);
+    }
+
+    public function test_fit_dates_respect_area_links(): void
+    {
+        // 21 sessions are one more than Mon–Fri hold. Saturday's block only takes "Own projects".
+        $school = new PlannedTask(1, Size::Block, estimatedSessions: 21, hardDeadline: '2026-11-13', areaId: Fixtures::AREA_SCHOOL);
+        $own = new PlannedTask(1, Size::Block, estimatedSessions: 21, hardDeadline: '2026-11-13', areaId: Fixtures::AREA_OWN);
+
+        $this->assertSame([1 => '2026-11-16'], $this->fitDates([$school]), 'Saturday and Sunday do not help; Monday does');
+        $this->assertSame([1 => '2026-11-14'], $this->fitDates([$own]));
+    }
+
+    public function test_a_deadline_in_the_past_looks_from_tomorrow_never_today(): void
+    {
+        // Moving a hard deadline needs a date after today, so today is never proposed, even though it has room.
+        $fit = $this->fitDates([new PlannedTask(1, Size::Long, hardDeadline: '2026-11-06')]);
+
+        $this->assertSame([1 => '2026-11-10'], $fit);
+    }
+
+    public function test_no_fit_date_when_no_day_of_the_planning_window_fits(): void
+    {
+        $fit = $this->fitDates([new PlannedTask(1, Size::Block, estimatedSessions: 100, hardDeadline: '2026-11-10')]);
+
+        $this->assertSame([1 => null], $fit);
+    }
+
+    /** @return array<string, list<SessionSlot>> from Monday 9 to Sunday 22 November */
+    private function slots(?WeekPlan $plan = null): array
     {
         $plan ??= Fixtures::week();
         $calc = new SlotCalculator(Fixtures::categories());
@@ -162,7 +223,19 @@ class DeadlineFeasibilityTest extends TestCase
             $slotsByDate[$d->toDateString()] = $calc->slots($plan->blocksOn($d->toDateString()));
         }
 
+        return $slotsByDate;
+    }
+
+    private function check(array $tasks, string $now = '2026-11-09 08:00', ?WeekPlan $plan = null): FeasibilityResult
+    {
         return (new DeadlineFeasibility(Fixtures::categories()))
-            ->check($tasks, $slotsByDate, CarbonImmutable::parse($now, Fixtures::TZ));
+            ->check($tasks, $this->slots($plan), CarbonImmutable::parse($now, Fixtures::TZ));
+    }
+
+    /** @return array<int, ?string> */
+    private function fitDates(array $tasks, string $now = '2026-11-09 08:00'): array
+    {
+        return (new DeadlineFeasibility(Fixtures::categories()))
+            ->fitDates($tasks, $this->slots(), CarbonImmutable::parse($now, Fixtures::TZ));
     }
 }
