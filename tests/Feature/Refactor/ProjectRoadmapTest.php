@@ -17,13 +17,16 @@ use Symfony\Component\CssSelector\CssSelectorConverter;
 use Tests\TestCase;
 
 /**
- * C30 follow-up of step 4.3a (Niels' C-tests, 2026-11-17): the roadmap strip of a project page. The
- * pixels were checked in a real browser at 1280 and 390 px (docs/TESTBERICHT.md B27); these tests
- * hold the markup rules that layout stands on.
+ * C30 follow-up of step 4.3a (Niels' C-tests, 2026-11-17): the roadmap strip of a project page and the
+ * ⋯ menu of a waiting step. The pixels were checked in a real browser at 1280 and 390 px
+ * (docs/TESTBERICHT.md B27); these tests hold the markup rules that layout stands on.
  */
 class ProjectRoadmapTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** A class token that starts with "opacity-" (not a variant such as "disabled:opacity-30"). */
+    private const FADED = "contains(concat(' ', normalize-space(@class), ' '), ' opacity-')";
 
     private User $user;
 
@@ -150,6 +153,42 @@ class ProjectRoadmapTest extends TestCase
         }
         foreach ($this->css($page, '[data-roadmap-name]') as $name) {
             $this->assertStringContainsString('wrap-break-word', $name->getAttribute('class'), 'a long word breaks instead of overflowing');
+        }
+    }
+
+    // ---- the ⋯ menu of a waiting step ---------------------------------------------------------
+
+    public function test_the_menu_of_a_waiting_step_is_never_inside_something_dimmed(): void
+    {
+        // C30: a step that waits was faded as a whole row, so its open menu was faded with it.
+        $p = $this->editor->createProject($this->user, 'Warten');
+        $now = $this->editor->addStage($p, 'Jetzt', null);
+        $later = $this->editor->addStage($p, 'Später', null);
+        $first = $this->editor->addProjectStep($this->user, $p, $now, 'Erster');
+        $this->editor->addProjectStep($this->user, $p, $now, 'Zweiter');
+        $blocked = $this->editor->addProjectStep($this->user, $p, $now, 'Wartet auf Erster');
+        $this->editor->setWaitsOn($blocked, $first);
+        $inLaterStage = $this->editor->addProjectStep($this->user, $p, $later, 'In späterer Etappe');
+
+        $page = $this->page($p);
+
+        $waiting = $this->css($page, 'li[data-step][data-waiting]');
+        $this->assertSame(
+            [(string) $blocked->id, (string) $inLaterStage->id],
+            array_map(fn ($li) => $li->getAttribute('data-step'), iterator_to_array($waiting)),
+        );
+        $this->assertCount(0, $this->css($page, 'li[data-step="'.$first->id.'"][data-waiting]'), 'a next step is not dimmed');
+
+        // No row is faded as a whole ...
+        $this->assertCount(0, $page->query('//li[@data-step][ancestor-or-self::*['.self::FADED.']]'));
+        foreach ($waiting as $li) {
+            // ... the step itself still is: its text block, its buttons and the ⋯ trigger carry the fade ...
+            $this->assertGreaterThanOrEqual(3, $page->query('.//*['.self::FADED.']', $li)->length);
+            // ... while the menu has no faded element around it or inside it.
+            $menu = $page->query('.//*[@data-step-menu]', $li);
+            $this->assertCount(1, $menu);
+            $this->assertCount(0, $page->query('ancestor-or-self::*['.self::FADED.']', $menu->item(0)));
+            $this->assertCount(0, $page->query('.//*['.self::FADED.']', $menu->item(0)));
         }
     }
 }
