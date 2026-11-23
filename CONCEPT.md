@@ -71,11 +71,20 @@ then a drawer). Features are identical on both devices; only the layout differs.
   those blocks is free time: **no work is suggested there**, only ideas from Later may be offered, and
   "Keep it mine" applies.
 
-## Ordering without a priority field
+## Ordering: deadlines first, one „Wichtig" marker
 Every task has a size and may have a **hard deadline** (real) and a **soft deadline** ("finished by",
 self-set). The app works out a start-by date from the size, orders by it, warns early when a day is
 overloaded, and suggests letting soft deadlines slip first. In a crunch, the user decides: shrink,
 move, drop, or ask for more time.
+
+The only priority is **„Wichtig"**, as in the old app (decided 2026-11-17). It is for urgent things
+that must not be forgotten, for example something from work that is due tomorrow and has bad
+consequences if it slips. A task marked „Wichtig" is highlighted, sits at the top of the board, and
+stays visible outside pomodoro blocks and while the board is folded away. Marking it without a date
+offers an optional „Bis wann?", so the early warning can help too.
+
+After the deadlines and „Wichtig", the **user's own board order** decides: tasks and the next steps of
+projects and groups share one order, and higher up means more important.
 
 ## Principles
 - **Overview while planning, nothing but the one thing while working.**

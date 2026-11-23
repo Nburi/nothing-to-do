@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Refactor Status Board</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -187,7 +188,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
     <span class="eyebrow">nothing-to-do · refactor</span>
     <h1>Where the refactor stands</h1>
     <div class="meta">
-      <span>As of 16 Nov 2026</span>
+      <span>As of 17 Nov 2026</span>
       <span>Sources: <code>TODO.md</code>, <code>docs/REFACTOR_PLAN.md §6</code>, <code>docs/TESTBERICHT.md</code>, GitHub PRs</span>
     </div>
   </header>
@@ -197,7 +198,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
     <div class="ring-box">
       <svg id="ring" viewBox="0 0 220 220" role="img" aria-label="33 plan steps by state"></svg>
       <div class="ring-center">
-        <div class="big">18<span style="font-size:1.2rem;color:var(--muted)">/33</span></div>
+        <div class="big">22<span style="font-size:1.2rem;color:var(--muted)">/34</span></div>
         <div class="small">plan steps built</div>
       </div>
     </div>
@@ -209,8 +210,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot review"></span>Built, in review</div>
-        <div class="n">10</div>
-        <div class="sub">open PRs #11–#21, all CI green</div>
+        <div class="n">14</div>
+        <div class="sub">open PRs #11–#21, #23 (4.2), #24 (4.1), #25 (4.3a) and #26 (4.4)</div>
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot waiting"></span>Waiting on you</div>
@@ -219,8 +220,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot todo"></span>Not started</div>
-        <div class="n">11</div>
-        <div class="sub">3.6 review, all of phase 4 and 5</div>
+        <div class="n">8</div>
+        <div class="sub">3.6 review, 4.5, 4.6 „Wichtig", phase 5 (and 4.3b)</div>
       </div>
     </div>
     <p class="summary-note">Phases 0 to 3 are built. Nothing from phase 2 or 3 is merged yet: it all sits in one stack of 10 PRs that has to be merged bottom-up. <strong>New:</strong> main is merged into the refactor in PR #22 (all 21 newer migrations, 1814 tests green), waiting for your review. Phase 4 (week plan editor, crunch) is next to build.</p>
@@ -301,19 +302,19 @@ footer { font-size: 0.82rem; color: var(--muted); }
     </div>
     <div class="tests">
       <div class="test-card">
-        <div class="head"><h3>A · Automatic</h3><span class="score">19<small>/20</small></span></div>
+        <div class="head"><h3>A · Automatic</h3><span class="score">40<small>/41</small></span></div>
         <div class="cells" id="cellsA"></div>
-        <p class="note">Only A12 (migration rehearsal on old-schema fixtures) is still open.</p>
+        <p class="note">Only A12 (migration rehearsal on old-schema fixtures) is still open. A21–A23 new from 4.1, A30–A35 from 4.2, A39–A46 from 4.3a, A47–A50 from 4.4.</p>
       </div>
       <div class="test-card">
-        <div class="head"><h3>B · Claude visual</h3><span class="score">5<small>/12</small></span></div>
+        <div class="head"><h3>B · Claude visual</h3><span class="score">18<small>/24</small></span></div>
         <div class="cells" id="cellsB"></div>
-        <p class="note">4 partial (week view comes with 4.1). Open: B6 holiday ghosts, B7 crunch screen, B9 timer and break screens.</p>
+        <p class="note">B1 still partial (Inbox empty state). B2 and B13–B15 passed in 4.1 (week block, Zeitplan, holiday gate, phone grid). Open: B3, B4 partial, B6 holiday ghosts, B9 timer and break screens. B7, B19, B20 passed in 4.2; B25–B28 (project cards, Projekte page, project page, fifth tab) passed in 4.3a. B30 and B32 (Sunday review) passed in 4.4; B31 (the board line on a Sunday) not seen live.</p>
       </div>
       <div class="test-card">
-        <div class="head"><h3>C · Your checks</h3><span class="score">0<small>/16</small></span></div>
+        <div class="head"><h3>C · Your checks</h3><span class="score">10<small>/34</small></span></div>
         <div class="cells" id="cellsC"></div>
-        <p class="note">All open. 12 are MUSS (solid outline), 4 SOLLTE. C12–C16 are new from phase 3.</p>
+        <p class="note">Local C-tests on 17 Nov (notes in <code>docs/c-tests/2026-11-17-c-tests.md</code>, not yet in TESTBERICHT): 10 passed, 4 passed with findings (C1 delay before the timer, C2 location only, C17 „An diesen Tagen" closes, C30 roadmap rendering). Solid outline = MUSS. C17 is the phase 4 gate "a holiday takes under a minute" (4.1); C23–C27 come from 4.2, C29–C32 from 4.3a, C34–C36 from 4.4.</p>
       </div>
     </div>
   </section>
@@ -352,7 +353,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <div class="ask">
         <div class="top"><span class="tag decide">Decide</span><span class="mono muted">5.4 · data</span></div>
         <h3>Category links to removed features</h3>
-        <p>Prod categories linked to a project, group or Agenda entry now show no link. Clear them at the switch, or turn them into a text link?</p>
+        <p>Prod categories linked to a project, group or Agenda entry now show no link. Clear them at the switch, or turn them into a text link? Since 4.3a projects and groups are back, a project link could become "suggest its next steps in this block".</p>
       </div>
       <div class="ask">
         <div class="top"><span class="tag decide">Decide</span><span class="mono muted">legal</span></div>
@@ -366,8 +367,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       </div>
       <div class="ask">
         <div class="top"><span class="tag do">Do</span><span class="mono muted">0.1 · C2</span></div>
-        <h3>iPhone Wi-Fi arrival test, five evenings</h3>
-        <p>Server side is ready. Guide in <code>docs/spikes/0.1-arrival.md</code>. Decides whether 3.3 gets the arrival path.</p>
+        <h3>Arrival trigger: location works, Wi-Fi does not</h3>
+        <p>Tested 17 Nov: the location automation fired every time, ~60 s before the house; Wi-Fi fails while the hotspot from the train is on. Open: did the push arrive too? Then 3.3 gets the arrival path via location.</p>
       </div>
       <div class="ask">
         <div class="top"><span class="tag do">Do</span><span class="mono muted">2.4 · 3.5</span></div>
@@ -395,6 +396,26 @@ footer { font-size: 0.82rem; color: var(--muted); }
         <p>See <code>docs/steps/3.3.md</code> and <code>3.4.md</code>: "Jetzt machen" starts a session, soft deadlines also stop ideas, 06:00–24:00 window, 30 min minimum.</p>
       </div>
       <div class="ask">
+        <div class="top"><span class="tag do">Do</span><span class="mono muted">#24 · C17–C22</span></div>
+        <h3>4.1 week plan editor: checks and decisions</h3>
+        <p>Review #24 on the dev server (<code>php artisan migrate</code>, one additive column). C17 is the phase gate: enter a real holiday in under a minute. C18 long press on the iPhone. Confirm the decisions in <code>docs/steps/4.1.md</code>: soft delete only in the new settings, undo until reload.</p>
+      </div>
+      <div class="ask">
+        <div class="top"><span class="tag do">Do</span><span class="mono muted">#23 · C23–C27</span></div>
+        <h3>4.2 crunch: checks and decisions</h3>
+        <p>Review #23 on the dev server (<code>php artisan migrate</code>, additive). Checks C23–C27 (incl. a real crunch push on the iPhone); confirm the decisions in <code>docs/steps/4.2.md</code>: no push when the board showed it, 08:00–21:00, soft +7 days.</p>
+      </div>
+      <div class="ask">
+        <div class="top"><span class="tag do">Do</span><span class="mono muted">#25 · C29–C32</span></div>
+        <h3>4.3a projects and groups: checks and decisions</h3>
+        <p>Review #25 on the dev server (<code>php artisan migrate</code>: 4 additive migrations, one turns mixed old groups into projects). Use your real projects for a few evenings (C29), sketch one roadmap (C30). Confirm the decisions in <code>docs/steps/4.3.md</code>: project order, stage dates as targets only, no delete yet.</p>
+      </div>
+      <div class="ask">
+        <div class="top"><span class="tag do">Do</span><span class="mono muted">#26 · C34–C36</span></div>
+        <h3>4.4 Sunday review: checks and decisions</h3>
+        <p>Review #26 on the dev server (no migration). On a Sunday evening tap the line on the board and read the review with your real data (C34). Confirm the decisions in <code>docs/steps/4.4.md</code>: Sunday judged like a finished week, "noch in der Inbox" instead of "sortiert", no session count, the line stays after a visit.</p>
+      </div>
+      <div class="ask">
         <div class="top"><span class="tag decide">Decide</span><span class="mono muted">rule 9</span></div>
         <h3>Introduce a version number</h3>
         <p>The app has none yet. Suggestion: <code>config/app.php</code> <code>version</code>, shown in settings, starting at <code>2.0.0_1</code>.</p>
@@ -411,7 +432,11 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <li><span class="when">Copy</span><span class="what">"Der Rest des Abends gehört dir." also shows in the morning and next to the deadline line.</span></li>
       <li><span class="when">Push</span><span class="what">Older push commands crash every tick without VAPID keys. Harmless on prod (keys set).</span></li>
       <li><span class="when">Service worker</span><span class="what">Stale page on navigation seen once in 1.8, not reproduced yet.</span></li>
-      <li><span class="when">Phase 4</span><span class="what">1.4 follow-up: push the early warning and build the crunch screen (4.2).</span></li>
+      <li><span class="when">4.2 engine</span><span class="what">With two hard tasks on the same date, <code>DeadlineFeasibility</code> keeps soft work planned before a late hard task (not listed as slipped). The crunch screen suggests soft first anyway. Look at it in 4.5.</span></li>
+      <li><span class="when">4.2 Mehr Zeit</span><span class="what">The "+N Sessions" label counts the new block alone; next to an existing block the merged run can give one less. Move and Mehr Zeit have no REST/MCP endpoint yet.</span></li>
+      <li><span class="when">4.1 later</span><span class="what">Resize a block by dragging its edge; move a block to another day by dragging on the phone (the form's day field does it); rename or delete areas.</span></li>
+      <li><span class="when">4.3 later</span><span class="what">4.3b: note cards with shared <code>#tags</code>. Also open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
+      <li><span class="when">Decided 17 Nov</span><span class="what">„Wichtig" stays as the only priority (R5 updated, plan Q3): highlighted, top of the board, visible outside pomodoro blocks; order deadline tiers → „Wichtig" → board order. Built in new step 4.6. Docs PR on <code>feature/docs-important</code>.</span></li>
       <li><span class="when">Later release</span><span class="what">1.1 follow-up: switch raw-SQL reads to the new columns, then drop <code>deadline</code> / <code>due_date</code>.</span></li>
       <li><span class="when">At switch 5.4</span><span class="what">Set <code>APP_LOCALE=de</code> on prod; run <code>app:copy-craft-ideas --dry-run</code>, then for real.</span></li>
       <li><span class="when">Local</span><span class="what">You're on <code>feature/week-plan</code> with an uncommitted <code>package-lock.json</code> change.</span></li>
@@ -425,11 +450,11 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <li><strong>Merge #22 (main merge) first.</strong> It is independent of the stack. Afterwards each stack branch takes refactor/refactor in, bottom-up; expect conflicts mostly in TODO.md and the old views.</li>
       <li><strong>Then shrink the stack before building more.</strong> Ten stacked PRs means every fix low in the stack has to be merged up through nine branches. Merging #11 to #13 (phase 1) would already help a lot.</li>
       <li><strong>Get the prod dump.</strong> It closes the phase 1 gate and makes C3 and C15 checkable.</li>
-      <li><strong>Then phase 4.</strong> 4.1 (week plan editor) also unblocks B1, B2 and B6.</li>
+      <li><strong>Phase 4 is in review.</strong> 4.1 (#24), 4.2 (#23) and 4.3a (#25) are built as siblings on #21; 4.1 closed the week parts of B1 and B2. 4.3b (notes and tags) follows 4.3a. The optional 4.4 Sunday review is built too (#26); 4.5 review rounds come after all four.</li>
     </ol>
   </section>
 
-  <footer>Built from the repository state on 16 Nov 2026. Counts are by plan step in REFACTOR_PLAN.md §6 (33 steps, 0.4 counted as a merged decision).</footer>
+  <footer>Built from the repository state on 16 Nov 2026. Counts are by plan step in REFACTOR_PLAN.md §6 (34 steps, 0.4 counted as a merged decision).</footer>
 </div>
 
 <script>
@@ -449,8 +474,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["3.1", "Board folds away", "review", 18], ["3.2", "Battery + reset", "review", 19], ["3.3", "Nudge time", "review", 20],
       ["3.4", "Free-time ideas", "review", 21], ["3.5", "Beta 2", "waiting"], ["3.6", "Review rounds", "todo"] ] },
     { code: "P4", name: "Planning and foresight", steps: [
-      ["4.1", "Week plan editor", "todo"], ["4.2", "Crunch decisions", "todo"], ["4.3", "Projects", "todo"],
-      ["4.4", "Sunday review", "todo"], ["4.5", "Review rounds", "todo"] ] },
+      ["4.1", "Week plan editor", "review", 24], ["4.2", "Crunch decisions", "review", 23], ["4.3", "Projects (4.3a)", "review", 25],
+      ["4.4", "Sunday review", "review", 26], ["4.6", "„Wichtig" marker", "todo"], ["4.5", "Review rounds", "todo"] ] },
     { code: "P5", name: "Everyone, then release", steps: [
       ["5.1", "Onboarding", "todo"], ["5.2", "A11y, perf", "todo"], ["5.3", "Voice capture", "todo"],
       ["5.4", "Migration + switch", "todo"], ["5.5", "RC review", "todo"] ] }
@@ -506,6 +531,10 @@ footer { font-size: 0.82rem; color: var(--muted); }
 
   // PR stack, top = last to merge
   var stack = [
+    [26, "4.4 Quiet Sunday review", "feature/sunday-review · based on #21, sibling of the other phase-4 PRs"],
+    [25, "4.3a Projects and groups with their next two steps", "feature/projects-next-step · based on #21, sibling of the other phase-4 PRs"],
+    [24, "4.1 Week plan editor: Zeitplan, Wochenplan, drawing, pause days", "feature/week-editor · based on #21, sibling of the other phase-4 PRs"],
+    [23, "4.2 Early warning and crunch decisions", "feature/crunch-decisions · based on #21, sibling of the other phase-4 PRs"],
     [21, "3.4 Free-time ideas, Meins behalten, Ideen view", "feature/free-time-ideas"],
     [20, "3.3 Nudge at a fixed time per weekday", "feature/nudge-time"],
     [19, "3.2 Battery check-in and ten minute reset", "feature/battery-reset"],
@@ -536,9 +565,21 @@ footer { font-size: 0.82rem; color: var(--muted); }
     });
   }
   var A = []; for (var i = 1; i <= 20; i++) A.push(["A" + i, i === 12 ? "open" : "pass"]);
+  for (var k = 30; k <= 35; k++) A.push(["A" + k, "pass"]); // 4.2
+  for (var q = 21; q <= 23; q++) A.push(["A" + q, "pass"]); // 4.1
+  for (var m = 39; m <= 46; m++) A.push(["A" + m, "pass"]); // 4.3a
+  for (var r4 = 47; r4 <= 50; r4++) A.push(["A" + r4, "pass"]); // 4.4
   cells("cellsA", A);
-  cells("cellsB", [["B1","part"],["B2","part"],["B3","part"],["B4","part"],["B5","pass"],["B6","open"],["B7","open"],["B8","pass"],["B9","open"],["B10","pass"],["B11","pass"],["B12","pass"]]);
+  cells("cellsB", [["B1","part"],["B2","pass"],["B3","part"],["B4","part"],["B5","pass"],["B6","open"],["B7","pass"],["B8","pass"],["B9","open"],["B10","pass"],["B11","pass"],["B12","pass"],["B13","pass"],["B14","pass"],["B15","pass"],["B19","pass"],["B20","pass"],["B25","pass"],["B26","pass"],["B27","pass"],["B28","pass"],["B30","pass"],["B31","open"],["B32","pass"]]);
   var C = []; for (var j = 1; j <= 16; j++) C.push(["C" + j, [9,10,11,16].indexOf(j) >= 0 ? "should" : "must"]);
+  C.push(["C17","must"],["C18","must"],["C19","must"],["C20","should"],["C21","should"],["C22","should"]); // 4.1
+  C.push(["C23","must"],["C24","must"],["C25","must"],["C26","should"],["C27","should"]); // 4.2
+  C.push(["C29","must"],["C30","must"],["C31","should"],["C32","must"]); // 4.3a
+  C.push(["C34","must"],["C35","should"],["C36","should"]); // 4.4
+  var done17 = { C6:"pass", C8:"pass", C19:"pass", C20:"pass", C21:"pass", C22:"pass", C24:"pass", C27:"pass", C29:"pass", C31:"pass", C1:"part", C2:"part", C17:"part", C30:"part" }; // C-tests 17 Nov
+  C.forEach(function (c) { if (done17[c[0]]) c[1] = done17[c[0]]; });
   cells("cellsC", C);
 })();
 </script>
+
+</body></html>
