@@ -222,6 +222,11 @@ class Week extends Component
             'moved' => false,
         ];
 
+        if ($kind === 'once') {
+            // A block moved here "this week only" can go back to the series it came from.
+            $form['movedFrom'] = app(WeekPlanEditor::class)->movedFrom($this->user, $id);
+        }
+
         if ($kind === 'tpl') {
             $template = EventTemplate::forUser($this->user)->find($id);
             $form['days'] = $template?->recurrenceDays() ?? [];
@@ -356,16 +361,30 @@ class Week extends Component
         }
     }
 
-    /** "Zurück zum Wochenplan": this date follows the template again. */
+    /**
+     * "Zurück zum Wochenplan": this date follows the template again (mode occ). A block moved here
+     * this week only (mode once) goes back to the date it came from. The server re-reads what the
+     * block is; nothing in the form decides it.
+     */
     public function restoreOccurrence(): void
     {
         $f = $this->form;
-        if (($f['mode'] ?? null) !== 'occ') {
+        $mode = $f['mode'] ?? null;
+        if (! in_array($mode, ['occ', 'once'], true)) {
             return;
         }
 
-        $message = $this->attempt(fn () => tap(__('week.saved.restored', ['date' => $this->short($f['date'])]),
-            fn () => app(WeekPlanEditor::class)->restoreOccurrence($this->user, (int) $f['id'], $f['date'])));
+        $editor = app(WeekPlanEditor::class);
+        $message = $this->attempt(function () use ($f, $mode, $editor) {
+            if ($mode === 'once') {
+                $date = $editor->restoreMoved($this->user, (int) $f['id']);
+            } else {
+                $date = (string) $f['date'];
+                $editor->restoreOccurrence($this->user, (int) $f['id'], $date);
+            }
+
+            return __('week.saved.restored', ['date' => $this->short($date)]);
+        });
 
         if ($message !== null) {
             $this->form = null;

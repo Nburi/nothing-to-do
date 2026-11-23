@@ -191,6 +191,45 @@ class WeekEditorPageTest extends TestCase
         $this->assertSame([1, 2, 3, 5, 7], $this->template->fresh()->recurrenceDays());
     }
 
+    /** C21 (Niels, 2026-11-17): a block moved to another day this week only can be put back from its form. */
+    public function test_a_block_moved_this_week_goes_back_to_the_wochenplan(): void
+    {
+        $page = Livewire::test(Week::class)
+            ->call('openBlock', 'occ', $this->template->id, '2026-11-18', '2026-11-21', '10:00', '12:00')
+            ->call('save', 'this');
+        $moved = ScheduleEvent::whereNull('template_id')->whereDate('date', '2026-11-21')->sole();
+        $this->assertSame([], $this->day('2026-11-18'));
+
+        $page->call('openBlock', 'once', $moved->id, '2026-11-21')
+            ->assertSet('form.movedFrom', '2026-11-18')
+            ->assertSee('Diese Woche verschoben, von Mi 18.11.')->assertDontSee('18.11..')->assertSee('Zurück zum Wochenplan')
+            ->call('restoreOccurrence')
+            ->assertSet('form', null)->assertSee('18.11. folgt wieder dem Wochenplan.')->assertSee('data-undo', false);
+
+        $this->assertSame(['19:30–21:30 Deep work'], $this->day('2026-11-18'));
+        $this->assertSame([], $this->day('2026-11-21'));
+
+        $page->call('undoLast')->assertSee('Rückgängig gemacht.');
+        $this->assertSame([], $this->day('2026-11-18'));
+        $this->assertSame(['10:00–12:00 Deep work'], $this->day('2026-11-21'));
+    }
+
+    public function test_blocks_that_were_not_moved_offer_no_way_back_and_a_forged_call_changes_nothing(): void
+    {
+        $termin = (new WeekPlanEditor)->addOnce($this->user, '2026-11-19', '16:00', '17:00', null, 'Zahnarzt');
+
+        Livewire::test(Week::class)
+            ->call('openBlock', 'once', $termin->id, '2026-11-19')
+            ->assertSet('form.movedFrom', null)->assertDontSee('Zurück zum Wochenplan')
+            ->call('restoreOccurrence')
+            ->assertSet('form', null)->assertSee('Diesen Block gibt es nicht mehr.');
+        $this->assertNotNull(ScheduleEvent::find($termin->id));
+
+        // An unchanged occurrence of the Wochenplan has nothing to go back to either.
+        Livewire::test(Week::class)
+            ->call('openBlock', 'occ', $this->template->id, '2026-11-19')->assertDontSee('Zurück zum Wochenplan');
+    }
+
     public function test_an_occurrence_removed_this_week_and_undone(): void
     {
         Livewire::test(Week::class)

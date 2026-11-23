@@ -76,6 +76,7 @@ return [
         'to' => 'Bis',
         'days' => 'An diesen Tagen',
         'changed_note' => 'Diese Woche geändert.',
+        'moved_note' => 'Diese Woche verschoben, von :day :date', // :date ends with its own dot ("2.12.")
         'restore' => 'Zurück zum Wochenplan',
         'create_for' => 'Anlegen für …',
         'save_for' => 'Speichern für …',

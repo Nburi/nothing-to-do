@@ -76,6 +76,7 @@ return [
         'to' => 'To',
         'days' => 'On these days',
         'changed_note' => 'Changed this week.',
+        'moved_note' => 'Moved this week, from :day :date', // :date ends with its own dot ("2.12.")
         'restore' => 'Back to the weekly plan',
         'create_for' => 'Create for …',
         'save_for' => 'Save for …',

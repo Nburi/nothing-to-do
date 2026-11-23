@@ -64,7 +64,7 @@ class WeekEditorEngineTest extends TestCase
     {
         return [
             'templates' => DB::table('event_templates')->where('user_id', $this->user->id)->orderBy('id')->get(['id', 'category_id', 'name', 'color', 'duration', 'default_start', 'is_recurring', 'recurrence'])->map(fn ($r) => (array) $r)->all(),
-            'events' => DB::table('schedule_events')->where('user_id', $this->user->id)->orderBy('id')->get(['id', 'template_id', 'category_id', 'title', 'color', 'date', 'start_time', 'end_time', 'is_cancelled'])->map(fn ($r) => (array) $r)->all(),
+            'events' => DB::table('schedule_events')->where('user_id', $this->user->id)->orderBy('id')->get(['id', 'template_id', 'category_id', 'title', 'color', 'date', 'start_time', 'end_time', 'is_cancelled', 'moved_from_id'])->map(fn ($r) => (array) $r)->all(),
             'pauses' => DB::table('schedule_pauses')->where('user_id', $this->user->id)->orderBy('date')->get(['date', 'note'])->map(fn ($r) => (array) $r)->all(),
         ];
     }
@@ -214,6 +214,100 @@ class WeekEditorEngineTest extends TestCase
 
         WeekPlanJournal::undo($this->user, $journal);
         $this->assertSame('Bericht', DB::table('schedule_event_attribute_values')->where('schedule_event_id', $friday->id)->value('value'));
+    }
+
+    /**
+     * C21 (Niels, 2026-11-17): a block moved to another day "this week only" is a plain one-off with a
+     * tombstone left on the old date, and nothing led back. The one-off now remembers its tombstone.
+     */
+    public function test_a_moved_block_goes_back_to_the_series(): void
+    {
+        $moved = $this->editor->moveOccurrence($this->user, $this->template->id, '2026-11-11', '2026-11-14', '10:00', '12:00');
+        $tombstone = ScheduleEvent::where('template_id', $this->template->id)->whereDate('date', '2026-11-11')->sole();
+
+        $this->assertSame($tombstone->id, $moved->moved_from_id);
+        $this->assertSame('2026-11-11', $this->editor->movedFrom($this->user, $moved->id));
+        $this->assertSame([], $this->day('2026-11-11'));
+        $this->assertSame(['10:00–12:00 Deep work'], $this->day('2026-11-14'));
+
+        $this->assertSame('2026-11-11', $this->editor->restoreMoved($this->user, $moved->id));
+
+        $this->assertSame(['19:30–21:30 Deep work'], $this->day('2026-11-11'));
+        $this->assertSame([], $this->day('2026-11-14'));
+        $this->assertNull(ScheduleEvent::find($moved->id));
+        $this->assertNull(ScheduleEvent::find($tombstone->id));
+        $this->assertSame([1, 2, 3, 4, 5], $this->template->fresh()->recurrenceDays(), 'the series itself is untouched');
+        $this->assertSame(['19:30–21:30 Deep work'], $this->day('2026-11-12'), 'other days are untouched');
+    }
+
+    public function test_putting_a_moved_block_back_is_undone_exactly(): void
+    {
+        $moved = $this->editor->moveOccurrence($this->user, $this->template->id, '2026-11-11', '2026-11-14', '10:00', '12:00');
+
+        $this->undoable(fn () => $this->editor->restoreMoved($this->user, $moved->id));
+
+        $this->assertSame('2026-11-11', $this->editor->movedFrom($this->user, $moved->id), 'the way back survives the undo');
+    }
+
+    public function test_only_a_moved_block_can_go_back(): void
+    {
+        $termin = $this->editor->addOnce($this->user, '2026-11-14', '10:00', '11:00', null, 'Zahnarzt');
+        $drawn = $this->editor->addOnce($this->user, '2026-11-14', '12:00', '13:00', $this->deep->id);
+        // An occurrence cancelled this week next to a block that merely looks like it: no tie, so no way back.
+        $this->editor->cancelOccurrence($this->user, $this->template->id, '2026-11-11', ChangeScope::ThisWeekOnly);
+        $lookalike = $this->editor->addOnce($this->user, '2026-11-14', '19:30', '21:30', $this->deep->id);
+        $this->editor->changeOccurrence($this->user, $this->template->id, '2026-11-12', '20:00', '21:00', $this->deep->id, ChangeScope::ThisWeekOnly);
+        $changed = ScheduleEvent::where('template_id', $this->template->id)->whereDate('date', '2026-11-12')->sole();
+        $before = $this->state();
+
+        foreach ([$termin, $drawn, $lookalike, $changed] as $row) {
+            $this->assertNull($this->editor->movedFrom($this->user, $row->id));
+            try {
+                $this->editor->restoreMoved($this->user, $row->id);
+                $this->fail('A block that was not moved went back.');
+            } catch (ModelNotFoundException) {
+                // expected
+            }
+        }
+
+        $this->assertSame($before, $this->state(), 'nothing was changed');
+        $this->assertSame([], $this->day('2026-11-11'), 'the cancelled occurrence stays cancelled');
+    }
+
+    public function test_a_moved_block_stays_where_it_is_when_the_series_no_longer_repeats_on_its_old_day(): void
+    {
+        $moved = $this->editor->moveOccurrence($this->user, $this->template->id, '2026-11-11', '2026-11-14', '10:00', '12:00');
+
+        // Wednesday leaves the series: its future tombstone goes with it, so there is nothing to go back to.
+        $this->editor->updateTemplate($this->user, $this->template->id, [1, 2, 4, 5], '19:30', '21:30', $this->deep->id);
+        $this->assertNull($this->editor->movedFrom($this->user, $moved->id));
+        try {
+            $this->editor->restoreMoved($this->user, $moved->id);
+            $this->fail('The block went back to a day the series no longer has.');
+        } catch (ModelNotFoundException) {
+            // expected
+        }
+        $this->assertSame(['10:00–12:00 Deep work'], $this->day('2026-11-14'), 'the moved block is untouched');
+
+        // Same when the tombstone is still there but the series stopped repeating.
+        $other = $this->editor->moveOccurrence($this->user, $this->template->id, '2026-11-12', '2026-11-15', '10:00', '12:00');
+        $this->assertSame('2026-11-12', $this->editor->movedFrom($this->user, $other->id));
+        $this->template->update(['is_recurring' => false]);
+        $this->assertNull($this->editor->movedFrom($this->user, $other->id));
+    }
+
+    public function test_a_moved_block_of_another_account_is_out_of_reach(): void
+    {
+        $moved = $this->editor->moveOccurrence($this->user, $this->template->id, '2026-11-11', '2026-11-14', '10:00', '12:00');
+        $stranger = User::factory()->create();
+
+        $this->assertNull($this->editor->movedFrom($stranger, $moved->id));
+        $this->expectException(ModelNotFoundException::class);
+        try {
+            $this->editor->restoreMoved($stranger, $moved->id);
+        } finally {
+            $this->assertNotNull(ScheduleEvent::find($moved->id));
+        }
     }
 
     public function test_an_undo_never_touches_another_account(): void

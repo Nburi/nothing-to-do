@@ -23,7 +23,8 @@ use Illuminate\Validation\ValidationException;
  *   only" is a schedule_events row with the template id for that date; a
  *   cancelled occurrence is such a row with is_cancelled (a tombstone).
  *   Moving an occurrence to another date leaves a tombstone and creates a
- *   one-off (the old app's rule).
+ *   one-off (the old app's rule); the one-off remembers its tombstone
+ *   (moved_from_id), so restoreMoved() can put the block back.
  * - "Every week" changes the template from tomorrow on. Rows the old screens
  *   materialised for future dates follow the template, **unless the user
  *   changed that one date on purpose**: a row that no longer matches the old
@@ -128,7 +129,8 @@ final class WeekPlanEditor
         }
 
         return DB::transaction(function () use ($user, $template, $data) {
-            $this->occurrence($user, $template, $data['from'])->fill(['is_cancelled' => true])->save();
+            $tombstone = $this->occurrence($user, $template, $data['from']);
+            $tombstone->fill(['is_cancelled' => true])->save();
 
             return $user->scheduleEvents()->create([
                 'category_id' => $template->category_id,
@@ -137,8 +139,37 @@ final class WeekPlanEditor
                 'date' => $data['date'],
                 'start_time' => $data['start'],
                 'end_time' => $data['end'],
+                'moved_from_id' => $tombstone->id,
             ]);
         });
+    }
+
+    /**
+     * The date a moved block came from, when it can still go back: its tombstone is there and the
+     * series still repeats on that date. Null for every other block (a block drawn for one week,
+     * a Termin, a block moved before the tie existed, a series that changed since).
+     */
+    public function movedFrom(User $user, int $eventId): ?string
+    {
+        return $this->origin($user, $eventId)?->tombstone->date->toDateString();
+    }
+
+    /**
+     * Put a moved block back: the one-off goes and its old date follows the series again (the
+     * tombstone goes, like restoreOccurrence). Both deletes run through models, so the undo journal
+     * brings both rows back. Returns the date the block is back on.
+     */
+    public function restoreMoved(User $user, int $eventId): string
+    {
+        $origin = $this->origin($user, $eventId)
+            ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(ScheduleEvent::class, [$eventId]);
+
+        DB::transaction(function () use ($origin) {
+            $origin->tombstone->delete();
+            $origin->oneOff->delete();
+        });
+
+        return $origin->tombstone->date->toDateString();
     }
 
     /** Cancel one occurrence (this week only), or stop the block on that weekday (every week). */
@@ -374,6 +405,29 @@ final class WeekPlanEditor
         }
 
         return $row;
+    }
+
+    /**
+     * A moved block together with the tombstone it left behind, only while the way back is valid:
+     * the tie exists, the tombstone is still a cancelled row of the series and the series still
+     * repeats on that date (else a restore would delete the block and bring nothing back).
+     *
+     * @return object{oneOff: ScheduleEvent, tombstone: ScheduleEvent}|null
+     */
+    private function origin(User $user, int $eventId): ?object
+    {
+        $oneOff = ScheduleEvent::forUser($user)->whereNull('template_id')->whereNotNull('moved_from_id')->find($eventId);
+        if ($oneOff === null) {
+            return null;
+        }
+
+        $tombstone = ScheduleEvent::forUser($user)->where('is_cancelled', true)->whereNotNull('template_id')->find($oneOff->moved_from_id);
+        $template = $tombstone === null ? null : EventTemplate::forUser($user)->find($tombstone->template_id);
+        if ($template === null || ! $template->occursOn($tombstone->date)) {
+            return null;
+        }
+
+        return (object) ['oneOff' => $oneOff, 'tombstone' => $tombstone];
     }
 
     /** @return array{0:string,1:string} title and colour of a new block */

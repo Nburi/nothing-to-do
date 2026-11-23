@@ -120,10 +120,12 @@
         </div>
     @endif
 
-    @if ($mode === 'occ' && ($form['changed'] ?? false))
-        <p class="flex flex-wrap items-center gap-x-2 text-sm text-warn">
-            {{ __('week.form.changed_note') }}
-            <button type="button" wire:click="restoreOccurrence" class="font-semibold text-accent-ink underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('week.form.restore') }}</button>
+    {{-- A block changed this week (occ) or moved here this week (once, with the date it came from) can go back to the Wochenplan. --}}
+    @php($movedFrom = $mode === 'once' ? ($form['movedFrom'] ?? null) : null)
+    @if (($mode === 'occ' && ($form['changed'] ?? false)) || $movedFrom)
+        <p class="flex flex-wrap items-center gap-x-2 text-sm text-warn" data-restore-note>
+            {{ $movedFrom ? __('week.form.moved_note', ['day' => __('week.days.'.$weekdayOf($movedFrom)), 'date' => $short($movedFrom)]) : __('week.form.changed_note') }}
+            <button type="button" wire:click="restoreOccurrence" wire:loading.attr="disabled" wire:target="restoreOccurrence" class="font-semibold text-accent-ink underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">{{ __('week.form.restore') }}</button>
         </p>
     @endif
 
