@@ -15,17 +15,22 @@ use App\Planning\StartBy;
  *    accepts are candidates (E5: no area fits anywhere; a category without
  *    links accepts only tasks without area). No category = no filter.
  * 2. Tiers, from the start-by dates (DeadlineFeasibility::startBy):
- *    0 = late or has to start today, 1 = has a deadline, 2 = no deadline.
- *    A lower tier always comes first; deadlines are never traded for comfort.
+ *    0 = late or has to start today, 1 = has a deadline, 2 = no deadline but
+ *    marked „Wichtig" (R5, step 4.6), 3 = no deadline. A lower tier always
+ *    comes first; deadlines are never traded for comfort, and „Wichtig" never
+ *    jumps a deadline. Without a date a marked task is its own tier: it goes
+ *    ahead of every unmarked one whatever the battery or the size says.
  * 3. The battery orders inside the tiers:
- *    - Okay: deadline order (earliest binding deadline, hard before soft,
- *      smaller first), then the board order.
+ *    - Okay: deadline order (earliest binding deadline, hard before soft),
+ *      then „Wichtig", then smaller first, then the board order.
  *    - Low: a warm-up of up to two Quick tasks goes first, whatever their
  *      tier; then smaller before bigger, and Long / Block work is shrunk to
  *      one session tonight ("the rest comes later"). Late work is never shrunk.
  *    - Good: bigger before smaller, so the largest deadline work lands on the
  *      evening with the most energy.
- * 4. Ties end on the board position and the id, so the order never flickers.
+ * 4. „Wichtig" sits right after the deadline keys in every order: with a date
+ *    it settles a tie on the date and on hard / soft, it never beats the date.
+ * 5. Ties end on the board position and the id, so the order never flickers.
  */
 final readonly class PickEngine
 {
@@ -51,12 +56,15 @@ final readonly class PickEngine
             $startBy->isLate($c->id()) => 0,
             $c->task->hasDeadline() && ($startBy->of($c->id()) ?? '9999-12-31') <= $today => 0,
             $c->task->hasDeadline() => 1,
-            default => 2,
+            $c->task->important => 2,
+            default => 3,
         };
 
-        $deadlineKey = fn (PickCandidate $c): array => [
+        // Deadline first (binding date, hard before soft), then „Wichtig": a marker never beats a date.
+        $urgencyKey = fn (PickCandidate $c): array => [
             $c->task->bindingDeadline() ?? '9999-12-31',
             $c->task->bindingIsHard() ? 0 : 1,
+            $c->task->important ? 0 : 1,
         ];
 
         $size = fn (PickCandidate $c): int => $c->task->remainingMinutes();
@@ -64,20 +72,20 @@ final readonly class PickEngine
         $warmUp = [];
         if ($battery === Battery::Low) {
             $quick = array_values(array_filter($pool, fn (PickCandidate $c) => $c->isQuick()));
-            usort($quick, fn ($a, $b) => [$tier($a), ...$deadlineKey($a), $a->position, $a->id()]
-                <=> [$tier($b), ...$deadlineKey($b), $b->position, $b->id()]);
+            usort($quick, fn ($a, $b) => [$tier($a), ...$urgencyKey($a), $a->position, $a->id()]
+                <=> [$tier($b), ...$urgencyKey($b), $b->position, $b->id()]);
             $warmUp = array_slice($quick, 0, self::WARM_UP_COUNT);
             $warmIds = array_map(fn (PickCandidate $c) => $c->id(), $warmUp);
             $pool = array_values(array_filter($pool, fn (PickCandidate $c) => ! in_array($c->id(), $warmIds, true)));
         }
 
         usort($pool, fn (PickCandidate $a, PickCandidate $b) => match ($battery) {
-            Battery::Okay => [$tier($a), ...$deadlineKey($a), $size($a), $a->position, $a->id()]
-                <=> [$tier($b), ...$deadlineKey($b), $size($b), $b->position, $b->id()],
-            Battery::Low => [$tier($a), $size($a), ...$deadlineKey($a), $a->position, $a->id()]
-                <=> [$tier($b), $size($b), ...$deadlineKey($b), $b->position, $b->id()],
-            Battery::Good => [$tier($a), -$size($a), ...$deadlineKey($a), $a->position, $a->id()]
-                <=> [$tier($b), -$size($b), ...$deadlineKey($b), $b->position, $b->id()],
+            Battery::Okay => [$tier($a), ...$urgencyKey($a), $size($a), $a->position, $a->id()]
+                <=> [$tier($b), ...$urgencyKey($b), $size($b), $b->position, $b->id()],
+            Battery::Low => [$tier($a), $size($a), ...$urgencyKey($a), $a->position, $a->id()]
+                <=> [$tier($b), $size($b), ...$urgencyKey($b), $b->position, $b->id()],
+            Battery::Good => [$tier($a), -$size($a), ...$urgencyKey($a), $a->position, $a->id()]
+                <=> [$tier($b), -$size($b), ...$urgencyKey($b), $b->position, $b->id()],
         });
 
         $picks = [];
@@ -105,6 +113,7 @@ final readonly class PickEngine
             $tier === 0 => Reason::StartsToday,
             $battery === Battery::Good && $c->isBig() && $tier === 1 => Reason::BiggestFirst,
             $tier === 1 => Reason::NextDeadline,
+            $tier === 2 => Reason::Important,
             $c->isQuick() => Reason::QuickOne,
             default => Reason::NoDeadline,
         };

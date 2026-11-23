@@ -9,6 +9,7 @@ return [
         'shrunk' => 'Heute nur :minutes Minuten. Der Rest kommt später.',
         'biggest_first' => 'Das grösste Stück mit Termin. Passt zu einem vollen Akku.',
         'next_deadline' => 'Fällig bis :deadline. Als Nächstes an der Reihe.',
+        'important' => 'Von dir als wichtig markiert. Besser nicht vergessen.',
         'quick_one' => 'Klein, in ein paar Minuten erledigt.',
         'no_deadline' => 'Kein Termin. Als Nächstes auf deiner Liste.',
     ],

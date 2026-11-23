@@ -176,6 +176,7 @@ class Task extends Model
             hardDeadline: $this->hardDeadline()?->toDateString(),
             softDeadline: $this->softDeadline()?->toDateString(),
             areaId: $this->area_id,
+            important: (bool) $this->is_important,
         );
     }
 
