@@ -96,7 +96,8 @@ class ActionParityTest extends TestCase
 
         foreach (ActionRegistry::available() as $action) {
             foreach (ActionRegistry::LAYOUTS as $layout) {
-                $query = sprintf('//*[@data-action="%s"][@data-layout="%s"][@data-mode="%s"]', $action->key, $layout, $mode);
+                // Entries inside the folded, inert board (step 3.1) cannot be reached, so they do not count.
+                $query = sprintf('//*[@data-action="%s"][@data-layout="%s"][@data-mode="%s"][not(ancestor-or-self::*[@inert])]', $action->key, $layout, $mode);
                 if ($xpath->query($query)->length === 0) {
                     $missing[] = "{$action->key} in {$layout} ({$mode} mode)";
                 }

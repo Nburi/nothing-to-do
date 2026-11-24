@@ -2045,6 +2045,215 @@ window.addEventListener('theme-applied', (event) => {
 });
 
 /**
+ * "The board folds away" (refactor step 3.1, CONVENTIONS 10: the signature moment, never tidy
+ * it away). The shell root's Alpine part. Niels' picks from the phase 3 preview: variant A
+ * "Falten" (each column folds like a card towards the rail), 520 ms until the card stands.
+ *
+ * How it stays out of Livewire's way (risk C5):
+ * - The board region stays rendered during a session, so the morph keeps its elements and the
+ *   server's switch of data-shell-mode is a plain CSS transition (resources/css/app.css, "fold").
+ * - The fold state lives on <body> (shell-folding / shell-entering / shell-returning), which
+ *   Livewire never morphs.
+ * - A click on Start folds at once (before the server answers) and sends the ghost card (see
+ *   launchGhost, C1) flying from the started card to the session card's place, so the timer is
+ *   up when the fold ends whatever the round trip takes; the server's card takes over when the
+ *   ghost has landed. A reload or another device shows the session without any motion. Under
+ *   reduced motion it is an instant change, and the board stays until the session is there.
+ */
+const FOLD_MS = 520;
+const FLIGHT_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+document.addEventListener('alpine:init', () => {
+    const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const flag = (name, on) => document.body.classList.toggle(name, on);
+
+    window.Alpine.data('shellFold', () => ({
+        peek: null,
+        mode: null,
+        from: null,
+        ghost: null,
+        timers: {},
+
+        init() {
+            this.mode = this.$el.dataset.shellMode;
+            this.observer = new MutationObserver(() => {
+                const mode = this.$el.dataset.shellMode;
+                if (mode === this.mode) return;
+                const was = this.mode;
+                this.mode = mode;
+                if (mode === 'session') this.enter();
+                else if (was === 'session') this.leave();
+            });
+            this.observer.observe(this.$el, { attributes: true, attributeFilter: ['data-shell-mode'] });
+        },
+
+        destroy() {
+            this.observer?.disconnect();
+            this.dropGhost();
+            Object.values(this.timers).forEach(clearTimeout);
+            ['shell-folding', 'shell-entering', 'shell-returning'].forEach((name) => flag(name, false));
+        },
+
+        /** Start a task from the board: fold now, ask the server, unfold again if it said no. */
+        foldInto(el, call) {
+            const card = el.closest('[data-fold-from]');
+            this.from = card ? { rect: card.getBoundingClientRect(), at: performance.now() } : null;
+            this.peek = null;
+            // Under reduced motion nothing moves, so the board stays until the session is there.
+            if (!reducedMotion()) flag('shell-folding', true);
+            this.ghost = card ? this.launchGhost(card, this.from.rect) : null;
+
+            return Promise.resolve()
+                .then(call)
+                .catch(() => {})
+                .finally(() => {
+                    // Two frames later the morph has surely landed. Still on the board (task
+                    // gone, no connection): the columns come back and the notice explains.
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        flag('shell-folding', false);
+                        if (this.$root.dataset.shellMode !== 'session') {
+                            this.from = null;
+                            this.dropGhost(true);
+                        }
+                    }));
+                });
+        },
+
+        /**
+         * The optimistic session card (finding C1, "Verzögerung vor dem Timer"). The fold must not
+         * wait for the server: from the click, the ghost (shell/session-ghost.blade.php) flies from
+         * the started card to the place the session card will stand and shows its title and the
+         * timer by FOLD_MS, so the timer is up when the columns are gone, however long the round
+         * trip takes. enter() hands over to the server's card once the ghost has landed.
+         */
+        launchGhost(card, from) {
+            const root = this.$root.querySelector('[data-session-ghost]');
+            if (!root || reducedMotion()) return null;
+
+            const text = (node) => node?.textContent.trim() ?? '';
+            const area = card.querySelector('[data-fold-area]');
+            const size = card.querySelector('[data-fold-size]');
+            const start = [...(card.querySelector('[data-fold-start]')?.childNodes ?? [])]
+                .filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join('').trim();
+            const part = (selector) => root.querySelector(selector);
+
+            part('[data-ghost-title]').textContent = text(card.querySelector('[data-fold-title]'));
+            part('[data-ghost-area]').hidden = !area;
+            part('[data-ghost-area-name]').textContent = text(area);
+            part('[data-ghost-dot]').style.background = area?.firstElementChild?.style.background ?? '';
+            part('[data-ghost-size]').hidden = !size;
+            part('[data-ghost-size]').textContent = text(size);
+            part('[data-ghost-start]').hidden = start === '';
+            part('[data-ghost-start-text]').textContent = start;
+
+            // Where the session card will stand: the middle of what the session view leaves free,
+            // right of the 92 px rail on Werkbank, between the top row and the drawer on Stapel.
+            const werkbank = getComputedStyle(this.$root.querySelector('[data-layout-root="werkbank"]')).display !== 'none';
+            const viewWidth = document.documentElement.clientWidth;
+            const width = Math.min(520, werkbank ? viewWidth - 92 - 64 : viewWidth - 32);
+            root.style.width = `${width}px`;
+            root.hidden = false;
+            const height = root.offsetHeight;
+            const left = (werkbank ? 92 + (viewWidth - 92) / 2 : viewWidth / 2) - width / 2;
+            const top = Math.max(8, (werkbank ? window.innerHeight / 2 + 17 : window.innerHeight / 2 - 38) - height / 2);
+            root.style.left = `${left}px`;
+            root.style.top = `${top}px`;
+
+            const flight = root.animate(
+                [
+                    { transformOrigin: 'top left', transform: `translate(${from.left - left}px, ${from.top - top}px) scale(${from.width / width}, ${from.height / height})` },
+                    { transformOrigin: 'top left', transform: 'none' },
+                ],
+                { duration: FOLD_MS, easing: FLIGHT_EASE, fill: 'both' },
+            );
+            // The content would stretch with the card; it fades in while the card settles and
+            // stands complete when the fold ends.
+            const fades = [...root.firstElementChild.children].map((child) => child.animate(
+                [{ opacity: 0 }, { opacity: 0, offset: 0.4 }, { opacity: 1 }],
+                { duration: FOLD_MS, easing: 'ease-out', fill: 'both' },
+            ));
+            card.style.visibility = 'hidden'; // the ghost is the card now; the board's copy would show twice
+
+            return {
+                landed: flight.finished.catch(() => {}),
+                rect: () => root.getBoundingClientRect(),
+                drop: (fade = false) => {
+                    const done = () => {
+                        flight.cancel();
+                        fades.forEach((animation) => animation.cancel());
+                        root.hidden = true;
+                        root.removeAttribute('style');
+                    };
+                    card.style.visibility = '';
+                    if (fade) root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160 }).finished.then(done, done);
+                    else done();
+                },
+            };
+        },
+
+        dropGhost(fade = false) {
+            const ghost = this.ghost;
+            this.ghost = null;
+            ghost?.drop(fade);
+        },
+
+        enter() {
+            this.pulse('shell-entering', FOLD_MS + 400);
+            const from = this.from;
+            const ghost = this.ghost;
+            this.from = null;
+            this.ghost = null;
+            if (!from || reducedMotion()) return;
+
+            // The top row rises right after the card has landed; a slow answer leaves nothing to wait for.
+            const waited = performance.now() - from.at;
+            this.$root.style.setProperty('--fold-arrive-delay', `${Math.max(0, FOLD_MS - 200 - waited)}ms`);
+
+            const card = [...this.$root.querySelectorAll('[data-session-card]')].find((c) => c.getClientRects().length > 0);
+            if (!ghost || !card) {
+                ghost?.drop();
+                return;
+            }
+            // The ghost stands in for the server's card until it has landed, then they swap in one frame.
+            card.style.visibility = 'hidden';
+            ghost.landed.then(() => requestAnimationFrame(() => this.handOver(ghost, card)));
+        },
+
+        handOver(ghost, card) {
+            const at = ghost.rect();
+            card.style.visibility = '';
+            ghost.drop();
+
+            const to = card.getBoundingClientRect();
+            if (!to.width || !to.height) return;
+            const dx = at.left - to.left;
+            const dy = at.top - to.top;
+            const sx = at.width / to.width;
+            const sy = at.height / to.height;
+            // The guess where the card stands was close: only a real difference needs a short glide.
+            if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) return;
+            card.animate(
+                [
+                    { transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+                    { transformOrigin: 'top left', transform: 'none' },
+                ],
+                { duration: 240, easing: FLIGHT_EASE },
+            );
+        },
+
+        leave() {
+            this.pulse('shell-returning', FOLD_MS + 400);
+        },
+
+        pulse(name, ms) {
+            clearTimeout(this.timers[name]);
+            flag(name, true);
+            this.timers[name] = setTimeout(() => flag(name, false), ms);
+        },
+    }));
+});
+
+/**
  * Session timer island (refactor step 2.2, risk C5). The server owns the session; this only
  * counts down the seconds the server sent and, when a phase runs out, asks the server to
  * render again (it then shows the break or the next phase). Wall-clock based, so a tab that

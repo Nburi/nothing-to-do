@@ -33,6 +33,15 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [x] Phase 2 preview picks confirmed by Niels on 2026-11-09: theme cards, System/Hell/Dunkel, capture line stays open, sort one card at a time, Later asks less, "Woche" opens the old week plan, settings behind the gear.
 - [x] Mobile sort as real cards (Niels, 2026-11-09, option A): size on the top card, drag it onto the To-dos / Tasks / SpÃ¤ter pile or tap the pile. In `feature/capture-sort` (PR #17).
 
+## Refactor: phase 3 (started 2026-11-11, gate waived by Niels, stacked on PR #17)
+- [x] Phase 3 preview picks (2026-11-11): fold A "Falten" at 520 ms (above the plan's 400 ms, on purpose), reset as a calm screen, battery at the end of the reset, nudge at a **fixed time** per weekday, Ideen view as cards. Preview: https://claude.ai/artifact/Y5ieY4W47HaZwjzGFGR48W
+- [x] 3.1 "The board folds away" (`feature/board-folds`). Notes in `docs/steps/3.1.md`.
+- [ ] 3.1 known issue: in the Stapel layout in a narrow *desktop* window the card jumps 20 px after the fold (a scrollbar shows for ~400 ms). Not on phones. Two fixes failed and were reverted; next idea `scrollbar-gutter: stable`. Waiting for Niels: fix now or leave it?
+- [ ] 3.2 Battery check-in and reset (calm screen, battery at its end).
+- [ ] 3.3 Nudge at a fixed time per weekday (Wi-Fi path later, once C2 passes).
+- [ ] 3.4 Free-time ideas, "Meins behalten", Ideen view (cards).
+- [ ] 3.5 Beta 2, 3.6 review rounds.
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
