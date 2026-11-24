@@ -89,6 +89,12 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 4.6 later: the mockup "Reihenfolge und Drag and Drop" is undecided (where „Wichtig" ranks, one shared order, drag and drop). 4.6 builds only deadline tiers → „Wichtig" → board order, as R5 says.
 - [ ] 4.6 known: the Stapel piles are about 56 px wide at 390 px (same issue as in the 3.4 line above), so a marked top card shows the flag and "Wich…" only.
 
+## Refactor: phase 4, step 4.7 (To-do session, 2026-11-24)
+
+- [x] Daily To-do session, unsized To-do = Quick, Okay tie rule: `feature/todo-session` (PR waits for Niels, see `docs/steps/4.7.md`).
+- [ ] Niels: C48, C49, C50 in `docs/TESTBERICHT.md`.
+- [ ] Shared board order (C31) builds on the same files (`Board.php`, `Suggestions`); the To-do session card stays first in the To-dos column.
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
