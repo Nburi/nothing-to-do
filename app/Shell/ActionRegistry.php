@@ -30,7 +30,7 @@ final class ActionRegistry
         'move_event' => ['4.1', false],
         'week_plan' => ['4.1', false],
         'pause_days' => ['4.1', false],
-        'crunch' => ['4.2', false],
+        'crunch' => ['4.2', true],
         'keep_mine' => ['3.4', true],
     ];
 

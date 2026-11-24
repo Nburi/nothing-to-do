@@ -83,6 +83,51 @@ final readonly class DeadlineFeasibility
     }
 
     /**
+     * Fit dates (R5, step 4.2): for every hard task that cannot meet its deadline, the first date the deadline
+     * can move to so that the task fits. It is check() again with that one deadline a day later each time, so
+     * the date comes from the same plan the warning uses (soft work gives way, area links, sessions that have
+     * started) and capacity is never counted a second time. A date only counts when no other hard deadline
+     * that holds today is lost by it: moving one deadline must not just move the crunch to another task.
+     *
+     * Looks from the day after the deadline (after today when it is past: a deadline only ever moves to a
+     * later day than today) up to the last day the sessions cover. null: no day in that window fits.
+     *
+     * @param  list<PlannedTask>  $tasks
+     * @param  array<string, list<SessionSlot>>  $slotsByDate  local date => that day's slots
+     * @return array<int, ?string> late hard task id => "Y-m-d", or null when no day fits
+     */
+    public function fitDates(array $tasks, array $slotsByDate, CarbonImmutable $now): array
+    {
+        $late = $this->check($tasks, $slotsByDate, $now)->lateTaskIds;
+        $hard = array_filter($tasks, fn (PlannedTask $t) => $t->bindingIsHard());
+        $lateHard = array_filter($hard, fn (PlannedTask $t) => in_array($t->id, $late, true));
+        if ($lateHard === []) {
+            return [];
+        }
+        $holding = array_map(fn (PlannedTask $t) => $t->id, array_diff_key($hard, $lateHard));
+
+        ksort($slotsByDate);
+        $today = $now->toDateString();
+        $last = array_key_last($slotsByDate) ?? $today;
+
+        $dates = [];
+        foreach ($lateHard as $task) {
+            $dates[$task->id] = null;
+            for ($day = CarbonImmutable::parse(max($task->hardDeadline, $today))->addDay(); $day->toDateString() <= $last; $day = $day->addDay()) {
+                $date = $day->toDateString();
+                $moved = array_map(fn (PlannedTask $t) => $t->id === $task->id ? $t->withHardDeadline($date) : $t, $tasks);
+                $lateAfter = $this->check($moved, $slotsByDate, $now)->lateTaskIds;
+                if (! in_array($task->id, $lateAfter, true) && array_intersect($holding, $lateAfter) === []) {
+                    $dates[$task->id] = $date;
+                    break;
+                }
+            }
+        }
+
+        return $dates;
+    }
+
+    /**
      * Start-by dates (R5): plan every dated task as late as possible — the
      * latest deadline claims the latest sessions first, then the next one fills
      * in before it — and read off the day each task's work begins. A task that

@@ -11,6 +11,8 @@ use App\Planning\Session\Phase;
 use App\Planning\Session\SessionState;
 use App\Services\FocusSession;
 use App\Services\Planning\CrunchDecisions;
+use App\Services\Planning\CrunchOverview;
+use App\Services\Planning\CrunchView;
 use App\Services\Planning\EveningReset;
 use App\Services\Planning\FreeTimeIdeas;
 use App\Services\Planning\IdeaOffer;
@@ -120,6 +122,16 @@ class Board extends Component
     public function idea(): IdeaOffer
     {
         return app(FreeTimeIdeas::class)->current($this->user, $this->now);
+    }
+
+    /**
+     * Step 4.2: the crunch, live. The board in board mode counts as having seen the warning
+     * (no push for it); during a session it only shows a quiet entry, so it is not "seen".
+     */
+    #[Computed]
+    public function crunch(): CrunchView
+    {
+        return app(CrunchOverview::class)->for($this->user, $this->now, seen: ! $this->inSession());
     }
 
     /** @return array<string, Collection<int, Task>> */
@@ -439,6 +451,7 @@ class Board extends Component
     /** A capture landed or the sort moved something: render the lists again. */
     #[On('capture-saved')]
     #[On('inbox-changed')]
+    #[On('crunch-changed')]
     public function listsChanged(): void
     {
         $this->fresh();
@@ -464,7 +477,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
             unset($this->{$computed});
         }
     }
