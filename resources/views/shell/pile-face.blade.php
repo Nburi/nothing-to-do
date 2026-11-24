@@ -8,20 +8,23 @@
     @endif
     <span
         @class([
-            'absolute inset-0 flex flex-col gap-1 rounded-card px-3 py-2.5 transition group-focus-visible:ring-3 group-focus-visible:ring-accent group-active:scale-[0.98]',
+            'absolute inset-0 flex flex-col gap-1 rounded-card px-2.5 py-2.5 transition group-focus-visible:ring-3 group-focus-visible:ring-accent group-active:scale-[0.98]',
             'bg-surface shadow-card' => $count > 0,
             'border-dashed' => $count === 0,
         ])
         style="border: var(--t-bw) {{ $count > 0 ? 'solid' : 'dashed' }} var(--t-line); border-top: 4px solid {{ $count > 0 ? $edge : 'var(--t-line)' }}"
     >
         @php($marked = $top && $list !== 'done' && $top->is_important)
-        <b class="line-clamp-2 font-display text-[13.5px] leading-snug wrap-break-word {{ $count > 0 ? 'text-ink' : 'font-medium text-ink-faint' }}" @if ($count > 0) style="font-weight: 600" @endif>
-            @if ($marked)@include('shell.icon', ['name' => 'flag', 'class' => 'mr-1 inline size-3.5 -translate-y-px text-warn', 'filled' => true])@endif
+        <b class="line-clamp-2 font-display text-[13px] leading-snug wrap-break-word hyphens-auto {{ $count > 0 ? 'text-ink' : 'font-medium text-ink-faint' }}" @if ($count > 0) style="font-weight: 600" @endif>
             {{ $top?->title ?? __('shell.empty.pile') }}
         </b>
-        {{-- Step 4.6: a marked top card says „Wichtig" in words as well as with the flag. --}}
+        {{-- Step 4.6: a marked top card says „Wichtig" in words as well as with the flag. The flag sits here,
+             not in front of the title, so a long word in the title keeps the full width of the narrow Stapel pile. --}}
         @if ($sub || $marked)
-            <small class="truncate text-xs text-ink-faint">{{ $marked ? __('shell.important.label').($sub ? ' · '.$sub : '') : $sub }}</small>
+            <small class="flex items-center gap-1 text-xs text-ink-faint">
+                @if ($marked)@include('shell.icon', ['name' => 'flag', 'class' => 'size-3 shrink-0 text-warn', 'filled' => true])@endif
+                <span class="truncate">{{ $marked ? __('shell.important.label').($sub ? ' · '.$sub : '') : $sub }}</span>
+            </small>
         @endif
     </span>
 </span>
