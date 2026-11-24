@@ -26,7 +26,8 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 
 ## Refactor: phase 2 (started 2026-11-09)
 - [x] 2.1 Token layer and seven themes (`feature/theme-tokens`): Tailwind 4, `config/themes.php`, per-user theme + light/dark, contrast test, theme card in Settings. Notes in `docs/steps/2.1.md`.
-- [ ] 2.2 App shell: Werkbank and Stapel, board and session mode, action registry, A11.
+- [x] 2.2 App shell (`feature/app-shell`): `/board` with Werkbank and Stapel, board and session mode, action registry, A11. Notes in `docs/steps/2.2.md`.
+- [ ] Service worker: the stale page on navigation seen in 1.8 is not reproduced or fixed yet (navigations are network-first in `public/sw.js`); look again when it shows up on the dev server.
 - [ ] 2.3 Capture, Inbox and the daily sort, A9, capture token in settings.
 
 ## Open questions for Niels

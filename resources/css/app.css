@@ -87,6 +87,8 @@
 }
 
 @theme {
+  /* Werkbank (desktop) from 720 px, Stapel below (docs/REFACTOR_PLAN.md § 1). */
+  --breakpoint-wb: 45rem;
 
   --ease-tactile: cubic-bezier(0.16, 1, 0.3, 1);
 
