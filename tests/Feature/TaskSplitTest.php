@@ -384,7 +384,7 @@ class TaskSplitTest extends TestCase
         $task = Task::factory()->for($user)->tasks()->create();
         $this->split($user, $task, [1, 2]);
 
-        $task->delete();
+        $task->forceDelete();
 
         $this->assertSame(0, TaskSession::count());
     }

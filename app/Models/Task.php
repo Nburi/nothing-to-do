@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 class Task extends Model
@@ -20,6 +21,7 @@ class Task extends Model
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
     use HasBoardPosition;
+    use SoftDeletes;
 
     /** The board lists. `later` is the refactor's Later box (3-THINGS.md); the old board does not show it. */
     public const LISTS = ['inbox', 'todos', 'tasks', 'later'];
@@ -337,7 +339,7 @@ class Task extends Model
 
         // Un-completing: remove the successor only if nobody has worked with
         // it yet — a finished successor is real history and stays.
-        $this->repeatSuccessor()->where('is_completed', false)->delete();
+        $this->repeatSuccessor()->where('is_completed', false)->forceDelete();
 
         return null;
     }

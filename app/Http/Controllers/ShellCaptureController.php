@@ -43,7 +43,7 @@ class ShellCaptureController extends Controller
             return response()->json(['message' => __('capture.undo_gone')], 404);
         }
 
-        $row->delete();
+        $row->forceDelete();
 
         return response()->json(['message' => __('capture.undone')]);
     }
