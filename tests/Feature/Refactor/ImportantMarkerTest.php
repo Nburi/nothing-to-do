@@ -148,10 +148,10 @@ class ImportantMarkerTest extends TestCase
 
     // ── A64: visible where there is no work suggestion, and while folded ─
 
-    public function test_outside_a_block_the_marked_tasks_stay_visible_as_a_reminder_without_a_start_here_card(): void
+    public function test_outside_a_block_the_marked_tasks_stay_visible_in_the_band_without_a_start_here_card(): void
     {
         $this->block('21:00', '22:00'); // 20:00 is outside the block
-        $this->task('Zahnarzt anrufen', 'todos', ['is_important' => true]);
+        $this->task('Zahnarzt anrufen', 'tasks', ['is_important' => true]);
         $this->task('Brot kaufen');
 
         $this->board()
@@ -187,18 +187,19 @@ class ImportantMarkerTest extends TestCase
         $this->board()->assertSee('Gerade kein Arbeitsblock')->assertDontSeeHtml('data-important-reminder');
     }
 
-    public function test_the_reminder_leaves_parked_ideas_out_and_caps_a_long_list(): void
+    public function test_the_band_leaves_parked_ideas_out_and_holds_every_marked_task(): void
     {
         $this->block('21:00', '22:00');
         $this->task('Geparkte Idee', 'later', ['is_important' => true]);
         foreach (range(1, 6) as $i) {
-            $this->task("Markiert {$i}", 'todos', ['is_important' => true, 'sort_order' => $i]);
+            $this->task("Markiert {$i}", 'tasks', ['is_important' => true, 'sort_order' => $i]);
         }
 
         $board = $this->board();
 
-        $this->assertCount(6, $board->instance()->important, 'the parked idea is not part of the reminder');
-        $board->assertSeeHtml('data-important-reminder')->assertSee('+ 3 weitere');
+        $this->assertCount(6, $board->instance()->important, 'the parked idea is not part of the band');
+        $this->assertCount(6, $board->instance()->band, 'a band at the very top holds all of them, not three and "+ N weitere"');
+        $board->assertSeeHtml('data-important-reminder')->assertDontSee('+ 3 weitere');
     }
 
     public function test_while_the_board_is_folded_the_rail_and_the_drawer_show_how_many_are_marked(): void

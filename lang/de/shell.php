@@ -45,6 +45,21 @@ return [
         'unmark' => 'Wichtig-Markierung entfernen',
         'empty' => 'Nichts markiert. Mit der Flagge an einer Aufgabe markierst du, was du nicht vergessen darfst.',
     ],
+    // Step 4.8: one shared order for everything on the board (C31) and the calm board (C29).
+    'order' => [
+        'grip' => 'Verschieben',
+        'grip_named' => 'Verschieben: :title',
+        'band' => 'Wichtig, ganz oben',
+        'lifted' => ':title angehoben, Platz :place von :count. Pfeil hoch und runter ändern den Platz, Leertaste legt ab, Escape bricht ab.',
+        'moved' => 'Platz :place von :count.',
+        'dropped' => ':title liegt jetzt auf Platz :place von :count.',
+        'cancelled' => 'Abgebrochen, nichts geändert.',
+        'failed' => 'Das Verschieben hat nicht geklappt. Die Reihenfolge ist wie vorher.',
+        'resting' => 'Weitere Karten · :count ruhen',
+        'resting_hint' => 'Das Board zeigt nur zwei Karten auf einmal. Diese warten und werden nicht vorgeschlagen.',
+        'wake' => 'Nach oben holen',
+        'wake_named' => ':name nach oben holen',
+    ],
     'hard' => 'muss bis :date',
     'soft' => 'wäre schön bis :date',
     'parked' => 'geparkt :age',
@@ -227,6 +242,7 @@ return [
         'keep_mine' => 'Meins behalten',
         'projects' => 'Projekte ansehen',
         'important' => 'Wichtig markieren',
+        'reorder' => 'Verschieben',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

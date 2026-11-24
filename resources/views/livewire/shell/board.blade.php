@@ -12,6 +12,10 @@
     $suggestion = $this->suggestion;
     $lists = $this->lists;
     $bundles = $this->bundles;
+    // Step 4.8: the cards and rows of each column in the one board order, the cards the calm board lets rest, the „Wichtig" band.
+    $entries = $this->entries;
+    $resting = $this->resting;
+    $band = $this->band;
     $todoSession = $this->todoSession;
     $counts = $this->counts;
     $suggestedId = $suggestion->hasPick() ? $suggestion->task?->id : null;
@@ -32,9 +36,9 @@
     $crunch = $this->crunch;
     // Step 4.4: Sunday and Monday, a quiet line to the Sunday review (board mode; it folds away with the board).
     $reviewOffer = $this->reviewOffer;
-    // Step 4.6: „Wichtig" (R5). Where there is no work suggestion (outside pomodoro blocks), the marked tasks stay in view as a reminder.
+    // Step 4.6 / 4.8: „Wichtig" (R5). The marked To-dos and Tasks stand in a band at the very top; the tab holds every marked task.
     $important = $this->important;
-    $showReminder = ! $suggestion->hasPick() && $important->isNotEmpty();
+    $showReminder = $band->isNotEmpty();
 @endphp
 <div
     id="content"
@@ -90,7 +94,7 @@
                         @endif
                     </div>
                     @if ($showReminder)
-                        @include('shell.important', ['layout' => 'werkbank', 'tasks' => $important])
+                        @include('shell.important', ['layout' => 'werkbank', 'tasks' => $band, 'suggestedId' => $suggestedId])
                     @endif
                 </div>
             </div>
@@ -184,7 +188,7 @@
                         <h2 class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('shell.session.peek') }}</h2>
                         <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                     </div>
-                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'todoSession' => $todoSession, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
+                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'entries' => $entries, 'resting' => $resting, 'todoSession' => $todoSession, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
                 </div>
             </section>
         @endif
@@ -223,7 +227,7 @@
                     @include('shell.crunch-line', ['layout' => 'stapel', 'crunch' => $crunch, 'class' => 'fold-away'])
                     @include('shell.review-line', ['offer' => $reviewOffer, 'class' => 'fold-away'])
                     @if ($showReminder)
-                        @include('shell.important', ['layout' => 'stapel', 'tasks' => $important])
+                        @include('shell.important', ['layout' => 'stapel', 'tasks' => $band, 'suggestedId' => $suggestedId])
                     @endif
                 </section>
 
@@ -313,7 +317,7 @@
                     <span class="h-1 w-11 rounded-full bg-line" aria-hidden="true"></span>
                     <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                 </div>
-                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'todoSession' => $todoSession, 'counts' => $counts, 'important' => $important, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
+                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'entries' => $entries, 'resting' => $resting, 'todoSession' => $todoSession, 'counts' => $counts, 'important' => $important, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
             </div>
         </div>
     </div>

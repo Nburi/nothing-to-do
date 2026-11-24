@@ -10,6 +10,7 @@ use App\Planning\ResetStage;
 use App\Planning\Session\Phase;
 use App\Planning\Session\SessionState;
 use App\Services\FocusSession;
+use App\Services\Planning\BoardOrder;
 use App\Services\Planning\CrunchDecisions;
 use App\Services\Planning\CrunchOverview;
 use App\Services\Planning\CrunchView;
@@ -161,12 +162,40 @@ class Board extends Component
     #[Computed]
     public function bundles(): array
     {
-        $all = app(NextSteps::class)->bundles($this->user);
+        $all = $this->cards;
         $this->bundled = $all->flatMap(fn (Bundle $b) => $b->bundled)->all();
 
         $out = [];
         foreach (Task::LISTS as $list) {
-            $out[$list] = $all->filter(fn (Bundle $b) => $b->list === $list && $b->visible->isNotEmpty())->values();
+            $out[$list] = $all->filter(fn (Bundle $b) => $b->list === $list && ! $b->resting && $b->visible->isNotEmpty())->values();
+        }
+
+        return $out;
+    }
+
+    /**
+     * Every project and group in the shared board order, the calm rule applied (step 4.8).
+     *
+     * @return Collection<int, Bundle>
+     */
+    #[Computed]
+    public function cards(): Collection
+    {
+        return app(NextSteps::class)->bundles($this->user);
+    }
+
+    /**
+     * Step 4.8 (C29): the cards the calm board keeps off the board, by column. They show as one line
+     * each in a fold; their steps are not suggested until the card is woken up ("Nach oben holen").
+     *
+     * @return array<string, Collection<int, Bundle>>
+     */
+    #[Computed]
+    public function resting(): array
+    {
+        $out = [];
+        foreach (Task::LISTS as $list) {
+            $out[$list] = $this->cards->filter(fn (Bundle $b) => $b->resting && $b->list === $list && $b->open > 0)->values();
         }
 
         return $out;
@@ -184,20 +213,44 @@ class Board extends Component
         return SundayReview::offeredOn($today) ? ($today->isSunday() ? 'sunday' : 'monday') : null;
     }
 
-    /** @return array<string, Collection<int, Task>> loose tasks per list (steps of a project or group sit in its card) */
+    /**
+     * Every loose open task (steps of a project or group sit in its card, the To-do session's To-dos in
+     * its card) in the user's one shared board order (step 4.8).
+     *
+     * @return Collection<int, Task>
+     */
     #[Computed]
-    public function lists(): array
+    public function loose(): Collection
     {
         $this->bundles; // fills $this->bundled
         $inTodoSession = $this->todoSession->tasks->pluck('id')->all();
 
-        // „Wichtig" (step 4.6, R5) sits at the top of its list; the rest keeps the user's order.
-        $tasks = Task::forUser($this->user)->active()
+        return Task::forUser($this->user)->active()
             ->whereNotIn('id', [...$this->bundled, ...$inTodoSession])
             ->with('area')
-            ->orderByDesc('is_important')->orderBy('sort_order')->orderBy('id')
-            ->get()
-            ->groupBy('list');
+            ->inBoardOrder()
+            ->get();
+    }
+
+    /**
+     * The „Wichtig" band (step 4.8, Niels 2026-11-24): marked To-dos and Tasks stand in a band at the very
+     * top of the board, in the shared order, and leave their column. The engine order is unchanged:
+     * deadline, „Wichtig", board order (step 4.6). The Inbox keeps its marked tasks (the sort needs them).
+     *
+     * @return Collection<int, Task>
+     */
+    #[Computed]
+    public function band(): Collection
+    {
+        return $this->loose->filter(fn (Task $t) => $t->is_important && in_array($t->list, Task::WORK_LISTS, true))->values();
+    }
+
+    /** @return array<string, Collection<int, Task>> loose tasks per list, without the band (steps of a project or group sit in its card) */
+    #[Computed]
+    public function lists(): array
+    {
+        $bandIds = $this->band->pluck('id')->all();
+        $tasks = $this->loose->reject(fn (Task $t) => in_array($t->id, $bandIds, true))->groupBy('list');
 
         $out = [];
         foreach (Task::LISTS as $list) {
@@ -216,8 +269,11 @@ class Board extends Component
     #[Computed]
     public function important(): Collection
     {
-        return collect(['todos', 'tasks', 'inbox'])
-            ->flatMap(fn (string $list) => ($list === 'todos' ? $this->todoSession->tasks->concat($this->lists[$list]) : $this->lists[$list])->where('is_important', true))
+        $order = ['todos', 'tasks', 'inbox'];
+
+        return $this->todoSession->tasks->concat($this->loose)
+            ->filter(fn (Task $t) => $t->is_important && in_array($t->list, $order, true))
+            ->sortBy(fn (Task $t) => array_search($t->list, $order, true)) // stable: keeps the board order inside a list
             ->values();
     }
 
@@ -228,7 +284,8 @@ class Board extends Component
         $out = [];
         foreach ($this->lists as $list => $tasks) {
             $out[$list] = $tasks->count() + $this->bundles[$list]->sum(fn (Bundle $b) => $b->visible->count())
-                + ($list === 'todos' ? $this->todoSession->tasks->count() : 0);
+                + ($list === 'todos' ? $this->todoSession->tasks->count() : 0)
+                + $this->band->where('list', $list)->count();
         }
 
         return $out;
@@ -237,9 +294,32 @@ class Board extends Component
     /** The first card of a list for a Stapel pile: a card's first step, else the first loose task. */
     public function topOf(string $list): ?Task
     {
+        $first = $this->entries[$list]->first();
+
         return ($list === 'todos' ? $this->todoSession->first() : null)
-            ?? $this->bundles[$list]->first()?->visible->first()
-            ?? $this->lists[$list]->first();
+            ?? ($first === null ? null : ($first['bundle']?->visible->first() ?? $first['task']));
+    }
+
+    /**
+     * What a column shows below the To-do session card: its cards and loose tasks in the one shared
+     * order (step 4.8, variant A: one slot per card). Each entry is
+     * ['ref' => 'task:1'|'project:2'|'group:3', 'bundle' => ?Bundle, 'task' => ?Task].
+     *
+     * @return array<string, Collection<int, array{ref: string, bundle: ?Bundle, task: ?Task}>>
+     */
+    #[Computed]
+    public function entries(): array
+    {
+        $out = [];
+        foreach (Task::LISTS as $list) {
+            $cards = $this->bundles[$list]->map(fn (Bundle $b) => ['ref' => $b->ref(), 'at' => $b->position, 'bundle' => $b, 'task' => null]);
+            $tasks = $this->lists[$list]->take(self::LIST_LIMIT)->map(fn (Task $t) => ['ref' => BoardOrder::ref($t), 'at' => $t->board_position ?? PHP_INT_MAX, 'bundle' => null, 'task' => $t]);
+
+            // sortBy is stable: equal places keep the cards ahead of the loose tasks.
+            $out[$list] = $cards->concat($tasks)->sortBy('at')->values()->map(fn (array $e) => ['ref' => $e['ref'], 'bundle' => $e['bundle'], 'task' => $e['task']]);
+        }
+
+        return $out;
     }
 
     #[Computed]
@@ -501,6 +581,34 @@ class Board extends Component
         });
     }
 
+    /**
+     * Drop of a card or row (action `reorder`, step 4.8, C31): the new order of one container, a
+     * column or the „Wichtig" band. The entries swap the places they already hold (BoardOrder::place),
+     * so the other columns keep their order. Refs are "task:1", "project:2", "group:3".
+     *
+     * @param  list<string>  $refs
+     */
+    public function reorder(array $refs): void
+    {
+        $this->notice = null;
+        $refs = array_slice(array_values($refs), 0, self::LIST_LIMIT * 4);
+
+        // The cards on show swap places among themselves; the resting ones follow them, so a drop never
+        // changes which cards are awake (a resting card must not end up between two cards on show).
+        if (collect($refs)->contains(fn ($ref) => is_string($ref) && preg_match('/^(project|group):/', $ref) === 1)) {
+            $refs = [...$refs, ...$this->cards->filter(fn (Bundle $b) => $b->resting)->map(fn (Bundle $b) => $b->ref())->all()];
+        }
+
+        $this->guard(fn () => app(BoardOrder::class)->place($this->user, $refs));
+    }
+
+    /** "Nach oben holen" (step 4.8, C29): a resting card goes to the top of the board and wakes up. */
+    public function wake(string $ref): void
+    {
+        $this->notice = null;
+        $this->guard(fn () => app(BoardOrder::class)->toTop($this->user, $ref));
+    }
+
     public function shrink(int $taskId): void
     {
         $this->notice = null;
@@ -573,7 +681,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'todoSession', 'bundles', 'lists', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'todoSession', 'cards', 'bundles', 'resting', 'loose', 'band', 'lists', 'entries', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
             unset($this->{$computed});
         }
     }

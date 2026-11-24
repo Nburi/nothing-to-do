@@ -44,6 +44,21 @@ return [
         'unmark' => 'Remove important mark',
         'empty' => 'Nothing marked. The flag on a task marks what you must not forget.',
     ],
+    // Step 4.8: one shared order for everything on the board (C31) and the calm board (C29).
+    'order' => [
+        'grip' => 'Move',
+        'grip_named' => 'Move: :title',
+        'band' => 'Important, at the very top',
+        'lifted' => ':title lifted, place :place of :count. Up and down arrows change the place, Space drops it, Escape cancels.',
+        'moved' => 'Place :place of :count.',
+        'dropped' => ':title now sits at place :place of :count.',
+        'cancelled' => 'Cancelled, nothing changed.',
+        'failed' => 'Moving did not work. The order is as it was.',
+        'resting' => 'More cards · :count resting',
+        'resting_hint' => 'The board shows only two cards at a time. These wait and are not suggested.',
+        'wake' => 'Bring to the top',
+        'wake_named' => 'Bring :name to the top',
+    ],
     'hard' => 'due :date',
     'soft' => 'nice by :date',
     'parked' => 'parked :age',
@@ -226,6 +241,7 @@ return [
         'keep_mine' => 'Keep it mine',
         'projects' => 'Browse projects',
         'important' => 'Mark as important',
+        'reorder' => 'Reorder',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

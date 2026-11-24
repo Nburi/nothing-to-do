@@ -34,6 +34,7 @@ final class ActionRegistry
         'keep_mine' => ['3.4', true],
         'projects' => ['4.3', true],
         'important' => ['4.6', true],
+        'reorder' => ['4.8', true],
     ];
 
     /** @return list<Action> */

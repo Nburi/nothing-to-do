@@ -1372,3 +1372,38 @@ body[data-step-lift] [data-notice] {
     background-color: var(--t-accent-soft);
   }
 }
+
+/*
+  Step 4.8 · Ordering the board (resources/js/board-order.js). A card or row held down for the touch lift
+  presses in; a lifted one is hidden where it stands while a dashed slot shows the place; the keyboard
+  lift gets a ring. The grip shows on hover and focus on the desktop; on touch the long press is the lift.
+*/
+[data-entry][data-pressing] {
+  transform: scale(0.985);
+  background-color: var(--t-accent-soft);
+  transition: transform 0.35s ease-out, background-color 0.35s;
+}
+[data-entry][data-kb] {
+  border-color: var(--t-accent) !important;
+  box-shadow: 0 0 0 3px var(--t-accent-soft);
+}
+[data-entry][aria-busy='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+[data-entry] [data-grip] {
+  touch-action: none;
+}
+@media (pointer: coarse) {
+  [data-entry] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-entry][data-pressing] {
+    transform: none;
+    transition: none;
+  }
+}
