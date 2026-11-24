@@ -5,7 +5,7 @@
         <span class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">nothing-to-do</span>
     </header>
 
-    <main class="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-6 wb:px-6 wb:py-10">
+    <main class="mx-auto flex max-w-3xl flex-col gap-5 px-4 pt-6 pb-28 wb:px-6 wb:py-10">
         <div>
             <h1 class="font-display text-2xl text-ink" style="font-weight: var(--t-dw)">{{ __('shell.settings.title') }}</h1>
             <p class="mt-1 text-sm text-ink-soft">{{ __('shell.settings.intro') }}</p>
@@ -13,6 +13,10 @@
 
         <section class="rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
             <livewire:theme-picker />
+        </section>
+
+        <section id="abschalten" class="scroll-mt-20 rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
+            <livewire:shell.nudge-times />
         </section>
 
         <section class="rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">

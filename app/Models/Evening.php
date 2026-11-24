@@ -10,11 +10,12 @@ use Illuminate\Database\UniqueConstraintViolationException;
 /**
  * One user's evening (local date): the battery check-in, the picks skipped with
  * "Another" (App\Services\Planning\Suggestions) and the ten minute reset
- * (App\Services\Planning\EveningReset, step 3.2).
+ * (App\Services\Planning\EveningReset, step 3.2) and whether tonight's nudge went out
+ * (App\Services\Planning\EveningNudge, step 3.3).
  */
 class Evening extends Model
 {
-    protected $fillable = ['date', 'battery', 'skipped_task_ids', 'reset_started_at', 'reset_closed_at', 'battery_asked_at'];
+    protected $fillable = ['date', 'battery', 'skipped_task_ids', 'reset_started_at', 'reset_closed_at', 'battery_asked_at', 'nudge_sent_at'];
 
     protected function casts(): array
     {
@@ -24,6 +25,7 @@ class Evening extends Model
             'reset_started_at' => 'immutable_datetime',
             'reset_closed_at' => 'immutable_datetime',
             'battery_asked_at' => 'immutable_datetime',
+            'nudge_sent_at' => 'immutable_datetime',
         ];
     }
 
