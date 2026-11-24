@@ -93,6 +93,14 @@
             </div>
             <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
             <div :class="tab === 'steps' ? 'flex' : 'hidden'" class="flex-col gap-5 wb:flex">
+        {{-- Step 4.3d: pull an existing board task in. --}}
+        <div class="flex flex-wrap items-center gap-2">
+            <button type="button" wire:click="{{ $picking ? 'closePicker' : 'openPicker' }}" aria-expanded="{{ $picking ? 'true' : 'false' }}" aria-controls="task-picker" data-open-picker
+                class="inline-flex min-h-9 items-center gap-1 rounded-full border border-line px-3 text-sm font-semibold text-ink hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">@include('shell.icon', ['name' => 'plus', 'class' => 'size-4']) {{ __('projects.adopt.button') }}</button>
+        </div>
+        @if ($picking)
+            @include('shell.task-picker', ['pickable' => $this->pickable, 'total' => $this->pickableCount, 'any' => $this->hasPickable, 'search' => $pickSearch, 'stages' => $stages, 'groupList' => null])
+        @endif
         {{-- Step 4.3c: the script of dragging, keyboard and announcements (resources/js/step-drag.js) owns this
              wrapper; `contents` keeps the lanes the flex children they were. --}}
         <div x-data="stepDrag(@js(['text' => __('projects.move.js')]))" class="contents">
@@ -135,6 +143,18 @@
                                 {{ $state === 'done' ? __('projects.stage_done') : ($state === 'now' ? __('projects.stage_now') : __('projects.stage_waits', ['number' => $i])) }}
                             </span>
                             <button type="button" wire:click="editStage({{ $s->id }})" class="text-xs font-semibold text-accent-ink hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.rename') }}</button>
+                            {{-- Step 4.3d: the stage's place in the roadmap. Plain buttons, so keyboard and touch both reach them. --}}
+                            @if ($stages->count() > 1)
+                                <span class="-my-1 inline-flex items-center" data-stage-order>
+                                    @foreach ([[-1, 'earlier', 'arrow-up', $i === 0], [1, 'later', 'arrow-down', $i === $stages->count() - 1]] as [$by, $key, $icon, $edge])
+                                        <button type="button" wire:click="shiftStage({{ $s->id }}, {{ $by }})" wire:loading.attr="disabled" wire:target="shiftStage" @disabled($edge)
+                                            data-stage-{{ $key }} aria-label="{{ __('projects.stage_move.'.$key, ['name' => $s->name]) }}" title="{{ __('projects.stage_move.'.$key, ['name' => $s->name]) }}"
+                                            class="grid size-8 place-items-center rounded-full text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-30 disabled:hover:bg-transparent">
+                                            @include('shell.icon', ['name' => $icon, 'class' => 'size-4'])
+                                        </button>
+                                    @endforeach
+                                </span>
+                            @endif
                         @elseif ($stages->isNotEmpty())
                             <span class="text-xs text-ink-faint">{{ __('projects.no_stage_hint') }}</span>
                         @endif
@@ -179,7 +199,16 @@
             </div>
             </div>
         </div>
+
+        {{-- Step 4.3d: deleting is the quietest thing on the page: last, plain text, behind a confirm. --}}
+        <div class="mt-2 flex border-t border-line pt-4">
+            <button type="button" wire:click="askDelete" data-delete-owner class="inline-flex min-h-10 items-center rounded-card px-3 text-sm font-semibold text-bad hover:bg-bad-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.delete.project') }}</button>
+        </div>
     </main>
+
+    @if ($confirmingDelete)
+        @include('shell.confirm-delete', ['kind' => 'project', 'name' => $project->name, 'impact' => $this->impact, 'error' => $deleteError])
+    @endif
 
     @include('shell.projects-chrome', ['part' => 'tabs'])
 </div>

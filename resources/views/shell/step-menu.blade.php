@@ -50,5 +50,10 @@
                 </select>
             </label>
         @endif
+        {{-- Step 4.3d: out of the project or group, back onto the board in its own list. --}}
+        <hr class="my-1 border-line" role="separator">
+        <button type="button" role="menuitem" @click="open = false" wire:click="releaseStep({{ $task->id }})" data-release class="{{ $item }}">
+            @include('shell.icon', ['name' => 'back', 'class' => 'size-4']) {{ __('projects.release.menu') }}
+        </button>
     </div>
 </div>
