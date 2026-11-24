@@ -22,6 +22,14 @@
     <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         @foreach (\App\Models\Task::LISTS as $list)
             <ul x-show="peek === '{{ $list }}'" x-cloak class="flex flex-col gap-2" role="tabpanel">
+                @if ($list === 'inbox' && $counts['inbox'] > 0)
+                    <li>
+                        <x-shell.action key="sort" :layout="$layout" :mode="$mode" wire:click="$dispatch('open-sort')" @click="peek = null"
+                            class="flex min-h-11 w-full items-center justify-center gap-2 rounded-card bg-accent px-4 font-semibold text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            {{ __('shell.sort_inbox', ['count' => $counts['inbox']]) }}
+                        </x-shell.action>
+                    </li>
+                @endif
                 @forelse ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
                     @include('shell.item', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'suggested' => $task->id === $suggestedId, 'locked' => $locked])
                 @empty

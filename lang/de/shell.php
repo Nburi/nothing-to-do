@@ -51,6 +51,7 @@ return [
             'good' => 'Da geht mehr.',
         ],
     ],
+    'sort_inbox' => 'Sortieren (:count)',
     'start_here' => 'Hier starten',
     'start_with' => 'Starte mit',
     'start' => 'Start · :minutes min',

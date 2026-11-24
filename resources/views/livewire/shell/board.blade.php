@@ -38,7 +38,7 @@
     <div class="hidden min-h-dvh flex-col wb:flex" data-layout-root="werkbank">
         @if ($mode === 'board')
             <section data-region="board" class="flex min-h-dvh flex-col">
-                @include('shell.topbar', ['battery' => $suggestion->battery])
+                @include('shell.topbar', ['battery' => $suggestion->battery, 'active' => 'board'])
 
                 <div class="grid items-start gap-5 px-6 pt-4 lg:grid-cols-[minmax(0,1fr)_400px]">
                     <div class="flex min-w-0 flex-col gap-3">
@@ -76,6 +76,10 @@
                 {{-- The rail: the folded board (F6: one tap away). --}}
                 <aside class="sticky top-0 flex h-dvh w-[92px] shrink-0 flex-col items-center gap-4 bg-surface px-2 py-5" style="border-right: var(--t-bw) solid var(--t-line)">
                     <span class="font-mono text-[10px] uppercase tracking-widest text-ink-faint">{{ __('shell.session.board') }}</span>
+                    <x-shell.action key="capture" layout="werkbank" mode="session" @click="$store.capture.open()" :title="__('capture.line.label').' (C)'" :aria-label="__('capture.line.label')"
+                        class="grid size-10 place-items-center rounded-full border border-line text-ink-soft transition hover:border-accent hover:text-accent-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                        @include('shell.icon', ['name' => 'plus', 'class' => 'size-5'])
+                    </x-shell.action>
                     @foreach ($columns as $list)
                         @php($railClass = 'flex w-full flex-col items-center gap-0.5 rounded-card py-2 text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                         @if ($list === 'later')
@@ -152,6 +156,11 @@
                     </div>
                 </div>
 
+                <x-shell.action key="capture" layout="stapel" mode="board" @click="$store.capture.sheetOpen = true" :aria-label="__('capture.line.label')"
+                    class="fixed right-4 bottom-[calc(84px+env(safe-area-inset-bottom))] z-30 grid size-14 place-items-center rounded-full bg-accent text-accent-fg shadow-card transition active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
+                    @include('shell.icon', ['name' => 'plus', 'class' => 'size-6'])
+                </x-shell.action>
+
                 <nav class="fixed inset-x-0 bottom-0 z-30 flex justify-around bg-surface px-2 pt-2 pb-[max(14px,env(safe-area-inset-bottom))]" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.nav.board') }}">
                     @php($tab = 'flex min-w-16 flex-col items-center gap-0.5 rounded-card px-2 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                     <button type="button" @click="peek = null; window.scrollTo({ top: 0, behavior: 'smooth' })" class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></button>
@@ -172,6 +181,10 @@
                 {{-- The drawer: the piles slid away, one tap to peek. --}}
                 <nav class="relative flex flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-surface px-3 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-card" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.session.drawer') }}">
                     <span class="absolute left-1/2 top-1.5 h-1 w-11 -translate-x-1/2 rounded-full bg-line" aria-hidden="true"></span>
+                    <x-shell.action key="capture" layout="stapel" mode="session" @click="$store.capture.sheetOpen = true" :aria-label="__('capture.line.label')"
+                        class="grid size-9 place-items-center rounded-full bg-accent text-accent-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                        @include('shell.icon', ['name' => 'plus', 'class' => 'size-5'])
+                    </x-shell.action>
                     @foreach ($columns as $list)
                         @php($drawerClass = 'rounded-full px-3 py-2 text-sm text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                         @if ($list === 'later')
@@ -198,4 +211,8 @@
             </div>
         </div>
     </div>
+
+    {{-- The daily sort card, the same over both layouts. --}}
+    {{-- A stable key: the board re-renders after every sort, the card must keep its round. --}}
+    <livewire:shell.inbox-sort :key="'inbox-sort'" />
 </div>

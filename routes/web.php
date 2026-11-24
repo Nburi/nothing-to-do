@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ShellCaptureController;
 use App\Livewire\Admin\AnnouncementEditor;
 use App\Livewire\Admin\ErrorLog;
 use App\Livewire\Admin\HelpEditor;
@@ -93,6 +94,16 @@ Route::get('/board', ShellBoard::class)
 Route::get('/board/settings', ShellSettings::class)
     ->middleware('auth')
     ->name('shell.settings');
+
+// The capture line (step 2.3): JSON, so a dropped connection keeps the typed text.
+Route::post('/board/capture', [ShellCaptureController::class, 'store'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('shell.capture');
+
+Route::delete('/board/capture/{task}', [ShellCaptureController::class, 'destroy'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->whereNumber('task')
+    ->name('shell.capture.undo');
 
 // Public, guest-readable mirror of the Hilfe-Center — see App\Livewire\
 // PublicHelp for why this is a separate route/component from /app/help

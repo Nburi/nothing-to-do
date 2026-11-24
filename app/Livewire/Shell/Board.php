@@ -21,6 +21,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -316,6 +317,14 @@ class Board extends Component
         app(FocusSession::class)->stop($this->user, CarbonImmutable::now());
         $this->fresh();
         $this->dispatch('shell-peek-close');
+    }
+
+    /** A capture landed or the sort moved something: render the lists again. */
+    #[On('capture-saved')]
+    #[On('inbox-changed')]
+    public function listsChanged(): void
+    {
+        $this->fresh();
     }
 
     /** Called by the timer island when a phase ran out: the server moves the state on. */

@@ -28,7 +28,10 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [x] 2.1 Token layer and seven themes (`feature/theme-tokens`): Tailwind 4, `config/themes.php`, per-user theme + light/dark, contrast test, theme card in Settings. Notes in `docs/steps/2.1.md`.
 - [x] 2.2 App shell (`feature/app-shell`): `/board` with Werkbank and Stapel, board and session mode, action registry, A11. Notes in `docs/steps/2.2.md`.
 - [ ] Service worker: the stale page on navigation seen in 1.8 is not reproduced or fixed yet (navigations are network-first in `public/sw.js`); look again when it shows up on the dev server.
-- [ ] 2.3 Capture, Inbox and the daily sort, A9, capture token in settings.
+- [x] 2.3 Capture, Inbox and the daily sort (`feature/capture-sort`): capture line (C / +), sort card, capture token card, A9. Notes in `docs/steps/2.3.md`.
+- [ ] 2.4 Beta 1: Niels uses only capture and sort on `/board` for a week (gate: at least 20 things captured). Day-3 and day-7 check-ins only if Niels asks.
+- [x] Phase 2 preview picks confirmed by Niels on 2026-11-09: theme cards, System/Hell/Dunkel, capture line stays open, sort one card at a time, Later asks less, "Woche" opens the old week plan, settings behind the gear.
+- [x] Mobile sort as real cards (Niels, 2026-11-09, option A): size on the top card, drag it onto the To-dos / Tasks / SpÃ¤ter pile or tap the pile. In `feature/capture-sort` (PR #17).
 
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
