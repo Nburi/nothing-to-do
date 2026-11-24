@@ -27,6 +27,7 @@ decisions below. Where they differ, this file wins.
 | Areas | Open, user-defined list of **areas** (tasks), kept separate from categories but **linked**: each category chooses which areas are suggested in its blocks. |
 | Existing users | **Everyone is switched** to the new app on release. No opt-in, no old look. Data is migrated (R8). |
 | Language | German default, English available, `lang/` files from day one. |
+| Priority (2026-11-17) | **„Wichtig"** stays as the only priority, as in the old app: highlighted, top of the board, visible outside pomodoro blocks and while the board is folded. Suggestion order: deadline tiers → „Wichtig" → the user's board order. Details in [REQUIREMENTS R5](REQUIREMENTS.md#1-product-requirements), step 4.6. |
 | Visual checks | Claude tries a real browser check **once or twice**. If no usable screenshot comes out, Claude **stops and tells Niels** instead of silently relying on tests. |
 
 ### Design notes for the chosen layouts
@@ -64,6 +65,7 @@ Real users exist; every change has a path for existing rows. Two-step renames (a
 | `tasks.list` (inbox, todos, tasks, later) | kept, plus `size` | default `short`; filled during the daily sort |
 | `tasks.deadline` | `hard_deadline` | two-step rename |
 | `tasks.due_date` | `soft_deadline` ("finished by") | two-step rename |
+| `tasks.is_important` | the „Wichtig" marker | kept as is; no migration needed |
 | `tasks.duration_minutes`, `estimated_sessions` | size is derived; minutes stay as a hint | nothing dropped |
 | `task_groups`, `tasks.group_id` | projects with one visible next step | first open task is the next step until set |
 | `event_templates`, `schedule_events`, `schedule_pauses` | week plan (same tables) | reused |
@@ -179,7 +181,8 @@ The week plan editor and the early warning, so the evening loop has good data.
 | 4.2 | Build | M | **Early warning and crunch decisions.** Shrink, move, drop, ask for more time; soft deadlines suggested first. | `feature-schmiede`, `test-driven-development` | R5 | F5, F7 |
 | 4.3 | Build | M | **Projects with one visible next step.** | `feature-schmiede`, `test-driven-development` | R6 | F10 |
 | 4.4 | Build (optional) | S | **Quiet Sunday review.** One calm screen: what moved, what is next week. | `feature-schmiede` | – | – |
-| 4.5 | Review | M | **Review rounds 0 to 4**, focused on planning and crunch. | `fs-anforderungs-pruefer`, `fs-ablauf-tester`, `fs-fix-verifizierer`, `fs-ui-luegenpruefer`, `fs-nutzer-simulant` | – | – |
+| 4.6 | Build | S | **„Wichtig" marker** (added 2026-11-17 after the C-tests). Mark and unmark on both layouts and in both modes; highlighted card at the top of the board; visible outside pomodoro blocks and in the rail / drawer while the board is folded; pick engine order deadline tiers → „Wichtig" → board order; optional „Bis wann?" when marked without a date; API and MCP parity. Reuses `tasks.is_important`. | `feature-schmiede`, `test-driven-development` | R5, R7 | F5 |
+| 4.5 | Review | M | **Review rounds 0 to 4**, focused on planning and crunch (includes 4.6). | `fs-anforderungs-pruefer`, `fs-ablauf-tester`, `fs-fix-verifizierer`, `fs-ui-luegenpruefer`, `fs-nutzer-simulant` | – | – |
 
 ### P5 · Everyone else, then release
 Turn a tool for Niels into a product for people with the same time problem.
@@ -205,3 +208,4 @@ natural language week edits · Apple Watch complication and widgets · email to 
 |---|---|---|
 | Q1 | Outside pomodoro blocks, does the idle board still suggest work? | **No.** Outside pomodoro blocks there is no work suggestion; the strip shows the next block, free time may show a Later idea. Starting a session manually stays possible. |
 | Q2 | Is the long break after every fourth session, counted per day? | **Yes**, the counter resets each day. |
+| Q3 | (2026-11-17) Do we keep a way to mark a task as important? | **Yes, „Wichtig" stays** as the only priority, for urgent things that must not be forgotten. It ranks after the deadline tiers and before the board order, so it never contradicts a hard deadline. This replaces "No priority field" in R5. |
