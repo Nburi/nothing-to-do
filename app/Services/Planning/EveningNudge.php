@@ -17,14 +17,17 @@ use Illuminate\Support\Facades\Log;
  *
  * The user sets one optional local time per ISO weekday (users.nudge_times). From that time
  * the reset is offered on the first visit of the evening, and one Web Push goes out that
- * opens /board?reset=1. The Wi-Fi arrival trigger (spike 0.1) stays separate until Niels has
- * tested it (TESTBERICHT C2).
+ * opens /board?reset=1. The arrival trigger (iPhone Shortcut by location, spike 0.1,
+ * POST /api/arrival) is this same nudge sent early: holdOnArrival() applies the same rules and
+ * claim() uses the same evening mark, so whichever comes first sends the evening's only push.
  *
  * Rules for the push (R2):
  * - at most one per evening (evenings.nudge_sent_at, claimed atomically before sending);
  * - none on a weekday without a time, none on paused days, none once tonight's reset was
  *   started or closed, none while a focus session runs (it comes after, if still in time);
  * - a late scheduler tick still sends within CATCH_UP_MINUTES, never hours later;
+ * - an arrival may send it from ARRIVAL_EARLY_MINUTES before the nudge time and at any time
+ *   after, because it is a real signal and not a guess;
  * - no subscription: nothing happens. A failing push (or a broken VAPID config) is logged
  *   and not retried tonight.
  * - Nothing is counted and nothing reads nudge_sent_at beyond tonight (CONVENTIONS 11).
@@ -39,6 +42,12 @@ final class EveningNudge
 
     /** How late a missed scheduler tick may still send tonight's nudge. */
     public const CATCH_UP_MINUTES = 120;
+
+    /**
+     * How long before the nudge time an arrival may already send tonight's nudge. A lunch visit
+     * or a trip past the house early in the day must not use up the evening's only nudge.
+     */
+    public const ARRIVAL_EARLY_MINUTES = 120;
 
     public const URL = '/board?reset=1';
 
@@ -119,8 +128,7 @@ final class EveningNudge
         $today = $this->timeFor($user, $local);
 
         if ($today !== null && $local->format('H:i') >= $today) {
-            $evening = Evening::forWrite($user, $local->toDateString());
-            Evening::query()->whereKey($evening->id)->whereNull('nudge_sent_at')->update(['nudge_sent_at' => $now]);
+            $this->claim($user, $now);
         }
     }
 
@@ -140,16 +148,57 @@ final class EveningNudge
             return false;
         }
 
+        return $this->hold($user, $local, $now) === null;
+    }
+
+    /**
+     * Why an arrival must not send tonight's nudge now, or null when it may (no write). The scheduler's
+     * rules, except the clock: from ARRIVAL_EARLY_MINUTES before the nudge time, with no end.
+     */
+    public function holdOnArrival(User $user, ?CarbonImmutable $now = null): ?NudgeHold
+    {
+        $now ??= CarbonImmutable::now();
+        $local = UserClock::now($user, $now);
+        $time = $this->timeFor($user, $local);
+
+        if ($time === null) {
+            return NudgeHold::NoTime;
+        }
+
+        if ($this->minutes($local->format('H:i')) - $this->minutes($time) < -self::ARRIVAL_EARLY_MINUTES) {
+            return NudgeHold::TooEarly;
+        }
+
+        return $this->hold($user, $local, $now);
+    }
+
+    /** What the scheduler and an arrival both check besides the clock. */
+    private function hold(User $user, CarbonImmutable $local, CarbonImmutable $now): ?NudgeHold
+    {
         $evening = Evening::for($user, $local->toDateString());
-        if ($evening?->nudge_sent_at !== null || $evening?->reset_started_at !== null || $evening?->reset_closed_at !== null) {
-            return false;
+
+        if ($evening?->nudge_sent_at !== null) {
+            return NudgeHold::AlreadySent;
+        }
+
+        if ($evening?->reset_started_at !== null || $evening?->reset_closed_at !== null) {
+            return NudgeHold::ResetDone;
         }
 
         if (SchedulePause::forUser($user)->whereDate('date', $local->toDateString())->exists()) {
-            return false;
+            return NudgeHold::Paused;
         }
 
-        return app(FocusSession::class)->current($user, $now)->phase === Phase::Idle;
+        return app(FocusSession::class)->current($user, $now)->phase === Phase::Idle ? null : NudgeHold::InSession;
+    }
+
+    /** Claims tonight's nudge: true for exactly one caller per evening (an atomic update, `whereNull`). */
+    public function claim(User $user, ?CarbonImmutable $now = null): bool
+    {
+        $now ??= CarbonImmutable::now();
+        $evening = Evening::forWrite($user, UserClock::now($user, $now)->toDateString());
+
+        return Evening::query()->whereKey($evening->id)->whereNull('nudge_sent_at')->update(['nudge_sent_at' => $now]) === 1;
     }
 
     /**
@@ -164,10 +213,7 @@ final class EveningNudge
             return false;
         }
 
-        $evening = Evening::forWrite($user, UserClock::now($user, $now)->toDateString());
-        $claimed = Evening::query()->whereKey($evening->id)->whereNull('nudge_sent_at')->update(['nudge_sent_at' => $now]);
-
-        if ($claimed !== 1) {
+        if (! $this->claim($user, $now)) {
             return false;
         }
 

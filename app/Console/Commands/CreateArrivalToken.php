@@ -7,7 +7,7 @@ use App\Support\NarrowAbility;
 use Illuminate\Console\Command;
 
 /**
- * Spike 0.1: create the narrow token for the "home Wi-Fi" iPhone Shortcut.
+ * Spike 0.1: create the narrow token for the "arrived at home" iPhone Shortcut (location).
  * A command instead of a settings screen on purpose: the spike decides first
  * whether the trigger works at all (see docs/spikes/0.1-arrival.md). The
  * token is shown once and only stored hashed, like every Sanctum token.

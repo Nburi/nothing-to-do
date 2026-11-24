@@ -7,14 +7,17 @@ use App\Models\PushSubscription;
 use App\Models\User;
 use App\Services\PushNotifier;
 use App\Support\NarrowAbility;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
- * Spike 0.1 (R2, risks F1, C1, C10): an iPhone Shortcut on home Wi-Fi calls
- * POST /api/arrival with a narrow token; the server sends a Web Push.
+ * Spike 0.1 (R2, risks F1, C1, C10): an iPhone Shortcut (by location, Wi-Fi as fallback) calls
+ * POST /api/arrival with a narrow token; the server sends a Web Push. The evening rules for it
+ * (one per evening, paused days, ...) are tested in ArrivalOncePerEveningTest, ArrivalQuietTest
+ * and ArrivalAnswerTest.
  */
 class ArrivalTriggerTest extends TestCase
 {
@@ -38,7 +41,10 @@ class ArrivalTriggerTest extends TestCase
 
     public function test_an_arrival_sends_a_push_to_every_device(): void
     {
-        $user = User::factory()->create();
+        // Monday evening, Europe/Zurich, with a nudge time for every weekday: the evening rules
+        // (ArrivalOncePerEveningTest, ArrivalQuietTest) let this one through.
+        $user = User::factory()->create(['timezone_offset' => 1, 'timezone_auto_dst' => true, 'nudge_times' => array_fill_keys(range(1, 7), '18:30')]);
+        $this->travelTo(CarbonImmutable::parse('2026-11-09 18:10', 'Europe/Zurich'));
         PushSubscription::storeFor($user, 'https://push.example/a', 'key-a', 'auth-a', 'iPhone');
         PushSubscription::storeFor($user, 'https://push.example/b', 'key-b', 'auth-b', 'Mac');
         $token = $user->createToken('iPhone', [NarrowAbility::ARRIVAL])->plainTextToken;
@@ -47,7 +53,7 @@ class ArrivalTriggerTest extends TestCase
             $m->shouldReceive('sendDebug')->once()
                 ->withArgs(fn (User $u, array $payload) => $u->is($user)
                     && $payload['title'] === 'Du bist zuhause'
-                    && $payload['url'] === '/')
+                    && $payload['url'] === '/board?reset=1')
                 ->andReturn([
                     ['endpoint' => 'a', 'user_agent' => null, 'success' => true, 'status' => 201, 'reason' => 'OK'],
                     ['endpoint' => 'b', 'user_agent' => null, 'success' => false, 'status' => 400, 'reason' => 'Bad'],

@@ -34,7 +34,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Refactor spike 0.1: the "home Wi-Fi" Shortcut reports an arrival and gets a Web Push.
+// Refactor spike 0.1: the "arrived at home" Shortcut (location; Wi-Fi as a fallback) reports an arrival.
+// The evening rules decide whether it gets a Web Push (one per evening, see ArrivalController).
 Route::middleware(['auth:sanctum', 'throttle:6,1'])->post('/arrival', ArrivalController::class);
 
 // Refactor step 1.5: one line into the Inbox, from the capture Shortcut (narrow token) or any full token.
