@@ -63,6 +63,13 @@ return [
     'start_here' => 'Hier starten',
     'start_with' => 'Starte mit',
     'start' => 'Start · :minutes min',
+    // To-do session: the day's To-dos bundled into one card (2026-11-24).
+    'todo_session' => [
+        'title' => 'To-do-Session',
+        'meta' => ':count · :minutes min',
+        'start' => 'Session starten · :minutes min',
+        'waiting' => '+ :count To-do wartet auf die nächste Session|+ :count To-dos warten auf die nächste Session',
+    ],
     'start_this' => 'Diese Aufgabe starten',
     'another' => 'Anderes',
     'shrink' => 'Kleiner machen',

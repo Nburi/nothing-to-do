@@ -111,16 +111,19 @@ class ImportantMarkerTest extends TestCase
 
     public function test_marked_tasks_sit_at_the_top_of_their_list_and_the_pile_shows_them_first(): void
     {
-        $this->task('Erste', 'todos', ['sort_order' => 0]);
-        $this->task('Zweite', 'todos', ['sort_order' => 1]);
-        $marked = $this->task('Dritte, markiert', 'todos', ['sort_order' => 2, 'is_important' => true]);
+        $this->task('Erste', 'todos', ['sort_order' => 0, 'size' => Size::Quick]);
+        $this->task('Zweite', 'todos', ['sort_order' => 1, 'size' => Size::Quick]);
+        $marked = $this->task('Dritte, markiert', 'todos', ['sort_order' => 2, 'is_important' => true, 'size' => Size::Quick]);
         $this->task('Eine Task', 'tasks', ['sort_order' => 0]);
 
         $board = $this->board();
-        $todos = $board->instance()->lists['todos'];
+        // The To-do session (2026-11-24, 25 min) is the top of the To-dos list: two Quick To-dos fit, the third waits.
+        $todos = $board->instance()->todoSession->tasks;
 
         $this->assertSame($marked->id, $todos->first()->id, 'the top card of the pile and the first row of the column');
-        $this->assertSame(['Dritte, markiert', 'Erste', 'Zweite'], $todos->pluck('title')->all(), 'the rest keeps the board order');
+        $this->assertSame($marked->id, $board->instance()->topOf('todos')->id);
+        $this->assertSame(['Dritte, markiert', 'Erste'], $todos->pluck('title')->all(), 'the rest keeps the board order');
+        $this->assertSame(['Zweite'], $board->instance()->lists['todos']->pluck('title')->all(), 'what did not fit waits below the card');
     }
 
     public function test_a_marked_row_says_so_in_words_and_the_button_reports_its_state(): void

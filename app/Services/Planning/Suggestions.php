@@ -7,7 +7,9 @@ use App\Models\Task;
 use App\Models\User;
 use App\Planning\Battery;
 use App\Planning\Pick\Pick;
+use App\Planning\Pick\PickCandidate;
 use App\Planning\Pick\PickEngine;
+use App\Planning\Pick\TodoBundler;
 use App\Services\Projects\NextSteps;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
@@ -31,6 +33,10 @@ use Carbon\CarbonImmutable;
  * - Projects and groups (step 4.3): only the steps their card shows may be
  *   suggested; the steps waiting on the Projekte page are excluded (NextSteps).
  *
+ * - To-do session (2026-11-24): the loose To-dos are bundled into one 25 minute session
+ *   (todoSession). Inside a session, after a To-do the next pick stays a To-do (nextInSession).
+ *   Both rank at Okay: deadline work first, then „Wichtig", then the board order.
+ *
  * Reads never write, except the two explicit actions (battery, Another).
  */
 final class Suggestions
@@ -38,6 +44,7 @@ final class Suggestions
     public function __construct(
         private readonly WeekPlanReader $reader = new WeekPlanReader,
         private readonly PickEngine $engine = new PickEngine,
+        private readonly TodoBundler $bundler = new TodoBundler,
     ) {}
 
     public function current(User $user, ?CarbonImmutable $now = null): Suggestion
@@ -64,6 +71,23 @@ final class Suggestions
         }
 
         return $this->suggestion($picks[0], $context, $battery, count($all) - 1);
+    }
+
+    /**
+     * The To-do session: the most urgent loose To-dos that fit into 25 minutes, in the order they
+     * are worked. Not tied to a block or the battery: it is what the board offers as one card.
+     */
+    public function todoSession(User $user, ?CarbonImmutable $now = null): TodoSession
+    {
+        $context = PlanningContext::for($user, $now, $this->reader);
+        $all = $this->rank($context, Battery::Okay, [], todosOnly: true);
+        $picks = $this->bundler->bundle($all);
+
+        return new TodoSession(
+            collect($picks)->map(fn (Pick $p) => $context->tasks[$p->taskId])->values(),
+            $picks,
+            count($all) - count($picks),
+        );
     }
 
     /** "Another": skip tonight's current pick and show the next one. */
@@ -111,7 +135,19 @@ final class Suggestions
         $evening = $this->evening($user, $context->today);
         $battery = $evening?->batteryLevel() ?? Battery::Okay;
 
-        $picks = $this->rank($context, $battery, [$afterTaskId, ...($evening?->skippedTaskIds() ?? [])]);
+        $exclude = [$afterTaskId, ...($evening?->skippedTaskIds() ?? [])];
+
+        // To-do session: after a To-do the next pick stays a To-do. FocusSession ends the session
+        // (break) once less than five minutes are left, so the 25 minutes are what stops it.
+        if ($context->tasks->get($afterTaskId)?->list === 'todos') {
+            $todos = $this->rank($context, Battery::Okay, $exclude, todosOnly: true);
+            $todos = $todos === [] ? $this->rank($context, Battery::Okay, [$afterTaskId], todosOnly: true) : $todos;
+            if ($todos !== []) {
+                return $todos[0]->taskId;
+            }
+        }
+
+        $picks = $this->rank($context, $battery, $exclude);
         $picks = $picks === [] ? $this->rank($context, $battery, [$afterTaskId]) : $picks;
 
         return $picks[0]->taskId ?? null;
@@ -120,12 +156,22 @@ final class Suggestions
     /** @var array<int, list<int>> hidden project and group steps per user, read once per instance */
     private array $hidden = [];
 
-    /** @return list<Pick> */
-    private function rank(PlanningContext $context, Battery $battery, array $exclude): array
+    /**
+     * @param  bool  $todosOnly  only loose To-dos: project and group steps live in their own cards
+     * @return list<Pick>
+     */
+    private function rank(PlanningContext $context, Battery $battery, array $exclude, bool $todosOnly = false): array
     {
         $hidden = $this->hidden[$context->user->id] ??= app(NextSteps::class)->hiddenTaskIds($context->user);
+        $candidates = $todosOnly
+            ? array_values(array_filter($context->candidates, function (PickCandidate $c) use ($context) {
+                $task = $context->tasks[$c->id()];
 
-        return $this->engine->rank($context->candidates, $battery, $context->category, $context->startBy(), $context->today, [...$exclude, ...$hidden]);
+                return $task->list === 'todos' && $task->project_id === null && $task->group_id === null;
+            }))
+            : $context->candidates;
+
+        return $this->engine->rank($candidates, $battery, $context->category, $context->startBy(), $context->today, [...$exclude, ...$hidden]);
     }
 
     private function suggestion(Pick $pick, PlanningContext $context, Battery $battery, int $alternatives): Suggestion

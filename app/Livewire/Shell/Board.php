@@ -19,6 +19,7 @@ use App\Services\Planning\IdeaOffer;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
 use App\Services\Planning\SundayReview;
+use App\Services\Planning\TodoSession;
 use App\Services\Planning\WeekPlanReader;
 use App\Services\Projects\Bundle;
 use App\Services\Projects\NextSteps;
@@ -124,6 +125,16 @@ class Board extends Component
         return app(Suggestions::class)->current($this->user, $this->now);
     }
 
+    /**
+     * The To-do session (2026-11-24): the To-dos of the day in one card at the top of the To-dos
+     * column. It holds the most urgent loose To-dos that fit into 25 minutes; the rest waits.
+     */
+    #[Computed]
+    public function todoSession(): TodoSession
+    {
+        return app(Suggestions::class)->todoSession($this->user, $this->now);
+    }
+
     /** Free time (step 3.4): the idea from Later, "mine", or why there is none; and the free slot for the time line. */
     #[Computed]
     public function idea(): IdeaOffer
@@ -178,10 +189,11 @@ class Board extends Component
     public function lists(): array
     {
         $this->bundles; // fills $this->bundled
+        $inTodoSession = $this->todoSession->tasks->pluck('id')->all();
 
         // „Wichtig" (step 4.6, R5) sits at the top of its list; the rest keeps the user's order.
         $tasks = Task::forUser($this->user)->active()
-            ->whereNotIn('id', $this->bundled)
+            ->whereNotIn('id', [...$this->bundled, ...$inTodoSession])
             ->with('area')
             ->orderByDesc('is_important')->orderBy('sort_order')->orderBy('id')
             ->get()
@@ -205,7 +217,7 @@ class Board extends Component
     public function important(): Collection
     {
         return collect(['todos', 'tasks', 'inbox'])
-            ->flatMap(fn (string $list) => $this->lists[$list]->where('is_important', true))
+            ->flatMap(fn (string $list) => ($list === 'todos' ? $this->todoSession->tasks->concat($this->lists[$list]) : $this->lists[$list])->where('is_important', true))
             ->values();
     }
 
@@ -215,7 +227,8 @@ class Board extends Component
     {
         $out = [];
         foreach ($this->lists as $list => $tasks) {
-            $out[$list] = $tasks->count() + $this->bundles[$list]->sum(fn (Bundle $b) => $b->visible->count());
+            $out[$list] = $tasks->count() + $this->bundles[$list]->sum(fn (Bundle $b) => $b->visible->count())
+                + ($list === 'todos' ? $this->todoSession->tasks->count() : 0);
         }
 
         return $out;
@@ -224,7 +237,9 @@ class Board extends Component
     /** The first card of a list for a Stapel pile: a card's first step, else the first loose task. */
     public function topOf(string $list): ?Task
     {
-        return $this->bundles[$list]->first()?->visible->first() ?? $this->lists[$list]->first();
+        return ($list === 'todos' ? $this->todoSession->first() : null)
+            ?? $this->bundles[$list]->first()?->visible->first()
+            ?? $this->lists[$list]->first();
     }
 
     #[Computed]
@@ -558,7 +573,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'bundles', 'lists', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'todoSession', 'bundles', 'lists', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
             unset($this->{$computed});
         }
     }

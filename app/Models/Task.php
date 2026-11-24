@@ -178,10 +178,13 @@ class Task extends Model
         return $this->soft_deadline ?? $this->due_date;
     }
 
-    /** G1: a missing size counts as Short. Use `size` itself to tell "not sized yet" apart. */
+    /**
+     * G1: a missing size counts as Short, but a To-do without size counts as Quick (10 min, To-do
+     * session). Use `size` itself to tell "not sized yet" apart.
+     */
     public function effectiveSize(): Size
     {
-        return $this->size ?? Size::Short;
+        return $this->size ?? ($this->list === 'todos' ? Size::Quick : Size::Short);
     }
 
     /**

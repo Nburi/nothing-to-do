@@ -12,6 +12,7 @@
     $suggestion = $this->suggestion;
     $lists = $this->lists;
     $bundles = $this->bundles;
+    $todoSession = $this->todoSession;
     $counts = $this->counts;
     $suggestedId = $suggestion->hasPick() ? $suggestion->task?->id : null;
     $session = $this->session;
@@ -183,7 +184,7 @@
                         <h2 class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('shell.session.peek') }}</h2>
                         <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                     </div>
-                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
+                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'todoSession' => $todoSession, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
                 </div>
             </section>
         @endif
@@ -312,7 +313,7 @@
                     <span class="h-1 w-11 rounded-full bg-line" aria-hidden="true"></span>
                     <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                 </div>
-                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
+                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'todoSession' => $todoSession, 'counts' => $counts, 'important' => $important, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
             </div>
         </div>
     </div>
