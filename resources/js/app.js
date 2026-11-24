@@ -1,5 +1,6 @@
 import Sortable from 'sortablejs';
 import './week-editor';
+import './step-drag';
 
 // Alpine is intentionally NOT imported or started here — Livewire 4 ships and
 // boots its own Alpine. A second copy double-initialises every component.
