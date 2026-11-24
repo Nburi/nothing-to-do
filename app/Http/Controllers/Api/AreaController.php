@@ -50,7 +50,7 @@ class AreaController extends Controller
 
         return $request->validate([
             'name' => [$required, 'string', 'max:60'],
-            'color' => [$creating ? 'sometimes' : 'sometimes', Rule::in(ScheduleEvent::EVENT_COLORS)],
+            'color' => ['sometimes', Rule::in(ScheduleEvent::EVENT_COLORS)],
         ]);
     }
 

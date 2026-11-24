@@ -102,6 +102,14 @@ class WeekPlanEditorTest extends TestCase
         $this->assertSame(['10:00–12:00'], $this->times('2026-11-14'), 'a pause never hides a one-off');
     }
 
+    public function test_moving_from_a_day_the_block_is_not_on_invents_nothing(): void
+    {
+        $this->assertInvalid(fn () => $this->editor->moveOccurrence($this->user, $this->template->id, '2026-11-14', '2026-11-15', '10:00', '12:00'), 'from');
+
+        $this->assertDatabaseCount('schedule_events', 0);
+        $this->assertSame([], $this->times('2026-11-15'));
+    }
+
     public function test_cancel_this_week_only_and_restore(): void
     {
         $this->editor->cancelOccurrence($this->user, $this->template->id, '2026-11-12', ChangeScope::ThisWeekOnly);
