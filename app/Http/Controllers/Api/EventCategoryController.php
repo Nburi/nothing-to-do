@@ -14,7 +14,7 @@ class EventCategoryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $categories = $request->user()->eventCategories()->ordered()->with(['pinnedTasks', 'customAttributes'])->get();
+        $categories = $request->user()->eventCategories()->ordered()->with(['areas', 'pinnedTasks', 'customAttributes'])->get();
 
         return EventCategoryResource::collection($categories)->response();
     }
@@ -25,6 +25,8 @@ class EventCategoryController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'color' => ['required', Rule::in(ScheduleEvent::EVENT_COLORS)],
             'pomodoro_enabled' => ['sometimes', 'boolean'],
+            'area_ids' => ['sometimes', 'array'],
+            'area_ids.*' => ['integer'],
         ]);
 
         $category = $request->user()->eventCategories()->create([
@@ -34,7 +36,11 @@ class EventCategoryController extends Controller
             'sort_order' => $request->user()->eventCategories()->count(),
         ]);
 
-        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response()->setStatusCode(201);
+        if (array_key_exists('area_ids', $data)) {
+            $category->syncAreas($data['area_ids']); // foreign ids are dropped there
+        }
+
+        return (new EventCategoryResource($category->fresh(['areas', 'pinnedTasks', 'customAttributes'])))->response()->setStatusCode(201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -45,6 +51,8 @@ class EventCategoryController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'color' => ['sometimes', Rule::in(ScheduleEvent::EVENT_COLORS)],
             'pomodoro_enabled' => ['sometimes', 'boolean'],
+            'area_ids' => ['sometimes', 'array'],
+            'area_ids.*' => ['integer'],
         ]);
 
         $updates = [];
@@ -61,7 +69,11 @@ class EventCategoryController extends Controller
 
         $category->update($updates);
 
-        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response();
+        if (array_key_exists('area_ids', $data)) {
+            $category->syncAreas($data['area_ids']);
+        }
+
+        return (new EventCategoryResource($category->fresh(['areas', 'pinnedTasks', 'customAttributes'])))->response();
     }
 
     /**
@@ -110,7 +122,7 @@ class EventCategoryController extends Controller
             );
         }
 
-        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response();
+        return (new EventCategoryResource($category->fresh(['areas', 'pinnedTasks', 'customAttributes'])))->response();
     }
 
     /** Removes the category's task link entirely (back to the generic suggestion tiers). */
@@ -120,7 +132,7 @@ class EventCategoryController extends Controller
 
         $category->clearTaskLink();
 
-        return (new EventCategoryResource($category->fresh(['pinnedTasks', 'customAttributes'])))->response();
+        return (new EventCategoryResource($category->fresh(['areas', 'pinnedTasks', 'customAttributes'])))->response();
     }
 
     public function destroy(Request $request, int $id): JsonResponse

@@ -18,7 +18,9 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [ ] 1.4 follow-up (4.2): push the warning, crunch screen.
 - [x] 1.2 Week plan: `WeekPlanEditor` (explicit `ChangeScope`, moves, tombstones, pauses), reader from 1.3, property test against the old screens. Notes in `docs/steps/1.2.md`.
 - [ ] Hotfix for `main`: `ScheduleEvent::scopeVisible()` compares pause dates as strings, so a paused day still shows an occurrence edited in the form (fixed on the refactor in 1.2, see ERRORS.md).
-- [ ] 1.5 capture + API parity, 1.8 review.
+- [x] 1.5 Capture and API parity: `POST /api/capture` with a narrow token (`app:capture-token`), REST + MCP for suggestion, battery, session, forecast, drop/shrink, areas and the new task fields. Default locale `de`. Notes in `docs/steps/1.5.md`.
+- [ ] 1.8 Review of phase 1.
+- [ ] Prod `.env`: `APP_LOCALE=de` before the switch (5.4).
 - [ ] 1.7 follow-up: no HTTP/Livewire entry points yet (that's the session view, 3.1) and no API/MCP endpoints (1.5).
 
 ## Open questions for Niels
