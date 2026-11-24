@@ -61,6 +61,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 4.1 Week plan editor (`feature/week-editor`): Zeitplan `/board/week`, Wochenplan `/board/week/plan`, drawing, pause calendar, undo, categories in the settings. Notes in `docs/steps/4.1.md`.
 - [ ] 4.1 open for Niels: C18 (iPhone long press). C6, C8, C17, C19–C22 were checked on 2026-11-17 and their findings fixed on 2026-11-23 (`docs/steps/4.1.md`, "After the C-tests"); re-check the popover with day chips (C17), the pause marker on the header only (C6/C17) and "Zurück zum Wochenplan" on a moved block (C21).
 - [x] 4.1 B6 ghosts of paused days: Niels decided on 2026-11-24 to build them, very pale (`feature/pause-ghosts`, `docs/steps/4.1.md` "Ghosts of paused days"). Waiting for Niels: C60–C62.
+- [x] 4.1 colour choice for Termine (Niels, 2026-11-24, `feature/termin-colors`, `docs/steps/4.1.md` "Colours for Termine"). Waiting for Niels: C65–C67.
 - [ ] 4.1 C8 (tasks could not be created at first): not reproduced, see ERRORS.md; if it comes back, note the message, the screen and the HTTP status.
 - [ ] 4.1 later: resize a block by dragging its edge; move a block to another day by dragging on the phone; rename / delete areas.
 - [ ] 5.4: retire `/app/weekplan` and `/app/schedule` (the shell no longer links them).
