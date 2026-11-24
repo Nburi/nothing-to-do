@@ -16,7 +16,7 @@
         <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status">
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 <span class="min-w-0 wrap-break-word">{{ $notice }}</span>
-                @if ($undoId)
+                @if ($undo)
                     <button type="button" wire:click="undoLast" wire:loading.attr="disabled" class="shrink-0 font-semibold underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep">{{ __('projects.undo') }}</button>
                 @endif
                 <button type="button" wire:click="dismiss" class="shrink-0 rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
@@ -24,7 +24,7 @@
         </div>
     @endif
 
-    <main class="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-2 pb-12 wb:px-6 wb:pt-6">
+    <main class="mx-auto flex w-full max-w-2xl flex-col gap-5 lg:max-w-5xl px-4 pt-2 pb-12 wb:px-6 wb:pt-6">
         <a href="{{ route('shell.projects') }}" wire:navigate class="hidden items-center gap-1 self-start text-sm font-semibold text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent wb:inline-flex">
             @include('shell.icon', ['name' => 'back', 'class' => 'size-4']) {{ __('projects.title') }}
         </a>
@@ -54,6 +54,7 @@
             </div>
         @endif
 
+        <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <section class="flex flex-col gap-2.5 rounded-panel bg-surface p-4" style="border: var(--t-bw) solid var(--t-line)">
             @if ($steps->isEmpty())
                 <p class="text-sm text-ink-faint">{{ __('projects.steps_empty') }}</p>
@@ -74,6 +75,9 @@
                 <button type="submit" wire:loading.attr="disabled" wire:target="addStep" class="{{ $btn }} border border-line bg-surface text-ink hover:bg-paper">{{ __('projects.add_step') }}</button>
             </form>
         </section>
+        {{-- Step 4.3b: the group's note cards (no stages). --}}
+        @include('shell.notes-panel', ['notes' => $this->notes, 'stages' => null, 'userTags' => $this->userTags, 'noteTag' => $noteTag, 'editingNote' => $editingNote])
+        </div>
     </main>
 
     @include('shell.projects-chrome', ['part' => 'tabs'])
