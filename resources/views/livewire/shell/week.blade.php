@@ -177,6 +177,29 @@
                                     @endif
                                 </button>
                             @endforeach
+                            {{-- Ghosts (B6): what a paused day would have had. Very pale on purpose (Niels 2026-11-24): no hatching, no
+                                 strong border, no motion. They are not in the engine's blocks, so never counted or started; a click
+                                 (or Enter) brings one back for this day only. --}}
+                            @foreach ($col['ghosts'] ?? [] as $ghost)
+                                @php($gw = 100 / $ghost['lanes'])
+                                @php($tone = $ghost['category'] === null ? 'var(--t-deep)' : 'var(--color-'.$ghost['color'].')')
+                                <button type="button" data-pause-ghost data-id="{{ $ghost['id'] }}" wire:key="ghost-{{ $ghost['id'] }}-{{ $col['key'] }}-{{ $ghost['top'] }}"
+                                    wire:click="restoreGhost({{ $ghost['id'] }}, '{{ $col['date'] }}')" wire:loading.attr="disabled" wire:target="restoreGhost({{ $ghost['id'] }}, '{{ $col['date'] }}')"
+                                    class="group absolute z-0 flex cursor-pointer flex-col gap-px overflow-hidden rounded-[7px] px-1.5 py-1 text-left text-[11.5px] leading-tight transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ink"
+                                    style="top: calc(var(--ph) * {{ round($ghost['top'] / 60, 4) }}); height: max(18px, calc(var(--ph) * {{ round($ghost['length'] / 60, 4) }} - 2px)); left: calc({{ $ghost['lane'] * $gw }}% + 3px); width: calc({{ $gw }}% - 6px); color: color-mix(in srgb, var(--t-ink) {{ \App\Support\Theme::GHOST_TEXT_WEIGHT * 100 }}%, var(--t-surface)); background: color-mix(in srgb, {{ $tone }} 6%, var(--t-surface)); border: 1px solid color-mix(in srgb, {{ $tone }} 16%, var(--t-surface))"
+                                    title="{{ __('week.ghost.title') }}"
+                                    aria-label="{{ __('week.ghost.label', ['time' => $ghost['start'].'–'.$ghost['end'], 'title' => $ghost['title']]) }}">
+                                    @if ($ghost['length'] < 60)
+                                        <span class="flex min-w-0 items-baseline gap-1.5"><span class="shrink-0 font-mono text-[10px]">{{ $ghost['start'] }}</span><b class="truncate font-medium">{{ $ghost['title'] }}</b></span>
+                                    @else
+                                        <span class="truncate font-mono text-[10px]">{{ $ghost['start'] }}–{{ $ghost['end'] }}</span>
+                                        <b class="{{ $ghost['length'] < 90 ? 'line-clamp-1' : 'line-clamp-2' }} font-medium wrap-anywhere">{{ $ghost['title'] }}</b>
+                                        @if ($ghost['length'] >= 90)
+                                            <span class="mt-auto text-[10px] underline decoration-dotted underline-offset-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{{ __('week.ghost.action') }}</span>
+                                        @endif
+                                    @endif
+                                </button>
+                            @endforeach
                         </div>
                     @endforeach
                 </div>

@@ -110,7 +110,7 @@ class Week extends Component
     /**
      * The seven columns of the grid: Zeitplan dates or Wochenplan weekdays.
      *
-     * @return list<array{key: string, weekday: int, date: ?string, paused: bool, note: ?string, sessions: int, blocks: list<array<string, mixed>>}>
+     * @return list<array{key: string, weekday: int, date: ?string, paused: bool, note: ?string, sessions: int, blocks: list<array<string, mixed>>, ghosts: list<array<string, mixed>>}>
      */
     #[Computed]
     public function columns(): array
@@ -426,6 +426,24 @@ class Week extends Component
         }
     }
 
+    /** A ghost of a paused day: bring this block back for that day only (an exception to the pause). */
+    public function restoreGhost(int $templateId, string $date): void
+    {
+        if (! in_array($date, $this->dates, true)) {
+            return;
+        }
+
+        $message = $this->attempt(function () use ($templateId, $date) {
+            $row = app(WeekPlanEditor::class)->restoreGhost($this->user, $templateId, $date);
+
+            return __('week.ghost.restored', ['title' => $row->displayTitle(), 'day' => $this->weekday($date).' '.$this->short($date)]);
+        });
+
+        if ($message !== null) {
+            $this->notice = $message;
+        }
+    }
+
     public function openPause(): void
     {
         $this->form = null;
@@ -544,6 +562,7 @@ class Week extends Component
         [$from, $to] = [$this->dates[0], $this->dates[6]];
         $categories = $reader->categories($this->user);
         $blocks = $reader->blocks($this->user, $from, $to);
+        $ghosts = $reader->ghosts($this->user, $from, $to);
         $calculator = new SlotCalculator($categories);
         $pauses = SchedulePause::forUser($this->user)->forRange($from, $to)->get()
             ->mapWithKeys(fn (SchedulePause $p) => [$p->date->toDateString() => (string) $p->note]);
@@ -559,6 +578,8 @@ class Week extends Component
                 'note' => $pauses->get($date) ?: null,
                 'sessions' => count($slots),
                 'blocks' => $this->lanes(array_map(fn (Block $b) => $this->blockArray($b, $slots, $b->templateId !== null ? 'occ' : 'once'), $blocks[$date])),
+                // What a paused day would have had: shown pale, never counted (B6).
+                'ghosts' => $this->lanes(array_map(fn (Block $b) => $this->blockArray($b, [], 'ghost'), $ghosts[$date] ?? [])),
             ];
         }
 
@@ -589,6 +610,7 @@ class Week extends Component
                 'paused' => false,
                 'note' => null,
                 'sessions' => count($slots),
+                'ghosts' => [],
                 'blocks' => $this->lanes(array_map(fn (Block $b) => ['date' => (string) $weekday] + $this->blockArray($b, $slots, 'tpl'), $blocks)),
             ];
         }

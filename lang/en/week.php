@@ -125,6 +125,12 @@ return [
         'paused_day' => ':day paused.',
         'resumed' => ':day is back on.',
     ],
+    'ghost' => [
+        'title' => 'Skipped on this day. Click to bring the block back for this day only.',
+        'label' => ':time :title, paused. Bring back for this day',
+        'action' => 'Bring back',
+        'restored' => ':title is back on :day.',
+    ],
     'links' => [
         'week' => 'Week',
         'move' => 'Move a block',

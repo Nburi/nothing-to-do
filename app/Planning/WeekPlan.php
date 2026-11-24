@@ -97,36 +97,38 @@ final readonly class WeekPlan
         return isset($this->pausedDates[$date]);
     }
 
+    /**
+     * The template blocks a paused date would have had (step 4.1, B6 "ghosts"): what the series and
+     * its one-week changes say for that date, minus the ones the user already brought back as a
+     * one-off (same time, category and, for a Termin, name). Empty on a date that is not paused.
+     *
+     * Ghosts are a view for the editor only. blocksOn() never contains them, so they cannot
+     * reach capacity, the forecast, the pick engine or a session start: a paused date still
+     * produces no work time (R4).
+     *
+     * @return list<Block> sorted by start
+     */
+    public function ghostsOn(string $date): array
+    {
+        if (! $this->isPaused($date)) {
+            return [];
+        }
+
+        $real = $this->blocksOn($date);
+        $ghosts = array_values(array_filter(
+            $this->templateBlocksOn($date, false),
+            fn (Block $ghost) => ! array_filter($real, fn (Block $block) => $this->sameBlock($ghost, $block)),
+        ));
+        usort($ghosts, fn (Block $a, Block $b) => $a->start->getTimestamp() <=> $b->start->getTimestamp());
+
+        return $ghosts;
+    }
+
     /** @return list<Block> sorted by start */
     public function blocksOn(string $date): array
     {
-        $blocks = [];
-        $weekday = CarbonImmutable::parse($date)->dayOfWeekIso;
-
-        if (! $this->isPaused($date)) {
-            foreach ($this->templates as $template) {
-                if (! $template->occursOnWeekday($weekday)) {
-                    continue;
-                }
-
-                $change = $this->changes[$template->id.'|'.$date] ?? null;
-                if ($change?->cancelled) {
-                    continue;
-                }
-
-                $blocks[] = $this->block(
-                    $date,
-                    $change?->start ?? $template->start,
-                    $change?->durationMinutes ?? $template->durationMinutes,
-                    $template->categoryId,
-                    $template->id,
-                    $template->title,
-                    $change?->eventId,
-                    // "Changed" only when it differs: a row the old screens materialised unchanged is not an edit.
-                    $change !== null && ($change->start !== $template->start || $change->durationMinutes !== $template->durationMinutes),
-                );
-            }
-        }
+        // A paused date keeps only the blocks the user brought back (an exception to the pause).
+        $blocks = $this->templateBlocksOn($date, $this->isPaused($date) ? true : null);
 
         foreach ($this->oneOffs as $oneOff) {
             if ($oneOff->date === $date) {
@@ -138,6 +140,51 @@ final readonly class WeekPlan
             <=> [$b->start->getTimestamp(), $b->templateId ?? PHP_INT_MAX]);
 
         return $blocks;
+    }
+
+    /**
+     * The repeating blocks of a date with their one-week changes applied, pause ignored.
+     *
+     * @param  bool|null  $exceptions  true: only blocks restored against a pause, false: only the others, null: all
+     * @return list<Block>
+     */
+    private function templateBlocksOn(string $date, ?bool $exceptions = null): array
+    {
+        $blocks = [];
+        $weekday = CarbonImmutable::parse($date)->dayOfWeekIso;
+
+        foreach ($this->templates as $template) {
+            if (! $template->occursOnWeekday($weekday)) {
+                continue;
+            }
+
+            $change = $this->changes[$template->id.'|'.$date] ?? null;
+            if ($change?->cancelled || ($exceptions !== null && ($change?->pauseException ?? false) !== $exceptions)) {
+                continue;
+            }
+
+            $blocks[] = $this->block(
+                $date,
+                $change?->start ?? $template->start,
+                $change?->durationMinutes ?? $template->durationMinutes,
+                $template->categoryId,
+                $template->id,
+                $template->title,
+                $change?->eventId,
+                // "Changed" only when it differs: a row the old screens materialised unchanged is not an edit.
+                $change !== null && ($change->pauseException || $change->start !== $template->start || $change->durationMinutes !== $template->durationMinutes),
+            );
+        }
+
+        return $blocks;
+    }
+
+    private function sameBlock(Block $a, Block $b): bool
+    {
+        return $a->start->equalTo($b->start)
+            && $a->end->equalTo($b->end)
+            && $a->categoryId === $b->categoryId
+            && ($a->categoryId !== null || $a->title === $b->title);
     }
 
     private function block(string $date, string $start, int $duration, ?int $categoryId, ?int $templateId, ?string $title, ?int $eventId = null, bool $changed = false): Block

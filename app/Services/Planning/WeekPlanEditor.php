@@ -308,6 +308,30 @@ final class WeekPlanEditor
         $pauses->delete();
     }
 
+    /**
+     * Bring one ghost of a paused date back (B6). It is an exception for that one date by
+     * definition, so it takes no ChangeScope: the occurrence's own row is marked as an exception to
+     * the pause (pause_exception); the series, the pause and the other ghosts stay as they are, and
+     * the ghost keeps its time (a one-week change counts). Switching the day back on later shows the
+     * block once. "Zurück zum Wochenplan" (restoreOccurrence) or undo make it a ghost again.
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException when the date is not paused or has no such ghost
+     */
+    public function restoreGhost(User $user, int $templateId, string $date): ScheduleEvent
+    {
+        $template = $this->template($user, $templateId);
+        $date = $this->validated(['date' => $date], $user, date: true)['date'];
+
+        $ghost = collect((new WeekPlanReader)->ghosts($user, $date, $date)[$date] ?? [])
+            ->first(fn ($block) => $block->templateId === $template->id)
+            ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(ScheduleEvent::class, [$templateId]);
+
+        $row = $this->occurrence($user, $template, $date);
+        $row->fill(['pause_exception' => true, 'is_cancelled' => false])->save();
+
+        return $row;
+    }
+
     // ── internals ────────────────────────────────────────────────────
 
     /**
