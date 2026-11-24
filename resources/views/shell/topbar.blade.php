@@ -14,6 +14,7 @@
     <div class="ml-auto flex items-center gap-2">
         @include('shell.capture-field', ['mode' => 'board'])
         @isset($battery)
+            @include('shell.reset-button', ['layout' => 'werkbank', 'mode' => 'board', 'label' => true])
             @include('shell.battery', ['layout' => 'werkbank', 'mode' => 'board', 'battery' => $battery])
         @endisset
         <a href="{{ route('shell.settings') }}" wire:navigate

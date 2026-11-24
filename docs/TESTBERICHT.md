@@ -50,6 +50,7 @@ screenshot comes out, Claude **stops and tells Niels**, and the affected rows mo
 | B7 | R5 | The crunch screen with six items fits at 390 px with all four decisions visible. | Screenshot | offen |
 | B8 | R3 | Capture on a slow connection shows a saving state and a calm retry message. | Throttled network | bestanden (Schritt 2.3, 2026-11-09): Anfrage im Browser 1,5 s verzögert und dann abgebrochen: „Speichere …“ im Feld, danach „Gerade keine Verbindung. Dein Text bleibt im Feld.“ mit „Nochmal“, der Text bleibt stehen. Screens `docs/screens/2.3-capture-saving-1280.png`, `2.3-capture-offline-1280.png`. |
 | B9 | R9 | Timer, break screen and "next task inside this session" render correctly on both layouts. | Live check with a shortened test cycle | offen |
+| B10 | R2, G4 | The reset is a calm full screen (board hidden), its countdown survives a reload and hands over to the battery question; the board comes back with the chosen battery. | Live check at 1280 and 390 px, reduced motion | bestanden (Schritt 3.2, 2026-11-11, Playwright): ruhiger Bildschirm deckt das Board ganz ab, Los fokussiert; Countdown läuft und übersteht einen Reload (09:46); bei 0 wechselt er von selbst zur Akku-Frage; Später → Board mit „Akku: Okay“, Leer → „Akku: Leer“; „Abschalten“ neben dem Akku-Chip startet sofort. 390 px ohne seitliches Scrollen. Gefunden und behoben: der Timer rutschte bei Los 16 px nach unten. Reduzierte Bewegung: kein Einblenden, Linie springt. Screens `docs/screens/3.2-*`. |
 
 ## C. Niels prüft
 
@@ -68,3 +69,4 @@ screenshot comes out, Claude **stops and tells Niels**, and the affected rows mo
 | C9 | SOLLTE | R3 | Capture three ideas by voice on the train with one hand. | offen |
 | C10 | SOLLTE | R7 | Hand it cold to a friend with a different life. Did they understand it without help? | offen |
 | C11 | SOLLTE | R8 | With real old data, find one thing from last month. | offen |
+| C12 | MUSS | R2 | For a week, let the reset open when you come home (or tap „Abschalten“). Does it feel like ten minutes for you, or like a chore before work? Is 17:00 a sensible „from“ time until the 3.3 nudge exists? | offen (Schritt 3.2) |

@@ -41,7 +41,7 @@ return [
     'parked' => 'parked :age',
     'battery' => [
         'label' => 'Battery',
-        'low' => 'Low',
+        'low' => 'Empty',
         'okay' => 'Okay',
         'good' => 'Good',
         'hint' => [
@@ -114,6 +114,32 @@ return [
         'drawer' => 'Drawer',
         'peek' => 'Take a look',
         'running' => 'Session running',
+    ],
+    'reset' => [
+        'eyebrow' => 'Switch off',
+        'title' => 'Ten minutes just for you.',
+        'ideas_label' => 'For example',
+        'ideas' => ['Shower', 'Eat something', 'Step outside'],
+        'go' => 'Go',
+        'skip' => 'Skip',
+        'end_early' => 'Done already',
+        'running' => 'Running. The board can wait.',
+        'start_by_hand' => 'Switch off',
+        'start_by_hand_hint' => 'Switch off for ten minutes',
+    ],
+    'checkin' => [
+        'eyebrow' => 'Battery',
+        'title' => 'How much battery do you have today?',
+        'low' => 'Empty',
+        'okay' => 'Okay',
+        'good' => 'Full',
+        'hint' => [
+            'low' => '2 small things',
+            'okay' => 'normal',
+            'good' => 'the big one first',
+        ],
+        'later' => 'Later',
+        'note' => 'Later counts as Okay. You can change the battery on the board any time.',
     ],
     'errors' => [
         'task_gone' => 'This task no longer exists. The list is up to date now.',

@@ -19,6 +19,7 @@
         'back' => '<path d="M15 18l-6-6 6-6"/>',
         'battery' => '<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10.5v3"/>',
         'dots' => '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+        'reset' => '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
         'alert' => '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
     ];
 @endphp

@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Planning\Size;
 use App\Services\FocusSession;
+use App\Services\Planning\EveningReset;
 use App\Services\Planning\WeekPlanEditor;
 use App\Shell\ActionRegistry;
 use Carbon\CarbonImmutable;
@@ -41,6 +42,10 @@ class ActionParityTest extends TestCase
         foreach ([['Formular', 'todos', Size::Quick], ['Bericht', 'tasks', Size::Long], ['Idee', 'later', null], ['Gedanke', 'inbox', null]] as $i => [$title, $list, $size]) {
             Task::forceCreate(['user_id' => $this->user->id, 'title' => $title, 'list' => $list, 'size' => $size, 'sort_order' => $i]);
         }
+
+        // Tonight's reset is behind us (step 3.2): while it shows, the board is inert and has no entry points.
+        app(EveningReset::class)->close($this->user);
+        app(EveningReset::class)->answerBattery($this->user, null);
     }
 
     public function test_every_available_action_has_both_entry_points_in_board_mode(): void
