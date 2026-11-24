@@ -43,7 +43,7 @@
             </p>
             <ol class="mt-3 space-y-2 text-sm leading-relaxed text-ink-soft">
                 <li><span class="font-medium text-ink">1.</span> In Claude: <span class="font-medium text-ink">Einstellungen → Connectors → Eigenen Connector hinzufügen</span>.</li>
-                <li><span class="font-medium text-ink">2.</span> Als URL <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{{ $mcpUrl }}</code> eintragen. Client-ID und Secret bleiben leer — der Server registriert Claude selbst (Dynamic Client Registration).</li>
+                <li><span class="font-medium text-ink">2.</span> Als URL <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{{ $mcpUrl }}</code> eintragen. Client-ID und Secret bleiben leer — der Server registriert Claude selbst (Dynamic Client Registration).</li>
                 <li><span class="font-medium text-ink">3.</span> Claude öffnet diese App im Browser. Einmal <span class="font-medium text-ink">„Verbinden"</span> bestätigen — fertig.</li>
             </ol>
             <p class="mt-3 text-sm leading-relaxed text-ink-soft">
@@ -55,9 +55,9 @@
             </p>
             <p class="mt-3 text-xs leading-relaxed text-ink-faint">
                 Technisch: OAuth 2.1 mit PKCE (S256), Discovery über
-                <code class="rounded bg-paper px-1 py-0.5 font-mono">/.well-known/oauth-protected-resource</code> und
-                <code class="rounded bg-paper px-1 py-0.5 font-mono">/.well-known/oauth-authorization-server</code>,
-                dynamische Client-Registrierung über <code class="rounded bg-paper px-1 py-0.5 font-mono">/oauth/register</code>.
+                <code class="rounded-sm bg-paper px-1 py-0.5 font-mono">/.well-known/oauth-protected-resource</code> und
+                <code class="rounded-sm bg-paper px-1 py-0.5 font-mono">/.well-known/oauth-authorization-server</code>,
+                dynamische Client-Registrierung über <code class="rounded-sm bg-paper px-1 py-0.5 font-mono">/oauth/register</code>.
                 Access-Token eine Stunde, Refresh-Token sechs Monate.
             </p>
         </section>
@@ -70,12 +70,12 @@
                 <a href="{{ route('settings') }}#developer" class="text-overprint hover:underline" wire:navigate>Einstellungen → Shortcuts, API &amp; MCP</a>
                 ein Token und wähle dort bewusst, ob es auch schreiben und/oder löschen darf — ein reines
                 Lese-Token reicht für „was steht an", zum Organisieren braucht es „Schreiben". Dann
-                <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">{{ $mcpTokenUrl }}</code> mit
-                <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">Authorization: Bearer &lt;TOKEN&gt;</code> aufrufen.
+                <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{{ $mcpTokenUrl }}</code> mit
+                <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">Authorization: Bearer &lt;TOKEN&gt;</code> aufrufen.
             </p>
             <p class="mt-3 text-sm text-ink-soft">
                 Beide Endpunkte bieten dieselben Werkzeuge und antworten ohne gültige Anmeldung mit
-                <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">401</code>. Der Server ist zustandslos —
+                <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">401</code>. Der Server ist zustandslos —
                 jeder Aufruf authentifiziert sich selbst, es gibt keine Sitzung, die offen bleiben könnte.
             </p>
         </section>
@@ -84,7 +84,7 @@
         <section class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
             <h2 class="mb-3 text-base font-medium text-ink">Was die KI sieht, passt sich an</h2>
             <p class="text-sm leading-relaxed text-ink-soft">
-                Welche Werkzeuge ein KI-Assistent bei <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">tools/list</code>
+                Welche Werkzeuge ein KI-Assistent bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tools/list</code>
                 angeboten bekommt, wird bei jedem Aufruf neu berechnet — nicht einmalig festgelegt. Zwei Dinge
                 steuern das:
             </p>
@@ -98,7 +98,7 @@
                     <span class="font-medium text-ink">Rechte der Verbindung.</span> Bei einem Token sind das
                     dessen eigene Rechte, bei OAuth die Einstellungen deines Accounts. Ohne „Schreiben" ist nie
                     ein schreibendes Werkzeug zu sehen; ohne „Löschen erlauben" fehlt
-                    alle <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeuge ganz — auch
+                    alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeuge ganz — auch
                     nicht als „gesperrt". Ein Aufruf eines nicht angebotenen Werkzeugs wird exakt wie ein nicht
                     existierendes behandelt (derselbe Fehler), damit eine Verbindung nie verrät, was mit mehr
                     Rechten möglich wäre.
@@ -152,7 +152,7 @@
             <h2 class="mb-3 text-base font-medium text-ink">Fehler</h2>
             <ul class="space-y-2 text-sm leading-relaxed text-ink-soft">
                 <li>Ein unbekanntes oder nicht angebotenes Werkzeug → JSON-RPC-Protokollfehler (<code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">-32602</code>).</li>
-                <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei einem <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeug → ein normales Tool-Ergebnis mit <code class="rounded bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
+                <li>Falsche/fehlende Argumente, eine fremde ID, eine falsche <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">confirm_title</code> bei einem <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">delete_*</code>-Werkzeug → ein normales Tool-Ergebnis mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">isError: true</code>, kein Protokollfehler — die KI bekommt eine lesbare Fehlermeldung zurück und kann reagieren.</li>
             </ul>
         </section>
     </div>
