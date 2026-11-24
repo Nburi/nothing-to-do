@@ -25,6 +25,9 @@ final class Theme
      */
     public const GHOST_TEXT_WEIGHT = 0.45;
 
+    /** Fraction of the palette colour in a coloured Termin block of the week editor; ink text sits on it (ThemeContrastTest). */
+    public const TERMIN_TINT_WEIGHT = 0.2;
+
     /** @return list<string> */
     public static function ids(): array
     {

@@ -69,6 +69,8 @@ return [
         'pick_day' => 'Wähle mindestens einen Tag.',
         'name' => 'Name',
         'name_placeholder' => 'z. B. Zahnarzt',
+        'color' => 'Farbe',
+        'color_from_plan' => 'Die Farbe kommt aus dem Wochenplan. Dort kannst du sie ändern.',
         'untitled' => 'Block',
         'day' => 'Tag',
         'date' => 'Datum',
@@ -138,6 +140,7 @@ return [
     ],
 
     'colors' => [
+        'standard' => 'Standard',
         'forest' => 'Grün',
         'contour' => 'Ocker',
         'overprint' => 'Magenta',

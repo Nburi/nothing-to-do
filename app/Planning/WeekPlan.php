@@ -132,7 +132,7 @@ final readonly class WeekPlan
 
         foreach ($this->oneOffs as $oneOff) {
             if ($oneOff->date === $date) {
-                $blocks[] = $this->block($date, $oneOff->start, $oneOff->durationMinutes, $oneOff->categoryId, $oneOff->templateId, $oneOff->title, $oneOff->eventId, $oneOff->templateId !== null);
+                $blocks[] = $this->block($date, $oneOff->start, $oneOff->durationMinutes, $oneOff->categoryId, $oneOff->templateId, $oneOff->title, $oneOff->eventId, $oneOff->templateId !== null, $oneOff->tint);
             }
         }
 
@@ -173,6 +173,7 @@ final readonly class WeekPlan
                 $change?->eventId,
                 // "Changed" only when it differs: a row the old screens materialised unchanged is not an edit.
                 $change !== null && ($change->pauseException || $change->start !== $template->start || $change->durationMinutes !== $template->durationMinutes),
+                $template->tint,
             );
         }
 
@@ -187,7 +188,7 @@ final readonly class WeekPlan
             && ($a->categoryId !== null || $a->title === $b->title);
     }
 
-    private function block(string $date, string $start, int $duration, ?int $categoryId, ?int $templateId, ?string $title, ?int $eventId = null, bool $changed = false): Block
+    private function block(string $date, string $start, int $duration, ?int $categoryId, ?int $templateId, ?string $title, ?int $eventId = null, bool $changed = false, ?string $tint = null): Block
     {
         [$h, $m] = array_map('intval', explode(':', $start));
         $endMinutes = $h * 60 + $m + $duration;
@@ -203,6 +204,7 @@ final readonly class WeekPlan
             $title,
             $eventId,
             $changed,
+            $tint,
         );
     }
 }

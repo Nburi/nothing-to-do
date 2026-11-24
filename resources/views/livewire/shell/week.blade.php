@@ -152,17 +152,20 @@
                             @endif
                             @foreach ($col['blocks'] as $block)
                                 @php($termin = $block['category'] === null)
+                                {{-- A Termin wears its palette colour; without one it keeps the dark Standard block. --}}
+                                @php($tone = $termin ? $block['tint'] : $block['color'])
+                                @php($deep = $termin && $tone === null)
                                 @php($w = 100 / $block['lanes'])
                                 <button type="button" data-block data-kind="{{ $block['kind'] }}" data-id="{{ $block['id'] }}" data-top="{{ $block['top'] }}" data-length="{{ $block['length'] }}"
                                     wire:key="b-{{ $block['kind'] }}-{{ $block['id'] }}-{{ $col['key'] }}-{{ $block['top'] }}"
                                     @click="if ($event.detail === 0) { anchor = $el.getBoundingClientRect(); $wire.openBlock(@js($block['kind']), {{ $block['id'] }}, @js($col['key'])) }"
                                     @class([
                                         'absolute z-[1] flex flex-col gap-px overflow-hidden rounded-[7px] px-1.5 py-1 text-left text-[11.5px] leading-tight transition-opacity focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ink cursor-grab',
-                                        'bg-deep text-on-deep' => $termin,
-                                        'text-ink' => ! $termin,
+                                        'bg-deep text-on-deep' => $deep,
+                                        'text-ink' => ! $deep,
                                         'ring-2 ring-ink ring-offset-1 ring-offset-surface' => $form && ($form['id'] ?? null) === $block['id'] && ($form['mode'] ?? null) === $block['kind'] && (($form['date'] ?? null) === $block['date'] || $block['kind'] === 'tpl'),
                                     ])
-                                    style="top: calc(var(--ph) * {{ round($block['top'] / 60, 4) }}); height: max(18px, calc(var(--ph) * {{ round($block['length'] / 60, 4) }} - 2px)); left: calc({{ $block['lane'] * $w }}% + 3px); width: calc({{ $w }}% - 6px);{{ $termin ? '' : ' background: color-mix(in srgb, var(--color-'.$block['color'].') '.($block['pomodoro'] ? 20 : 13).'%, var(--t-surface));' }} border: 1px {{ $block['changed'] ? 'dashed' : 'solid' }} {{ $termin ? 'var(--t-deep)' : 'var(--color-'.$block['color'].')' }}"
+                                    style="top: calc(var(--ph) * {{ round($block['top'] / 60, 4) }}); height: max(18px, calc(var(--ph) * {{ round($block['length'] / 60, 4) }} - 2px)); left: calc({{ $block['lane'] * $w }}% + 3px); width: calc({{ $w }}% - 6px);{{ $deep ? '' : ' background: color-mix(in srgb, var(--color-'.$tone.') '.($termin ? \App\Support\Theme::TERMIN_TINT_WEIGHT * 100 : ($block['pomodoro'] ? 20 : 13)).'%, var(--t-surface));' }} border: 1px {{ $block['changed'] ? 'dashed' : 'solid' }} {{ $deep ? 'var(--t-deep)' : 'var(--color-'.$tone.')' }}"
                                     title="{{ $block['start'] }}–{{ $block['end'] }} {{ $block['title'] }}"
                                     aria-label="{{ $block['start'] }}–{{ $block['end'] }} {{ $block['title'] }}{{ $block['changed'] ? ', '.__('week.grid.changed') : '' }}">
                                     @if ($block['length'] < 60)
@@ -182,7 +185,7 @@
                                  (or Enter) brings one back for this day only. --}}
                             @foreach ($col['ghosts'] ?? [] as $ghost)
                                 @php($gw = 100 / $ghost['lanes'])
-                                @php($tone = $ghost['category'] === null ? 'var(--t-deep)' : 'var(--color-'.$ghost['color'].')')
+                                @php($tone = $ghost['category'] === null ? ($ghost['tint'] ? 'var(--color-'.$ghost['tint'].')' : 'var(--t-deep)') : 'var(--color-'.$ghost['color'].')')
                                 <button type="button" data-pause-ghost data-id="{{ $ghost['id'] }}" wire:key="ghost-{{ $ghost['id'] }}-{{ $col['key'] }}-{{ $ghost['top'] }}"
                                     wire:click="restoreGhost({{ $ghost['id'] }}, '{{ $col['date'] }}')" wire:loading.attr="disabled" wire:target="restoreGhost({{ $ghost['id'] }}, '{{ $col['date'] }}')"
                                     class="group absolute z-0 flex cursor-pointer flex-col gap-px overflow-hidden rounded-[7px] px-1.5 py-1 text-left text-[11.5px] leading-tight transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ink"
@@ -240,7 +243,7 @@
                     @endforeach
                     @foreach ($summary['termine'] as $row)
                         <li class="flex items-center gap-2 text-sm">
-                            <span class="size-3 shrink-0 rounded-full bg-deep"></span>
+                            <span class="size-3 shrink-0 rounded-full" style="background: {{ $row['tint'] ? 'var(--color-'.$row['tint'].')' : 'var(--t-deep)' }}"></span>
                             <span class="min-w-0 flex-1 truncate font-semibold text-ink">{{ $row['title'] }}</span>
                             <span class="font-mono text-xs text-ink-soft">{{ implode(' ', array_map(fn ($d) => __('week.days.'.$d), $row['days'])) }}</span>
                         </li>

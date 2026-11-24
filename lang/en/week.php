@@ -69,6 +69,8 @@ return [
         'pick_day' => 'Pick at least one day.',
         'name' => 'Name',
         'name_placeholder' => 'e.g. Dentist',
+        'color' => 'Colour',
+        'color_from_plan' => 'The colour comes from the weekly plan. Change it there.',
         'untitled' => 'Block',
         'day' => 'Day',
         'date' => 'Date',
@@ -138,6 +140,7 @@ return [
     ],
 
     'colors' => [
+        'standard' => 'Standard',
         'forest' => 'Green',
         'contour' => 'Ochre',
         'overprint' => 'Magenta',
