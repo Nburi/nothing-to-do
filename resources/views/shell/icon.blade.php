@@ -21,6 +21,9 @@
         'dots' => '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
         'reset' => '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
         'alert' => '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+        'group' => '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 9h17"/>',
+        'project' => '<path d="M5 21V4M5 4h11l-2 3.5 2 3.5H5"/>',
+        'chevron' => '<path d="M9 6l6 6-6 6"/>',
     ];
 @endphp
 <svg class="{{ $class ?? 'size-5' }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $paths[$name] !!}</svg>

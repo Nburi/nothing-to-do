@@ -11,6 +11,7 @@
 @php
     $suggestion = $this->suggestion;
     $lists = $this->lists;
+    $bundles = $this->bundles;
     $counts = $this->counts;
     $suggestedId = $suggestion->hasPick() ? $suggestion->task?->id : null;
     $session = $this->session;
@@ -125,6 +126,11 @@
                             </button>
                         @endif
                     @endforeach
+                    <x-shell.action key="projects" layout="werkbank" mode="session" as="a" :href="route('shell.projects')" wire:navigate
+                        class="flex w-full flex-col items-center gap-0.5 rounded-card py-2 text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                        @include('shell.icon', ['name' => 'project', 'class' => 'size-5'])
+                        <small class="text-[10.5px]">{{ __('projects.nav') }}</small>
+                    </x-shell.action>
                     @if ($crunch->isHard())
                         <x-shell.action key="crunch" layout="werkbank" mode="session" wire:click="$dispatch('crunch-open')"
                             class="flex w-full flex-col items-center gap-1 rounded-card py-2 text-[10.5px] font-semibold text-warn transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
@@ -157,7 +163,7 @@
                         <h2 class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('shell.session.peek') }}</h2>
                         <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                     </div>
-                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'counts' => $counts, 'suggestedId' => null, 'locked' => $locked])
+                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'suggestedId' => null, 'locked' => $locked])
                 </div>
             </section>
         @endif
@@ -200,7 +206,7 @@
                 <div class="grid grid-cols-2 gap-x-3.5 gap-y-5">
                     @foreach (array_values($columns) as $i => $list)
                         <div class="fold-pile" style="--i: {{ $i }}; --row: {{ intdiv($i, 2) }}">
-                            @include('shell.pile', ['list' => $list, 'top' => $lists[$list]->first(), 'count' => $counts[$list], 'mode' => 'board'])
+                            @include('shell.pile', ['list' => $list, 'top' => $this->topOf($list), 'count' => $counts[$list], 'mode' => 'board'])
                         </div>
                     @endforeach
                     @if ($done->isNotEmpty())
@@ -217,10 +223,11 @@
             </x-shell.action>
 
             <nav class="fold-tabs fixed inset-x-0 bottom-0 z-30 flex justify-around bg-surface px-2 pt-2 pb-[max(14px,env(safe-area-inset-bottom))]" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.nav.board') }}">
-                @php($tab = 'flex min-w-16 flex-col items-center gap-0.5 rounded-card px-2 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
+                @php($tab = 'flex min-w-14 flex-col items-center gap-0.5 rounded-card px-1.5 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
                 <button type="button" @click="peek = null; window.scrollTo({ top: 0, behavior: 'smooth' })" class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></button>
                 <x-shell.action key="week_plan" layout="stapel" mode="board" as="a" :href="route('shell.week')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'calendar'])<span>{{ __('shell.tabs.calendar') }}</span></x-shell.action>
                 <x-shell.action key="browse_later" layout="stapel" mode="board" as="a" :href="route('shell.ideas')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'later'])<span>{{ __('shell.tabs.later') }}</span></x-shell.action>
+                <x-shell.action key="projects" layout="stapel" mode="board" as="a" :href="route('shell.projects')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'project'])<span>{{ __('projects.nav') }}</span></x-shell.action>
                 <button type="button" @click="peek = 'inbox'" class="{{ $tab }}">@include('shell.icon', ['name' => 'inbox'])<span>{{ __('shell.tabs.inbox') }}</span></button>
             </nav>
         </section>
@@ -260,6 +267,7 @@
                             <button type="button" @click="peek = '{{ $list }}'" class="{{ $drawerClass }}">{{ __('shell.lists.'.$list) }} <b class="font-mono text-ink">{{ $counts[$list] }}</b></button>
                         @endif
                     @endforeach
+                    <x-shell.action key="projects" layout="stapel" mode="session" as="a" :href="route('shell.projects')" wire:navigate class="rounded-full px-3 py-2 text-sm text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.nav') }}</x-shell.action>
                 </nav>
             </section>
         @endif
@@ -274,7 +282,7 @@
                     <span class="h-1 w-11 rounded-full bg-line" aria-hidden="true"></span>
                     <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                 </div>
-                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'counts' => $counts, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
+                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
             </div>
         </div>
     </div>

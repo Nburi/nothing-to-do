@@ -210,6 +210,7 @@ return [
         'pause_days' => 'Pause days',
         'crunch' => 'Decide a crunch',
         'keep_mine' => 'Keep it mine',
+        'projects' => 'Browse projects',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

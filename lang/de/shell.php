@@ -211,6 +211,7 @@ return [
         'pause_days' => 'Pausentage',
         'crunch' => 'Engpass entscheiden',
         'keep_mine' => 'Meins behalten',
+        'projects' => 'Projekte ansehen',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

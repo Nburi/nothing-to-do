@@ -19,6 +19,8 @@ use App\Services\Planning\IdeaOffer;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
 use App\Services\Planning\WeekPlanReader;
+use App\Services\Projects\Bundle;
+use App\Services\Projects\NextSteps;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -134,11 +136,37 @@ class Board extends Component
         return app(CrunchOverview::class)->for($this->user, $this->now, seen: ! $this->inSession());
     }
 
-    /** @return array<string, Collection<int, Task>> */
+    /**
+     * Step 4.3: projects and groups with something to do now, by board column. Each is one card
+     * with at most its next two steps (NextSteps), so a project never turns into a wall (F10).
+     *
+     * @return array<string, Collection<int, Bundle>>
+     */
+    #[Computed]
+    public function bundles(): array
+    {
+        $all = app(NextSteps::class)->bundles($this->user);
+        $this->bundled = $all->flatMap(fn (Bundle $b) => $b->bundled)->all();
+
+        $out = [];
+        foreach (Task::LISTS as $list) {
+            $out[$list] = $all->filter(fn (Bundle $b) => $b->list === $list && $b->visible->isNotEmpty())->values();
+        }
+
+        return $out;
+    }
+
+    /** Ids of the open steps the bundle cards stand for; set by bundles(). @var list<int> */
+    private array $bundled = [];
+
+    /** @return array<string, Collection<int, Task>> loose tasks per list (steps of a project or group sit in its card) */
     #[Computed]
     public function lists(): array
     {
+        $this->bundles; // fills $this->bundled
+
         $tasks = Task::forUser($this->user)->active()
+            ->whereNotIn('id', $this->bundled)
             ->with('area')
             ->orderBy('sort_order')->orderBy('id')
             ->get()
@@ -152,11 +180,22 @@ class Board extends Component
         return $out;
     }
 
-    /** @return array<string, int> */
+    /** @return array<string, int> what each column shows: loose tasks plus the steps on its cards */
     #[Computed]
     public function counts(): array
     {
-        return array_map(fn (Collection $c) => $c->count(), $this->lists);
+        $out = [];
+        foreach ($this->lists as $list => $tasks) {
+            $out[$list] = $tasks->count() + $this->bundles[$list]->sum(fn (Bundle $b) => $b->visible->count());
+        }
+
+        return $out;
+    }
+
+    /** The first card of a list for a Stapel pile: a card's first step, else the first loose task. */
+    public function topOf(string $list): ?Task
+    {
+        return $this->bundles[$list]->first()?->visible->first() ?? $this->lists[$list]->first();
     }
 
     #[Computed]
@@ -477,7 +516,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
+        foreach (['now', 'session', 'suggestion', 'bundles', 'lists', 'counts', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
             unset($this->{$computed});
         }
     }

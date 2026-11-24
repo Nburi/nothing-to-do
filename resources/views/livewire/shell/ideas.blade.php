@@ -104,10 +104,11 @@
         @include('shell.icon', ['name' => 'plus', 'class' => 'size-6'])
     </button>
     <nav class="fixed inset-x-0 bottom-0 z-30 flex justify-around bg-surface px-2 pt-2 pb-[max(14px,env(safe-area-inset-bottom))] wb:hidden" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.nav.board') }}">
-        @php($tab = 'flex min-w-16 flex-col items-center gap-0.5 rounded-card px-2 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
+        @php($tab = 'flex min-w-14 flex-col items-center gap-0.5 rounded-card px-1.5 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
         <a href="{{ route('shell.board') }}" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></a>
         <a href="{{ route('shell.week') }}" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'calendar'])<span>{{ __('shell.tabs.calendar') }}</span></a>
         <a href="{{ route('shell.ideas') }}" wire:navigate class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'later'])<span>{{ __('shell.tabs.later') }}</span></a>
+        <a href="{{ route('shell.projects') }}" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'project'])<span>{{ __('projects.nav') }}</span></a>
         <a href="{{ route('shell.board', ['open' => 'inbox']) }}" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'inbox'])<span>{{ __('shell.tabs.inbox') }}</span></a>
     </nav>
 </div>

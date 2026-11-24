@@ -32,6 +32,7 @@ final class ActionRegistry
         'pause_days' => ['4.1', true],
         'crunch' => ['4.2', true],
         'keep_mine' => ['3.4', true],
+        'projects' => ['4.3', true],
     ];
 
     /** @return list<Action> */

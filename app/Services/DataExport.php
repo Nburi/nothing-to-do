@@ -43,7 +43,7 @@ class DataExport
     ];
 
     private const TASK = [
-        'id', 'title', 'list', 'project_id', 'group_id', 'area_id', 'size', 'first_step', 'is_today',
+        'id', 'title', 'list', 'project_id', 'group_id', 'stage_id', 'waits_on_id', 'area_id', 'size', 'first_step', 'is_today',
         'today_date', 'is_important', 'deadline', 'due_date', 'notes', 'duration_minutes', 'repeat_rule', 'is_completed',
         'completed_at', 'created_at', 'updated_at',
     ];
@@ -83,12 +83,19 @@ class DataExport
                 ])->all(),
             'projects' => DB::table('projects')->where('user_id', $user->id)->orderBy('id')
                 ->get(['id', 'name', 'deadline', 'brainstorm', 'external_url', 'created_at'])
-                ->map(fn ($p) => (array) $p)->all(),
+                ->map(fn ($p) => [
+                    ...(array) $p,
+                    // Step 4.3: the roadmap.
+                    'stages' => DB::table('project_stages')->where('project_id', $p->id)->orderBy('sort_order')->orderBy('id')
+                        ->get(['id', 'name', 'target_date'])->map(fn ($s) => (array) $s)->all(),
+                ])->all(),
             'task_groups' => DB::table('task_groups')->where('user_id', $user->id)->orderBy('id')
-                ->get(['id', 'name', 'created_at'])
+                ->get(['id', 'name', 'list', 'project_id', 'created_at'])
                 ->map(fn ($g) => [
                     'id' => $g->id,
                     'name' => $g->name,
+                    'list' => $g->list,
+                    'became_project_id' => $g->project_id,
                     'notes' => DB::table('group_notes')->where('task_group_id', $g->id)->orderBy('id')->pluck('content')->all(),
                     'created_at' => $g->created_at,
                 ])->all(),
