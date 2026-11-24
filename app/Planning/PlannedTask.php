@@ -3,8 +3,9 @@
 namespace App\Planning;
 
 /**
- * What the engines need to know about a task: size, deadlines, area and how
- * much work is already done. Deadlines are local dates "Y-m-d" and mean
+ * What the engines need to know about a task: size, deadlines, area, how
+ * much work is already done and whether the user marked it „Wichtig" (R5,
+ * `tasks.is_important`). Deadlines are local dates "Y-m-d" and mean
  * "finished by the end of that day".
  */
 final readonly class PlannedTask
@@ -17,6 +18,7 @@ final readonly class PlannedTask
         public ?string $softDeadline = null,
         public ?int $areaId = null,
         public int $doneMinutes = 0,
+        public bool $important = false,
     ) {}
 
     /** The same task with another hard deadline, for what-if checks. Nothing is saved. */

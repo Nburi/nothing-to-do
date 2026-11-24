@@ -37,6 +37,13 @@ return [
         'long' => 'Long',
         'block' => 'Block',
     ],
+    // Step 4.6: the „Wichtig" marker (R5), the only priority.
+    'important' => [
+        'label' => 'Important',
+        'mark' => 'Mark as important',
+        'unmark' => 'Remove important mark',
+        'empty' => 'Nothing marked. The flag on a task marks what you must not forget.',
+    ],
     'hard' => 'due :date',
     'soft' => 'nice by :date',
     'parked' => 'parked :age',
@@ -211,6 +218,7 @@ return [
         'crunch' => 'Decide a crunch',
         'keep_mine' => 'Keep it mine',
         'projects' => 'Browse projects',
+        'important' => 'Mark as important',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

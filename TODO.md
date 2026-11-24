@@ -81,6 +81,14 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 4.4 after 4.1 and 4.2 are merged: "Woche anpassen" switches to `/board/week` and "Ansehen" opens the crunch screen by themselves; check both once, and add a link to the review from the week editor if Niels wants one there.
 - [ ] 5.4: redirect the old `/app/review` to `/board/review` (Niels, 2026-11-17); `get_week_review` (MCP) keeps answering from `WeekReview`.
 
+## Refactor: phase 4, step 4.6 („Wichtig")
+- [x] 4.6 „Wichtig" marker (`feature/important-marker`, based on #21 and #27). Notes in `docs/steps/4.6.md`. No migration: `tasks.is_important` from the old app is the marker.
+- [ ] 4.6 open for Niels: TESTBERICHT C44 and C45 (C45 needs a production copy: count the marked tasks per user, users of the old Eisenhower board may have many). Check the decisions in `docs/steps/4.6.md`.
+- [ ] 4.6 question: should marking a task without a date offer an optional „Bis wann?" Not built. Recommendation: yes, as a quiet inline offer (Heute · Morgen · Diese Woche) that writes the soft deadline and is easy to ignore.
+- [ ] 4.6 later: the crunch decisions (4.2) do not know „Wichtig": a marked task can still be offered for shrink or drop. Look at it in the 4.5 review.
+- [ ] 4.6 later: the mockup "Reihenfolge und Drag and Drop" is undecided (where „Wichtig" ranks, one shared order, drag and drop). 4.6 builds only deadline tiers → „Wichtig" → board order, as R5 says.
+- [ ] 4.6 known: the Stapel piles are about 56 px wide at 390 px (same issue as in the 3.4 line above), so a marked top card shows the flag and "Wich…" only.
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.

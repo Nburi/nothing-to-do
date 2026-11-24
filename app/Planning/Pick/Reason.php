@@ -26,6 +26,9 @@ enum Reason: string
     /** Has a deadline that is not pressing yet; it is simply next in line. */
     case NextDeadline = 'next_deadline';
 
+    /** No deadline, but the user marked it „Wichtig" (R5): it goes before the rest of the list. */
+    case Important = 'important';
+
     /** No deadline, small: done in a few minutes. */
     case QuickOne = 'quick_one';
 

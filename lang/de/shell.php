@@ -38,6 +38,13 @@ return [
         'long' => 'Long',
         'block' => 'Block',
     ],
+    // Step 4.6: the „Wichtig" marker (R5), the only priority.
+    'important' => [
+        'label' => 'Wichtig',
+        'mark' => 'Als wichtig markieren',
+        'unmark' => 'Wichtig-Markierung entfernen',
+        'empty' => 'Nichts markiert. Mit der Flagge an einer Aufgabe markierst du, was du nicht vergessen darfst.',
+    ],
     'hard' => 'muss bis :date',
     'soft' => 'wäre schön bis :date',
     'parked' => 'geparkt :age',
@@ -212,6 +219,7 @@ return [
         'crunch' => 'Engpass entscheiden',
         'keep_mine' => 'Meins behalten',
         'projects' => 'Projekte ansehen',
+        'important' => 'Wichtig markieren',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

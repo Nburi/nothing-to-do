@@ -31,6 +31,9 @@
     $crunch = $this->crunch;
     // Step 4.4: Sunday and Monday, a quiet line to the Sunday review (board mode; it folds away with the board).
     $reviewOffer = $this->reviewOffer;
+    // Step 4.6: „Wichtig" (R5). Where there is no work suggestion (outside pomodoro blocks), the marked tasks stay in view as a reminder.
+    $important = $this->important;
+    $showReminder = ! $suggestion->hasPick() && $important->isNotEmpty();
 @endphp
 <div
     id="content"
@@ -77,11 +80,16 @@
                         </p>
                     @endif
                 </div>
-                <div class="fold-card fold-return min-w-0">
-                    @if ($showIdea)
-                        @include('shell.idea', ['layout' => 'werkbank', 'idea' => $idea, 'free' => $timeline['free'], 'freePlain' => $freePlain])
-                    @else
-                        @include('shell.suggestion', ['layout' => 'werkbank', 'suggestion' => $suggestion, 'counts' => $counts, 'idea' => $idea])
+                <div class="flex min-w-0 flex-col gap-3">
+                    <div class="fold-card fold-return min-w-0">
+                        @if ($showIdea)
+                            @include('shell.idea', ['layout' => 'werkbank', 'idea' => $idea, 'free' => $timeline['free'], 'freePlain' => $freePlain])
+                        @else
+                            @include('shell.suggestion', ['layout' => 'werkbank', 'suggestion' => $suggestion, 'counts' => $counts, 'idea' => $idea])
+                        @endif
+                    </div>
+                    @if ($showReminder)
+                        @include('shell.important', ['layout' => 'werkbank', 'tasks' => $important])
                     @endif
                 </div>
             </div>
@@ -129,6 +137,15 @@
                             </button>
                         @endif
                     @endforeach
+                    {{-- Step 4.6: while the board is folded, what is marked „Wichtig" stays one tap away. --}}
+                    @if ($important->isNotEmpty())
+                        <button type="button" data-important-rail @click="peek = 'important'" style="--i: 4"
+                            class="fold-rail-count flex w-full flex-col items-center gap-0.5 rounded-card py-2 text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            @include('shell.icon', ['name' => 'flag', 'class' => 'size-5 text-warn', 'filled' => true])
+                            <b class="font-mono text-[15px] font-semibold text-ink">{{ $important->count() }}</b>
+                            <small class="text-[10.5px]">{{ __('shell.important.label') }}</small>
+                        </button>
+                    @endif
                     <x-shell.action key="projects" layout="werkbank" mode="session" as="a" :href="route('shell.projects')" wire:navigate
                         class="flex w-full flex-col items-center gap-0.5 rounded-card py-2 text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                         @include('shell.icon', ['name' => 'project', 'class' => 'size-5'])
@@ -166,7 +183,7 @@
                         <h2 class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('shell.session.peek') }}</h2>
                         <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                     </div>
-                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'suggestedId' => null, 'locked' => $locked])
+                    @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
                 </div>
             </section>
         @endif
@@ -204,6 +221,9 @@
                     @include('shell.week-links', ['layout' => 'stapel', 'mode' => 'board', 'keys' => ['move_event', 'pause_days'], 'class' => 'fold-away'])
                     @include('shell.crunch-line', ['layout' => 'stapel', 'crunch' => $crunch, 'class' => 'fold-away'])
                     @include('shell.review-line', ['offer' => $reviewOffer, 'class' => 'fold-away'])
+                    @if ($showReminder)
+                        @include('shell.important', ['layout' => 'stapel', 'tasks' => $important])
+                    @endif
                 </section>
 
                 {{-- Piles, 2 × 2: each shows its top card and its count; tap opens the list. --}}
@@ -271,6 +291,12 @@
                             <button type="button" @click="peek = '{{ $list }}'" class="{{ $drawerClass }}">{{ __('shell.lists.'.$list) }} <b class="font-mono text-ink">{{ $counts[$list] }}</b></button>
                         @endif
                     @endforeach
+                    {{-- Step 4.6: while the board is folded, what is marked „Wichtig" stays one tap away. --}}
+                    @if ($important->isNotEmpty())
+                        <button type="button" data-important-drawer @click="peek = 'important'" class="rounded-full px-3 py-2 text-sm text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            <span class="inline-flex items-center gap-1">@include('shell.icon', ['name' => 'flag', 'class' => 'size-3.5 text-warn', 'filled' => true]){{ __('shell.important.label') }}</span> <b class="font-mono text-ink">{{ $important->count() }}</b>
+                        </button>
+                    @endif
                     <x-shell.action key="projects" layout="stapel" mode="session" as="a" :href="route('shell.projects')" wire:navigate class="rounded-full px-3 py-2 text-sm text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.nav') }}</x-shell.action>
                 </nav>
             </section>
@@ -286,7 +312,7 @@
                     <span class="h-1 w-11 rounded-full bg-line" aria-hidden="true"></span>
                     <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                 </div>
-                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
+                @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
             </div>
         </div>
     </div>

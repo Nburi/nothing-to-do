@@ -24,6 +24,8 @@
         'group' => '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 9h17"/>',
         'project' => '<path d="M5 21V4M5 4h11l-2 3.5 2 3.5H5"/>',
         'chevron' => '<path d="M9 6l6 6-6 6"/>',
+        'flag' => '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
     ];
 @endphp
-<svg class="{{ $class ?? 'size-5' }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $paths[$name] !!}</svg>
+{{-- `filled` fills the shape (a state, not only a colour: the marked flag is solid, the unmarked one an outline). --}}
+<svg class="{{ $class ?? 'size-5' }} shrink-0" viewBox="0 0 24 24" fill="{{ ($filled ?? false) ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $paths[$name] !!}</svg>

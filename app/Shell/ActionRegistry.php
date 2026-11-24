@@ -33,6 +33,7 @@ final class ActionRegistry
         'crunch' => ['4.2', true],
         'keep_mine' => ['3.4', true],
         'projects' => ['4.3', true],
+        'important' => ['4.6', true],
     ];
 
     /** @return list<Action> */
