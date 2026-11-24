@@ -235,7 +235,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
     <h1>Where the refactor stands</h1>
     <div class="meta">
       <span>As of Tuesday 24 Nov 2026</span>
-      <span>Last merge: all 19 open PRs into refactor/refactor (24 Nov); #14 into main (23 Nov)</span>
+      <span>Last merge: #34 (4.3c) into refactor/refactor (24 Nov), after all 19 open PRs that day; #14 into main (23 Nov)</span>
       <span>Sources: <code>TODO.md</code>, <code>docs/REFACTOR_PLAN.md §6</code>, <code>docs/TESTBERICHT.md</code> on every PR branch, GitHub PRs, your C-test notes of 17 Nov, the sub-session reports of 23 Nov</span>
     </div>
     <nav class="jump" aria-label="Sections">
@@ -258,7 +258,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
     </div>
     <div class="callout warn">
       <strong>Test branch ready: <code>refactor/refactor</code></strong>
-      <span>All 19 open PRs are merged into it. On the dev server: <code>git pull</code>, <code>npm ci</code>, <code>npm run build</code> (Tailwind 4), <code>php artisan migrate</code> (14 new migrations, none destructive; two copy old data: mixed groups become projects, old notes become cards). No new <code>.env</code> keys; <code>composer.lock</code> is unchanged. After that the prod copy is the next move: it unlocks six C-tests (C3, C11, C15, C32, C43, C45).</span>
+      <span>All 19 open PRs and, after them, #34 (4.3c, no migration) are merged into it. On the dev server: <code>git pull</code>, <code>npm ci</code>, <code>npm run build</code> (Tailwind 4), <code>php artisan migrate</code> (14 new migrations, none destructive; two copy old data: mixed groups become projects, old notes become cards). No new <code>.env</code> keys; <code>composer.lock</code> is unchanged. After that the prod copy is the next move: it unlocks six C-tests (C3, C11, C15, C32, C43, C45).</span>
     </div>
     <div class="owners">
       <article class="owner" aria-labelledby="h-claude">
@@ -269,7 +269,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
           <ul class="items">
             <li><span class="tag plain">Done</span><span><b>Merged all 19 open PRs into <code>refactor/refactor</code> (24 Nov).</b> One branch to test. The full suite (2250 tests) and the frontend build pass on the merged result, and the A12 rehearsal ran on all 14 new migrations. The sibling PRs conflicted in the board view, <code>Board.php</code>, the routes, the lang files, <code>TODO.md</code> and TESTBERICHT; I kept both sides everywhere.</span></li>
             <li><span class="tag plain">Done</span><span><b>Your 17 Nov findings are fixed or built.</b> C1 timer wait (#18, carried into every branch above it), C17 popover, overlay and „back to the weekly plan“ (#24), C24 fitting date (#23), C30 roadmap and menu contrast (#25, #28). C8 did not come back. <a href="#findings">Status list below</a>.</span></li>
-            <li><span class="tag plain">Done</span><span><b>Built:</b> the A12 migration test (#31), arrival by location (#32), step 4.6 „Wichtig“ (#33). <b>Mockups:</b> three chart variants for the crunch screen, and drag and drop plus a shared board order. Both wait for you.</span></li>
+            <li><span class="tag plain">Done</span><span><b>Built:</b> the A12 migration test (#31), arrival by location (#32), step 4.6 „Wichtig“ (#33). <b>Mockups:</b> three chart variants for the crunch screen, and a shared board order. Both wait for you. Drag and drop of steps came out of the mockup as 4.3c (#34, built, checked by you on 24 Nov).</span></li>
             <li><span class="tag plain">Done</span><span><b>Checked live:</b> B31 (the Sunday line, on a Monday), B9, B3, B4 and B40 to B42. All 55 automatic tests pass.</span></li>
           </ul>
         </div>
@@ -433,7 +433,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <div class="counter">
         <div class="lbl"><span class="dot merged"></span>Merged</div>
         <div class="n">23</div>
-        <div class="sub">steps in <code>refactor/refactor</code>: PRs #2–#10, then #11–#33 on 24 Nov; main merged in (#22, #30)</div>
+        <div class="sub">steps in <code>refactor/refactor</code>: PRs #2–#10, then #11–#34 on 24 Nov; main merged in (#22, #30)</div>
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot review"></span>Built, in review</div>
@@ -451,7 +451,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
         <div class="sub">3.6 and 4.5 reviews, phase 5 (5.1 to 5.5)</div>
       </div>
     </div>
-    <p class="summary-note">Every build step through 4.6 is built and merged into <code>refactor/refactor</code> (24 Nov), the test branch: 19 PRs, 2250 tests green, frontend build passing. Main is merged in up to #30; hotfix #14 (23 Nov) is not in it yet. The prod copy is here, which opens the dry run and six C-tests.</p>
+    <p class="summary-note">Every build step through 4.6 is built and merged into <code>refactor/refactor</code> (24 Nov), the test branch: 19 PRs and then #34 (4.3c), 2276 tests green, frontend build passing. Main is merged in up to #30; hotfix #14 (23 Nov) is not in it yet. The prod copy is here, which opens the dry run and six C-tests.</p>
   </section>
 
   <!-- Phase map -->
@@ -540,7 +540,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <div class="test-card">
         <div class="head"><h3>A · Automatic</h3><span class="score">57<small>/57</small></span></div>
         <div class="cells" id="cellsA"></div>
-        <p class="note">All 57 pass, and the full suite (2276 tests) passes on the branch of 4.3c, on top of the merged <code>refactor/refactor</code>. A12 is the migration rehearsal on old-schema fixtures (<code>MigrationRehearsalTest</code>, #31); it also ran green on a branch with the whole stack. New since the last count: A74–A75 (4.3c, drag and drop of steps). Before that: A61–A66 (4.6 „Wichtig“, #33) and A71–A73 (arrival by location, #32). Earlier: A21–A23 from 4.1, A30–A35 from 4.2, A39–A46 from 4.3a, A47–A50 from 4.4, A56–A60 from 4.3b.</p>
+        <p class="note">All 57 pass, and the full suite (2276 tests) passes on the merged <code>refactor/refactor</code>, 4.3c included. A12 is the migration rehearsal on old-schema fixtures (<code>MigrationRehearsalTest</code>, #31); it also ran green on a branch with the whole stack. New since the last count: A74–A75 (4.3c, drag and drop of steps). Before that: A61–A66 (4.6 „Wichtig“, #33) and A71–A73 (arrival by location, #32). Earlier: A21–A23 from 4.1, A30–A35 from 4.2, A39–A46 from 4.3a, A47–A50 from 4.4, A56–A60 from 4.3b.</p>
       </div>
       <div class="test-card">
         <div class="head"><h3>B · Claude visual</h3><span class="score">30<small>/33</small></span></div>
@@ -548,9 +548,9 @@ footer { font-size: 0.82rem; color: var(--muted); }
         <p class="note">Passed on 23 Nov: B3, B4 and B9 (timer, break screen and the hand-over of the board), B31 (the Sunday line, seen live on a Monday), B40–B42 (4.6) and, on 24 Nov, B43–B45 (4.3c). Still partial: B1 and B2 lack the week part (empty state of the week, a long title in a week block), and B6 (paused days show a hatched header, but no ghost blocks). B7, B19, B20 passed in 4.2; B25–B28 in 4.3a; B30 and B32 in 4.4; B37–B39 in 4.3b.</p>
       </div>
       <div class="test-card">
-        <div class="head"><h3>C · Your checks</h3><span class="score">13<small>/41</small></span></div>
+        <div class="head"><h3>C · Your checks</h3><span class="score">15<small>/41</small></span></div>
         <div class="cells" id="cellsC"></div>
-        <p class="note">Your 17 Nov results are in TESTBERICHT now: 13 passed, 4 of them (C1, C17, C24, C30) wait for your check after my fixes. C2 is partly done (the location trigger works, the push is open). C5, C7 and C26 are parked by you; 22 are not started. Solid outline = MUSS. C17 is the phase 4 gate „a holiday takes under a minute“ (4.1); C23–C27 come from 4.2, C29–C32 from 4.3a, C46–C47 from 4.3c, C34–C36 from 4.4, C41–C43 from 4.3b, C44 and C45 from 4.6.</p>
+        <p class="note">Your 17 Nov results are in TESTBERICHT now: 15 passed (C46 and C47, the drag and drop of steps, on 24 Nov), 4 of them (C1, C17, C24, C30) wait for your check after my fixes. C2 is partly done (the location trigger works, the push is open). C5, C7 and C26 are parked by you; 22 are not started. Solid outline = MUSS. C17 is the phase 4 gate „a holiday takes under a minute“ (4.1); C23–C27 come from 4.2, C29–C32 from 4.3a, C46–C47 from 4.3c, C34–C36 from 4.4, C41–C43 from 4.3b, C44 and C45 from 4.6.</p>
       </div>
     </div>
   </section>
@@ -569,7 +569,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <li><span class="when">4.2 engine</span><span class="what">With two hard tasks on the same date, <code>DeadlineFeasibility</code> keeps soft work planned before a late hard task (not listed as slipped). The crunch screen suggests soft first anyway. Look at it in 4.5.</span></li>
       <li><span class="when">4.2 Mehr Zeit</span><span class="what">The „+N Sessions“ label counts the new block alone; next to an existing block the merged run can give one less. Move and Mehr Zeit have no REST/MCP endpoint yet.</span></li>
       <li><span class="when">4.1 later</span><span class="what">Resize a block by dragging its edge; move a block to another day by dragging on the phone (the form's day field does it); rename or delete areas. Paused days show no ghost blocks (B6, your call).</span></li>
-      <li><span class="when">4.3 later</span><span class="what">4.3b (note cards, shared <code>#tags</code>) is built as #28; drag and drop of steps (C30) is built as 4.3c (#34). Still open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
+      <li><span class="when">4.3 later</span><span class="what">4.3b (note cards, shared <code>#tags</code>) is built as #28; drag and drop of steps (C30) is built and merged as 4.3c (#34), and you checked it on 24 Nov (C46, C47). Still open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
       <li><span class="when">4.6</span><span class="what">„Wichtig“ is built as #33: order late work, deadline tiers, then „Wichtig“, then battery and board order; a marker never jumps a deadline. The crunch screen does not know „Wichtig“ yet. Reduced motion, fold timing and a real iPhone were not checked.</span></li>
       <li><span class="when">Merge of 24 Nov</span><span class="what">All sibling PRs merged into <code>refactor/refactor</code> with conflicts in the board view, <code>Board.php</code>, <code>ActionRegistry.php</code>, the routes, the lang files, the icons, <code>TODO.md</code> and TESTBERICHT; both sides kept everywhere. Where the lines sit on the board is my pick (week links, crunch line, Sunday line, then the „Wichtig“ card). Tell me if the order should change.</span></li>
       <li><span class="when">Main vs refactor</span><span class="what">Main has hotfix #14 (23 Nov, two commits) that the refactor does not have yet. The refactor has the same fix since 1.2, so a merge will conflict in the week plan code.</span></li>
@@ -609,7 +609,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["3.1", "Board folds away", "merged", 18], ["3.2", "Battery + reset", "merged", 19], ["3.3", "Nudge time", "merged", 20],
       ["3.4", "Free-time ideas", "merged", 21], ["3.5", "Beta 2", "waiting"], ["3.6", "Review rounds", "todo"] ] },
     { code: "P4", name: "Planning and foresight", steps: [
-      ["4.1", "Week plan editor", "merged", 24], ["4.2", "Crunch decisions", "merged", 23], ["4.3", "Projects (4.3a #25, 4.3b #28)", "merged", 25],
+      ["4.1", "Week plan editor", "merged", 24], ["4.2", "Crunch decisions", "merged", 23], ["4.3", "Projects (4.3a #25, 4.3b #28, 4.3c #34)", "merged", 25],
       ["4.4", "Sunday review", "merged", 26], ["4.6", "„Wichtig“ marker", "merged", 33], ["4.5", "Review rounds", "todo"] ] },
     { code: "P5", name: "Everyone, then release", steps: [
       ["5.1", "Onboarding", "todo"], ["5.2", "A11y, perf", "todo"], ["5.3", "Voice capture", "todo"],
@@ -666,7 +666,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
 
   // PR stack, top = last to merge
   var stack = [
-    [34, "4.3c Drag and drop of project steps (C30)", "feature/step-drag-drop · based on refactor/refactor, independent of the other open PRs"],
+    [34, "4.3c Drag and drop of project steps (C30)", "feature/step-drag-drop · merged last, on top of refactor/refactor"],
     [31, "TEST: migration rehearsal on old-schema fixtures (A12)", "feature/migration-test · independent, merge any time"],
     [33, "4.6 „Wichtig“ marker, highlight and pick order", "feature/important-marker · based on #21 and #27, merge those first"],
     [27, "DOCS: keep „Wichtig“ as the only priority (R5, step 4.6)", "feature/docs-important · docs only, independent of the stack"],
@@ -725,7 +725,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
   C.push(["C44","must"],["C45","must"]); // 4.6
   C.push(["C46","must"],["C47","must"]); // 4.3c
   var done17 = { C1:"pass", C6:"pass", C8:"pass", C17:"pass", C19:"pass", C20:"pass", C21:"pass", C22:"pass", C24:"pass", C27:"pass", C29:"pass", C30:"pass", C31:"pass", C2:"part" }; // C-tests 17 Nov, as recorded in TESTBERICHT
-  C.forEach(function (c) { if (done17[c[0]]) c[1] = done17[c[0]]; });
+  var done24 = { C46:"pass", C47:"pass" }; // C-tests 24 Nov (4.3c, drag and drop of steps)
+  C.forEach(function (c) { if (done17[c[0]]) c[1] = done17[c[0]]; if (done24[c[0]]) c[1] = done24[c[0]]; });
   cells("cellsC", C);
 
   // open C-tests, grouped by what each one needs
@@ -759,8 +760,6 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["C14", "MUSS", "R6", "For a week look at the board in free evening time and on a free weekend day. Does an idea from Later feel like an offer or like pressure? Does „Meins behalten“ feel respected? Does „Jetzt machen“ starting a 25 min session feel right?", "#21"],
       ["C23", "MUSS", "R5", "For two weeks keep your real deadlines in the app. Did a crunch show up early enough (two days or more)? Did the warning ever cry wolf or flicker?", "#23"],
       ["C41", "MUSS", "R6", "Write notes for a real project for a few days, quick ones and longer Markdown ones. Is „Lose“ → stage the way you sort, and are tags useful?", "#28"],
-      ["C46", "MUSS", "R6", "Drag steps by the grip on your real project (Enderdragon): inside a stage, into another stage, onto „Ohne Etappe“ and onto a chip of the dock. Try a step that waits on another one and press „Rückgängig“; lift one with Space and the arrows; use the ⋯ menu once. Does it feel quick and calm, and are the words on the bar right?", "4.3c"],
-      ["C47", "MUSS", "R6, R7", "On the iPhone: press and hold a step until it lifts, drag it to another stage (the dock at the bottom helps with far ones) and scroll the list with your thumb over the grips. Is the half-second hold the right length, and does scrolling stay smooth? Not tried on a real device yet.", "4.3c"],
       ["C44", "MUSS", "R5", "For a week mark the one or two things you must not forget with the flag. Does the order feel right: deadline work first, then what you marked, then the rest? Outside your work blocks, does the „Wichtig“ card feel like a useful reminder or like pressure? Is one tap on the flag quick enough on the phone and on the desktop?", "#33"]
     ] },
     { t: "Parked", note: "Parked by you, or waiting for something that does not exist yet.", rows: [
@@ -774,7 +773,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["C1", "MUSS", "Signature", "Start a session on a tired evening and watch the first second. Fixed in #18: a ghost card flies on the click and shows title and full timer, so the timer is 95 % visible after about 465 ms instead of 640 ms, also with a slow server. Does the wait feel gone?", "#18, carried up", "recheck"],
       ["C17", "MUSS", "R4", "The holiday gate again. Fixed in #24: another day in „An diesen Tagen“ no longer closes the window, the pause overlay covers only the day header, and a changed block can go „Zurück zum Wochenplan“.", "#24", "recheck"],
       ["C24", "MUSS", "R5, F5", "Make a hard deadline that does not fit and open the crunch screen. Built in #23: the hard task's button names a day (<code>Auf 30.11. …</code>). Tap it, read the sentence, tick, confirm, undo. The chart is unchanged until you pick a variant.", "#23", "recheck"],
-      ["C30", "MUSS", "R6", "A roadmap with stages. Fixed in #25 and #28: the stages sit in equal columns with the name above the dot, and a waiting step's menu keeps its contrast. Drag and drop of steps is built in 4.3c: see C46 and C47.", "#25, #28", "recheck"]
+      ["C30", "MUSS", "R6", "A roadmap with stages. Fixed in #25 and #28: the stages sit in equal columns with the name above the dot, and a waiting step's menu keeps its contrast. Drag and drop of steps (4.3c, #34) passed your check on 24 Nov (C46, C47).", "#25, #28", "recheck"]
     ] }
   ];
   var cgHost = document.getElementById("cgroups"), total = 0, must = 0;

@@ -70,7 +70,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 4.3a open for Niels: TESTBERICHT C29–C32; the decisions in `docs/steps/4.3.md`.
 - [x] 4.3b Notes as cards with shared `#tags` (`feature/project-notes`, stacked on #25): own column, stage chip sheet, groups too, note → step, Markdown. Notes in `docs/steps/4.3b.md`.
 - [ ] 4.3b open for Niels: TESTBERICHT C41–C43; the decisions in `docs/steps/4.3b.md`.
-- [ ] Niels' C-test findings for 4.3a (2026-11-17, `docs/c-tests/2026-11-17-c-tests.md` in the main checkout): roadmap labels, menu contrast on waiting steps, drag and drop of steps (also between stages), one shared order of tasks, projects and groups on the board, calmer board with 3+ projects. Only noted, plan with Niels.
+- [ ] Niels' C-test findings for 4.3a (2026-11-17, `docs/c-tests/2026-11-17-c-tests.md` in the main checkout): roadmap labels, menu contrast on waiting steps, drag and drop of steps (also between stages), one shared order of tasks, projects and groups on the board, calmer board with 3+ projects. Only noted, plan with Niels. Update 2026-11-24: drag and drop of steps is built (4.3c, PR #34) and checked by Niels (C46, C47).
 - [ ] Projects/groups: delete, reorder stages, move an existing board task into a project or group (same gap as "editing, moving and deleting single items").
 - [ ] Projects: should a stage's target date become the soft deadline of its steps (early warning)? Ask Niels.
 - [ ] Projects in the API/MCP of the new model (the old project tools on `main` speak the old model).
