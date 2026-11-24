@@ -30,6 +30,11 @@
                         </x-shell.action>
                     </li>
                 @endif
+                @if ($list === 'later' && $counts['later'] > 0 && $mode === 'board')
+                    <li>
+                        <a href="{{ route('shell.ideas') }}" wire:navigate class="flex min-h-11 w-full items-center justify-center gap-2 rounded-card border border-line px-4 text-sm font-semibold text-ink transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('shell.ideas.as_cards') }}</a>
+                    </li>
+                @endif
                 @forelse ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
                     @include('shell.item', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'suggested' => $task->id === $suggestedId, 'locked' => $locked])
                 @empty

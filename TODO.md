@@ -43,7 +43,12 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 3.3 open for Niels: TESTBERICHT C13 (a real push on the iPhone from the dev server; needs VAPID keys and cron `schedule:run`), C12 updated. Check the decisions in `docs/steps/3.3.md`.
 - [ ] 3.3 later: the Wi-Fi arrival path (`POST /api/arrival`) once spike 0.1 passes C2; then it should also respect "one nudge per evening" (`evenings.nudge_sent_at`).
 - [ ] The older push commands (`app:send-progress-reminders`, event notifications) inject `PushNotifier` and crash every tick on a server without VAPID keys (see ERRORS.md, 2026-11-16). Harmless on prod (keys set); fix when those commands are touched.
-- [ ] 3.4 Free-time ideas, "Meins behalten", Ideen view (cards).
+- [x] 3.4 Free-time ideas, "Meins behalten", Ideen view (`feature/free-time-ideas`). Notes in `docs/steps/3.4.md`.
+- [ ] 3.4 open for Niels: TESTBERICHT C14–C16; check the decisions in `docs/steps/3.4.md` (Jetzt machen = session, soft deadlines also stop ideas, 06:00–24:00 and 30 min, Stapel tab "Später" → Ideen page).
+- [ ] 5.4: run `php artisan app:copy-craft-ideas --dry-run`, then without, at the switch (copies the old Bastelideen into Later; idempotent, craft_ideas untouched). Not on prod before that.
+- [ ] Shell: editing, moving and deleting single items (also on the Ideen cards) do not exist yet.
+- [ ] Stapel board at 390 px: the four piles are only ~56 px wide, titles break mid-word ("Math e-…"); already in the 3.2 screenshots, not from 3.4. Look at `shell/pile.blade.php` / the pile grid.
+- [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
 ## Open questions for Niels

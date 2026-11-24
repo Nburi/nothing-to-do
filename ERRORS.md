@@ -2,6 +2,19 @@
 
 Errors and surprises worth remembering, with the fix. Newest first.
 
+## A stored local instant reads back an hour off (2026-11-16)
+
+**Symptom.** In step 3.4 the free-time idea changed on every reload and "Andere" ran out after one tap.
+`evenings.idea_slot_until` never matched the slot it was written for.
+
+**Cause.** The slot's end was a `CarbonImmutable` in the user's timezone (Europe/Zurich). Eloquent writes a
+datetime as its wall clock (`Y-m-d H:i:s`) without converting it, and reads it back as UTC (the app timezone),
+so 00:00 Zurich came back as 00:00 UTC, one hour later.
+
+**Fix.** Convert to UTC before writing (`$slot->until->utc()`), like every other timestamp of the evening row,
+which are written from `CarbonImmutable::now()`. Rule: never hand a local-zone Carbon to an Eloquent datetime
+column; compare instants with `getTimestamp()`.
+
 ## A push command crashes every tick on a server without VAPID keys (2026-11-16)
 
 **Symptom.** `php artisan app:send-evening-nudges` on the dev worktree failed with

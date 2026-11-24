@@ -8,6 +8,10 @@
             {{ __('shell.sort_inbox', ['count' => $counts['inbox']]) }}
         </x-shell.action>
     @endif
+    @if ($list === 'later' && $counts['later'] > 0)
+        {{-- Step 3.4: the same list as cards, with "Starte mit" on each. --}}
+        <a href="{{ route('shell.ideas') }}" wire:navigate class="ml-auto font-sans text-xs font-bold text-accent-ink hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('shell.ideas.as_cards') }}</a>
+    @endif
 </h3>
 <ul class="flex flex-col gap-1.5">
     @forelse ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)

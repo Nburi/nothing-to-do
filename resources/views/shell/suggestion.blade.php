@@ -72,6 +72,12 @@
             {{ $s->nextBlockAt ? __('shell.outside_blocks.next', ['when' => $this->whenLabel($s->nextBlockAt)]) : __('shell.outside_blocks.none') }}
         </p>
         <p class="text-sm text-ink-faint">{{ __('shell.outside_blocks.manual') }}</p>
+        @if (($idea ?? null)?->status === \App\Services\Planning\IdeaStatus::Deadlines)
+            {{-- Step 3.4: free time, but deadline work is not covered; say why there is no idea. --}}
+            <p class="text-sm text-warn" data-idea="deadlines">
+                {{ $idea->blocking ? __('shell.idea.deadlines', ['title' => \Illuminate\Support\Str::limit($idea->blocking->title, 60)]) : __('shell.idea.deadlines_plain') }}
+            </p>
+        @endif
     @else
         <span class="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-faint">{{ __('shell.nothing_open.eyebrow') }}</span>
         <h2 class="font-display text-[20px] leading-tight text-ink" style="font-weight: var(--t-dw)">{{ __('shell.nothing_open.title') }}</h2>
