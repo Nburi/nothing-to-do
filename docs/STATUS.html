@@ -569,7 +569,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <li><span class="when">4.2 engine</span><span class="what">With two hard tasks on the same date, <code>DeadlineFeasibility</code> keeps soft work planned before a late hard task (not listed as slipped). The crunch screen suggests soft first anyway. Look at it in 4.5.</span></li>
       <li><span class="when">4.2 Mehr Zeit</span><span class="what">The „+N Sessions“ label counts the new block alone; next to an existing block the merged run can give one less. Move and Mehr Zeit have no REST/MCP endpoint yet.</span></li>
       <li><span class="when">4.1 later</span><span class="what">Resize a block by dragging its edge; move a block to another day by dragging on the phone (the form's day field does it); rename or delete areas. Paused days show no ghost blocks (B6, your call).</span></li>
-      <li><span class="when">4.3 later</span><span class="what">4.3b (note cards, shared <code>#tags</code>) is built as #28; drag and drop of steps (C30) is built as 4.3c. Still open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
+      <li><span class="when">4.3 later</span><span class="what">4.3b (note cards, shared <code>#tags</code>) is built as #28; drag and drop of steps (C30) is built as 4.3c (#34). Still open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
       <li><span class="when">4.6</span><span class="what">„Wichtig“ is built as #33: order late work, deadline tiers, then „Wichtig“, then battery and board order; a marker never jumps a deadline. The crunch screen does not know „Wichtig“ yet. Reduced motion, fold timing and a real iPhone were not checked.</span></li>
       <li><span class="when">Merge of 24 Nov</span><span class="what">All sibling PRs merged into <code>refactor/refactor</code> with conflicts in the board view, <code>Board.php</code>, <code>ActionRegistry.php</code>, the routes, the lang files, the icons, <code>TODO.md</code> and TESTBERICHT; both sides kept everywhere. Where the lines sit on the board is my pick (week links, crunch line, Sunday line, then the „Wichtig“ card). Tell me if the order should change.</span></li>
       <li><span class="when">Main vs refactor</span><span class="what">Main has hotfix #14 (23 Nov, two commits) that the refactor does not have yet. The refactor has the same fix since 1.2, so a merge will conflict in the week plan code.</span></li>
@@ -666,6 +666,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
 
   // PR stack, top = last to merge
   var stack = [
+    [34, "4.3c Drag and drop of project steps (C30)", "feature/step-drag-drop · based on refactor/refactor, independent of the other open PRs"],
     [31, "TEST: migration rehearsal on old-schema fixtures (A12)", "feature/migration-test · independent, merge any time"],
     [33, "4.6 „Wichtig“ marker, highlight and pick order", "feature/important-marker · based on #21 and #27, merge those first"],
     [27, "DOCS: keep „Wichtig“ as the only priority (R5, step 4.6)", "feature/docs-important · docs only, independent of the stack"],
