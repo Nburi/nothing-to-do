@@ -18,6 +18,7 @@ use App\Services\Planning\FreeTimeIdeas;
 use App\Services\Planning\IdeaOffer;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
+use App\Services\Planning\SundayReview;
 use App\Services\Planning\WeekPlanReader;
 use App\Services\Projects\Bundle;
 use App\Services\Projects\NextSteps;
@@ -158,6 +159,15 @@ class Board extends Component
 
     /** Ids of the open steps the bundle cards stand for; set by bundles(). @var list<int> */
     private array $bundled = [];
+
+    /** Step 4.4: 'sunday' or 'monday' when the board shows the quiet line to the Sunday review, else null. */
+    #[Computed]
+    public function reviewOffer(): ?string
+    {
+        $today = CarbonImmutable::parse(UserClock::now($this->user, $this->now)->toDateString());
+
+        return SundayReview::offeredOn($today) ? ($today->isSunday() ? 'sunday' : 'monday') : null;
+    }
 
     /** @return array<string, Collection<int, Task>> loose tasks per list (steps of a project or group sit in its card) */
     #[Computed]

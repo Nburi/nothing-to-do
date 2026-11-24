@@ -29,6 +29,8 @@
     $freePlain = $this->freeLabel($idea, false);
     // Step 4.2: the early warning (board: a line in the start strip; session: a quiet entry in the rail / drawer, hard only).
     $crunch = $this->crunch;
+    // Step 4.4: Sunday and Monday, a quiet line to the Sunday review (board mode; it folds away with the board).
+    $reviewOffer = $this->reviewOffer;
 @endphp
 <div
     id="content"
@@ -66,6 +68,7 @@
                     @include('shell.timeline', ['timeline' => $timeline, 'layout' => 'werkbank', 'mode' => 'board', 'idea' => $idea])
                     @include('shell.week-links', ['layout' => 'werkbank', 'mode' => 'board', 'keys' => ['move_event', 'pause_days'], 'class' => '-mt-1'])
                     @include('shell.crunch-line', ['layout' => 'werkbank', 'crunch' => $crunch])
+                    @include('shell.review-line', ['offer' => $reviewOffer, 'class' => 'self-start'])
                     @if ($done->isNotEmpty())
                         <p class="fold-return flex items-center gap-2 self-start rounded-card bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
                             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
@@ -200,6 +203,7 @@
                     @include('shell.free-line', ['layout' => 'stapel', 'mode' => 'board', 'idea' => $idea, 'free' => $timeline['free'], 'class' => 'fold-away'])
                     @include('shell.week-links', ['layout' => 'stapel', 'mode' => 'board', 'keys' => ['move_event', 'pause_days'], 'class' => 'fold-away'])
                     @include('shell.crunch-line', ['layout' => 'stapel', 'crunch' => $crunch, 'class' => 'fold-away'])
+                    @include('shell.review-line', ['offer' => $reviewOffer, 'class' => 'fold-away'])
                 </section>
 
                 {{-- Piles, 2 × 2: each shows its top card and its count; tap opens the list. --}}

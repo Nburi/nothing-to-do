@@ -21,6 +21,7 @@ use App\Livewire\Shell\GroupPage as ShellGroupPage;
 use App\Livewire\Shell\Ideas as ShellIdeas;
 use App\Livewire\Shell\ProjectPage as ShellProjectPage;
 use App\Livewire\Shell\Projects as ShellProjects;
+use App\Livewire\Shell\Review as ShellReview;
 use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\Shell\Week as ShellWeek;
 use App\Livewire\SupportCenter;
@@ -115,6 +116,11 @@ Route::get('/board/groups/{group}', ShellGroupPage::class)
     ->middleware('auth')
     ->whereNumber('group')
     ->name('shell.group');
+
+// Step 4.4: the quiet Sunday review (reached from a line on the board on Sunday and Monday).
+Route::get('/board/review', ShellReview::class)
+    ->middleware('auth')
+    ->name('shell.review');
 
 Route::get('/board/settings', ShellSettings::class)
     ->middleware('auth')
