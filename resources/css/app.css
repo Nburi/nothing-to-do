@@ -1309,3 +1309,66 @@ body.shell-returning .shell .fold-return {
   font-weight: 600;
   cursor: pointer;
 }
+/*
+  Step 4.3c · Moving steps (resources/js/step-drag.js). A lifted step is hidden where it stands and a
+  dashed slot shows where it would land; a step held down for the touch lift presses in; the lane it
+  would land in glows; a saved step flashes once. Tokens only; under reduced motion the same states
+  show without motion.
+*/
+[data-step][data-lifted] {
+  display: none;
+}
+[data-step][data-pressing] {
+  transform: scale(0.985);
+  background-color: var(--t-accent-soft);
+  transition: transform 0.35s ease-out, background-color 0.35s;
+}
+[data-step][data-kb] {
+  border-color: var(--t-accent) !important;
+  box-shadow: 0 0 0 3px var(--t-accent-soft);
+}
+[data-step][data-saving] {
+  opacity: 0.6;
+  cursor: progress;
+}
+[data-step][data-flash] {
+  animation: step-flash 1.1s ease-out;
+}
+[data-lane-box][data-target] {
+  border-color: var(--t-accent) !important;
+  box-shadow: 0 0 0 4px var(--t-accent-soft);
+}
+/* The hint of an empty lane steps aside as soon as a step or the slot is in it. */
+[data-lane]:has(> [data-step]:not([data-lifted]), > [data-ph]) > [data-lane-empty] {
+  display: none;
+}
+/* The server's note waits while a step is lifted: the bar of the drag takes the top of the screen. */
+body[data-step-lift] [data-notice] {
+  display: none;
+}
+@media (pointer: coarse) {
+  [data-step] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+@keyframes step-flash {
+  0% {
+    background-color: var(--t-accent-soft);
+    box-shadow: 0 0 0 4px var(--t-accent-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-step][data-pressing] {
+    transform: none;
+    transition: none;
+  }
+  [data-step][data-flash] {
+    animation: none;
+    background-color: var(--t-accent-soft);
+  }
+}

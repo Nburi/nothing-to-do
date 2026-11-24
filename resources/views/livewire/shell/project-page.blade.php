@@ -19,7 +19,7 @@
     @include('shell.projects-chrome', ['part' => 'head', 'back' => route('shell.projects'), 'backLabel' => __('projects.back')])
 
     @if ($notice)
-        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status">
+        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 <span class="min-w-0 wrap-break-word">{{ $notice }}</span>
                 @if ($undo)
@@ -93,6 +93,10 @@
             </div>
             <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
             <div :class="tab === 'steps' ? 'flex' : 'hidden'" class="flex-col gap-5 wb:flex">
+        {{-- Step 4.3c: the script of dragging, keyboard and announcements (resources/js/step-drag.js) owns this
+             wrapper; `contents` keeps the lanes the flex children they were. --}}
+        <div x-data="stepDrag(@js(['text' => __('projects.move.js')]))" class="contents">
+        <p id="step-drag-hint" class="sr-only">{{ $stages->isNotEmpty() ? __('projects.move.keys_hint') : __('projects.move.keys_hint_list') }}</p>
         {{-- Stages with their steps, then the steps in no stage. --}}
         @foreach ([...$groups, ['key' => 'none', 'stage' => null, 'steps' => $loose]] as $g)
             @php
@@ -101,7 +105,7 @@
                 $state = $s ? $stateOf($i) : null;
                 $doneCount = $s ? (int) ($done[$s->id] ?? 0) : 0;
             @endphp
-            <section wire:key="sec-{{ $g['key'] }}" aria-labelledby="h-{{ $g['key'] }}"
+            <section wire:key="sec-{{ $g['key'] }}" aria-labelledby="h-{{ $g['key'] }}" data-lane-box
                 @class(['flex flex-col gap-2.5 rounded-panel p-4', 'bg-surface' => $state !== 'waits', 'bg-paper' => $state === 'waits'])
                 style="border: var(--t-bw) solid {{ $state === 'now' ? 'var(--t-accent)' : 'var(--t-line)' }}">
                 @if ($s && $editingStage === $s->id)
@@ -142,14 +146,16 @@
                     @endif
                 @endif
 
-                @if ($g['steps']->isNotEmpty())
-                    <ul class="flex flex-col gap-1.5">
-                        @foreach ($g['steps'] as $task)
-                            @php $waiting = ! in_array($task->id, $nextIds, true) && ($state === 'waits' || ($task->waitsOn && ! $task->waitsOn->is_completed)); @endphp
-                            @include('shell.step-row', ['task' => $task, 'next' => in_array($task->id, $nextIds, true), 'waiting' => $waiting, 'first' => $loop->first, 'last' => $loop->last, 'locked' => $locked, 'stages' => $stages, 'others' => $steps])
-                        @endforeach
-                    </ul>
-                @endif
+                {{-- Always rendered, even empty: a lane is a place a step can be dropped on (4.3c). --}}
+                <ul data-lane="{{ $g['key'] }}" data-index="{{ $i ?? -1 }}" data-name="{{ $s?->name }}" class="flex flex-col gap-1.5">
+                    @foreach ($g['steps'] as $task)
+                        @php $waiting = ! in_array($task->id, $nextIds, true) && ($state === 'waits' || ($task->waitsOn && ! $task->waitsOn->is_completed)); @endphp
+                        @include('shell.step-row', ['task' => $task, 'lane' => $g['key'], 'next' => in_array($task->id, $nextIds, true), 'waiting' => $waiting, 'first' => $loop->first, 'last' => $loop->last, 'locked' => $locked, 'stages' => $stages, 'others' => $steps])
+                    @endforeach
+                    @if ($g['steps']->isEmpty())
+                        <li data-lane-empty class="rounded-card border border-dashed border-line px-3 py-2.5 text-center text-xs text-ink-faint">{{ __('projects.move.empty_lane') }}</li>
+                    @endif
+                </ul>
 
                 <form wire:submit="addStep('{{ $g['key'] }}')" class="flex flex-wrap items-start gap-2">
                     <div class="flex min-w-0 flex-1 basis-48 flex-col gap-1">
@@ -166,6 +172,7 @@
                 </form>
             </section>
         @endforeach
+        </div>
             </div>
             <div :class="tab === 'notes' ? 'block' : 'hidden'" class="wb:block lg:sticky lg:top-20">
                 @include('shell.notes-panel', ['notes' => $this->notes, 'stages' => $stages, 'userTags' => $this->userTags, 'noteTag' => $noteTag, 'editingNote' => $editingNote])

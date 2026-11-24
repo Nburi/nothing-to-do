@@ -3,6 +3,8 @@
 namespace App\Livewire\Shell;
 
 use App\Livewire\Concerns\ManagesNotes;
+use App\Livewire\Concerns\ManagesStepMoves;
+use App\Models\ProjectStage;
 use App\Models\Task;
 use App\Models\TaskGroup;
 use App\Models\User;
@@ -25,11 +27,13 @@ use Livewire\Component;
 /**
  * Step 4.3: one group. A few tasks of one list in the group's order; the first two are what the
  * board shows. New steps land in the group's list. Step 4.3b: note cards with #tags (ManagesNotes).
+ * Step 4.3c: steps move by dragging, keyboard or the ⋯ menu within the one list (ManagesStepMoves).
  */
 #[Layout('layouts.shell')]
 class GroupPage extends Component
 {
     use ManagesNotes;
+    use ManagesStepMoves;
 
     #[Locked]
     public int $groupId;
@@ -108,11 +112,6 @@ class GroupPage extends Component
         $this->fresh();
     }
 
-    public function move(int $id, int $direction): void
-    {
-        $this->guard(fn () => app(ProjectEditor::class)->move($this->step($id), $direction));
-    }
-
     public function start(int $id): void
     {
         $this->notice = null;
@@ -146,6 +145,12 @@ class GroupPage extends Component
     {
         $undo = $this->undo;
         $this->undo = null;
+
+        if (($undo['kind'] ?? null) === 'move') {
+            $this->undoMove($undo);
+
+            return;
+        }
 
         if (($undo['kind'] ?? null) === 'note') {
             $this->undoNote($undo);
@@ -193,6 +198,18 @@ class GroupPage extends Component
     protected function noteOwner(): TaskGroup
     {
         return $this->group;
+    }
+
+    /** A group has one list and no stages: "none" is its only lane. */
+    protected function stageForKey(string $key): ?ProjectStage
+    {
+        return $key === 'none' ? null : throw new ModelNotFoundException;
+    }
+
+    private function say(string $notice): void
+    {
+        $this->notice = $notice;
+        $this->fresh();
     }
 
     private function gone(): void

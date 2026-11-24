@@ -3,6 +3,7 @@
 namespace App\Livewire\Shell;
 
 use App\Livewire\Concerns\ManagesNotes;
+use App\Livewire\Concerns\ManagesStepMoves;
 use App\Models\Project;
 use App\Models\ProjectStage;
 use App\Models\Task;
@@ -30,11 +31,13 @@ use Livewire\Component;
  * marked, the waiting ones quiet), then the steps in no stage. Stages are the coarse
  * dependencies (stage 2 waits on stage 1); "wartet auf" covers the rare single step.
  * Step 4.3b: note cards with #tags in a column beside the stages (ManagesNotes).
+ * Step 4.3c: steps move by dragging, keyboard or the ⋯ menu, between stages too (ManagesStepMoves).
  */
 #[Layout('layouts.shell')]
 class ProjectPage extends Component
 {
     use ManagesNotes;
+    use ManagesStepMoves;
 
     #[Locked]
     public int $projectId;
@@ -213,16 +216,6 @@ class ProjectPage extends Component
         });
     }
 
-    public function move(int $id, int $direction): void
-    {
-        $this->guard(fn () => app(ProjectEditor::class)->move($this->step($id), $direction));
-    }
-
-    public function setStage(int $id, string $stageId): void
-    {
-        $this->guard(fn () => app(ProjectEditor::class)->setStage($this->step($id), $stageId === '' ? null : $this->stage((int) $stageId)));
-    }
-
     public function setWaitsOn(int $id, string $onId): void
     {
         $this->guard(function () use ($id, $onId) {
@@ -278,6 +271,10 @@ class ProjectPage extends Component
                 return;
             }
             TaskMutator::applyUpdate($task, $this->user, ['is_completed' => false]);
+        } elseif (($undo['kind'] ?? null) === 'move') {
+            $this->undoMove($undo);
+
+            return;
         } elseif (($undo['kind'] ?? null) === 'note') {
             $this->undoNote($undo);
         } elseif (($undo['kind'] ?? null) === 'stage') {
@@ -304,6 +301,16 @@ class ProjectPage extends Component
     private function stage(?int $id): ProjectStage
     {
         return ProjectStage::where('project_id', $this->projectId)->whereHas('project', fn ($q) => $q->where('user_id', $this->user->id))->findOrFail($id);
+    }
+
+    /** "none" (no stage) or "stage-ID", the keys of the page's lanes. */
+    protected function stageForKey(string $key): ?ProjectStage
+    {
+        if ($key === 'none') {
+            return null;
+        }
+
+        return preg_match('/^stage-(\d+)$/', $key, $m) === 1 ? $this->stage((int) $m[1]) : throw new ModelNotFoundException;
     }
 
     private function step(int $id): Task
