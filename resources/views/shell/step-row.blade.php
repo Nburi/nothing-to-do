@@ -1,9 +1,15 @@
-{{-- Step 4.3: one open step on a project or group page. The next two are marked, waiting ones are
-     quiet. Order arrows, ▶ and "Erledigt" are always there; stage and "wartet auf" (projects only)
-     sit behind the ⋯ menu so the list stays calm.
+{{-- Step 4.3 / 4.3c: one open step on a project or group page. The next two are marked, waiting ones are
+     quiet. Left the grip (drag with the mouse, press and hold on a touch screen, Space on the keyboard:
+     resources/js/step-drag.js; it has no `touch-action: none`, so a swipe over it still scrolls), then
+     ▶ and "Erledigt". Moving without dragging, the stage and "wartet
+     auf" (projects only) sit behind the ⋯ menu so the list stays calm.
      A waiting step is dimmed part by part (title, buttons, the ⋯ trigger), never as one block: the open
-     menu is a child of this row and would inherit a fade on the row, so it stayed unreadable (C30).
-     @param Task $task, bool $next, bool $waiting, bool $first, bool $last, bool $locked,
+     menu is a child of this row and would inherit a fade on the row, so it stayed unreadable (C30). The
+     grip is never dimmed: a waiting step stays draggable.
+     The data attributes are what the script reads: `data-step` (id), `data-title`, `data-list`,
+     `data-waits-on` (the open step it waits on, if any).
+     @param Task $task, string $lane ("none" or "stage-ID", the `data-lane` of its list), bool $next,
+            bool $waiting, bool $first, bool $last, bool $locked,
             ?Collection $stages (project), ?Collection $others (open steps of the project) --}}
 @php
     $dim = $waiting ? 'opacity-60' : '';
@@ -12,10 +18,16 @@
     $meta = \App\Shell\TaskFace::meta($task);
     $blocker = $task->waitsOn && ! $task->waitsOn->is_completed ? $task->waitsOn : null;
 @endphp
-<li wire:key="step-{{ $task->id }}" data-step="{{ $task->id }}" @if ($waiting) data-waiting @endif
+<li wire:key="step-{{ $task->id }}" data-step="{{ $task->id }}" data-title="{{ $task->title }}" data-list="{{ $task->list }}"
+    @if ($blocker) data-waits-on="{{ $blocker->id }}" @endif @if ($waiting) data-waiting @endif
     @class(['flex flex-wrap items-start gap-x-2 gap-y-1 rounded-card px-3 py-2 text-sm', 'bg-surface ring-3 ring-accent-soft' => $next, 'bg-surface' => ! $next])
     style="border: var(--t-bw) solid {{ $next ? 'var(--t-accent)' : 'var(--t-line)' }}">
-    <div class="min-w-0 flex-1 basis-48 py-1 {{ $dim }}">
+    <button type="button" data-grip aria-pressed="false" aria-describedby="step-drag-hint"
+        aria-label="{{ __('projects.move.grip', ['title' => $task->title]) }}" title="{{ __('projects.move.grip_title') }}"
+        class="-ml-1.5 grid size-9 shrink-0 cursor-grab place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+        @include('shell.icon', ['name' => 'grip', 'class' => 'size-4'])
+    </button>
+    <div class="min-w-0 flex-1 basis-40 py-1 {{ $dim }}">
         <p class="font-medium leading-snug wrap-break-word text-ink">{{ $task->title }}</p>
         <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-ink-faint">
             <span>{{ __('projects.lists.'.$task->list) }}</span>
@@ -29,43 +41,10 @@
         @endif
     </div>
     <div class="ml-auto flex items-center gap-0.5">
-        <button type="button" wire:click="move({{ $task->id }}, -1)" @disabled($first) class="{{ $icon }}" aria-label="{{ __('projects.move_up') }}: {{ $task->title }}" title="{{ __('projects.move_up') }}">
-            @include('shell.icon', ['name' => 'chevron', 'class' => 'size-4 -rotate-90'])
-        </button>
-        <button type="button" wire:click="move({{ $task->id }}, 1)" @disabled($last) class="{{ $icon }}" aria-label="{{ __('projects.move_down') }}: {{ $task->title }}" title="{{ __('projects.move_down') }}">
-            @include('shell.icon', ['name' => 'chevron', 'class' => 'size-4 rotate-90'])
-        </button>
         <button type="button" wire:click="done({{ $task->id }})" wire:loading.attr="disabled" class="{{ $icon }}" aria-label="{{ __('projects.done') }}: {{ $task->title }}" title="{{ __('projects.done') }}">
             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
         </button>
-        @isset($stages)
-            <details class="relative" x-data @click.outside="$el.open = false">
-                <summary class="{{ $icon }} cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{ __('projects.move_to_stage') }} / {{ __('projects.waits_on') }}: {{ $task->title }}">
-                    @include('shell.icon', ['name' => 'dots', 'class' => 'size-4'])
-                </summary>
-                <div data-step-menu class="absolute right-0 z-20 mt-1 flex w-64 flex-col gap-3 rounded-card bg-surface p-3 shadow-card" style="border: var(--t-bw) solid var(--t-line)">
-                    <label class="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
-                        {{ __('projects.move_to_stage') }}
-                        <select wire:change="setStage({{ $task->id }}, $event.target.value)" class="min-h-10 rounded-card border border-line bg-paper px-2 text-sm font-normal text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
-                            <option value="" @selected($task->stage_id === null)>{{ __('projects.no_stage') }}</option>
-                            @foreach ($stages as $i => $s)
-                                <option value="{{ $s->id }}" @selected($task->stage_id === $s->id)>{{ $i + 1 }} · {{ $s->name }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <label class="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
-                        {{ __('projects.waits_on') }}
-                        <select wire:change="setWaitsOn({{ $task->id }}, $event.target.value)" class="min-h-10 rounded-card border border-line bg-paper px-2 text-sm font-normal text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
-                            <option value="" @selected($blocker === null)>{{ __('projects.waits_on_none') }}</option>
-                            @foreach ($others as $o)
-                                @continue($o->id === $task->id)
-                                <option value="{{ $o->id }}" @selected($task->waits_on_id === $o->id)>{{ \Illuminate\Support\Str::limit($o->title, 50) }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                </div>
-            </details>
-        @endisset
+        @include('shell.step-menu', ['task' => $task, 'lane' => $lane, 'first' => $first, 'last' => $last, 'icon' => $icon, 'blocker' => $blocker, 'stages' => $stages ?? null, 'others' => $others ?? null])
         @if ($canStart)
             <button type="button" wire:click="start({{ $task->id }})" wire:loading.attr="disabled" @disabled($locked)
                 title="{{ $locked ? __('projects.not_now') : __('projects.start') }}" aria-label="{{ __('projects.start') }}: {{ $task->title }}"

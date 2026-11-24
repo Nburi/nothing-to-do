@@ -13,7 +13,7 @@
     @include('shell.projects-chrome', ['part' => 'head', 'back' => route('shell.projects'), 'backLabel' => __('projects.back')])
 
     @if ($notice)
-        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status">
+        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 <span class="min-w-0 wrap-break-word">{{ $notice }}</span>
                 @if ($undo)
@@ -55,13 +55,16 @@
         @endif
 
         <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <section class="flex flex-col gap-2.5 rounded-panel bg-surface p-4" style="border: var(--t-bw) solid var(--t-line)">
+        {{-- Step 4.3c: the drag script owns this wrapper (resources/js/step-drag.js); a group has one list, no stages. --}}
+        <div x-data="stepDrag(@js(['text' => __('projects.move.js')]))" class="contents">
+        <section data-lane-box class="flex flex-col gap-2.5 rounded-panel bg-surface p-4" style="border: var(--t-bw) solid var(--t-line)">
             @if ($steps->isEmpty())
                 <p class="text-sm text-ink-faint">{{ __('projects.steps_empty') }}</p>
             @else
-                <ul class="flex flex-col gap-1.5">
+                <p id="step-drag-hint" class="sr-only">{{ __('projects.move.keys_hint_list') }}</p>
+                <ul data-lane="none" data-index="-1" data-name="" class="flex flex-col gap-1.5">
                     @foreach ($steps as $task)
-                        @include('shell.step-row', ['task' => $task, 'next' => $loop->index < $visible, 'waiting' => false, 'first' => $loop->first, 'last' => $loop->last, 'locked' => $locked])
+                        @include('shell.step-row', ['task' => $task, 'lane' => 'none', 'next' => $loop->index < $visible, 'waiting' => false, 'first' => $loop->first, 'last' => $loop->last, 'locked' => $locked])
                     @endforeach
                 </ul>
             @endif
@@ -75,6 +78,7 @@
                 <button type="submit" wire:loading.attr="disabled" wire:target="addStep" class="{{ $btn }} border border-line bg-surface text-ink hover:bg-paper">{{ __('projects.add_step') }}</button>
             </form>
         </section>
+        </div>
         {{-- Step 4.3b: the group's note cards (no stages). --}}
         @include('shell.notes-panel', ['notes' => $this->notes, 'stages' => null, 'userTags' => $this->userTags, 'noteTag' => $noteTag, 'editingNote' => $editingNote])
         </div>

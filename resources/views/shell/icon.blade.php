@@ -24,6 +24,10 @@
         'group' => '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 9h17"/>',
         'project' => '<path d="M5 21V4M5 4h11l-2 3.5 2 3.5H5"/>',
         'chevron' => '<path d="M9 6l6 6-6 6"/>',
+        'grip' => '<circle cx="9" cy="6" r="1.25"/><circle cx="15" cy="6" r="1.25"/><circle cx="9" cy="12" r="1.25"/><circle cx="15" cy="12" r="1.25"/><circle cx="9" cy="18" r="1.25"/><circle cx="15" cy="18" r="1.25"/>',
+        'to-top' => '<path d="M6 5h12M12 19V9M7 13l5-5 5 5"/>',
+        'to-bottom' => '<path d="M6 19h12M12 5v10M7 11l5 5 5-5"/>',
+        'arrow-right' => '<path d="M5 12h14M13 6l6 6-6 6"/>',
         'flag' => '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
     ];
 @endphp

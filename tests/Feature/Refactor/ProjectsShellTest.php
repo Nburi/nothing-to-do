@@ -246,7 +246,7 @@ class ProjectsShellTest extends TestCase
 
         $zwei = Task::where('title', 'Zwei')->first();
         $this->assertSame('todos', $zwei->list);
-        $page->call('move', $zwei->id, -1);
+        $page->call('moveStep', $zwei->id, 'none', 0);
 
         $this->assertSame(['Zwei', 'Eins'], Task::where('group_id', $g->id)->orderBy('sort_order')->pluck('title')->all());
     }
