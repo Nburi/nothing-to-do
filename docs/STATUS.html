@@ -538,19 +538,19 @@ footer { font-size: 0.82rem; color: var(--muted); }
     </div>
     <div class="tests">
       <div class="test-card">
-        <div class="head"><h3>A · Automatic</h3><span class="score">55<small>/55</small></span></div>
+        <div class="head"><h3>A · Automatic</h3><span class="score">57<small>/57</small></span></div>
         <div class="cells" id="cellsA"></div>
-        <p class="note">All 55 pass, and the full suite (2250 tests) passes on the merged <code>refactor/refactor</code>. A12 is the migration rehearsal on old-schema fixtures (<code>MigrationRehearsalTest</code>, #31); it also ran green on a branch with the whole stack. New since the last count: A61–A66 (4.6 „Wichtig“, #33) and A71–A73 (arrival by location, #32). Earlier: A21–A23 from 4.1, A30–A35 from 4.2, A39–A46 from 4.3a, A47–A50 from 4.4, A56–A60 from 4.3b.</p>
+        <p class="note">All 57 pass, and the full suite (2276 tests) passes on the branch of 4.3c, on top of the merged <code>refactor/refactor</code>. A12 is the migration rehearsal on old-schema fixtures (<code>MigrationRehearsalTest</code>, #31); it also ran green on a branch with the whole stack. New since the last count: A74–A75 (4.3c, drag and drop of steps). Before that: A61–A66 (4.6 „Wichtig“, #33) and A71–A73 (arrival by location, #32). Earlier: A21–A23 from 4.1, A30–A35 from 4.2, A39–A46 from 4.3a, A47–A50 from 4.4, A56–A60 from 4.3b.</p>
       </div>
       <div class="test-card">
-        <div class="head"><h3>B · Claude visual</h3><span class="score">27<small>/30</small></span></div>
+        <div class="head"><h3>B · Claude visual</h3><span class="score">30<small>/33</small></span></div>
         <div class="cells" id="cellsB"></div>
-        <p class="note">Passed on 23 Nov: B3, B4 and B9 (timer, break screen and the hand-over of the board), B31 (the Sunday line, seen live on a Monday) and B40–B42 (4.6). Still partial: B1 and B2 lack the week part (empty state of the week, a long title in a week block), and B6 (paused days show a hatched header, but no ghost blocks). B7, B19, B20 passed in 4.2; B25–B28 in 4.3a; B30 and B32 in 4.4; B37–B39 in 4.3b.</p>
+        <p class="note">Passed on 23 Nov: B3, B4 and B9 (timer, break screen and the hand-over of the board), B31 (the Sunday line, seen live on a Monday), B40–B42 (4.6) and, on 24 Nov, B43–B45 (4.3c). Still partial: B1 and B2 lack the week part (empty state of the week, a long title in a week block), and B6 (paused days show a hatched header, but no ghost blocks). B7, B19, B20 passed in 4.2; B25–B28 in 4.3a; B30 and B32 in 4.4; B37–B39 in 4.3b.</p>
       </div>
       <div class="test-card">
-        <div class="head"><h3>C · Your checks</h3><span class="score">13<small>/39</small></span></div>
+        <div class="head"><h3>C · Your checks</h3><span class="score">13<small>/41</small></span></div>
         <div class="cells" id="cellsC"></div>
-        <p class="note">Your 17 Nov results are in TESTBERICHT now: 13 passed, 4 of them (C1, C17, C24, C30) wait for your check after my fixes. C2 is partly done (the location trigger works, the push is open). C5, C7 and C26 are parked by you; 22 are not started. Solid outline = MUSS. C17 is the phase 4 gate „a holiday takes under a minute“ (4.1); C23–C27 come from 4.2, C29–C32 from 4.3a, C34–C36 from 4.4, C41–C43 from 4.3b, C44 and C45 from 4.6.</p>
+        <p class="note">Your 17 Nov results are in TESTBERICHT now: 13 passed, 4 of them (C1, C17, C24, C30) wait for your check after my fixes. C2 is partly done (the location trigger works, the push is open). C5, C7 and C26 are parked by you; 22 are not started. Solid outline = MUSS. C17 is the phase 4 gate „a holiday takes under a minute“ (4.1); C23–C27 come from 4.2, C29–C32 from 4.3a, C46–C47 from 4.3c, C34–C36 from 4.4, C41–C43 from 4.3b, C44 and C45 from 4.6.</p>
       </div>
     </div>
   </section>
@@ -569,7 +569,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <li><span class="when">4.2 engine</span><span class="what">With two hard tasks on the same date, <code>DeadlineFeasibility</code> keeps soft work planned before a late hard task (not listed as slipped). The crunch screen suggests soft first anyway. Look at it in 4.5.</span></li>
       <li><span class="when">4.2 Mehr Zeit</span><span class="what">The „+N Sessions“ label counts the new block alone; next to an existing block the merged run can give one less. Move and Mehr Zeit have no REST/MCP endpoint yet.</span></li>
       <li><span class="when">4.1 later</span><span class="what">Resize a block by dragging its edge; move a block to another day by dragging on the phone (the form's day field does it); rename or delete areas. Paused days show no ghost blocks (B6, your call).</span></li>
-      <li><span class="when">4.3 later</span><span class="what">4.3b (note cards, shared <code>#tags</code>) is built as #28. Still open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
+      <li><span class="when">4.3 later</span><span class="what">4.3b (note cards, shared <code>#tags</code>) is built as #28; drag and drop of steps (C30) is built as 4.3c. Still open: delete projects and groups, reorder stages, move a board task into a project, stage date as soft deadline, projects in the new API/MCP.</span></li>
       <li><span class="when">4.6</span><span class="what">„Wichtig“ is built as #33: order late work, deadline tiers, then „Wichtig“, then battery and board order; a marker never jumps a deadline. The crunch screen does not know „Wichtig“ yet. Reduced motion, fold timing and a real iPhone were not checked.</span></li>
       <li><span class="when">Merge of 24 Nov</span><span class="what">All sibling PRs merged into <code>refactor/refactor</code> with conflicts in the board view, <code>Board.php</code>, <code>ActionRegistry.php</code>, the routes, the lang files, the icons, <code>TODO.md</code> and TESTBERICHT; both sides kept everywhere. Where the lines sit on the board is my pick (week links, crunch line, Sunday line, then the „Wichtig“ card). Tell me if the order should change.</span></li>
       <li><span class="when">Main vs refactor</span><span class="what">Main has hotfix #14 (23 Nov, two commits) that the refactor does not have yet. The refactor has the same fix since 1.2, so a merge will conflict in the week plan code.</span></li>
@@ -712,8 +712,9 @@ footer { font-size: 0.82rem; color: var(--muted); }
   for (var n3 = 56; n3 <= 60; n3++) A.push(["A" + n3, "pass"]); // 4.3b
   for (var s6 = 61; s6 <= 66; s6++) A.push(["A" + s6, "pass"]); // 4.6
   for (var s7 = 71; s7 <= 73; s7++) A.push(["A" + s7, "pass"]); // arrival by location
+  for (var s8 = 74; s8 <= 75; s8++) A.push(["A" + s8, "pass"]); // 4.3c
   cells("cellsA", A);
-  cells("cellsB", [["B1","part"],["B2","part"],["B3","pass"],["B4","pass"],["B5","pass"],["B6","part"],["B7","pass"],["B8","pass"],["B9","pass"],["B10","pass"],["B11","pass"],["B12","pass"],["B13","pass"],["B14","pass"],["B15","pass"],["B19","pass"],["B20","pass"],["B25","pass"],["B26","pass"],["B27","pass"],["B28","pass"],["B30","pass"],["B31","pass"],["B32","pass"],["B37","pass"],["B38","pass"],["B39","pass"],["B40","pass"],["B41","pass"],["B42","pass"]]);
+  cells("cellsB", [["B1","part"],["B2","part"],["B3","pass"],["B4","pass"],["B5","pass"],["B6","part"],["B7","pass"],["B8","pass"],["B9","pass"],["B10","pass"],["B11","pass"],["B12","pass"],["B13","pass"],["B14","pass"],["B15","pass"],["B19","pass"],["B20","pass"],["B25","pass"],["B26","pass"],["B27","pass"],["B28","pass"],["B30","pass"],["B31","pass"],["B32","pass"],["B37","pass"],["B38","pass"],["B39","pass"],["B40","pass"],["B41","pass"],["B42","pass"],["B43","pass"],["B44","pass"],["B45","pass"]]);
   var C = []; for (var j = 1; j <= 16; j++) C.push(["C" + j, [9,10,11,16].indexOf(j) >= 0 ? "should" : "must"]);
   C.push(["C17","must"],["C18","must"],["C19","must"],["C20","should"],["C21","should"],["C22","should"]); // 4.1
   C.push(["C23","must"],["C24","must"],["C25","must"],["C26","should"],["C27","should"]); // 4.2
@@ -721,6 +722,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
   C.push(["C34","must"],["C35","should"],["C36","should"]); // 4.4
   C.push(["C41","must"],["C42","should"],["C43","must"]); // 4.3b
   C.push(["C44","must"],["C45","must"]); // 4.6
+  C.push(["C46","must"],["C47","must"]); // 4.3c
   var done17 = { C1:"pass", C6:"pass", C8:"pass", C17:"pass", C19:"pass", C20:"pass", C21:"pass", C22:"pass", C24:"pass", C27:"pass", C29:"pass", C30:"pass", C31:"pass", C2:"part" }; // C-tests 17 Nov, as recorded in TESTBERICHT
   C.forEach(function (c) { if (done17[c[0]]) c[1] = done17[c[0]]; });
   cells("cellsC", C);
@@ -756,6 +758,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["C14", "MUSS", "R6", "For a week look at the board in free evening time and on a free weekend day. Does an idea from Later feel like an offer or like pressure? Does „Meins behalten“ feel respected? Does „Jetzt machen“ starting a 25 min session feel right?", "#21"],
       ["C23", "MUSS", "R5", "For two weeks keep your real deadlines in the app. Did a crunch show up early enough (two days or more)? Did the warning ever cry wolf or flicker?", "#23"],
       ["C41", "MUSS", "R6", "Write notes for a real project for a few days, quick ones and longer Markdown ones. Is „Lose“ → stage the way you sort, and are tags useful?", "#28"],
+      ["C46", "MUSS", "R6", "Drag steps by the grip on your real project (Enderdragon): inside a stage, into another stage, onto „Ohne Etappe“ and onto a chip of the dock. Try a step that waits on another one and press „Rückgängig“; lift one with Space and the arrows; use the ⋯ menu once. Does it feel quick and calm, and are the words on the bar right?", "4.3c"],
+      ["C47", "MUSS", "R6, R7", "On the iPhone: press and hold a step until it lifts, drag it to another stage (the dock at the bottom helps with far ones) and scroll the list with your thumb over the grips. Is the half-second hold the right length, and does scrolling stay smooth? Not tried on a real device yet.", "4.3c"],
       ["C44", "MUSS", "R5", "For a week mark the one or two things you must not forget with the flag. Does the order feel right: deadline work first, then what you marked, then the rest? Outside your work blocks, does the „Wichtig“ card feel like a useful reminder or like pressure? Is one tap on the flag quick enough on the phone and on the desktop?", "#33"]
     ] },
     { t: "Parked", note: "Parked by you, or waiting for something that does not exist yet.", rows: [
@@ -769,7 +773,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["C1", "MUSS", "Signature", "Start a session on a tired evening and watch the first second. Fixed in #18: a ghost card flies on the click and shows title and full timer, so the timer is 95 % visible after about 465 ms instead of 640 ms, also with a slow server. Does the wait feel gone?", "#18, carried up", "recheck"],
       ["C17", "MUSS", "R4", "The holiday gate again. Fixed in #24: another day in „An diesen Tagen“ no longer closes the window, the pause overlay covers only the day header, and a changed block can go „Zurück zum Wochenplan“.", "#24", "recheck"],
       ["C24", "MUSS", "R5, F5", "Make a hard deadline that does not fit and open the crunch screen. Built in #23: the hard task's button names a day (<code>Auf 30.11. …</code>). Tap it, read the sentence, tick, confirm, undo. The chart is unchanged until you pick a variant.", "#23", "recheck"],
-      ["C30", "MUSS", "R6", "A roadmap with stages. Fixed in #25 and #28: the stages sit in equal columns with the name above the dot, and a waiting step's menu keeps its contrast. Drag and drop waits for your mockup decisions.", "#25, #28", "recheck"]
+      ["C30", "MUSS", "R6", "A roadmap with stages. Fixed in #25 and #28: the stages sit in equal columns with the name above the dot, and a waiting step's menu keeps its contrast. Drag and drop of steps is built in 4.3c: see C46 and C47.", "#25, #28", "recheck"]
     ] }
   ];
   var cgHost = document.getElementById("cgroups"), total = 0, must = 0;
