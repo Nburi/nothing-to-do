@@ -175,7 +175,7 @@ class CategoryAttributesTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->create(['category_id' => $category->id]);
         $event->attributeValues()->attach($attribute->id, ['value' => '60']);
 
-        $category->delete();
+        $category->forceDelete();
 
         $this->assertSame(0, CategoryAttribute::query()->count());
         $this->assertSame(0, $event->attributeValues()->count());

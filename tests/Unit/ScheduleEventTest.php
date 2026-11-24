@@ -76,7 +76,7 @@ class ScheduleEventTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->for($category, 'category')
             ->create(['title' => 'Training', 'color' => 'forest']);
 
-        $category->delete();
+        $category->forceDelete();
         $event->refresh();
 
         $this->assertNull($event->category_id);

@@ -540,7 +540,7 @@ class Settings extends Component
 
     public function deleteCategory(int $id): void
     {
-        auth()->user()->eventCategories()->whereKey($id)->delete();
+        auth()->user()->eventCategories()->whereKey($id)->forceDelete(); // the old screen and the API keep their hard delete; the new settings soft-delete (step 4.1)
     }
 
     // ── Category attributes (custom fields, e.g. Trainingstyp/Dauer) ─────

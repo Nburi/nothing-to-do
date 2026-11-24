@@ -63,7 +63,7 @@ class DeleteCategoryTool extends McpTool
 
         $id = $category->id;
         $name = $category->name;
-        $category->delete();
+        $category->forceDelete(); // hard delete as before; only the new settings soft-delete with undo (step 4.1)
 
         return ['deleted' => true, 'id' => $id, 'name' => $name];
     }

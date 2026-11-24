@@ -56,6 +56,14 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
+## Refactor: phase 4, step 4.1 (2026-11-17)
+- [x] 4.1 Week plan editor (`feature/week-editor`): Zeitplan `/board/week`, Wochenplan `/board/week/plan`, drawing, pause calendar, undo, categories in the settings. Notes in `docs/steps/4.1.md`.
+- [ ] 4.1 open for Niels: C18 (iPhone long press). C6, C8, C17, C19–C22 were checked on 2026-11-17 and their findings fixed on 2026-11-23 (`docs/steps/4.1.md`, "After the C-tests"); re-check the popover with day chips (C17), the pause marker on the header only (C6/C17) and "Zurück zum Wochenplan" on a moved block (C21).
+- [ ] 4.1 decision for Niels (B6): paused days show no blocks at all; the requirement says ghosts that can be restored. Build ghosts (needs the engine to expose the blocks a paused day would have) or change the requirement.
+- [ ] 4.1 C8 (tasks could not be created at first): not reproduced, see ERRORS.md; if it comes back, note the message, the screen and the HTTP status.
+- [ ] 4.1 later: resize a block by dragging its edge; move a block to another day by dragging on the phone; rename / delete areas.
+- [ ] 5.4: retire `/app/weekplan` and `/app/schedule` (the shell no longer links them).
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.

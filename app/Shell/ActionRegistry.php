@@ -27,9 +27,9 @@ final class ActionRegistry
         'battery' => ['2.2', true],
         'browse_later' => ['2.2', true],
         'reset' => ['3.2', true],
-        'move_event' => ['4.1', false],
-        'week_plan' => ['4.1', false],
-        'pause_days' => ['4.1', false],
+        'move_event' => ['4.1', true],
+        'week_plan' => ['4.1', true],
+        'pause_days' => ['4.1', true],
         'crunch' => ['4.2', true],
         'keep_mine' => ['3.4', true],
     ];

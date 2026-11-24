@@ -109,7 +109,7 @@ class CategoryAreaLinkTest extends TestCase
         $category = EventCategory::factory()->for($user)->create();
         $category->syncAreas([$area->id]);
 
-        $category->delete();
+        $category->forceDelete();
 
         $this->assertNotNull($area->fresh());
         $this->assertDatabaseCount('category_area', 0);

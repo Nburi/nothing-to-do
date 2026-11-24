@@ -23,7 +23,8 @@ use Illuminate\Validation\ValidationException;
  *   only" is a schedule_events row with the template id for that date; a
  *   cancelled occurrence is such a row with is_cancelled (a tombstone).
  *   Moving an occurrence to another date leaves a tombstone and creates a
- *   one-off (the old app's rule).
+ *   one-off (the old app's rule); the one-off remembers its tombstone
+ *   (moved_from_id), so restoreMoved() can put the block back.
  * - "Every week" changes the template from tomorrow on. Rows the old screens
  *   materialised for future dates follow the template, **unless the user
  *   changed that one date on purpose**: a row that no longer matches the old
@@ -128,7 +129,8 @@ final class WeekPlanEditor
         }
 
         return DB::transaction(function () use ($user, $template, $data) {
-            $this->occurrence($user, $template, $data['from'])->fill(['is_cancelled' => true])->save();
+            $tombstone = $this->occurrence($user, $template, $data['from']);
+            $tombstone->fill(['is_cancelled' => true])->save();
 
             return $user->scheduleEvents()->create([
                 'category_id' => $template->category_id,
@@ -137,8 +139,37 @@ final class WeekPlanEditor
                 'date' => $data['date'],
                 'start_time' => $data['start'],
                 'end_time' => $data['end'],
+                'moved_from_id' => $tombstone->id,
             ]);
         });
+    }
+
+    /**
+     * The date a moved block came from, when it can still go back: its tombstone is there and the
+     * series still repeats on that date. Null for every other block (a block drawn for one week,
+     * a Termin, a block moved before the tie existed, a series that changed since).
+     */
+    public function movedFrom(User $user, int $eventId): ?string
+    {
+        return $this->origin($user, $eventId)?->tombstone->date->toDateString();
+    }
+
+    /**
+     * Put a moved block back: the one-off goes and its old date follows the series again (the
+     * tombstone goes, like restoreOccurrence). Both deletes run through models, so the undo journal
+     * brings both rows back. Returns the date the block is back on.
+     */
+    public function restoreMoved(User $user, int $eventId): string
+    {
+        $origin = $this->origin($user, $eventId)
+            ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(ScheduleEvent::class, [$eventId]);
+
+        DB::transaction(function () use ($origin) {
+            $origin->tombstone->delete();
+            $origin->oneOff->delete();
+        });
+
+        return $origin->tombstone->date->toDateString();
     }
 
     /** Cancel one occurrence (this week only), or stop the block on that weekday (every week). */
@@ -170,7 +201,78 @@ final class WeekPlanEditor
         $template = $this->template($user, $templateId);
         $date = $this->validated(['date' => $date], $user, date: true)['date'];
 
-        ScheduleEvent::forUser($user)->where('template_id', $template->id)->whereDate('date', $date)->delete();
+        // One model at a time, so the undo journal (step 4.1) sees the row it removes.
+        ScheduleEvent::forUser($user)->where('template_id', $template->id)->whereDate('date', $date)->get()->each->delete();
+    }
+
+    /** Change a block that exists on one date only (a Termin or a one-off category block). */
+    public function updateOnce(User $user, int $eventId, string $date, string $start, string $end, ?int $categoryId, ?string $title = null, ?string $color = null): ScheduleEvent
+    {
+        $row = $this->oneOff($user, $eventId);
+        $data = $this->validated(compact('date', 'start', 'end', 'categoryId', 'title', 'color'), $user, date: true);
+        [$name, $colour] = $this->label($user, $data);
+
+        $row->update($row->withNotifiedReset([
+            'category_id' => $data['categoryId'],
+            'title' => $name,
+            'color' => $colour,
+            'date' => $data['date'],
+            'start_time' => $data['start'],
+            'end_time' => $data['end'],
+        ]));
+
+        return $row;
+    }
+
+    /** Remove a block that exists on one date only. (Undoable through WeekPlanJournal.) */
+    public function deleteOnce(User $user, int $eventId): void
+    {
+        $this->oneOff($user, $eventId)->delete();
+    }
+
+    /**
+     * Change a repeating block in the Wochenplan: weekdays, time, category or name, every week
+     * from tomorrow on. Same rules as "every week" in changeOccurrence: dates changed on purpose
+     * keep their change, future rows on a weekday the block no longer has go.
+     *
+     * @param  list<int>  $weekdays  ISO 1 = Monday … 7 = Sunday
+     */
+    public function updateTemplate(User $user, int $templateId, array $weekdays, string $start, string $end, ?int $categoryId, ?string $title = null, ?string $color = null): EventTemplate
+    {
+        $template = $this->template($user, $templateId);
+        $data = $this->validated(compact('weekdays', 'start', 'end', 'categoryId', 'title', 'color'), $user, weekdays: true);
+        [$name, $colour] = $this->label($user, $data);
+
+        DB::transaction(function () use ($user, $template, $data, $name, $colour) {
+            $before = $this->snapshot($template);
+            $template->update([
+                'category_id' => $data['categoryId'],
+                'name' => $name,
+                'color' => $colour,
+                'default_start' => $data['start'],
+                'duration' => $this->minutes($data['end']) - $this->minutes($data['start']),
+                'is_recurring' => true,
+                'recurrence' => implode(',', $this->weekdays($data['weekdays'])),
+            ]);
+            $this->followTemplate($user, $template->fresh(), $before);
+        });
+
+        return $template->fresh();
+    }
+
+    /**
+     * Take a block out of the Wochenplan: it stops repeating from tomorrow on. The template and
+     * its past rows stay as history (same rule as removing its last weekday).
+     */
+    public function stopTemplate(User $user, int $templateId): void
+    {
+        $template = $this->template($user, $templateId);
+
+        DB::transaction(function () use ($user, $template) {
+            $before = $this->snapshot($template);
+            $template->update(['is_recurring' => false]);
+            $this->followTemplate($user, $template->fresh(), $before);
+        });
     }
 
     /** Pause every date from $from to $to (holidays, sick days). */
@@ -186,7 +288,10 @@ final class WeekPlanEditor
             }
         })->validate();
 
+        $already = SchedulePause::forUser($user)->forRange($data['from'], $data['to'])->get()
+            ->map(fn (SchedulePause $p) => $p->date->toDateString())->all();
         SchedulePause::pauseRange($user, Carbon::parse($data['from']), Carbon::parse($data['to']), $data['note'] ?? null);
+        WeekPlanJournal::notePaused(array_values(array_diff(WeekPlanReader::dates($data['from'], $data['to']), $already)));
     }
 
     /** Switch dates back on (one date, or a range). */
@@ -197,7 +302,10 @@ final class WeekPlanEditor
             'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
         ])->validate();
 
-        SchedulePause::forUser($user)->forRange($data['from'], $data['to'])->delete();
+        $pauses = SchedulePause::forUser($user)->forRange($data['from'], $data['to']);
+        WeekPlanJournal::noteResumed($pauses->clone()->get()
+            ->map(fn (SchedulePause $p) => ['date' => $p->date->toDateString(), 'note' => $p->note])->all());
+        $pauses->delete();
     }
 
     // ── internals ────────────────────────────────────────────────────
@@ -284,6 +392,44 @@ final class WeekPlanEditor
         return EventTemplate::forUser($user)->findOrFail($id);
     }
 
+    /**
+     * A row of the user that stands on its own date: no template, or a template that no longer
+     * repeats on that weekday (the reader shows those as one-offs too). An occurrence of a
+     * repeating block is changed through changeOccurrence instead.
+     */
+    private function oneOff(User $user, int $id): ScheduleEvent
+    {
+        $row = ScheduleEvent::forUser($user)->with('template')->findOrFail($id);
+        if ($row->template !== null && $row->template->occursOn($row->date)) {
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(ScheduleEvent::class, [$id]);
+        }
+
+        return $row;
+    }
+
+    /**
+     * A moved block together with the tombstone it left behind, only while the way back is valid:
+     * the tie exists, the tombstone is still a cancelled row of the series and the series still
+     * repeats on that date (else a restore would delete the block and bring nothing back).
+     *
+     * @return object{oneOff: ScheduleEvent, tombstone: ScheduleEvent}|null
+     */
+    private function origin(User $user, int $eventId): ?object
+    {
+        $oneOff = ScheduleEvent::forUser($user)->whereNull('template_id')->whereNotNull('moved_from_id')->find($eventId);
+        if ($oneOff === null) {
+            return null;
+        }
+
+        $tombstone = ScheduleEvent::forUser($user)->where('is_cancelled', true)->whereNotNull('template_id')->find($oneOff->moved_from_id);
+        $template = $tombstone === null ? null : EventTemplate::forUser($user)->find($tombstone->template_id);
+        if ($template === null || ! $template->occursOn($tombstone->date)) {
+            return null;
+        }
+
+        return (object) ['oneOff' => $oneOff, 'tombstone' => $tombstone];
+    }
+
     /** @return array{0:string,1:string} title and colour of a new block */
     private function label(User $user, array $data): array
     {
@@ -314,7 +460,7 @@ final class WeekPlanEditor
             $rules['weekdays.*'] = ['integer', 'between:1,7'];
         }
         if (array_key_exists('categoryId', $input)) {
-            $rules['categoryId'] = ['nullable', 'integer', 'exists:event_categories,id,user_id,'.$user->id];
+            $rules['categoryId'] = ['nullable', 'integer', \Illuminate\Validation\Rule::exists('event_categories', 'id')->where('user_id', $user->id)->whereNull('deleted_at')];
             if (array_key_exists('title', $input)) {
                 $rules['title'] = ['required_without:categoryId', 'nullable', 'string', 'max:255'];
                 $rules['color'] = ['nullable', 'in:'.implode(',', ScheduleEvent::EVENT_COLORS)];

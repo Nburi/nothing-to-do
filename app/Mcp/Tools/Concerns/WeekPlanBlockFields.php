@@ -47,7 +47,7 @@ trait WeekPlanBlockFields
         ];
 
         if ($kind === 'category') {
-            $rules['category_id'] = [$req, Rule::exists('event_categories', 'id')->where('user_id', $user->id)];
+            $rules['category_id'] = [$req, Rule::exists('event_categories', 'id')->where('user_id', $user->id)->whereNull('deleted_at')];
         } else {
             $rules['title'] = [$req, 'string', 'max:255'];
             $rules['color'] = [$req, Rule::in(ScheduleEvent::EVENT_COLORS)];

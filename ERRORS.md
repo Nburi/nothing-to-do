@@ -2,6 +2,45 @@
 
 Errors and surprises worth remembering, with the fix. Newest first.
 
+## C8: tasks could not be created at first, then it worked (not reproduced, 2026-11-23)
+
+**Symptom.** In the C-tests of 2026-11-17 Niels could not create tasks on the first try; the second try worked
+("hat jetzt funktioniert"). Nothing else is known: which screen, which message.
+
+**Tried, none failed** (local dev server, throwaway accounts): the capture line (key C) right after
+registration and right after a fresh login (cookies cleared, login, `/app`, `/board`, capture at once):
+`POST /board/capture` answered 201 every time, no 4xx and no console error. Settings → Kategorien: creating a
+category with and without Pomodoro, no error. Code read: `ShellCaptureController` → `Capture::inbox` only
+validates `required|string|max:500`; the 4.1 changes (soft-deleted categories, `exists:event_categories`
+rules) only touch schedule events and week blocks, never task creation; "+ Bereich" creates an area from
+name, colour and sort order only, and the old `QuickCapture` does not read areas.
+
+**Most likely cause, unproven.** `captureLine.save()` (`resources/js/app.js`) shows "Gerade keine Verbindung.
+Dein Text bleibt im Feld." for every answer that is neither 2xx nor 422 (419 expired session or token, 401,
+429, 5xx) and when the connection itself fails. On a cold or busy dev server a request can run into PHP's 30 s
+limit (seen locally with several sessions running: "Maximum execution time of 30 seconds exceeded" while
+compiling a view); the retry then works. If it comes back: note the exact message, the screen and the HTTP
+status of the failed request (browser network tab) before retrying.
+
+## The block popover fell out of view after a click on a day chip (2026-11-23)
+
+**Symptom.** C17: in the new-block popover, a click on another day under "An diesen Tagen" made the popover
+disappear. The form was still open on the server (`toggleDay` had run, the chip was on); the popover sat
+below the visible page. Not specific to paused weeks.
+
+**Cause.** `weekEditor.place()` positions the popover by writing `left`, `top` and `data-placement` onto the
+section. Livewire's morph copies the server markup's attributes on every re-render (a day chip, a category,
+any action), which has neither, so the fixed element dropped to its static position at the bottom of the
+page. It only came back when the popover happened to change size (the ResizeObserver runs `place()` again),
+which is why it looked random.
+
+**Fix.** `wire:ignore.self` on the section (`shell/week-form.blade.php`): its own attributes are left alone,
+the children still update, and a new mode or block has a new `wire:key`, so a new element that is placed anew.
+A PHP test cannot run the morph; `test_the_form_stays_open_and_placed_…` pins the attribute.
+
+**Rule:** an element that JavaScript positions or styles must not be morphed by Livewire. Mark it
+`wire:ignore.self`, or write the position through Alpine bindings that the morph keeps.
+
 ## A stored local instant reads back an hour off (2026-11-16)
 
 **Symptom.** In step 3.4 the free-time idea changed on every reload and "Andere" ran out after one tap.
