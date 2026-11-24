@@ -330,6 +330,7 @@
     {{-- The daily sort card, the same over both layouts. --}}
     {{-- A stable key: the board re-renders after every sort, the card must keep its round. --}}
     <livewire:shell.inbox-sort :key="'inbox-sort'" />
+    <livewire:shell.item-editor :key="'item-editor'" />
 
     {{-- Step 4.2: the crunch screen, the same over both layouts (panel on the right / sheet from the bottom). --}}
     <livewire:shell.crunch :key="'crunch'" />

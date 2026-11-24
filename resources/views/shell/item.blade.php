@@ -52,7 +52,6 @@
         $flagClass = implode(' ', array_filter([
             'grid size-9 shrink-0 place-items-center rounded-full transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40',
             '-my-1',
-            $canStart ? '' : '-mr-1',
             'wb:absolute wb:top-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100',
             $canStart ? 'wb:right-[3.125rem]' : 'wb:right-1.5',
             $marked ? 'bg-warn-soft text-warn hover:brightness-95' : 'text-ink-faint hover:bg-warn-soft hover:text-warn',
@@ -62,6 +61,16 @@
         wire:click="setImportant({{ $task->id }}, {{ $marked ? 'false' : 'true' }})" wire:loading.attr="disabled"
         :aria-pressed="$marked ? 'true' : 'false'" :title="__('shell.important.'.($marked ? 'unmark' : 'mark'))" :aria-label="__('shell.important.mark').': '.$task->title"
         class="{{ $flagClass }}">@include('shell.icon', ['name' => 'flag', 'class' => 'size-4', 'filled' => $marked])</x-shell.action>
+    {{-- Step 4.9: ⋯ opens Bearbeiten, Verschieben, Löschen. Next to the flag on the desktop, last on touch. --}}
+    @php
+        $menuClass = implode(' ', [
+            'grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent -my-1',
+            $canStart ? '' : '-mr-1',
+            'wb:absolute wb:top-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100',
+            $canStart ? 'wb:right-[5.875rem]' : 'wb:right-[3.125rem]',
+        ]);
+    @endphp
+    @include('shell.item-menu', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'trigger' => $menuClass])
     @if ($canStart)
         @php
             $startClass = '-my-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-accent-soft hover:text-accent-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent wb:absolute wb:top-1.5 wb:right-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100';

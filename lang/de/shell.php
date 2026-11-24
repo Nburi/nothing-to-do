@@ -243,6 +243,9 @@ return [
         'projects' => 'Projekte ansehen',
         'important' => 'Wichtig markieren',
         'reorder' => 'Verschieben',
+        'edit' => 'Bearbeiten',
+        'move' => 'In andere Liste',
+        'delete' => 'Löschen',
     ],
     // Step 4.2: the early warning and the crunch screen.
     'crunch' => [

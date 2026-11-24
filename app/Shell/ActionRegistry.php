@@ -35,6 +35,9 @@ final class ActionRegistry
         'projects' => ['4.3', true],
         'important' => ['4.6', true],
         'reorder' => ['4.8', true],
+        'edit' => ['4.9', true],
+        'move' => ['4.9', true],
+        'delete' => ['4.9', true],
     ];
 
     /** @return list<Action> */
