@@ -26,7 +26,7 @@
     </a>
     @if ($isProject && $stage)
         <p class="-mt-1.5 truncate pl-7 text-xs text-ink-soft">
-            {{ $stage->target_date ? __('projects.card.stage_until', ['name' => $stage->name, 'date' => $stage->target_date->format('d.m.')]) : $stage->name }}
+            {{ $stage->target_date ? __('projects.card.stage_until', ['name' => $stage->name, 'date' => \App\Support\Dates::padded($stage->target_date)]) : $stage->name }}
         </p>
     @endif
     @if ($bundle->progress !== null)

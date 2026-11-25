@@ -54,7 +54,8 @@
             <div class="flex max-h-dvh w-full max-w-md flex-col gap-5 overflow-y-auto rounded-t-panel bg-surface p-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-card motion-safe:animate-rise wb:rounded-panel wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
                 <div class="flex items-center justify-between gap-3">
                     <p class="font-mono text-xs uppercase tracking-wider text-ink-faint" x-text="label" aria-live="polite">{{ __('onboarding.tour.progress', ['current' => 1, 'total' => 3]) }}</p>
-                    <button type="button" @click="close()" x-show="step < total - 1"
+                    {{-- Hidden with visibility, not display, so the dialog keeps its height on the last step. --}}
+                    <button type="button" @click="close()" :class="{ 'invisible': step === total - 1 }"
                         class="-mr-2 min-h-11 rounded-card px-3 text-sm text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('onboarding.tour.skip') }}</button>
                 </div>
 

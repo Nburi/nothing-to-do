@@ -22,7 +22,7 @@
     $chip = 'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
     $iconBtn = 'grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
     $seg = fn (bool $on) => 'rounded-full px-3.5 py-1.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent '.($on ? 'bg-accent text-accent-fg' : 'text-ink-soft hover:text-ink');
-    $short = fn (string $d) => \Carbon\CarbonImmutable::parse($d)->format('j.n.');
+    $short = fn (string $d) => \App\Support\Dates::short($d);
     $months = array_map(fn ($m) => __('week.months.'.$m), range(1, 12));
 @endphp
 <div id="content" class="min-h-dvh"

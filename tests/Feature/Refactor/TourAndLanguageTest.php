@@ -5,6 +5,7 @@ namespace Tests\Feature\Refactor;
 use App\Livewire\Shell\LanguagePicker;
 use App\Livewire\Shell\Tour;
 use App\Models\User;
+use App\Support\Dates;
 use App\Support\Locales;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -52,6 +53,26 @@ class TourAndLanguageTest extends TestCase
 
         $this->assertSame('Monday', Carbon::parse('2026-11-23')->isoFormat('dddd'));
         $this->assertSame('Montag', Locales::within(null, fn () => Carbon::parse('2026-11-23')->isoFormat('dddd')));
+    }
+
+    public function test_dates_are_written_the_way_the_language_writes_them(): void
+    {
+        $this->assertSame('25.11.', Dates::short('2026-11-25'));
+        $this->assertSame('Mittwoch, 25. November', Dates::iso('2026-11-25', 'day_long'));
+
+        app()->setLocale('en');
+        $this->assertSame('25 Nov', Dates::short('2026-11-25'));
+        $this->assertSame('25 Nov 2026', Dates::full('2026-11-25'));
+        $this->assertSame('Wednesday, 25 November', Dates::iso('2026-11-25', 'day_long'));
+
+        Carbon::setTestNow('2026-11-25 20:00:00');
+        $english = User::factory()->create(['locale' => 'en']);
+        $this->actingAs($english)->get(route('shell.review'))
+            ->assertOk()
+            ->assertSee('Wednesday, 25 November')
+            ->assertDontSee('25. November');
+        Carbon::setTestNow();
+        app()->setLocale('de');
     }
 
     public function test_validation_messages_follow_the_users_language(): void
