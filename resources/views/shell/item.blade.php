@@ -43,7 +43,7 @@
     {{-- Step 4.6: one tap marks or unmarks. On the desktop it shows on hover and focus like Start; on touch it is always there. --}}
     @php
         $flagClass = implode(' ', array_filter([
-            'grid size-9 shrink-0 place-items-center rounded-full transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40',
+            'grid size-11 wb:size-9 shrink-0 place-items-center rounded-full transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40',
             '-my-1',
             $canStart ? '' : '-mr-1',
             'wb:absolute wb:top-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100',
@@ -57,7 +57,7 @@
         class="{{ $flagClass }}">@include('shell.icon', ['name' => 'flag', 'class' => 'size-4', 'filled' => $marked])</x-shell.action>
     @if ($canStart)
         @php
-            $startClass = '-my-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-accent-soft hover:text-accent-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent wb:absolute wb:top-1.5 wb:right-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100';
+            $startClass = '-my-1 -mr-1 grid size-11 wb:size-9 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-accent-soft hover:text-accent-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent wb:absolute wb:top-1.5 wb:right-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100';
             $startTitle = ($locked ?? false) ? __('shell.session.not_now') : __('shell.start_this');
         @endphp
         @if ($mode === 'board')

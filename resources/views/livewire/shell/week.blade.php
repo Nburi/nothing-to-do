@@ -18,9 +18,9 @@
         }
     }
     $weekdays = array_map(fn ($c) => $c['weekday'], $columns);
-    $btn = 'inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50';
-    $chip = 'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
-    $iconBtn = 'grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $btn = 'inline-flex min-h-11 wb:min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50';
+    $chip = 'inline-flex min-h-11 wb:min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $iconBtn = 'grid size-11 wb:size-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
     $seg = fn (bool $on) => 'rounded-full px-3.5 py-1.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent '.($on ? 'bg-accent text-accent-fg' : 'text-ink-soft hover:text-ink');
     $short = fn (string $d) => \Carbon\CarbonImmutable::parse($d)->format('j.n.');
     $months = array_map(fn ($m) => __('week.months.'.$m), range(1, 12));
@@ -36,7 +36,7 @@
     {{-- Stapel header: back, title, Zeitplan / Wochenplan, week and day. --}}
     <header class="sticky top-0 z-20 flex flex-col gap-2.5 bg-paper px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))] wb:hidden">
         <div class="flex items-center gap-2">
-            <a href="{{ route('shell.board') }}" wire:navigate class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('week.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
+            <a href="{{ route('shell.board') }}" wire:navigate class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('week.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
             <h1 class="min-w-0 flex-1 truncate font-display text-xl text-ink" style="font-weight: var(--t-dw)">{{ $isPlan ? __('week.plan.title') : __('week.zeit.title') }}</h1>
             <nav class="flex rounded-full bg-surface p-0.5" style="border: var(--t-bw) solid var(--t-line)" aria-label="{{ __('week.switch') }}">
                 <a href="{{ route('shell.week') }}" wire:navigate class="{{ $seg(! $isPlan) }} !px-2.5 !py-1 !text-xs" @if (! $isPlan) aria-current="page" @endif>{{ __('week.zeit.title') }}</a>
@@ -81,7 +81,7 @@
                         <span class="min-w-28 text-center font-mono text-sm text-ink">{{ $short($dates[0]) }} – {{ $short($dates[6]) }}</span>
                         <button type="button" wire:click="goWeek(1)" class="{{ $iconBtn }}" aria-label="{{ __('week.zeit.next') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-4 rotate-180'])</button>
                         @if ($todayIndex === false)
-                            <button type="button" wire:click="goWeek(0)" class="{{ $btn }} min-h-9 text-ink-soft hover:text-ink">{{ __('week.zeit.today') }}</button>
+                            <button type="button" wire:click="goWeek(0)" class="{{ $btn }} min-h-11 wb:min-h-9 text-ink-soft hover:text-ink">{{ __('week.zeit.today') }}</button>
                         @endif
                     </div>
                 @endif
@@ -241,10 +241,10 @@
     @if ($pauseOpen)
         <div class="fixed inset-0 z-40 bg-black/30" wire:click="closePause" aria-hidden="true"></div>
         <section class="fixed z-50 flex flex-col gap-3 bg-surface p-5 shadow-card max-wb:inset-x-0 max-wb:bottom-0 max-wb:max-h-[88dvh] max-wb:overflow-y-auto max-wb:rounded-t-panel max-wb:pb-[max(20px,env(safe-area-inset-bottom))] wb:right-6 wb:top-20 wb:w-96 wb:rounded-panel"
-            style="border: var(--t-bw) solid var(--t-line)" role="dialog" aria-modal="true" aria-labelledby="pause-title" data-pause-sheet>
+            style="border: var(--t-bw) solid var(--t-line)" role="dialog" aria-modal="true" aria-labelledby="pause-title" data-pause-sheet x-trap.noscroll="true">
             <div class="flex items-center justify-between gap-2">
                 <h2 id="pause-title" class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('week.pause.title') }}</h2>
-                <button type="button" wire:click="closePause" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('week.cancel') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
+                <button type="button" wire:click="closePause" class="grid size-11 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('week.cancel') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
             </div>
             <p class="text-sm text-ink-soft">{{ __('week.pause.intro') }}</p>
             <div class="flex items-center justify-between">
@@ -252,7 +252,7 @@
                 <b class="text-sm text-ink" x-text="monthLabel()"></b>
                 <button type="button" @click="shiftMonth(1)" class="{{ $iconBtn }}" aria-label="{{ __('week.pause.next') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-4 rotate-180'])</button>
             </div>
-            <div class="grid grid-cols-7 gap-0.5 text-center" role="grid">
+            <div class="grid grid-cols-7 gap-0.5 text-center" role="group" aria-label="{{ __('week.pause.title') }}">
                 @foreach (range(1, 7) as $d)
                     <span class="py-0.5 font-mono text-[10px] text-ink-faint">{{ __('week.days.'.$d) }}</span>
                 @endforeach
@@ -269,13 +269,13 @@
                 <span x-show="pause.from && !pause.to" x-cloak>{{ __('week.pause.pick_last') }}</span>
                 <span x-show="pause.from && pause.to" x-cloak x-text="@js(__('week.pause.chosen')).replace(':count', dayCount())"></span>
             </p>
-            @error('pause.from')<p class="text-sm text-bad">{{ $message }}</p>@enderror
-            @error('pause.to')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+            @error('pause.from')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
+            @error('pause.to')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
             <label class="flex flex-col gap-1 text-xs font-medium text-ink-soft">
                 {{ __('week.pause.note') }}
-                <input type="text" x-model="pause.note" maxlength="255" placeholder="{{ __('week.pause.note_placeholder') }}" class="h-10 rounded-card border border-line bg-paper px-3 text-sm text-ink focus:border-accent focus:outline-hidden">
+                <input type="text" x-model="pause.note" maxlength="255" placeholder="{{ __('week.pause.note_placeholder') }}" class="h-11 wb:h-10 rounded-card border border-line bg-paper px-3 text-sm text-ink focus:border-accent focus:outline-hidden">
             </label>
-            @error('pause.note')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+            @error('pause.note')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
             <div class="flex flex-wrap gap-2">
                 <button type="button" @click="savePause()" :disabled="!pause.from" wire:loading.attr="disabled" wire:target="pauseRange" class="{{ $btn }} bg-accent text-accent-fg hover:brightness-110" data-pause-save>
                     <span wire:loading.remove wire:target="pauseRange">{{ __('week.pause.save') }}</span>
@@ -294,7 +294,7 @@
                 @if ($undo)
                     <button type="button" wire:click="undoLast" wire:loading.attr="disabled" class="shrink-0 font-semibold underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" data-undo>{{ __('week.undo') }}</button>
                 @endif
-                <button type="button" wire:click="dismiss" class="shrink-0 rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
+                <button type="button" wire:click="dismiss" class="-my-2 -mr-2.5 grid size-11 shrink-0 place-items-center rounded-full opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="{{ __('shell.close') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
             </p>
         </div>
     @endif

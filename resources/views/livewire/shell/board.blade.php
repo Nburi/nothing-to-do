@@ -35,7 +35,7 @@
     $important = $this->important;
     $showReminder = ! $suggestion->hasPick() && $important->isNotEmpty();
 @endphp
-<div
+<main
     id="content"
     class="shell min-h-dvh"
     data-shell-mode="{{ $mode }}"
@@ -45,16 +45,19 @@
     @keydown.escape.window="peek = null"
     @shell-peek-close.window="peek = null"
 >
-    @if ($notice)
-        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status">
+    {{-- Step 5.2: one heading for the page (the two layouts have no visible title), and the notice sits in a
+         live region that is always there, so screen readers announce what is put into it. --}}
+    <h1 tabindex="-1" class="sr-only" data-page-title>{{ $inSession ? __('shell.session.running').($this->sessionTask ? ': '.$this->sessionTask->title : '') : __('shell.nav.board') }}</h1>
+    <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
+        @if ($notice)
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 {{ $notice }}
-                <button type="button" wire:click="$set('notice', null)" class="rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">
+                <button type="button" wire:click="$set('notice', null)" class="grid size-11 place-items-center rounded-full opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep -my-2 -mr-2.5" aria-label="{{ __('shell.close') }}">
                     @include('shell.icon', ['name' => 'close', 'class' => 'size-4'])
                 </button>
             </p>
-        </div>
-    @endif
+        @endif
+    </div>
 
     {{-- The session card as the browser draws it before the server has answered Start (C1). --}}
     @include('shell.session-ghost')
@@ -75,7 +78,7 @@
                     @if ($done->isNotEmpty())
                         <p class="fold-return flex items-center gap-2 self-start rounded-card bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
                             @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
-                            <span class="line-through decoration-1 opacity-90">{{ $done->first()->title }}</span>
+                            <span class="line-through decoration-1">{{ $done->first()->title }}</span>
                             <span class="font-mono text-xs no-underline">{{ trans_choice('shell.done_tonight', $done->count(), ['count' => $done->count()]) }}</span>
                         </p>
                     @endif
@@ -161,7 +164,7 @@
                         x-text="peek ? @js(__('shell.session.close_board')) : @js(__('shell.session.open_board'))">{{ __('shell.session.open_board') }}</button>
                 </aside>
 
-                <main class="flex min-w-0 flex-1 flex-col gap-5 px-8 py-5">
+                <div class="flex min-w-0 flex-1 flex-col gap-5 px-8 py-5">
                     <div class="fold-arrive mx-auto flex w-full max-w-[680px] items-start gap-4">
                         <div class="min-w-0 flex-1">
                             @include('shell.timeline', ['timeline' => $timeline, 'compact' => true, 'layout' => 'werkbank', 'mode' => 'session', 'idea' => $idea])
@@ -175,13 +178,13 @@
                     <div class="flex flex-1 items-center justify-center pb-10">
                         @include('shell.session-card', ['layout' => 'werkbank', 'session' => $session, 'task' => $this->sessionTask, 'next' => $this->nextInSession, 'timer' => $this->timer])
                     </div>
-                </main>
+                </div>
 
                 {{-- Peek panel: the board's lists next to the rail, without leaving the session. --}}
                 <div x-show="peek" x-cloak x-transition.opacity.duration.150ms class="absolute inset-y-0 left-[92px] z-30 flex w-[min(420px,calc(100vw-92px))] flex-col bg-surface pt-4 shadow-card" style="border-right: var(--t-bw) solid var(--t-line)" @click.outside="peek = null">
                     <div class="flex items-center justify-between px-4 pb-3">
                         <h2 class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('shell.session.peek') }}</h2>
-                        <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
+                        <button type="button" @click="peek = null" class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                     </div>
                     @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
                 </div>
@@ -198,7 +201,7 @@
                     @include('shell.reset-button', ['layout' => 'stapel', 'mode' => 'board'])
                     @include('shell.battery', ['layout' => 'stapel', 'mode' => 'board', 'battery' => $suggestion->battery])
                 </div>
-                <a href="{{ route('shell.settings') }}" wire:navigate class="grid size-9 place-items-center rounded-full border border-line bg-surface text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.nav.settings') }}">@include('shell.icon', ['name' => 'gear', 'class' => 'size-5'])</a>
+                <a href="{{ route('shell.settings') }}" wire:navigate class="grid size-11 wb:size-9 place-items-center rounded-full border border-line bg-surface text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.nav.settings') }}">@include('shell.icon', ['name' => 'gear', 'class' => 'size-5'])</a>
             </header>
 
             <div class="flex flex-col gap-5 px-4 pt-2">
@@ -248,7 +251,7 @@
 
             <nav class="fold-tabs fixed inset-x-0 bottom-0 z-30 flex justify-around bg-surface px-2 pt-2 pb-[max(14px,env(safe-area-inset-bottom))]" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.nav.board') }}">
                 @php($tab = 'flex min-w-14 flex-col items-center gap-0.5 rounded-card px-1.5 py-1 text-[11px] font-semibold text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent')
-                <button type="button" @click="peek = null; window.scrollTo({ top: 0, behavior: 'smooth' })" class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></button>
+                <button type="button" @click="peek = null; window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })" class="{{ $tab }} text-accent-ink" aria-current="page">@include('shell.icon', ['name' => 'desk'])<span>{{ __('shell.tabs.desk') }}</span></button>
                 <x-shell.action key="week_plan" layout="stapel" mode="board" as="a" :href="route('shell.week')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'calendar'])<span>{{ __('shell.tabs.calendar') }}</span></x-shell.action>
                 <x-shell.action key="browse_later" layout="stapel" mode="board" as="a" :href="route('shell.ideas')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'later'])<span>{{ __('shell.tabs.later') }}</span></x-shell.action>
                 <x-shell.action key="projects" layout="stapel" mode="board" as="a" :href="route('shell.projects')" wire:navigate class="{{ $tab }}">@include('shell.icon', ['name' => 'project'])<span>{{ __('projects.nav') }}</span></x-shell.action>
@@ -274,7 +277,7 @@
                 <nav class="fold-drawer relative flex flex-wrap items-center justify-center gap-x-1 gap-y-1 bg-surface px-3 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-card" style="border-top: var(--t-bw) solid var(--t-line)" aria-label="{{ __('shell.session.drawer') }}">
                     <span class="absolute left-1/2 top-1.5 h-1 w-11 -translate-x-1/2 rounded-full bg-line" aria-hidden="true"></span>
                     <x-shell.action key="capture" layout="stapel" mode="session" @click="$store.capture.sheetOpen = true" :aria-label="__('capture.line.label')"
-                        class="grid size-9 place-items-center rounded-full bg-accent text-accent-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                        class="grid size-11 wb:size-9 place-items-center rounded-full bg-accent text-accent-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                         @include('shell.icon', ['name' => 'plus', 'class' => 'size-5'])
                     </x-shell.action>
                     @if ($crunch->isHard())
@@ -303,14 +306,14 @@
         @endif
 
         {{-- The list sheet: piles, bottom tabs and the drawer open it. --}}
-        <div x-show="peek" x-cloak class="fixed inset-0 z-40 flex flex-col justify-end" role="dialog" aria-modal="true">
+        <div x-show="peek" x-cloak x-trap.noscroll="peek" class="fixed inset-0 z-40 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="{{ __('shell.session.peek') }}">
             <div class="absolute inset-0 bg-black/40" @click="peek = null" x-show="peek" x-transition.opacity></div>
             <div class="relative flex max-h-[82dvh] flex-col rounded-t-panel bg-surface pt-2 pb-[env(safe-area-inset-bottom)] shadow-card"
                 x-show="peek" x-transition:enter="transition duration-200 ease-tactile" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
                 x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
                 <div class="flex items-center justify-between px-4 pb-2">
                     <span class="h-1 w-11 rounded-full bg-line" aria-hidden="true"></span>
-                    <button type="button" @click="peek = null" class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
+                    <button type="button" @click="peek = null" class="grid size-11 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.close') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                 </div>
                 @include('shell.lists-panel', ['layout' => 'stapel', 'mode' => $mode, 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => $mode === 'board' ? $suggestedId : null, 'locked' => $locked])
             </div>
@@ -328,4 +331,4 @@
 
     {{-- Step 4.2: the crunch screen, the same over both layouts (panel on the right / sheet from the bottom). --}}
     <livewire:shell.crunch :key="'crunch'" />
-</div>
+</main>

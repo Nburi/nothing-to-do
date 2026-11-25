@@ -4,7 +4,7 @@
 @if ($part === 'head')
     <div class="hidden wb:block">@include('shell.topbar', ['active' => 'projects'])</div>
     <header class="sticky top-0 z-20 flex items-center gap-2 bg-paper px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))] wb:hidden">
-        <a href="{{ $back ?? route('shell.board') }}" wire:navigate class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ $backLabel ?? __('shell.ideas.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
+        <a href="{{ $back ?? route('shell.board') }}" wire:navigate class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ $backLabel ?? __('shell.ideas.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
         <span class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">nothing-to-do</span>
     </header>
 @else

@@ -10,25 +10,25 @@
     $nextIds = $bundle->visible->pluck('id')->all();
     $current = $bundle->stage ? $stages->search(fn ($s) => $s->id === $bundle->stage->id) : -1;
     $stateOf = fn (int $i) => $current === -1 || $i < $current ? 'done' : ($i === $current ? 'now' : 'waits');
-    $btn = 'inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50';
-    $input = 'min-h-10 rounded-card border bg-paper px-3 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $btn = 'inline-flex min-h-11 wb:min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50';
+    $input = 'min-h-11 wb:min-h-10 rounded-card border bg-paper px-3 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
     $groups = $stages->map(fn ($s) => ['key' => 'stage-'.$s->id, 'stage' => $s, 'steps' => $steps->where('stage_id', $s->id)->values()]);
     $loose = $steps->filter(fn ($t) => $t->stage_id === null || ! $stages->contains('id', $t->stage_id))->values();
 @endphp
 <div id="content" class="min-h-dvh pb-[calc(88px+env(safe-area-inset-bottom))] wb:pb-0">
     @include('shell.projects-chrome', ['part' => 'head', 'back' => route('shell.projects'), 'backLabel' => __('projects.back')])
 
-    @if ($notice)
-        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
+    <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
+            @if ($notice)
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 <span class="min-w-0 wrap-break-word">{{ $notice }}</span>
                 @if ($undo)
                     <button type="button" wire:click="undoLast" wire:loading.attr="disabled" class="shrink-0 font-semibold underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep">{{ __('projects.undo') }}</button>
                 @endif
-                <button type="button" wire:click="dismiss" class="shrink-0 rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
+                <button type="button" wire:click="dismiss" class="shrink-0 -my-2 -mr-2.5 grid size-11 place-items-center rounded-full opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="{{ __('shell.close') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
             </p>
-        </div>
-    @endif
+            @endif
+    </div>
 
     <main class="mx-auto flex w-full max-w-4xl flex-col gap-5 lg:max-w-6xl px-4 pt-2 pb-12 wb:px-6 wb:pt-6">
         <a href="{{ route('shell.projects') }}" wire:navigate class="hidden items-center gap-1 self-start text-sm font-semibold text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent wb:inline-flex">
@@ -42,7 +42,7 @@
                     <label for="project-name" class="sr-only">{{ __('projects.name_label') }}</label>
                     <input id="project-name" x-ref="n" type="text" wire:model="name" maxlength="120" @keydown.escape="$wire.set('editingName', false)"
                         @class([$input, 'w-full font-display text-xl', 'border-bad' => $errors->has('name'), 'border-line' => ! $errors->has('name')]) aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">
-                    @error('name')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                    @error('name')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                 </div>
                 <button type="submit" class="{{ $btn }} bg-accent text-accent-fg">{{ __('projects.save') }}</button>
                 <button type="button" wire:click="$set('editingName', false)" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
@@ -59,7 +59,7 @@
         <section class="flex flex-col gap-3 rounded-panel bg-surface p-4" style="border: var(--t-bw) solid var(--t-line)" aria-labelledby="roadmap">
             <div class="flex items-center justify-between gap-2">
                 <h2 id="roadmap" class="font-mono text-[11px] uppercase tracking-widest text-ink-faint">{{ __('projects.roadmap') }}</h2>
-                <button type="button" wire:click="openStage" class="inline-flex min-h-9 items-center gap-1 rounded-full border border-line px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">@include('shell.icon', ['name' => 'plus', 'class' => 'size-4']) {{ __('projects.add_stage') }}</button>
+                <button type="button" wire:click="openStage" class="inline-flex min-h-11 wb:min-h-9 items-center gap-1 rounded-full border border-line px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">@include('shell.icon', ['name' => 'plus', 'class' => 'size-4']) {{ __('projects.add_stage') }}</button>
             </div>
             @if ($stages->isEmpty())
                 <p class="text-sm text-ink-soft">{{ __('projects.roadmap_empty') }}</p>
@@ -72,12 +72,12 @@
                     <div class="flex min-w-0 flex-1 basis-48 flex-col gap-1">
                         <label for="stage-name" class="text-xs font-semibold text-ink-soft">{{ __('projects.stage_name') }}</label>
                         <input id="stage-name" x-ref="s" type="text" wire:model="stageName" maxlength="120" @keydown.escape="$wire.cancelStage()" @class([$input, 'border-bad' => $errors->has('stageName'), 'border-line' => ! $errors->has('stageName')])>
-                        @error('stageName')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                        @error('stageName')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                     </div>
                     <div class="flex flex-col gap-1">
                         <label for="stage-date" class="text-xs font-semibold text-ink-soft">{{ __('projects.stage_date') }}</label>
                         <input id="stage-date" type="date" wire:model="stageDate" @class([$input, 'border-bad' => $errors->has('stageDate'), 'border-line' => ! $errors->has('stageDate')])>
-                        @error('stageDate')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                        @error('stageDate')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                     </div>
                     <button type="submit" wire:loading.attr="disabled" wire:target="addStage" class="{{ $btn }} bg-accent text-accent-fg">{{ __('projects.create') }}</button>
                     <button type="button" wire:click="cancelStage" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
@@ -113,12 +113,12 @@
                         <div class="flex min-w-0 flex-1 basis-48 flex-col gap-1">
                             <label for="edit-stage-name" class="text-xs font-semibold text-ink-soft">{{ __('projects.stage_name') }}</label>
                             <input id="edit-stage-name" type="text" wire:model="editStageName" maxlength="120" @class([$input, 'border-bad' => $errors->has('editStageName'), 'border-line' => ! $errors->has('editStageName')])>
-                            @error('editStageName')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                            @error('editStageName')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                         </div>
                         <div class="flex flex-col gap-1">
                             <label for="edit-stage-date" class="text-xs font-semibold text-ink-soft">{{ __('projects.stage_date') }}</label>
                             <input id="edit-stage-date" type="date" wire:model="editStageDate" @class([$input, 'border-bad' => $errors->has('editStageDate'), 'border-line' => ! $errors->has('editStageDate')])>
-                            @error('editStageDate')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                            @error('editStageDate')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                         </div>
                         <button type="submit" class="{{ $btn }} bg-accent text-accent-fg">{{ __('projects.save') }}</button>
                         <button type="button" wire:click="cancelStage" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
@@ -162,7 +162,7 @@
                         <label for="new-step-{{ $g['key'] }}" class="sr-only">{{ __('projects.step_title') }}</label>
                         <input id="new-step-{{ $g['key'] }}" type="text" wire:model="newStep.{{ $g['key'] }}" maxlength="255" placeholder="+ {{ __('projects.step_title') }}" autocomplete="off"
                             @class([$input, 'w-full', 'border-bad' => $errors->has('newStep.'.$g['key']), 'border-line border-dashed' => ! $errors->has('newStep.'.$g['key'])])>
-                        @error('newStep.'.$g['key'])<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                        @error('newStep.'.$g['key'])<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                     </div>
                     <label class="sr-only" for="new-step-list-{{ $g['key'] }}">{{ __('projects.group_list') }}</label>
                     <select id="new-step-list-{{ $g['key'] }}" wire:model="newStepList" class="{{ $input }} border-line pr-8">

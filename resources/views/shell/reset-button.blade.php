@@ -3,7 +3,7 @@
 @php
     $withLabel = $label ?? false;
     $cls = \Illuminate\Support\Arr::toCssClasses([
-        'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-line bg-surface text-sm font-medium text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60',
+        'inline-flex h-11 wb:h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-line bg-surface text-sm font-medium text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60',
         'px-3' => $withLabel,
         'w-9' => ! $withLabel,
     ]);

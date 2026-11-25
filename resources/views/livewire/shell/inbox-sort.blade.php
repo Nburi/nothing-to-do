@@ -19,7 +19,7 @@
             $left = count($queue);
             $counts = $this->counts;
         @endphp
-        <div class="fixed inset-0 z-50 flex items-end justify-center wb:items-center" role="dialog" aria-modal="true" aria-label="{{ __('sort.title') }}">
+        <div class="fixed inset-0 z-50 flex items-end justify-center wb:items-center" role="dialog" aria-modal="true" aria-label="{{ __('sort.title') }}" x-trap.noscroll.noautofocus="true">
             <div class="absolute inset-0 hidden bg-black/45 wb:block" wire:click="close"></div>
 
             {{-- ═════ Desktop (Werkbank): the card with 1 / 2 / 3 and Enter. ═════ --}}
@@ -61,7 +61,7 @@
                             </button>
                         @endforeach
                     </div>
-                    @error('list') <p class="-mt-2 text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                    @error('list') <p data-field-error role="alert" class="-mt-2 text-xs font-semibold text-bad">{{ $message }}</p> @enderror
 
                     @unless ($isLater)
                         <div>

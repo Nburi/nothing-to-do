@@ -6,23 +6,23 @@
     $total = $doneCount + $steps->count();
     $locked = $this->locked;
     $list = $group->list ?? 'tasks';
-    $btn = 'inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50';
-    $input = 'min-h-10 rounded-card border bg-paper px-3 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $btn = 'inline-flex min-h-11 wb:min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50';
+    $input = 'min-h-11 wb:min-h-10 rounded-card border bg-paper px-3 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
 @endphp
 <div id="content" class="min-h-dvh pb-[calc(88px+env(safe-area-inset-bottom))] wb:pb-0">
     @include('shell.projects-chrome', ['part' => 'head', 'back' => route('shell.projects'), 'backLabel' => __('projects.back')])
 
-    @if ($notice)
-        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
+    <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status" data-notice>
+            @if ($notice)
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 <span class="min-w-0 wrap-break-word">{{ $notice }}</span>
                 @if ($undo)
                     <button type="button" wire:click="undoLast" wire:loading.attr="disabled" class="shrink-0 font-semibold underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep">{{ __('projects.undo') }}</button>
                 @endif
-                <button type="button" wire:click="dismiss" class="shrink-0 rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
+                <button type="button" wire:click="dismiss" class="shrink-0 -my-2 -mr-2.5 grid size-11 place-items-center rounded-full opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="{{ __('shell.close') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
             </p>
-        </div>
-    @endif
+            @endif
+    </div>
 
     <main class="mx-auto flex w-full max-w-2xl flex-col gap-5 lg:max-w-5xl px-4 pt-2 pb-12 wb:px-6 wb:pt-6">
         <a href="{{ route('shell.projects') }}" wire:navigate class="hidden items-center gap-1 self-start text-sm font-semibold text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent wb:inline-flex">
@@ -35,7 +35,7 @@
                     <label for="group-name" class="sr-only">{{ __('projects.name_label') }}</label>
                     <input id="group-name" x-ref="n" type="text" wire:model="name" maxlength="120" @keydown.escape="$wire.set('editingName', false)"
                         @class([$input, 'w-full font-display text-xl', 'border-bad' => $errors->has('name'), 'border-line' => ! $errors->has('name')]) aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">
-                    @error('name')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                    @error('name')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                 </div>
                 <button type="submit" class="{{ $btn }} bg-accent text-accent-fg">{{ __('projects.save') }}</button>
                 <button type="button" wire:click="$set('editingName', false)" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
@@ -73,7 +73,7 @@
                     <label for="new-step" class="sr-only">{{ __('projects.step_title') }}</label>
                     <input id="new-step" type="text" wire:model="newStep" maxlength="255" placeholder="+ {{ __('projects.step_title') }}" autocomplete="off"
                         @class([$input, 'w-full', 'border-bad' => $errors->has('newStep'), 'border-line border-dashed' => ! $errors->has('newStep')])>
-                    @error('newStep')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                    @error('newStep')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                 </div>
                 <button type="submit" wire:loading.attr="disabled" wire:target="addStep" class="{{ $btn }} border border-line bg-surface text-ink hover:bg-paper">{{ __('projects.add_step') }}</button>
             </form>

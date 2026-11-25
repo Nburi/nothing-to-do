@@ -25,7 +25,7 @@
             @include('shell.battery', ['layout' => 'werkbank', 'mode' => 'board', 'battery' => $battery])
         @endisset
         <a href="{{ route('shell.settings') }}" wire:navigate
-            @class(['grid size-9 place-items-center rounded-full border bg-surface transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'border-accent text-accent-ink' => ($active ?? '') === 'settings', 'border-line text-ink-soft hover:text-ink' => ($active ?? '') !== 'settings'])
+            @class(['grid size-11 wb:size-9 place-items-center rounded-full border bg-surface transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'border-accent text-accent-ink' => ($active ?? '') === 'settings', 'border-line text-ink-soft hover:text-ink' => ($active ?? '') !== 'settings'])
             aria-label="{{ __('shell.nav.settings') }}">@include('shell.icon', ['name' => 'gear', 'class' => 'size-5'])</a>
     </div>
 </header>

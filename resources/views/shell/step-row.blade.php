@@ -13,7 +13,7 @@
             ?Collection $stages (project), ?Collection $others (open steps of the project) --}}
 @php
     $dim = $waiting ? 'opacity-60' : '';
-    $icon = 'grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-30 disabled:hover:bg-transparent '.$dim;
+    $icon = 'grid size-11 wb:size-9 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-30 disabled:hover:bg-transparent '.$dim;
     $canStart = in_array($task->list, \App\Models\Task::WORK_LISTS, true);
     $meta = \App\Shell\TaskFace::meta($task);
     $blocker = $task->waitsOn && ! $task->waitsOn->is_completed ? $task->waitsOn : null;
@@ -24,7 +24,7 @@
     style="border: var(--t-bw) solid {{ $next ? 'var(--t-accent)' : 'var(--t-line)' }}">
     <button type="button" data-grip aria-pressed="false" aria-describedby="step-drag-hint"
         aria-label="{{ __('projects.move.grip', ['title' => $task->title]) }}" title="{{ __('projects.move.grip_title') }}"
-        class="-ml-1.5 grid size-9 shrink-0 cursor-grab place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+        class="-ml-1.5 grid size-11 wb:size-9 shrink-0 cursor-grab place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
         @include('shell.icon', ['name' => 'grip', 'class' => 'size-4'])
     </button>
     <div class="min-w-0 flex-1 basis-40 py-1 {{ $dim }}">
@@ -48,7 +48,7 @@
         @if ($canStart)
             <button type="button" wire:click="start({{ $task->id }})" wire:loading.attr="disabled" @disabled($locked)
                 title="{{ $locked ? __('projects.not_now') : __('projects.start') }}" aria-label="{{ __('projects.start') }}: {{ $task->title }}"
-                class="ml-1 grid size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40 {{ $dim }}">
+                class="ml-1 grid size-11 wb:size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40 {{ $dim }}">
                 @include('shell.icon', ['name' => 'play', 'class' => 'size-4'])
             </button>
         @endif

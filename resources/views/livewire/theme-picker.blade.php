@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-5">
     <div>
-        <h3 class="mb-1 text-base font-medium text-ink">{{ __('themes.title') }}</h3>
+        <h2 class="mb-1 text-base font-semibold text-ink">{{ __('themes.title') }}</h2>
         <p class="text-sm leading-relaxed text-ink-soft">{{ __('themes.intro') }}</p>
     </div>
 

@@ -40,7 +40,7 @@
                     @if (in_array($task->list, \App\Models\Task::WORK_LISTS, true))
                         <button type="button" wire:click="start({{ $task->id }})" wire:loading.attr="disabled" @disabled($locked)
                             title="{{ $locked ? __('projects.not_now') : __('projects.start') }}" aria-label="{{ __('projects.start') }}: {{ $task->title }}"
-                            class="-my-1 grid size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40">
+                            class="-my-1 grid size-11 wb:size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40">
                             @include('shell.icon', ['name' => 'play', 'class' => 'size-4'])
                         </button>
                     @endif

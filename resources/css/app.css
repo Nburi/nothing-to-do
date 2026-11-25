@@ -1372,3 +1372,33 @@ body[data-step-lift] [data-notice] {
     background-color: var(--t-accent-soft);
   }
 }
+
+/*
+  Step 5.2 · Accessibility.
+  Touch targets: on the phone every link and button of the new shell gets an invisible 44 px hit
+  area (WCAG 2.5.5), so small text links ("Ansehen", "+ 10 weitere") are easy to hit without
+  changing the layout. The pseudo-element only grows a target that is smaller than 44 px. Lives in
+  `components`, so any utility (`absolute`, `fixed`, `after:*`) wins; `hit-none` opts out.
+*/
+@layer components {
+  @media (max-width: 44.99rem) {
+    :where([data-shell] a[href], [data-shell] button, [data-shell] summary, [data-shell] [role='button'], [data-shell] [role='tab']):where(:not(.hit-none)) {
+      position: relative;
+    }
+    :where([data-shell] a[href], [data-shell] button, [data-shell] summary, [data-shell] [role='button'], [data-shell] [role='tab']):where(:not(.hit-none))::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  /* A visible focus ring for anything the views forget (those with their own ring set `outline-hidden`). */
+  :where([data-shell] a, [data-shell] button, [data-shell] summary, [data-shell] input, [data-shell] select, [data-shell] textarea, [data-shell] [tabindex]):focus-visible {
+    outline: 2px solid var(--t-accent);
+    outline-offset: 2px;
+  }
+}

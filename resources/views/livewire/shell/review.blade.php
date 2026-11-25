@@ -13,13 +13,13 @@
     $paused = array_values(array_filter($next['days'], fn ($d) => $d['paused']));
     $card = 'flex min-w-0 flex-col gap-4 rounded-panel bg-surface p-4 wb:p-5';
     $eyebrow = 'font-mono text-[10.5px] font-medium uppercase tracking-widest text-ink-faint';
-    $btn = 'inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-4 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $btn = 'inline-flex min-h-11 wb:min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-4 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
     $chip = fn (array $row) => __($row['hard'] ? 'shell.review.hard_on' : 'shell.review.soft_on', ['date' => $day($row['date'], 'dd D.M.')]);
 @endphp
 <div id="content" class="min-h-dvh pb-[calc(88px+env(safe-area-inset-bottom))] wb:pb-0">
     <div class="hidden wb:block">@include('shell.topbar', ['active' => 'review'])</div>
     <header class="sticky top-0 z-20 flex items-center gap-2 bg-paper px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))] wb:hidden">
-        <a href="{{ route('shell.board') }}" wire:navigate class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.review.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
+        <a href="{{ route('shell.board') }}" wire:navigate class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.review.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
         <span class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">nothing-to-do</span>
     </header>
 

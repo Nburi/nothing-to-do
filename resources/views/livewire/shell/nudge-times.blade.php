@@ -51,7 +51,7 @@
             </template>
         </p>
         <button type="button" x-show="state === 'off' || state === 'failed' || state === 'enabling'" x-cloak @click="enable()" :disabled="state === 'enabling'"
-            class="inline-flex h-9 shrink-0 items-center rounded-card border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-wait disabled:opacity-60">
+            class="inline-flex h-11 wb:h-9 shrink-0 items-center rounded-card border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-wait disabled:opacity-60">
             {{ __('shell.nudge.push.enable') }}
         </button>
     </div>
@@ -72,10 +72,10 @@
 
                     @if ($time !== '' || $errors->has("times.{$day}"))
                         <input type="time" step="60" wire:model="times.{{ $day }}" aria-label="{{ __('shell.nudge.time_label', ['day' => $label['long']]) }}"
-                            @class(['h-10 w-32 rounded-card bg-paper px-3 font-mono text-sm tabular-nums text-ink focus:outline-hidden focus:ring-2 focus:ring-accent', 'border-bad' => $errors->has("times.{$day}"), 'border-line' => ! $errors->has("times.{$day}")])
+                            @class(['h-11 wb:h-10 w-32 rounded-card bg-paper px-3 font-mono text-sm tabular-nums text-ink focus:outline-hidden focus:ring-2 focus:ring-accent', 'border-bad' => $errors->has("times.{$day}"), 'border-line' => ! $errors->has("times.{$day}")])
                             style="border-width: var(--t-bw)" @error("times.{$day}") aria-invalid="true" aria-describedby="{{ $errorId }}" @enderror>
                         <button type="button" wire:click="clearTime({{ $day }})" aria-label="{{ __('shell.nudge.remove_label', ['day' => $label['long']]) }}"
-                            class="grid size-9 place-items-center rounded-full text-ink-faint hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-faint hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                             @include('shell.icon', ['name' => 'close', 'class' => 'size-4'])
                         </button>
                         @if ($day === 1 && $time !== '')
@@ -84,7 +84,7 @@
                     @else
                         {{-- Sits in the input's slot: an empty day reads as an empty field you can fill. --}}
                         <button type="button" wire:click="addTime({{ $day }})" aria-label="{{ __('shell.nudge.add') }}: {{ $label['long'] }}"
-                            class="inline-flex h-10 w-32 items-center justify-center gap-1.5 rounded-card border border-dashed border-line text-sm font-semibold text-ink-soft hover:border-ink-faint hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                            class="inline-flex h-11 wb:h-10 w-32 items-center justify-center gap-1.5 rounded-card border border-dashed border-line text-sm font-semibold text-ink-soft hover:border-ink-faint hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                             @include('shell.icon', ['name' => 'plus', 'class' => 'size-4'])
                             {{ __('shell.nudge.add') }}
                         </button>
@@ -92,7 +92,7 @@
                     @endif
 
                     @error("times.{$day}")
-                        <span id="{{ $errorId }}" class="basis-full text-xs font-semibold text-bad wb:pl-31">{{ $message }}</span>
+                        <span data-field-error role="alert" id="{{ $errorId }}" class="basis-full text-xs font-semibold text-bad wb:pl-31">{{ $message }}</span>
                     @enderror
                 </li>
             @endforeach
@@ -102,7 +102,7 @@
 
         <div class="flex flex-wrap items-center gap-3">
             <button type="submit" wire:loading.attr="disabled" wire:target="save"
-                class="inline-flex h-10 items-center gap-2 rounded-card bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-wait disabled:opacity-60">
+                class="inline-flex h-11 wb:h-10 items-center gap-2 rounded-card bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-wait disabled:opacity-60">
                 <span wire:loading.remove wire:target="save">{{ __('shell.nudge.save') }}</span>
                 <span wire:loading wire:target="save">{{ __('shell.nudge.saving') }}</span>
             </button>

@@ -2199,8 +2199,21 @@ document.addEventListener('alpine:init', () => {
             ghost?.drop(fade);
         },
 
+        /**
+         * Step 5.2: the part of the page the focus was on has just gone inert or left the page (the board
+         * folded away, the session ended). Put the focus on the page heading, which names the new state,
+         * so keyboard and screen reader users are not left on nothing. A focus that is somewhere
+         * usable (a field, a sheet) stays where it is.
+         */
+        refocus() {
+            const active = document.activeElement;
+            const lost = !active || active === document.body || !document.contains(active) || active.closest('[inert]');
+            if (lost) this.$root.querySelector('h1')?.focus({ preventScroll: true });
+        },
+
         enter() {
             this.pulse('shell-entering', FOLD_MS + 400);
+            this.$nextTick(() => this.refocus());
             const from = this.from;
             const ghost = this.ghost;
             this.from = null;
@@ -2245,6 +2258,7 @@ document.addEventListener('alpine:init', () => {
 
         leave() {
             this.pulse('shell-returning', FOLD_MS + 400);
+            this.$nextTick(() => this.refocus());
         },
 
         pulse(name, ms) {
@@ -2626,3 +2640,59 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/**
+ * Step 5.2 · Form errors belong to their field.
+ * The views print a validation message as `<p data-field-error role="alert">` right after the field
+ * (or after the label / group that holds it). This links each one to that field with
+ * aria-describedby (and aria-invalid on a real input), so a screen reader reads the message with
+ * the field and not just somewhere on the page. One place, so a new form gets it for free.
+ */
+(() => {
+    const FIELD = 'input:not([type="hidden"]), select, textarea';
+    const GROUP = '[role="radiogroup"], [role="group"]';
+    let queued = false;
+    let nextId = 0;
+
+    const fieldFor = (error) => {
+        // Walk back through the siblings; when there are none left, climb one level (three at most).
+        let node = error;
+        for (let climb = 0; climb < 3 && node && node.parentElement; climb++) {
+            for (let sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+                if (sibling.matches('[data-field-error]')) continue;
+                if (sibling.matches(FIELD) || sibling.matches(GROUP)) return sibling;
+                const inner = sibling.querySelector(`${GROUP}, ${FIELD}`);
+                if (inner) return inner;
+            }
+            node = node.parentElement;
+            if (node.matches('form, [role="dialog"], section, main')) break;
+        }
+        return null;
+    };
+
+    const link = () => {
+        queued = false;
+        document.querySelectorAll('[data-field-error]:not([data-field-linked])').forEach((error) => {
+            error.dataset.fieldLinked = '';
+            const field = fieldFor(error);
+            if (!field) return;
+            if (!error.id) error.id = `field-error-${++nextId}`;
+            const described = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            if (!described.includes(error.id)) described.push(error.id);
+            field.setAttribute('aria-describedby', described.join(' '));
+            if (field.matches(FIELD)) field.setAttribute('aria-invalid', 'true');
+        });
+    };
+
+    const schedule = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(link);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        link();
+        // A morph may strip what was added (it renders the server's HTML again), so link again then too.
+        new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-field-linked'] });
+    });
+})();

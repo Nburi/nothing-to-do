@@ -11,7 +11,7 @@
 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 {{ $class ?? '' }}">
     @foreach ($keys as $key)
         <x-shell.action :key="$key" :layout="$layout" :mode="$mode" as="a" :href="$links[$key][0]" wire:navigate
-            class="inline-flex min-h-8 items-center gap-1.5 rounded-card text-xs font-semibold text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+            class="inline-flex min-h-11 wb:min-h-8 items-center gap-1.5 rounded-card text-xs font-semibold text-ink-soft transition hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
             @include('shell.icon', ['name' => $links[$key][1], 'class' => 'size-3.5'])<span>{{ $links[$key][2] }}</span>
         </x-shell.action>
     @endforeach
