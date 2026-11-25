@@ -16,10 +16,10 @@ use App\Services\Planning\CrunchView;
 use App\Services\Planning\EveningReset;
 use App\Services\Planning\FreeTimeIdeas;
 use App\Services\Planning\IdeaOffer;
+use App\Services\Planning\PlanningContext;
 use App\Services\Planning\Suggestion;
 use App\Services\Planning\Suggestions;
 use App\Services\Planning\SundayReview;
-use App\Services\Planning\WeekPlanReader;
 use App\Services\Projects\Bundle;
 use App\Services\Projects\NextSteps;
 use App\Support\TaskMutator;
@@ -118,17 +118,27 @@ class Board extends Component
         ];
     }
 
+    /**
+     * One read of the plan (open tasks, categories, blocks, slots) for this render. The pick, the free-time
+     * idea and the crunch used to read it three times each (step 5.2: 51 queries on /board, now fewer).
+     */
+    #[Computed]
+    public function planning(): PlanningContext
+    {
+        return PlanningContext::for($this->user, $this->now);
+    }
+
     #[Computed]
     public function suggestion(): Suggestion
     {
-        return app(Suggestions::class)->current($this->user, $this->now);
+        return app(Suggestions::class)->current($this->user, $this->now, $this->planning);
     }
 
     /** Free time (step 3.4): the idea from Later, "mine", or why there is none; and the free slot for the time line. */
     #[Computed]
     public function idea(): IdeaOffer
     {
-        return app(FreeTimeIdeas::class)->current($this->user, $this->now);
+        return app(FreeTimeIdeas::class)->current($this->user, $this->now, $this->planning);
     }
 
     /**
@@ -138,7 +148,7 @@ class Board extends Component
     #[Computed]
     public function crunch(): CrunchView
     {
-        return app(CrunchOverview::class)->for($this->user, $this->now, seen: ! $this->inSession());
+        return app(CrunchOverview::class)->for($this->user, $this->now, seen: ! $this->inSession(), context: $this->planning);
     }
 
     /**
@@ -299,7 +309,7 @@ class Board extends Component
         $date = $local->toDateString();
 
         $categories = EventCategory::forUser($this->user)->get()->keyBy('id');
-        $blocks = app(WeekPlanReader::class)->blocks($this->user, $date, $date)[$date] ?? [];
+        $blocks = $this->planning->blocks[$date] ?? [];
 
         $from = max(0, min($local->hour - 1, 18));
         $to = min(24, max($from + 6, $local->hour + 4));
@@ -558,7 +568,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'session', 'suggestion', 'bundles', 'lists', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
+        foreach (['now', 'planning', 'session', 'suggestion', 'bundles', 'lists', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
             unset($this->{$computed});
         }
     }

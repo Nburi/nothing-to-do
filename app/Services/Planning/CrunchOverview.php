@@ -58,10 +58,10 @@ final class CrunchOverview
      * @param  bool  $withFitDates  The crunch screen asks for the proposed dates, the board does not: they cost one
      *                              engine run per late hard task and candidate day, and the board renders often.
      */
-    public function for(User $user, ?CarbonImmutable $now = null, bool $seen = false, bool $withFitDates = false): CrunchView
+    public function for(User $user, ?CarbonImmutable $now = null, bool $seen = false, bool $withFitDates = false, ?PlanningContext $context = null): CrunchView
     {
         $now = UserClock::now($user, $now);
-        $context = PlanningContext::for($user, $now, $this->reader);
+        $context ??= PlanningContext::for($user, $now, $this->reader);
         $forecast = $this->capacity->forecastFor($context);
         $this->watch->record($user, $forecast, $now, $seen);
 

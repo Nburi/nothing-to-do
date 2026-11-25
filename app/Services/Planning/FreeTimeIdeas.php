@@ -43,9 +43,10 @@ final class FreeTimeIdeas
         private readonly Capacity $capacity = new Capacity,
     ) {}
 
-    public function current(User $user, ?CarbonImmutable $now = null): IdeaOffer
+    /** @param  PlanningContext|null  $context  a read of the plan the caller already has (the board builds one per render) */
+    public function current(User $user, ?CarbonImmutable $now = null, ?PlanningContext $context = null): IdeaOffer
     {
-        $context = PlanningContext::for($user, $now, $this->reader);
+        $context ??= PlanningContext::for($user, $now, $this->reader);
         [$slot, $isNow] = $this->slotFor($context);
         $evening = Evening::for($user, $context->today);
         $mine = $slot !== null && $slot->overlaps($evening?->mine_from, $evening?->mine_until);
