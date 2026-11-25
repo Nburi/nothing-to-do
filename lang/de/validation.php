@@ -32,7 +32,9 @@ return [
     'alpha_num' => 'Das Feld :attribute darf nur Buchstaben und Zahlen enthalten.',
     'any_of' => 'Das Feld :attribute ist ungültig.',
     'array' => 'Das Feld :attribute muss eine Liste (Array) sein.',
+    'array_keys' => 'Das Feld :attribute darf nur die folgenden Schlüssel enthalten: :values.',
     'ascii' => 'Das Feld :attribute darf nur einzelbytige alphanumerische Zeichen und Symbole enthalten.',
+    'base64' => 'Das Feld :attribute muss ein gültiger Base64-String sein.',
     'before' => 'Das Feld :attribute muss ein Datum vor dem :date sein.',
     'before_or_equal' => 'Das Feld :attribute muss ein Datum vor dem oder gleich dem :date sein.',
     'between' => [

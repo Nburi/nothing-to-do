@@ -69,7 +69,7 @@ class WeekReview
             $activeDays += $count > 0 ? 1 : 0;
 
             if ($count > 0 && ($best === null || $count > $best['count'])) {
-                $best = ['label' => $date->locale('de')->isoFormat('dddd'), 'count' => $count];
+                $best = ['label' => $date->locale(app()->getLocale())->isoFormat('dddd'), 'count' => $count];
             }
         }
 
@@ -205,7 +205,7 @@ class WeekReview
         ksort($byDay);
 
         return collect($byDay)->map(fn (array $d) => [
-            'label' => $d['date']->locale('de')->isoFormat('dddd, D. MMMM'),
+            'label' => $d['date']->locale(app()->getLocale())->isoFormat('dddd, D. MMMM'),
             'titles' => $d['titles'],
             'more' => $d['more'],
         ])->values()->all();

@@ -15,6 +15,10 @@
             <livewire:theme-picker />
         </section>
 
+        <section class="rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
+            <livewire:shell.language-picker />
+        </section>
+
         <section id="kategorien" class="scroll-mt-20 rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
             <livewire:shell.categories />
         </section>
@@ -25,6 +29,15 @@
 
         <section class="rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
             <livewire:shell.capture-tokens />
+        </section>
+
+        <section class="flex flex-col gap-4 rounded-panel bg-surface p-5 shadow-card wb:p-7" style="border: var(--t-bw) solid var(--t-line)">
+            <div>
+                <h3 class="mb-1 text-base font-medium text-ink">{{ __('onboarding.tour_card.title') }}</h3>
+                <p class="text-sm leading-relaxed text-ink-soft">{{ __('onboarding.tour_card.intro') }}</p>
+            </div>
+            <a href="{{ route('shell.board', ['tour' => 1]) }}" wire:navigate
+                class="inline-flex min-h-11 w-fit items-center rounded-card border border-line px-4 text-sm font-medium text-ink transition hover:border-ink-faint focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('onboarding.tour_card.open') }}</a>
         </section>
 
         <p class="text-sm text-ink-faint">

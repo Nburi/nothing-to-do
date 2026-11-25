@@ -14,6 +14,7 @@ use App\Planning\Rhythm;
 use App\Planning\Session\Phase;
 use App\Services\FocusSession;
 use App\Services\PushNotifier;
+use App\Support\Locales;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -141,7 +142,7 @@ final class CrunchWatch
         }
 
         try {
-            $payload = $this->payload($user, $this->capacity->forecast($user, $local), $local);
+            $payload = Locales::within($user, fn () => $this->payload($user, $this->capacity->forecast($user, $local), $local));
             if ($payload === null) {
                 return false; // solved in the meantime
             }

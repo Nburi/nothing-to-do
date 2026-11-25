@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\RecordModuleVisit;
+use App\Http\Middleware\SetUserLocale;
 use App\Services\ErrorStats;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -21,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // No-ops on every route that isn't a module page — see the
         // middleware's own docblock for why this is registered globally
         // instead of attached per-route.
-        $middleware->web(append: [RecordModuleVisit::class]);
+        $middleware->web(append: [RecordModuleVisit::class, SetUserLocale::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // This callback *replaces* Laravel's own expectsJson() default, so a

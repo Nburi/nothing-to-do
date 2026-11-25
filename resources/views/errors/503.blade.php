@@ -11,9 +11,9 @@
     surfacing here; this page's own copy is static.
 --}}
 @include('errors.shell', [
-    'title' => 'Wartungsarbeiten',
-    'heading' => 'Wir sind gleich wieder da.',
-    'message' => 'nothing-to-do wird gerade kurz gewartet. Das dauert normalerweise nur wenige Minuten — versuch es gleich nochmal.',
+    'title' => __('errors.maintenance.title'),
+    'heading' => __('errors.maintenance.heading'),
+    'message' => __('errors.maintenance.message'),
     'icon' => 'maintenance-icon',
     'reload' => true,
 ])
