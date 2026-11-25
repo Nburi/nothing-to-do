@@ -2642,6 +2642,39 @@ document.addEventListener('alpine:init', () => {
 });
 
 /**
+ * Step 5.2 · x-restore-focus: whoever opened an overlay gets the focus back when it closes.
+ * x-trap does this itself, but not for overlays that move the focus into themselves in the same
+ * tick (the sort card, the crunch screen, the capture sheet): it would "restore" to the overlay.
+ * Use it with x-trap.noreturn. Without a value the overlay comes and goes with its element (a
+ * Livewire @if); with a value ("$store.capture.sheetOpen") it follows that expression.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.directive('restore-focus', (el, { expression }, { effect, evaluateLater, cleanup }) => {
+        let opener = document.activeElement;
+        const restore = () => {
+            const target = opener;
+            opener = null;
+            if (!target || target === document.body || !target.isConnected) return;
+            const active = document.activeElement;
+            if (!active || active === document.body || el.contains(active)) target.focus({ preventScroll: true });
+        };
+
+        if (!expression) {
+            cleanup(restore);
+            return;
+        }
+
+        const read = evaluateLater(expression);
+        let was = false;
+        effect(() => read((open) => {
+            if (open && !was) opener = document.activeElement;
+            if (!open && was) restore();
+            was = !!open;
+        }));
+    });
+});
+
+/**
  * Step 5.2 · Form errors belong to their field.
  * The views print a validation message as `<p data-field-error role="alert">` right after the field
  * (or after the label / group that holds it). This links each one to that field with

@@ -9,7 +9,7 @@
 @endphp
 <script type="application/json" id="capture-config">{!! json_encode($captureConfig, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
 
-<div x-data x-show="$store.capture.sheetOpen" x-cloak x-trap.noscroll.noautofocus="$store.capture.sheetOpen" @keydown.escape.window="if ($store.capture.sheetOpen) $store.capture.sheetOpen = false" class="fixed inset-0 z-[55] flex items-end justify-center wb:items-start wb:pt-[12vh]" role="dialog" aria-modal="true" aria-label="{{ __('capture.line.label') }}">
+<div x-data x-show="$store.capture.sheetOpen" x-cloak x-trap.noscroll.noautofocus.noreturn="$store.capture.sheetOpen" x-restore-focus="$store.capture.sheetOpen" @keydown.escape.window="if ($store.capture.sheetOpen) $store.capture.sheetOpen = false" class="fixed inset-0 z-[55] flex items-end justify-center wb:items-start wb:pt-[12vh]" role="dialog" aria-modal="true" aria-label="{{ __('capture.line.label') }}">
     <div class="absolute inset-0 bg-black/30" @click="$store.capture.sheetOpen = false"></div>
     <div
         x-data="captureLine('sheet')"

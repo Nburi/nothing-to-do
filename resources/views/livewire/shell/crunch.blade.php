@@ -12,7 +12,7 @@
             $plain = $btn.' bg-surface text-ink hover:bg-paper';
             $field = 'rounded-card bg-paper px-3 py-2 font-mono text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
         @endphp
-        <div class="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="crunch-title" x-trap.noscroll.noautofocus="true">
+        <div class="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="crunch-title" x-trap.noscroll.noautofocus.noreturn="true" x-restore-focus>
             <div class="absolute inset-0 bg-black/40" wire:click="close"></div>
 
             <section

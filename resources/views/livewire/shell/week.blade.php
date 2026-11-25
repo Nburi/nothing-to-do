@@ -164,7 +164,7 @@
                                     ])
                                     style="top: calc(var(--ph) * {{ round($block['top'] / 60, 4) }}); height: max(18px, calc(var(--ph) * {{ round($block['length'] / 60, 4) }} - 2px)); left: calc({{ $block['lane'] * $w }}% + 3px); width: calc({{ $w }}% - 6px);{{ $termin ? '' : ' background: color-mix(in srgb, var(--color-'.$block['color'].') '.($block['pomodoro'] ? 20 : 13).'%, var(--t-surface));' }} border: 1px {{ $block['changed'] ? 'dashed' : 'solid' }} {{ $termin ? 'var(--t-deep)' : 'var(--color-'.$block['color'].')' }}"
                                     title="{{ $block['start'] }}–{{ $block['end'] }} {{ $block['title'] }}"
-                                    aria-label="{{ $block['start'] }}–{{ $block['end'] }} {{ $block['title'] }}{{ $block['changed'] ? ', '.__('week.grid.changed') : '' }}">
+                                    aria-label="{{ $block['start'] }}–{{ $block['end'] }} {{ $block['title'] }}{{ $termin ? ', '.__('week.form.kind_termin') : ($block['pomodoro'] ? ', '.trans_choice('week.grid.sessions', $block['sessions'], ['count' => $block['sessions']]) : '') }}{{ $block['changed'] ? ', '.__('week.grid.changed') : '' }}">
                                     @if ($block['length'] < 60)
                                         {{-- Short blocks: time and title on one line, so the title never disappears. --}}
                                         <span class="flex min-w-0 items-baseline gap-1.5"><span class="shrink-0 font-mono text-[10px] opacity-80">{{ $block['start'] }}</span><b class="truncate font-semibold">{{ $block['title'] }}</b></span>
@@ -259,7 +259,7 @@
                 <template x-for="c in cells()" :key="c.iso">
                     <button type="button" @click="pick(c.iso)" :aria-pressed="isEdge(c.iso) || inRange(c.iso)" :aria-label="c.label" :data-iso="c.iso"
                         class="rounded-[7px] py-2 font-mono text-[13px] transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
-                        :class="[c.out ? 'text-ink-faint opacity-50' : 'text-ink', isEdge(c.iso) ? '!bg-warn !text-surface !opacity-100' : (inRange(c.iso) ? 'rounded-none !opacity-100' : 'hover:bg-paper'), c.iso === @js($today) ? 'ring-1 ring-inset ring-accent' : '']"
+                        :class="[c.out ? 'text-ink-faint' : 'text-ink', isEdge(c.iso) ? '!bg-warn !text-surface' : (inRange(c.iso) ? 'rounded-none' : 'hover:bg-paper'), c.iso === @js($today) ? 'ring-1 ring-inset ring-accent' : '']"
                         :style="inRange(c.iso) && !isEdge(c.iso) ? 'background: color-mix(in srgb, var(--t-warn) 16%, var(--t-surface))' : ''"
                         x-text="c.n"></button>
                 </template>

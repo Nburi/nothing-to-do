@@ -51,7 +51,7 @@
                     </div>
                     <input type="text" value="{{ $category->name }}" maxlength="255"
                         x-data x-on:keydown.enter.prevent="$el.blur()" x-on:blur="if ($el.value.trim() !== @js($category->name)) $wire.rename({{ $category->id }}, $el.value)"
-                        class="min-w-0 flex-1 rounded-card border border-transparent bg-transparent px-2 py-1 text-[15px] font-semibold text-ink hover:border-line focus:border-line focus:bg-surface focus:outline-hidden"
+                        class="min-h-11 wb:min-h-0 min-w-0 flex-1 rounded-card border border-transparent bg-transparent px-2 py-1 text-[15px] font-semibold text-ink hover:border-line focus:border-line focus:bg-surface focus:outline-hidden"
                         aria-label="{{ __('week.categories.name') }}" @error('rename.'.$category->id) aria-invalid="true" @enderror>
                     <button type="button" wire:click="delete({{ $category->id }})" wire:loading.attr="disabled" wire:target="delete({{ $category->id }})"
                         class="grid size-11 wb:size-9 shrink-0 place-items-center rounded-full text-ink-faint hover:bg-surface hover:text-bad focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
@@ -122,7 +122,7 @@
             @endforeach
         </div>
         <label class="inline-flex h-11 wb:h-10 items-center gap-2 text-sm text-ink-soft">
-            <input type="checkbox" wire:model="newPomodoro" class="size-4 accent-accent">{{ __('week.categories.pomodoro') }}
+            <input type="checkbox" wire:model="newPomodoro" class="size-5 accent-accent wb:size-4">{{ __('week.categories.pomodoro') }}
         </label>
         <button type="submit" class="{{ $btn }} h-11 wb:h-10 bg-accent text-accent-fg hover:brightness-110" wire:loading.attr="disabled" wire:target="add">
             @include('shell.icon', ['name' => 'plus', 'class' => 'size-4']){{ __('week.categories.add') }}

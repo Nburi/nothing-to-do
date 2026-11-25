@@ -181,10 +181,12 @@
                 </div>
 
                 {{-- Peek panel: the board's lists next to the rail, without leaving the session. --}}
-                <div x-show="peek" x-cloak x-transition.opacity.duration.150ms class="absolute inset-y-0 left-[92px] z-30 flex w-[min(420px,calc(100vw-92px))] flex-col bg-surface pt-4 shadow-card" style="border-right: var(--t-bw) solid var(--t-line)" @click.outside="peek = null">
+                <div x-show="peek" x-cloak x-transition.opacity.duration.150ms role="region" aria-label="{{ __('shell.session.peek') }}" x-restore-focus="peek"
+                    x-effect="if (peek) $nextTick(() => $refs.peekClose?.focus())"
+                    class="absolute inset-y-0 left-[92px] z-30 flex w-[min(420px,calc(100vw-92px))] flex-col bg-surface pt-4 shadow-card" style="border-right: var(--t-bw) solid var(--t-line)" @click.outside="peek = null">
                     <div class="flex items-center justify-between px-4 pb-3">
                         <h2 class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ __('shell.session.peek') }}</h2>
-                        <button type="button" @click="peek = null" class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
+                        <button type="button" x-ref="peekClose" @click="peek = null" class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.session.close_board') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
                     </div>
                     @include('shell.lists-panel', ['layout' => 'werkbank', 'mode' => 'session', 'lists' => $lists, 'bundles' => $bundles, 'counts' => $counts, 'important' => $important, 'suggestedId' => null, 'locked' => $locked])
                 </div>
@@ -306,7 +308,7 @@
         @endif
 
         {{-- The list sheet: piles, bottom tabs and the drawer open it. --}}
-        <div x-show="peek" x-cloak x-trap.noscroll="peek" class="fixed inset-0 z-40 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="{{ __('shell.session.peek') }}">
+        <div x-show="peek" x-cloak x-trap.noscroll="peek && ! window.matchMedia('(min-width: 45rem)').matches" class="fixed inset-0 z-40 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="{{ __('shell.session.peek') }}">
             <div class="absolute inset-0 bg-black/40" @click="peek = null" x-show="peek" x-transition.opacity></div>
             <div class="relative flex max-h-[82dvh] flex-col rounded-t-panel bg-surface pt-2 pb-[env(safe-area-inset-bottom)] shadow-card"
                 x-show="peek" x-transition:enter="transition duration-200 ease-tactile" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
