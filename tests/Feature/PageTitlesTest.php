@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 class PageTitlesTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     public function test_each_app_page_names_itself_in_the_browser_tab(): void
     {
@@ -16,8 +18,8 @@ class PageTitlesTest extends TestCase
 
         foreach ([
             '/app' => 'Board',
-            '/app/schedule' => 'Zeitplan',
-            '/app/weekplan' => 'Wochenplan',
+            $this->legacy('schedule') => 'Zeitplan',
+            $this->legacy('weekplan') => 'Wochenplan',
             '/app/settings' => 'Einstellungen',
             '/app/progress' => 'Fortschritt',
         ] as $path => $title) {

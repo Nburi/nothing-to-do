@@ -12,6 +12,7 @@ use App\Services\DayWindow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 /**
@@ -21,6 +22,7 @@ use Tests\TestCase;
 class ScheduleDayFrameTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     private function actingUser(array $attributes = []): User
     {
@@ -121,7 +123,7 @@ class ScheduleDayFrameTest extends TestCase
     {
         $this->actingUser();
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee('openDateBounds', false)
             ->assertSee('06:00–23:00', false);
@@ -180,7 +182,7 @@ class ScheduleDayFrameTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('06:30', '07:15')->create(['title' => 'Frühtraining']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         $response->assertSee('Frühtraining', false);
@@ -198,7 +200,7 @@ class ScheduleDayFrameTest extends TestCase
         $span = (18 * 60 + DayWindow::NIGHT_MARGIN) - (8 * 60 - DayWindow::NIGHT_MARGIN);
         $expectedHeight = (int) round($span * DayWindow::ppm($span));
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee('height: '.$expectedHeight.'px', false);
     }
@@ -207,7 +209,7 @@ class ScheduleDayFrameTest extends TestCase
     {
         $this->actingUser(['day_start_time' => '08:00', 'day_end_time' => '18:00']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee('tl-night tl-night-top', false)
             ->assertSee('tl-night tl-night-bottom', false);
@@ -223,7 +225,7 @@ class ScheduleDayFrameTest extends TestCase
     {
         $this->actingUser(['day_start_time' => '06:00', 'day_end_time' => '23:00']);
 
-        foreach (['/app/schedule', '/app/weekplan'] as $url) {
+        foreach ([$this->legacy('schedule'), $this->legacy('weekplan')] as $url) {
             $html = $this->get($url)->assertOk()->getContent();
 
             $this->assertDoesNotMatchRegularExpression(
@@ -244,7 +246,7 @@ class ScheduleDayFrameTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('06:30', '07:15')->create(['title' => 'Frühtraining']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee('liegt ausserhalb deines Tagesrahmens', false);
     }
@@ -255,7 +257,7 @@ class ScheduleDayFrameTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('09:00', '10:00')->create(['title' => 'Schule']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertDontSee('liegt ausserhalb deines Tagesrahmens', false);
     }
@@ -303,7 +305,7 @@ class ScheduleDayFrameTest extends TestCase
         $user = $this->actingUser();
         DayWindow::setWeekday($user, 6, '09:00', '14:00');
 
-        $html = $this->get('/app/weekplan')->assertOk()->getContent();
+        $html = $this->get($this->legacy('weekplan'))->assertOk()->getContent();
 
         // Saturday: 09:00–14:00 plus the two night margins.
         $this->assertStringContainsString('data-weekday="6"', $html);

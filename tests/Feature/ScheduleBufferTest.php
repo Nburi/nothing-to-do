@@ -11,6 +11,7 @@ use App\Services\PushNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,7 @@ use Tests\TestCase;
 class ScheduleBufferTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     protected function tearDown(): void
     {
@@ -237,7 +239,7 @@ class ScheduleBufferTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('17:30', '19:00')->create(['title' => 'Training', 'buffer_before' => 20, 'buffer_after' => 15]);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         $response->assertSee('tl-buf tl-buf-before', false);
@@ -253,7 +255,7 @@ class ScheduleBufferTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('17:30', '19:00')->create(['title' => 'Training']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertDontSee('tl-buf', false);
     }

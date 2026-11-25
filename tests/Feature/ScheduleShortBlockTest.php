@@ -8,6 +8,7 @@ use App\Models\ScheduleEvent;
 use App\Models\User;
 use App\Services\DayWindow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
 class ScheduleShortBlockTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     private function actingUser(): User
     {
@@ -37,7 +39,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('13:00', '13:20')->create(['title' => 'Arbeiten']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         // The wrapper positions and carries the gestures and is never clipped;
@@ -55,7 +57,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('13:00', '13:20')->create(['title' => 'Arbeiten']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         // The document-level "settle on a pointer outside any block" listener
@@ -74,7 +76,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('13:00', '13:20')->create(['title' => 'Arbeiten']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         // Present in the DOM for every block; whether it is displayed is decided
@@ -89,7 +91,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('13:00', '13:20')->create(['title' => 'Arbeiten']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee('tl-time tl-opt tl-opt-time', false);
     }
@@ -103,7 +105,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('13:00', '13:20')->create(['title' => 'Arbeiten']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         // Desktop footer.
@@ -123,7 +125,7 @@ class ScheduleShortBlockTest extends TestCase
             'recurrence' => '1,2,3,4,5',
         ]);
 
-        $response = $this->get('/app/weekplan');
+        $response = $this->get($this->legacy('weekplan'));
 
         $response->assertOk();
         $response->assertSee('tl-body rounded-[7px] border', false);
@@ -139,7 +141,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('13:00', '13:20')->create(['category_id' => $category->id, 'title' => 'Arbeiten']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee('Arbeiten', false)
             // The clock icon lives in the title row, which is the one row a block
@@ -210,7 +212,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('12:15', '12:35')->create(['title' => 'Besprechung']);
 
-        $html = $this->get('/app/schedule')->assertOk()->getContent();
+        $html = $this->get($this->legacy('schedule'))->assertOk()->getContent();
 
         $this->assertStringContainsString("begin('top', \$event)", $html);
         $this->assertStringContainsString("begin('bottom', \$event)", $html);
@@ -224,7 +226,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('08:00', '11:00')->create(['title' => 'Schule']);
 
-        $this->get('/app/schedule')
+        $this->get($this->legacy('schedule'))
             ->assertOk()
             ->assertSee(":class=\"lifted ? 'h-2.5' : 'h-1.5 '\"", false);
     }
@@ -235,7 +237,7 @@ class ScheduleShortBlockTest extends TestCase
         ScheduleEvent::factory()->for($user)->on($user->localToday()->toDateString())
             ->at('12:15', '12:35')->create(['title' => 'Besprechung']);
 
-        $html = $this->get('/app/schedule')->assertOk()->getContent();
+        $html = $this->get($this->legacy('schedule'))->assertOk()->getContent();
 
         // A bubble on the wrapper, outside the clipped body.
         $this->assertStringContainsString('x-show="kind && moved"', $html);
