@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\SkipsWithoutPushKeys;
 use App\Models\ScheduleEvent;
 use App\Models\User;
 use App\Services\PushNotifier;
@@ -17,6 +18,8 @@ use Illuminate\Console\Command;
  */
 class SendEventUpcomingNotifications extends Command
 {
+    use SkipsWithoutPushKeys;
+
     protected $signature = 'app:send-event-upcoming-notifications';
 
     protected $description = 'Send a push notification 5 minutes before every schedule event starts, for users who opted in';
@@ -25,6 +28,10 @@ class SendEventUpcomingNotifications extends Command
 
     public function handle(PushNotifier $pushNotifier): int
     {
+        if ($this->skipWithoutPushKeys()) {
+            return self::SUCCESS;
+        }
+
         $sent = 0;
 
         User::query()->where('notify_event_upcoming', true)->chunkById(50, function ($users) use ($pushNotifier, &$sent) {

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\SkipsWithoutPushKeys;
 use App\Models\Reminder;
 use App\Models\User;
 use App\Services\PushNotifier;
@@ -22,12 +23,18 @@ use Illuminate\Console\Command;
  */
 class SendReminderNotifications extends Command
 {
+    use SkipsWithoutPushKeys;
+
     protected $signature = 'app:send-reminder-notifications';
 
     protected $description = 'Push "Nicht vergessen" reminders the evening before and on the day';
 
     public function handle(PushNotifier $pushNotifier): int
     {
+        if ($this->skipWithoutPushKeys()) {
+            return self::SUCCESS;
+        }
+
         $sent = 0;
 
         // Reminder days are local dates, a user's "today" can differ from the server's by up to a day —

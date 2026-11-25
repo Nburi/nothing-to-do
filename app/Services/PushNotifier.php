@@ -24,6 +24,17 @@ class PushNotifier
 {
     public function __construct(private readonly WebPush $webPush) {}
 
+    /**
+     * Whether this server has VAPID keys at all. A server without them (a fresh dev server, a
+     * test box) cannot sign a push, so nothing is sent there. Scheduled push commands check this
+     * first and skip their tick instead of failing (see ERRORS.md, "A push command crashes every
+     * tick on a server without VAPID keys").
+     */
+    public static function isConfigured(): bool
+    {
+        return filled(config('webpush.vapid.public_key')) && filled(config('webpush.vapid.private_key'));
+    }
+
     /** @param array{title: string, body: string, url?: string} $payload */
     public function notify(User $user, array $payload): void
     {
@@ -42,12 +53,26 @@ class PushNotifier
      */
     public function sendDebug(User $user, array $payload): array
     {
+        if (! self::isConfigured()) {
+            return [[
+                'endpoint' => null,
+                'user_agent' => null,
+                'success' => false,
+                'status' => null,
+                'reason' => 'Auf diesem Server sind keine VAPID-Schlüssel hinterlegt, Push ist nicht eingerichtet.',
+            ]];
+        }
+
         return $this->send($user, $payload);
     }
 
     /** @return list<array{endpoint: string, user_agent: ?string, success: bool, status: ?int, reason: string}> */
     private function send(User $user, array $payload): array
     {
+        if (! self::isConfigured()) {
+            return [];
+        }
+
         $subscriptions = $user->pushSubscriptions()->get()->keyBy('endpoint');
 
         if ($subscriptions->isEmpty()) {

@@ -68,6 +68,18 @@ nobody is due. (The older push commands have the same shape.)
 
 **Rule:** never inject `PushNotifier` into a scheduled command's `handle()`; resolve it at send time.
 
+**Follow-up fix (2026-11-25, `feature/push-commands-no-vapid`) for the older commands.** The rule above only
+covers commands that can resolve late. For the five older ones (`app:send-progress-reminders`,
+`app:send-reminder-notifications`, `app:send-event-start-notifications`, `app:send-event-upcoming-notifications`,
+`app:send-day-preview-notifications`) and for `PomodoroSessionService` (injected in its constructor) the cause is now
+removed instead: `AppServiceProvider` builds `WebPush` without the `VAPID` block when a key is empty, so building
+`PushNotifier` never throws. `PushNotifier::isConfigured()` tells whether keys exist; `PushNotifier::send()` sends
+nothing without them and `sendDebug()` (Settings, "Test-Benachrichtigung") says so. The five commands use the trait
+`SkipsWithoutPushKeys`: without keys they print one line ("Skipped: no VAPID keys configured") and end with success,
+and they stamp nothing as sent, so the notifications still go out once keys are set. Tests:
+`tests/Feature/Commands/PushCommandsWithoutVapidTest.php`.
+Keys that are set but malformed still throw on purpose: that is a wrong config, not a missing one.
+
 ## `npm run build` in a worktree: "Can't resolve 'tailwindcss'" (2026-11-16)
 
 **Symptom.** The build stopped at `resources/css/app.css` with `Can't resolve 'tailwindcss'`.
