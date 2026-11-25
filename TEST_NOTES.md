@@ -15,7 +15,8 @@ Status: `[ ]` offen · `[x]` umgesetzt
   - Verdacht Zeitplan mobil: Header, Vorschau-/Deadline-Streifen, Template-Zeile und die "Zeichnen:"-Kategoriezeile unten teilen sich den Platz mit dem Raster.
 
 - [ ] **3. Aufgaben lassen sich nicht bearbeiten (Bug, vermutlich hohe Priorität).**
-  - Offen, vom Tester noch zu klären: Auf welcher Seite (Board, Projektseite, Gruppe, Planer)? Mobil oder Desktop? Öffnet sich das Bearbeiten-Sheet gar nicht, oder lässt sich nicht speichern? Gilt es für alle Aufgaben oder nur für bestimmte (Projekt, Hausaufgabe, geteilte Aufgabe)? Gibt es eine Fehlermeldung?
+  - Bestätigt: Desktop, Board. Andere Seiten und Mobil sind ungeprüft.
+  - Offen, vom Tester noch zu klären: Öffnet sich das Bearbeiten-Sheet gar nicht, oder lässt sich nicht speichern? Gilt es für alle Aufgaben oder nur für bestimmte (Projekt, Hausaufgabe, geteilte Aufgabe)? Gibt es eine Fehlermeldung?
   - Beim Umsetzen zuerst reproduzieren, nicht raten. Relevante Stellen: Doppeltipp auf den Titel und der Stift auf der Karte (`startEdit`), `partials/edit-sheet.blade.php`, `ManagesTasks::saveEdit`.
 
 ## Umgesetzt
