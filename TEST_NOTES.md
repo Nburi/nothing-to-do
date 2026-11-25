@@ -8,7 +8,11 @@ Status: `[ ]` offen · `[x]` umgesetzt
 
 ## Offen
 
-_(noch leer)_
+- [ ] **1. Bestätigungs-Meldungen blenden nicht aus.** Meldungen wie "x wurde rückgängig gemacht" bleiben stehen. Sie sollen nach kurzer Zeit von selbst verschwinden.
+  - Offen: gilt das für alle Bestätigungen/Toasts in der App oder nur für Undo? Beim Umsetzen alle Stellen suchen, die so etwas rendern (ein gemeinsames Verhalten statt Einzelfixes).
+- [ ] **2. Hauptinhalt bekommt zu wenig Platz, vor allem mobil.** Auf manchen Seiten belegt der eigentliche Zweck der Seite weniger als die Hälfte des Screens, Beispiel Zeitplan. Regel: der Hauptinhalt muss auf jeder Seite mindestens etwa 3/4 des Screens einnehmen.
+  - Offen: Welche Seiten ausser dem Zeitplan betroffen sind, ist noch nicht erfasst. Beim Umsetzen alle Seiten mobil (375 px) durchmessen und den Anteil des Hauptinhalts pro Seite festhalten, bevor etwas geändert wird.
+  - Verdacht Zeitplan mobil: Header, Vorschau-/Deadline-Streifen, Template-Zeile und die "Zeichnen:"-Kategoriezeile unten teilen sich den Platz mit dem Raster.
 
 ## Umgesetzt
 
