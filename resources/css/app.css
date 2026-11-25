@@ -1402,3 +1402,14 @@ body[data-step-lift] [data-notice] {
     outline-offset: 2px;
   }
 }
+
+/*
+  Step 5.2 · The two round buttons on every task row (mark "Wichtig", start). Every row carries both, so their
+  utility list lived 700 times in the page (about a third of the /board HTML); as one class it is written once.
+  Colours and the right-hand offset stay on the element, where they differ.
+*/
+@layer components {
+  .task-action {
+    @apply -my-1 grid size-11 shrink-0 place-items-center rounded-full transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 wb:absolute wb:top-1.5 wb:m-0 wb:size-9 wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100;
+  }
+}
