@@ -6,6 +6,7 @@ use App\Http\Resources\TaskResource;
 use App\Mcp\McpTool;
 use App\Models\Task;
 use App\Models\User;
+use App\Planning\Size;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -44,6 +45,11 @@ class ListTasksTool extends McpTool
                 'overdue' => ['type' => 'boolean', 'description' => 'true = only tasks whose effective date is before today (in the user\'s timezone).'],
                 'without_duration' => ['type' => 'boolean', 'description' => 'true = only tasks that have no duration estimate yet.'],
                 'repeating' => ['type' => 'boolean', 'description' => 'true = only recurring tasks, false = only non-recurring.'],
+                'size' => ['type' => 'string', 'enum' => ['quick', 'short', 'long', 'block'], 'description' => 'Only tasks of this size.'],
+                'area_id' => ['type' => 'integer', 'description' => 'Only tasks of this area.'],
+                'project_id' => ['type' => 'integer', 'description' => 'Only the steps of this project (see list_projects).'],
+                'group_id' => ['type' => 'integer', 'description' => 'Only the steps of this task group (see list_task_groups).'],
+                'stage_id' => ['type' => 'integer', 'description' => 'Only the steps of this project stage.'],
                 'limit' => ['type' => 'integer', 'description' => 'Max results, default 50, max 200.'],
                 'offset' => ['type' => 'integer', 'description' => 'Skip this many results (pagination), default 0.'],
             ],
@@ -68,6 +74,11 @@ class ListTasksTool extends McpTool
             'overdue' => ['sometimes', 'boolean'],
             'without_duration' => ['sometimes', 'boolean'],
             'repeating' => ['sometimes', 'boolean'],
+            'size' => ['sometimes', Rule::enum(Size::class)],
+            'area_id' => ['sometimes', 'integer'],
+            'project_id' => ['sometimes', 'integer'],
+            'group_id' => ['sometimes', 'integer'],
+            'stage_id' => ['sometimes', 'integer'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:200'],
             'offset' => ['sometimes', 'integer', 'min:0'],
         ])->validate();
@@ -105,6 +116,19 @@ class ListTasksTool extends McpTool
         }
         if (isset($data['repeating'])) {
             $data['repeating'] ? $query->whereNotNull('repeat_rule') : $query->whereNull('repeat_rule');
+        }
+
+        if (isset($data['size'])) {
+            $query->where('size', $data['size']);
+        }
+        foreach (['area_id', 'project_id', 'stage_id'] as $column) {
+            if (isset($data[$column])) {
+                $query->where($column, $data[$column]);
+            }
+        }
+        if (isset($data['group_id'])) {
+            // A project step keeps the group it came from; the group only counts while the step is not in a project.
+            $query->whereNull('project_id')->where('group_id', $data['group_id']);
         }
 
         $total = (clone $query)->count();

@@ -21,8 +21,9 @@ class TaskController extends Controller
 
     /**
      * List tasks. Filters: list=inbox|todos|tasks, today=1, completed=1
-     * (include completed tasks alongside active ones). By default only active
-     * tasks are returned.
+     * (include completed tasks alongside active ones), size, area_id, and
+     * project_id / group_id / stage_id (the steps of a project, group or stage).
+     * By default only active tasks are returned.
      */
     public function index(Request $request): JsonResponse
     {
@@ -30,9 +31,24 @@ class TaskController extends Controller
             'list' => ['sometimes', Rule::in(Task::LISTS)],
             'today' => ['sometimes', 'boolean'],
             'completed' => ['sometimes', 'boolean'],
+            'size' => ['sometimes', Rule::enum(Size::class)],
+            'area_id' => ['sometimes', 'integer'],
+            'project_id' => ['sometimes', 'integer'],
+            'group_id' => ['sometimes', 'integer'],
+            'stage_id' => ['sometimes', 'integer'],
         ]);
 
         $query = $request->user()->tasks()->newQuery();
+
+        foreach (['size', 'area_id', 'project_id', 'stage_id'] as $column) {
+            if (isset($data[$column])) {
+                $query->where($column, $data[$column]);
+            }
+        }
+        if (isset($data['group_id'])) {
+            // A project step keeps the group it came from; the group only counts while the step is not in a project.
+            $query->whereNull('project_id')->where('group_id', $data['group_id']);
+        }
 
         if (isset($data['list'])) {
             $query->inList($data['list']);

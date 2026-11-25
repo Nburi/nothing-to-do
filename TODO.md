@@ -73,7 +73,8 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [ ] Niels' C-test findings for 4.3a (2026-11-17, `docs/c-tests/2026-11-17-c-tests.md` in the main checkout): roadmap labels, menu contrast on waiting steps, drag and drop of steps (also between stages), one shared order of tasks, projects and groups on the board, calmer board with 3+ projects. Only noted, plan with Niels. Update 2026-11-24: drag and drop of steps is built (4.3c, PR #34) and checked by Niels (C46, C47).
 - [ ] Projects/groups: delete, reorder stages, move an existing board task into a project or group (same gap as "editing, moving and deleting single items").
 - [ ] Projects: should a stage's target date become the soft deadline of its steps (early warning)? Ask Niels.
-- [ ] Projects in the API/MCP of the new model (the old project tools on `main` speak the old model).
+- [x] Projects in the API/MCP of the new model (the old project tools on `main` speak the old model). Built 2026-11-25 (`feature/api-mcp-new-model`, notes in `docs/steps/4.3e.md`).
+- [ ] API/MCP after the open PRs merge: `delete_project` / `dissolve_task_group` (project delete, #36), `move`-a-board-task-into-a-project (#36), `set_task_order` on the shared board order (#39). See `docs/steps/4.3e.md`, "Not in this step".
 
 ## Refactor: phase 4, step 4.4 (2026-11-17)
 - [x] 4.4 Quiet Sunday review (`feature/sunday-review`): `/board/review`, variant A "two halves", a quiet line on the board on Sunday and Monday. Notes in `docs/steps/4.4.md`.

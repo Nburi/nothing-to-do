@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         // controllers whose action takes `int $id` and died with a TypeError - a 500
         // (and an error-level log line) for what is simply "no such task". A
         // non-numeric segment now fails route matching itself: a plain 404.
-        foreach (['task', 'project', 'group', 'entry', 'event', 'category', 'template'] as $param) {
+        foreach (['task', 'project', 'group', 'stage', 'note', 'entry', 'event', 'category', 'template'] as $param) {
             Route::pattern($param, '[0-9]+');
         }
 
