@@ -6,6 +6,7 @@ use App\Planning\PlannedTask;
 use App\Planning\Size;
 use App\Support\Markdown\Markdown;
 use Database\Factories\TaskFactory;
+use App\Models\Concerns\HasBoardPosition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,7 @@ class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
+    use HasBoardPosition;
 
     /** The board lists. `later` is the refactor's Later box (3-THINGS.md); the old board does not show it. */
     public const LISTS = ['inbox', 'todos', 'tasks', 'later'];

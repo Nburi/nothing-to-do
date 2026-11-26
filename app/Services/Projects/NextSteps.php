@@ -29,7 +29,15 @@ final class NextSteps
 {
     public const VISIBLE = 2;
 
-    /** @return Collection<int, Bundle> projects first, then groups, each in the user's order */
+    /** Step 4.8 (C29): the calm board shows at most this many cards at once, whatever the number of projects. */
+    public const CALM = 2;
+
+    /**
+     * Every project and group in the user's one shared board order (step 4.8). The first CALM cards
+     * that have something to do stay on the board; the others are `resting` (see Bundle).
+     *
+     * @return Collection<int, Bundle>
+     */
     public function bundles(User $user): Collection
     {
         $open = Task::forUser($user)->active()
@@ -46,13 +54,24 @@ final class NextSteps
         $doneByGroup = Task::forUser($user)->where('is_completed', true)->whereNull('project_id')->whereNotNull('group_id')
             ->selectRaw('group_id, count(*) as n')->groupBy('group_id')->pluck('n', 'group_id');
 
-        $projects = Project::forUser($user)->with('stages')->orderBy('sort_order')->orderBy('id')->get()
+        $projects = Project::forUser($user)->with('stages')->inBoardOrder()->get()
             ->map(fn (Project $p) => $this->project($p, $open->where('project_id', $p->id)->values(), $stillOpen, $doneByStage));
 
-        $groups = TaskGroup::forUser($user)->orderBy('sort_order')->orderBy('id')->get()
+        $groups = TaskGroup::forUser($user)->inBoardOrder()->get()
             ->map(fn (TaskGroup $g) => $this->group($g, $open->whereNull('project_id')->where('group_id', $g->id)->values(), (int) ($doneByGroup[$g->id] ?? 0)));
 
-        return $projects->concat($groups)->values();
+        // One order for both kinds. sortBy is stable, so equal positions keep projects before groups.
+        $ordered = $projects->concat($groups)->sortBy('position')->values();
+
+        $awake = 0;
+
+        return $ordered->map(function (Bundle $b) use (&$awake) {
+            if ($b->list === null || $awake++ < self::CALM) {
+                return $b;
+            }
+
+            return $b->rested();
+        })->values();
     }
 
     /**
@@ -105,6 +124,7 @@ final class NextSteps
             stageCount: $stages->count(),
             bundled: array_values($onBoard),
             hidden: array_values(array_diff($onBoard, $visible->pluck('id')->all())),
+            position: $project->board_position ?? PHP_INT_MAX,
         );
     }
 
@@ -128,6 +148,7 @@ final class NextSteps
             stageCount: 0,
             bundled: $ids,
             hidden: array_values(array_diff($ids, $visible->pluck('id')->all())),
+            position: $group->board_position ?? PHP_INT_MAX,
         );
     }
 }

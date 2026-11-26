@@ -1,7 +1,8 @@
 {{-- One task row in a column (Werkbank) or a list sheet (Stapel).
      @param Task $task, string $layout, string $mode, bool $suggested, bool $locked (session runs),
      ?string $keyScope (the same task in a second place, e.g. the reminder, needs its own wire:key),
-     bool $tagged (say „Wichtig" in words; false where the surrounding list already says it) --}}
+     bool $tagged (say „Wichtig" in words; false where the surrounding list already says it),
+     bool $sortable (step 4.8: a slot of the board order; only loose rows of a column, a sheet or the band) --}}
 @php
     $canStart = in_array($task->list, \App\Models\Task::WORK_LISTS, true);
     $meta = \App\Shell\TaskFace::meta($task);
@@ -12,6 +13,7 @@
 <li
     wire:key="{{ $key }}"
     data-fold-from
+    @if ($sortable ?? false) data-entry="task:{{ $task->id }}" data-title="{{ $task->title }}" @endif
     @class([
         'group relative flex items-start gap-2.5 rounded-card bg-surface px-3 py-2.5 text-sm',
         'ring-3 ring-accent-soft' => $suggested ?? false,
@@ -19,6 +21,11 @@
     ])
     style="border: var(--t-bw) solid {{ ($suggested ?? false) ? 'var(--t-accent)' : 'var(--t-line)' }}"
 >
+    @if ($sortable ?? false)
+        <x-shell.action key="reorder" :layout="$layout" :mode="$mode" data-grip aria-pressed="false"
+            :aria-label="__('shell.order.grip_named', ['title' => $task->title])" :title="__('shell.order.grip')"
+            class="absolute left-0 top-1/2 z-10 grid h-9 w-4 -translate-y-1/2 place-items-center rounded-full text-ink-faint opacity-0 transition hover:text-ink focus:outline-hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent wb:cursor-grab wb:group-hover:opacity-100">@include('shell.icon', ['name' => 'grip', 'class' => 'size-3.5'])</x-shell.action>
+    @endif
     <span class="mt-0.5 size-3.5 shrink-0 rounded-full border-2 border-ink-faint" aria-hidden="true"></span>
     <div class="min-w-0 flex-1">
         <p data-fold-title @class(['leading-snug wrap-break-word text-ink', 'font-medium' => ! $marked, 'font-semibold' => $marked])>{{ $task->title }}</p>

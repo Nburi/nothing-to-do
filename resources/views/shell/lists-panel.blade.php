@@ -1,7 +1,7 @@
 {{-- The four lists behind tabs, plus „Wichtig" (step 4.6): the Stapel sheet (piles, bottom tabs, drawer)
      and the Werkbank peek panel during a session. Opened by the parent's Alpine `peek`
      (inbox|todos|tasks|later|important).
-     @param $layout, $mode, $lists, $bundles (step 4.3), $todoSession (To-do session), $counts, $important (open marked tasks), $suggestedId, $locked --}}
+     @param $layout, $mode, $lists, $entries (step 4.8: cards and rows in the one board order), $resting, $todoSession (To-do session), $counts, $important (open marked tasks), $suggestedId, $locked --}}
 <div class="flex min-h-0 flex-1 flex-col">
     @php
         $tabClass = 'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
@@ -25,7 +25,8 @@
     </div>
     <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         @foreach (\App\Models\Task::LISTS as $list)
-            <ul x-show="peek === '{{ $list }}'" x-cloak class="flex flex-col gap-2" role="tabpanel">
+            <div x-show="peek === '{{ $list }}'" x-cloak class="flex flex-col gap-2" role="tabpanel">
+            <ul @if (in_array($list, \App\Models\Task::WORK_LISTS, true)) data-order-list x-data="boardOrder(@js(['text' => __('shell.order')]))" @endif class="flex flex-col gap-2">
                 @if ($list === 'inbox' && $counts['inbox'] > 0)
                     <li>
                         <x-shell.action key="sort" :layout="$layout" :mode="$mode" wire:click="$dispatch('open-sort')" @click="peek = null"
@@ -42,19 +43,24 @@
                 @if ($list === 'todos')
                     @include('shell.todo-session', ['todoSession' => $todoSession, 'layout' => $layout, 'mode' => $mode, 'suggestedId' => $suggestedId, 'locked' => $locked])
                 @endif
-                @foreach ($bundles[$list] as $bundle)
-                    @include('shell.bundle', ['bundle' => $bundle, 'layout' => $layout, 'mode' => $mode, 'suggestedId' => $suggestedId, 'locked' => $locked])
+                @foreach ($entries[$list] as $entry)
+                    @if ($entry['bundle'])
+                        @include('shell.bundle', ['bundle' => $entry['bundle'], 'layout' => $layout, 'mode' => $mode, 'suggestedId' => $suggestedId, 'locked' => $locked])
+                    @else
+                        @include('shell.item', ['task' => $entry['task'], 'layout' => $layout, 'mode' => $mode, 'suggested' => $entry['task']->id === $suggestedId, 'locked' => $locked, 'sortable' => in_array($list, \App\Models\Task::WORK_LISTS, true)])
+                    @endif
                 @endforeach
-                @foreach ($lists[$list]->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
-                    @include('shell.item', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'suggested' => $task->id === $suggestedId, 'locked' => $locked])
-                @endforeach
-                @if ($counts[$list] === 0)
+                @if ($counts[$list] === 0 && $resting[$list]->isEmpty())
                     <li class="rounded-card border border-dashed border-line p-4 text-sm text-ink-faint">{{ __('shell.empty.'.$list) }}</li>
                 @endif
                 @if ($lists[$list]->count() > \App\Livewire\Shell\Board::LIST_LIMIT)
                     <li class="px-1 text-xs text-ink-faint">{{ __('shell.more_items', ['count' => $lists[$list]->count() - \App\Livewire\Shell\Board::LIST_LIMIT]) }}</li>
                 @endif
             </ul>
+            @if ($resting[$list]->isNotEmpty())
+                @include('shell.resting', ['list' => $list, 'cards' => $resting[$list]])
+            @endif
+            </div>
         @endforeach
         {{-- Step 4.6: everything marked „Wichtig" in one place (Inbox, To-dos, Tasks; parked ideas stay out). --}}
         <ul x-show="peek === 'important'" x-cloak data-peek-panel="important" class="flex flex-col gap-2" role="tabpanel">

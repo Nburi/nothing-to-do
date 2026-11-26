@@ -2,7 +2,9 @@
 
 namespace App\Services\Planning;
 
+use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskGroup;
 use App\Models\User;
 use App\Planning\Block;
 use App\Planning\Category;
@@ -56,10 +58,21 @@ final class PlanningContext
         $now = UserClock::now($user, $now);
         $today = $now->toDateString();
 
-        $tasks = Task::forUser($user)->active()->whereIn('list', Task::WORK_LISTS)
-            ->orderByRaw("CASE WHEN list = 'todos' THEN 0 ELSE 1 END")
-            ->orderBy('sort_order')->orderBy('created_at')->orderBy('id')
-            ->get();
+        // Board order (step 4.8): To-dos first, then each task by its place in the shared order. A step
+        // of a project or group has the place of its card; its own order only settles steps of one card.
+        $cardPlace = [
+            'project' => Project::forUser($user)->pluck('board_position', 'id'),
+            'group' => TaskGroup::forUser($user)->pluck('board_position', 'id'),
+        ];
+        $place = fn (Task $t): int => match (true) {
+            $t->project_id !== null => $cardPlace['project']->get($t->project_id),
+            $t->group_id !== null => $cardPlace['group']->get($t->group_id),
+            default => $t->board_position,
+        } ?? PHP_INT_MAX;
+
+        $tasks = Task::forUser($user)->active()->whereIn('list', Task::WORK_LISTS)->get()
+            ->sortBy(fn (Task $t) => [$t->list === 'todos' ? 0 : 1, $place($t), $t->sort_order, $t->created_at?->getTimestamp() ?? 0, $t->id])
+            ->values();
 
         $candidates = $tasks->values()->map(fn (Task $t, int $i) => new PickCandidate($t->toPlannedTask(), $i))->all();
         $latest = collect($candidates)->map(fn (PickCandidate $c) => $c->task->bindingDeadline())->filter()->max();

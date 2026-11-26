@@ -93,7 +93,14 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 
 - [x] Daily To-do session, unsized To-do = Quick, Okay tie rule: `feature/todo-session` (PR waits for Niels, see `docs/steps/4.7.md`).
 - [ ] Niels: C48, C49, C50 in `docs/TESTBERICHT.md`.
-- [ ] Shared board order (C31) builds on the same files (`Board.php`, `Suggestions`); the To-do session card stays first in the To-dos column.
+- [x] Shared board order (C31) built in step 4.8 (see below); the To-do session card stays first in the To-dos column.
+
+## Refactor: phase 4, step 4.8 (shared board order and calm board, 2026-11-24)
+
+- [x] One shared order of loose tasks, projects and groups, drag and drop, the â€žWichtig" band, at most two cards on the board: `feature/board-order` (stacked on #37, notes in `docs/steps/4.8.md`). Migration `2026_11_24_000001_add_board_position` (additive, backfilled).
+- [ ] Niels: C51, C52, C53, C54 in `docs/TESTBERICHT.md`; check the decisions in `docs/steps/4.8.md` (band placement, marked To-dos in the session card, new work at the bottom, no visible grip on the phone).
+- [ ] 4.8 later: `set_task_order` (MCP) and the old board still write `sort_order`; they do not move the new board order. Decide at the switch (5.x) whether to retire them or map them.
+- [ ] 4.8 later: the "Nach oben holen" chip shows no idle time ("seit 12 Tagen" of the mockup); an order across the To-dos and Tasks columns was left out.
 
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
