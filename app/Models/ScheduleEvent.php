@@ -38,6 +38,7 @@ class ScheduleEvent extends Model
         'buffer_after',
         'is_cancelled',
         'moved_from_id',
+        'pause_exception',
         'pomodoro_started_at',
         'pomodoro_phase',
         'pomodoro_cycle',
@@ -54,6 +55,7 @@ class ScheduleEvent extends Model
             'buffer_after' => 'integer',
             'is_cancelled' => 'boolean',
             'moved_from_id' => 'integer',
+            'pause_exception' => 'boolean',
             'pomodoro_started_at' => 'datetime',
             'pomodoro_cycle' => 'integer',
             'pomodoro_linked_notified' => 'boolean',
@@ -212,7 +214,9 @@ class ScheduleEvent extends Model
     {
         return $query->where('is_cancelled', false)
             ->where(function (Builder $q) {
+                // A restored ghost (pause_exception) is an exception to the pause, so it stays visible.
                 $q->whereNull('template_id')
+                    ->orWhere('pause_exception', true)
                     ->orWhereNotExists(function ($sub) {
                         $sub->select(DB::raw(1))
                             ->from('schedule_pauses')

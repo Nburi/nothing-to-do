@@ -13,6 +13,10 @@ use Tests\TestCase;
  * Each pair is a text colour on a background the UI really puts it on. Soft tints are
  * computed with the same mix as app.css (color-mix in srgb, 15 % of the colour on surface).
  * Area colours are not here on purpose: they are only dots next to a label in ink.
+ *
+ * Ghosts (the pale preview of a paused day's blocks in the week editor) are not held to 4.5:1 on purpose:
+ * Niels asked for them "very quiet, simply very pale" (2026-11-24). They are a hint, not content; the
+ * action and the name are also in the button's aria-label. test_ghost_text_stays_readable keeps a floor.
  */
 class ThemeContrastTest extends TestCase
 {
@@ -69,6 +73,16 @@ class ThemeContrastTest extends TestCase
         }
 
         $this->assertSame([], $failures, "{$id} {$mode} has text below 4.5:1");
+    }
+
+    #[DataProvider('themesAndModes')]
+    public function test_ghost_text_stays_readable(string $id, string $mode): void
+    {
+        $p = config("themes.themes.{$id}.{$mode}");
+        $text = Contrast::mix($p['ink'], $p['surface'], Theme::GHOST_TEXT_WEIGHT);
+
+        $this->assertGreaterThanOrEqual(2.5, Contrast::ratio($text, $p['surface']), "{$id} {$mode}: ghost text too faint");
+        $this->assertLessThan(self::MIN, Contrast::ratio($text, $p['surface']), "{$id} {$mode}: a ghost must stay quieter than real text");
     }
 
     public function test_every_theme_defines_the_same_tokens(): void

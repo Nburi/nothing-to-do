@@ -125,6 +125,12 @@ return [
         'paused_day' => ':day pausiert.',
         'resumed' => ':day ist wieder eingeschaltet.',
     ],
+    'ghost' => [
+        'title' => 'Fällt an diesem Tag aus. Klicken holt den Block nur für diesen Tag zurück.',
+        'label' => ':time :title, pausiert. Für diesen Tag zurückholen',
+        'action' => 'Zurückholen',
+        'restored' => ':title ist am :day zurück.',
+    ],
     'links' => [
         'week' => 'Woche',
         'move' => 'Block verschieben',

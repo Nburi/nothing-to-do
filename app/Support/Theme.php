@@ -18,6 +18,13 @@ final class Theme
     /** Fraction of the base colour in a soft tint; matches the 15% in app.css. */
     public const SOFT_WEIGHT = 0.15;
 
+    /**
+     * Fraction of ink in the text of a ghost (a block of a paused day, week editor). Very pale on
+     * purpose (Niels, 2026-11-24), so ghosts are NOT held to the 4.5:1 rule of ThemeContrastTest;
+     * a separate floor there keeps them readable.
+     */
+    public const GHOST_TEXT_WEIGHT = 0.45;
+
     /** @return list<string> */
     public static function ids(): array
     {

@@ -61,7 +61,7 @@ final class WeekPlanReader
 
             if ($template !== null && $template->occursOn($row->date)) {
                 $recategorised = ! $row->is_cancelled && $row->category_id !== $template->category_id;
-                $changes[] = new OneOffChange($template->id, $date, $row->start_time, $row->durationMinutes(), $row->is_cancelled || $recategorised, $row->id);
+                $changes[] = new OneOffChange($template->id, $date, $row->start_time, $row->durationMinutes(), $row->is_cancelled || $recategorised, $row->id, (bool) $row->pause_exception);
 
                 // This week only with another category: the occurrence becomes a
                 // block of its own, still hidden by a pause like any template row.
@@ -109,6 +109,25 @@ final class WeekPlanReader
         }
 
         return $blocks;
+    }
+
+    /**
+     * The blocks each paused date would have had (ghosts, B6). For the editor's eyes only: they
+     * are not in blocks() and so never in slots(), capacity, forecast or the pick engine.
+     *
+     * @return array<string, list<Block>> only dates that are paused and have a ghost
+     */
+    public function ghosts(User $user, string $from, string $to): array
+    {
+        $plan = $this->weekPlan($user, $from, $to);
+        $ghosts = [];
+        foreach (self::dates($from, $to) as $date) {
+            if (($found = $plan->ghostsOn($date)) !== []) {
+                $ghosts[$date] = $found;
+            }
+        }
+
+        return $ghosts;
     }
 
     /**

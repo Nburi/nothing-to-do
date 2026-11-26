@@ -76,6 +76,7 @@ document.addEventListener('alpine:init', () => {
         // ── pointer handling ────────────────────────────────────────────
         down(e) {
             if (e.button > 0) return;
+            if (e.target.closest('[data-pause-ghost]')) return; // a ghost is only clicked: neither drawn over nor moved
             const col = e.target.closest('[data-col]');
             if (!col) return; // drawing on a paused day is fine: one-offs stay on paused days
             const block = e.target.closest('[data-block]');

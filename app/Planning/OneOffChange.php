@@ -16,6 +16,7 @@ final readonly class OneOffChange
         public ?int $durationMinutes = null,
         public bool $cancelled = false,
         public ?int $eventId = null, // step 4.1, editor only: the row that holds this change
+        public bool $pauseException = false, // a restored ghost: shown although its date is paused
     ) {}
 
     public function key(): string
