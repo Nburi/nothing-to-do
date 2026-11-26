@@ -22,6 +22,7 @@ class Task extends Model
 
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
+
     use SoftDeletes;
 
     /** The board lists. `later` is the refactor's Later box (3-THINGS.md); the old board does not show it. */
@@ -90,6 +91,7 @@ class Task extends Model
             'soft_slips' => 'integer',
             'duration_minutes' => 'integer',
             'completed_at' => 'datetime',
+            'deadline_asked_at' => 'datetime',
             'sort_order' => 'integer',
         ];
     }

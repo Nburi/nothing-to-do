@@ -44,6 +44,21 @@ return [
         'mark' => 'Mark as important',
         'unmark' => 'Remove important mark',
         'empty' => 'Nothing marked. The flag on a task marks what you must not forget.',
+        // Step d-bis-wann: the quiet question after marking an undated task, asked once per task.
+        'when' => [
+            'label' => 'Optional: by when should “:title” be done?',
+            'ask' => 'By when?',
+            'today' => 'Today',
+            'tomorrow' => 'Tomorrow',
+            'week' => 'This week',
+            'skip' => 'No date',
+            'set' => 'Soft deadline: :day.',
+            'undo' => 'Undo',
+            'close' => 'Close',
+            'undone' => 'No date again.',
+            'undo_changed' => 'The date was changed in the meantime. I leave it as it is.',
+            'has_date' => 'The task has a date by now. I leave it as it is.',
+        ],
     ],
     // Step 4.8: one shared order for everything on the board (C31) and the calm board (C29).
     'order' => [

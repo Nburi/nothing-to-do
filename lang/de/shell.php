@@ -45,6 +45,21 @@ return [
         'mark' => 'Als wichtig markieren',
         'unmark' => 'Wichtig-Markierung entfernen',
         'empty' => 'Nichts markiert. Mit der Flagge an einer Aufgabe markierst du, was du nicht vergessen darfst.',
+        // Step d-bis-wann: the quiet question after marking an undated task, asked once per task.
+        'when' => [
+            'label' => 'Optional: bis wann soll «:title» fertig sein?',
+            'ask' => 'Bis wann?',
+            'today' => 'Heute',
+            'tomorrow' => 'Morgen',
+            'week' => 'Diese Woche',
+            'skip' => 'Ohne Datum',
+            'set' => 'Weiche Frist: :day.',
+            'undo' => 'Rückgängig',
+            'close' => 'Schliessen',
+            'undone' => 'Wieder ohne Datum.',
+            'undo_changed' => 'Das Datum wurde inzwischen geändert. Ich lasse es so.',
+            'has_date' => 'Die Aufgabe hat inzwischen ein Datum. Ich lasse es so.',
+        ],
     ],
     // Step 4.8: one shared order for everything on the board (C31) and the calm board (C29).
     'order' => [

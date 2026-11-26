@@ -64,6 +64,9 @@
         @endif
     </div>
 
+    {{-- Step d-bis-wann: the quiet "Bis wann?" after marking an undated task „Wichtig". --}}
+    @include('shell.deadline-offer', ['offer' => $this->deadlineOffer, 'choices' => $this->deadlineChoices])
+
     {{-- The session card as the browser draws it before the server has answered Start (C1). --}}
     @include('shell.session-ghost')
 
