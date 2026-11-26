@@ -2,7 +2,8 @@
 
 namespace App\Providers;
 
-use App\Models\EventCategory;
+use App\Services\Planning\WeekPlanJournal;
+use App\Services\PushNotifier;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -26,13 +27,15 @@ class AppServiceProvider extends ServiceProvider
         // only be unreviewed surface area.
         Passport::$deviceCodeGrantEnabled = false;
 
-        $this->app->singleton(WebPush::class, fn () => new WebPush([
+        // Without VAPID keys the library throws while it is being built, which would break every
+        // class that takes a PushNotifier. PushNotifier::isConfigured() then keeps it from sending.
+        $this->app->singleton(WebPush::class, fn () => new WebPush(PushNotifier::isConfigured() ? [
             'VAPID' => [
                 'subject' => config('webpush.vapid.subject'),
                 'publicKey' => config('webpush.vapid.public_key'),
                 'privateKey' => config('webpush.vapid.private_key'),
             ],
-        ]));
+        ] : []));
     }
 
     /**
@@ -49,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Step 4.1: the week plan editor's "Rückgängig" journal listens to week plan model events.
-        \App\Services\Planning\WeekPlanJournal::boot();
+        WeekPlanJournal::boot();
 
         // Production sits behind a reverse proxy that terminates TLS — `trustProxies(at: '*')`
         // in bootstrap/app.php already makes Laravel trust its X-Forwarded-Proto header, so

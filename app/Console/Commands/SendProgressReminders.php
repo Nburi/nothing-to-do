@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\SkipsWithoutPushKeys;
 use App\Models\StreakDayOutcome;
 use App\Models\Task;
 use App\Models\User;
@@ -28,12 +29,18 @@ use Illuminate\Console\Command;
  */
 class SendProgressReminders extends Command
 {
+    use SkipsWithoutPushKeys;
+
     protected $signature = 'app:send-progress-reminders';
 
     protected $description = 'Send the open-tasks-tonight and streak-at-risk push reminders, for users who opted in';
 
     public function handle(PushNotifier $pushNotifier): int
     {
+        if ($this->skipWithoutPushKeys()) {
+            return self::SUCCESS;
+        }
+
         $sent = 0;
 
         User::query()

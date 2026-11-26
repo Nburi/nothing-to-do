@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\SkipsWithoutPushKeys;
 use App\Models\User;
 use App\Services\DayPreviewData;
 use App\Services\PushNotifier;
@@ -25,12 +26,18 @@ use Illuminate\Console\Command;
  */
 class SendDayPreviewNotifications extends Command
 {
+    use SkipsWithoutPushKeys;
+
     protected $signature = 'app:send-day-preview-notifications';
 
     protected $description = 'Send a daily "Dein Tag ist bereit" push summarising the day, for users who opted in';
 
     public function handle(PushNotifier $pushNotifier): int
     {
+        if ($this->skipWithoutPushKeys()) {
+            return self::SUCCESS;
+        }
+
         $sent = 0;
 
         User::query()
