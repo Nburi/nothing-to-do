@@ -55,6 +55,11 @@ final readonly class SessionEngine
     {
         $t = $now->getTimestamp();
 
+        // The evening reset held the pomodoro and its time is up: the pause ended then, not when somebody looks.
+        if ($state->isPaused() && $state->pauseEndsAt !== null && $t >= $state->pauseEndsAt) {
+            $state = $this->resumedAt($state, $state->pauseEndsAt);
+        }
+
         while ($state->phase->isTimed() && ! $state->isPaused()) {
             $endsAt = $this->endsAt($state);
             if ($t < $endsAt) {
@@ -94,7 +99,7 @@ final readonly class SessionEngine
         }
 
         if ($nextTaskId === null) {
-            return $state->with(phase: Phase::Idle, taskId: null, phaseStartedAt: null, pausedAt: null, pausedSeconds: 0, doneTaskIds: $done);
+            return $state->with(phase: Phase::Idle, taskId: null, phaseStartedAt: null, pausedAt: null, pausedSeconds: 0, pauseEndsAt: null, doneTaskIds: $done);
         }
 
         return $state->with(taskId: $nextTaskId, doneTaskIds: $done);
@@ -113,7 +118,7 @@ final readonly class SessionEngine
             return $state;
         }
 
-        return $state->with(phase: Phase::Idle, taskId: null, phaseStartedAt: null, pausedAt: null, pausedSeconds: 0);
+        return $state->with(phase: Phase::Idle, taskId: null, phaseStartedAt: null, pausedAt: null, pausedSeconds: 0, pauseEndsAt: null);
     }
 
     public function pause(SessionState $state, CarbonImmutable $now): SessionState
@@ -133,9 +138,31 @@ final readonly class SessionEngine
             return $state;
         }
 
-        $paused = max(0, $now->getTimestamp() - $state->pausedAt);
+        return $this->at($this->resumedAt($state, $now->getTimestamp()), $now);
+    }
 
-        return $this->at($state->with(pausedAt: null, pausedSeconds: $state->pausedSeconds + $paused), $now);
+    /**
+     * The evening reset starts by hand while work runs (step d-reset-pause): the pomodoro waits for it. Only
+     * running work is held; a break runs on (it is rest anyway) and a pause the user made stays theirs, so
+     * it is still there when the reset is over. The pause ends by itself at $endsAt (at()), however the reset ends.
+     */
+    public function pauseForReset(SessionState $state, CarbonImmutable $now, CarbonImmutable $endsAt): SessionState
+    {
+        $state = $this->at($state, $now);
+
+        if ($state->phase !== Phase::Work || $state->isPaused()) {
+            return $state;
+        }
+
+        return $state->with(pausedAt: $now->getTimestamp(), pauseEndsAt: $endsAt->getTimestamp());
+    }
+
+    /** The reset ended early ("Schon fertig", "Überspringen"): give the pomodoro back, but only if the reset held it. */
+    public function endReset(SessionState $state, CarbonImmutable $now): SessionState
+    {
+        $state = $this->at($state, $now);
+
+        return $state->isPaused() && $state->pauseEndsAt !== null ? $this->resume($state, $now) : $state;
     }
 
     public function remainingSeconds(SessionState $state, CarbonImmutable $now): int
@@ -171,7 +198,14 @@ final readonly class SessionEngine
             phaseStartedAt: $startsAt,
             pausedAt: null,
             pausedSeconds: 0,
+            pauseEndsAt: null,
             sessionsToday: $number,
         );
+    }
+
+    /** Count the pause up to $at as paused time and run on from there. */
+    private function resumedAt(SessionState $state, int $at): SessionState
+    {
+        return $state->with(pausedAt: null, pauseEndsAt: null, pausedSeconds: $state->pausedSeconds + max(0, $at - $state->pausedAt));
     }
 }

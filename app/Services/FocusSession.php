@@ -113,6 +113,18 @@ final class FocusSession
         return $this->mutate($user, $now, fn (SessionEngine $e, SessionState $s, CarbonImmutable $t) => $e->resume($s, $t));
     }
 
+    /** The evening reset started by hand while work runs: the pomodoro waits until $endsAt (SessionEngine::pauseForReset). */
+    public function pauseForReset(User $user, CarbonImmutable $endsAt, ?CarbonImmutable $now = null): SessionState
+    {
+        return $this->mutate($user, $now, fn (SessionEngine $e, SessionState $s, CarbonImmutable $t) => $e->pauseForReset($s, $t, $endsAt));
+    }
+
+    /** The reset ended early: the pomodoro runs on, if the reset was what held it. */
+    public function endReset(User $user, ?CarbonImmutable $now = null): SessionState
+    {
+        return $this->mutate($user, $now, fn (SessionEngine $e, SessionState $s, CarbonImmutable $t) => $e->endReset($s, $t));
+    }
+
     /** Leave the session without marking anything done. */
     public function stop(User $user, ?CarbonImmutable $now = null): SessionState
     {
