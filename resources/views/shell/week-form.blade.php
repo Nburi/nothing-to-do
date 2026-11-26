@@ -53,6 +53,13 @@
             <input type="text" wire:model="form.title" maxlength="255" data-autofocus placeholder="{{ __('week.form.name_placeholder') }}" class="{{ $field }}" @if ($err('title')) aria-invalid="true" @endif @disabled($mode === 'occ')>
         </label>
         @error('form.title')<p class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
+        {{-- Colour of a Termin: the same palette as the categories, plus "Standard" (the current dark block). An occurrence
+             of the Wochenplan takes its colour from the series, like its name: change it in the Wochenplan. --}}
+        <div class="flex flex-col gap-1">
+            <span class="text-xs font-medium text-ink-soft">{{ __('week.form.color') }}</span>
+            <x-shell.color-picker model="form.color" :value="$form['color'] ?? null" :standard="true" :label="__('week.form.color')" :disabled="$mode === 'occ'" />
+            @if ($mode === 'occ')<p class="text-xs text-ink-faint">{{ __('week.form.color_from_plan') }}</p>@endif
+        </div>
     @else
         <div class="flex flex-col gap-1.5">
             <span class="text-xs font-medium text-ink-soft">{{ __('week.form.category') }}</span>

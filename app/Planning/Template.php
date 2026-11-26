@@ -17,6 +17,7 @@ final readonly class Template
         public int $durationMinutes,
         public ?int $categoryId = null,
         public ?string $title = null,
+        public ?string $tint = null, // step 4.1, editor only: palette key of a Termin (no category), null = Standard
     ) {}
 
     public function occursOnWeekday(int $isoWeekday): bool

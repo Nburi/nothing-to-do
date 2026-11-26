@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasTerminColor;
 use App\Services\PomodoroCycle;
 use Database\Factories\ScheduleEventFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +23,7 @@ class ScheduleEvent extends Model
 {
     /** @use HasFactory<ScheduleEventFactory> */
     use HasFactory;
+    use HasTerminColor;
 
     /** Topografie colour tokens a Termin or category may use. */
     public const EVENT_COLORS = ['contour', 'overprint', 'forest', 'signal', 'ink'];
@@ -31,6 +33,7 @@ class ScheduleEvent extends Model
         'category_id',
         'title',
         'color',
+        'termin_color',
         'date',
         'start_time',
         'end_time',

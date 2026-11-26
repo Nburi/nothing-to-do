@@ -18,5 +18,6 @@ final readonly class OneOffBlock
         // was moved into another category this week only (the reader turns it into a one-off).
         public ?int $eventId = null,
         public ?int $templateId = null,
+        public ?string $tint = null, // palette key of a Termin, null = Standard (editor only)
     ) {}
 }

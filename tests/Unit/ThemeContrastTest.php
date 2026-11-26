@@ -75,6 +75,29 @@ class ThemeContrastTest extends TestCase
         $this->assertSame([], $failures, "{$id} {$mode} has text below 4.5:1");
     }
 
+    /**
+     * Termin colours (week editor): ink text on the palette colour mixed into the surface, for every key a
+     * Termin can wear. The keys are ScheduleEvent::EVENT_COLORS, resolved to theme tokens as in app.css.
+     */
+    #[DataProvider('themesAndModes')]
+    public function test_coloured_termin_blocks_keep_their_text_readable(string $id, string $mode): void
+    {
+        $p = config("themes.themes.{$id}.{$mode}");
+        $tokens = ['contour' => 'warn', 'forest' => 'good', 'overprint' => 'area-1', 'signal' => 'bad', 'ink' => 'ink'];
+        $this->assertEqualsCanonicalizing(array_keys($tokens), \App\Models\ScheduleEvent::EVENT_COLORS, 'a new palette key needs a contrast check here');
+
+        $failures = [];
+        foreach ($tokens as $key => $token) {
+            $bg = Contrast::mix($p[$token], $p['surface'], Theme::TERMIN_TINT_WEIGHT);
+            $ratio = Contrast::ratio($p['ink'], $bg);
+            if ($ratio < self::MIN) {
+                $failures[] = sprintf('%s: ink on %s = %.2f', $key, $bg, $ratio);
+            }
+        }
+
+        $this->assertSame([], $failures, "{$id} {$mode} has a Termin colour below 4.5:1");
+    }
+
     #[DataProvider('themesAndModes')]
     public function test_ghost_text_stays_readable(string $id, string $mode): void
     {

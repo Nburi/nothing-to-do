@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasTerminColor;
 use Database\Factories\EventTemplateFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,11 +21,13 @@ class EventTemplate extends Model
 {
     /** @use HasFactory<EventTemplateFactory> */
     use HasFactory;
+    use HasTerminColor;
 
     protected $fillable = [
         'category_id',
         'name',
         'color',
+        'termin_color',
         'duration',
         'buffer_before',
         'buffer_after',

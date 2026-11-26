@@ -58,6 +58,7 @@ final class WeekPlanEditor
             'category_id' => $data['categoryId'],
             'name' => $name,
             'color' => $colour,
+            'termin_color' => $this->tint($data),
             'duration' => $this->minutes($data['end']) - $this->minutes($data['start']),
             'default_start' => $data['start'],
             'is_recurring' => true,
@@ -75,6 +76,7 @@ final class WeekPlanEditor
             'category_id' => $data['categoryId'],
             'title' => $name,
             'color' => $colour,
+            'termin_color' => $this->tint($data),
             'date' => $data['date'],
             'start_time' => $data['start'],
             'end_time' => $data['end'],
@@ -211,11 +213,14 @@ final class WeekPlanEditor
         $row = $this->oneOff($user, $eventId);
         $data = $this->validated(compact('date', 'start', 'end', 'categoryId', 'title', 'color'), $user, date: true);
         [$name, $colour] = $this->label($user, $data);
+        // "Standard" keeps what the old screens stored in `color`; only a chosen key rewrites it.
+        $colour = $data['categoryId'] === null && $this->tint($data) === null ? ($row->category_id === null ? $row->color : 'contour') : $colour;
 
         $row->update($row->withNotifiedReset([
             'category_id' => $data['categoryId'],
             'title' => $name,
             'color' => $colour,
+            'termin_color' => $this->tint($data),
             'date' => $data['date'],
             'start_time' => $data['start'],
             'end_time' => $data['end'],
@@ -242,6 +247,7 @@ final class WeekPlanEditor
         $template = $this->template($user, $templateId);
         $data = $this->validated(compact('weekdays', 'start', 'end', 'categoryId', 'title', 'color'), $user, weekdays: true);
         [$name, $colour] = $this->label($user, $data);
+        $colour = $data['categoryId'] === null && $this->tint($data) === null ? ($template->category_id === null ? $template->color : 'contour') : $colour;
 
         DB::transaction(function () use ($user, $template, $data, $name, $colour) {
             $before = $this->snapshot($template);
@@ -249,6 +255,7 @@ final class WeekPlanEditor
                 'category_id' => $data['categoryId'],
                 'name' => $name,
                 'color' => $colour,
+                'termin_color' => $this->tint($data),
                 'default_start' => $data['start'],
                 'duration' => $this->minutes($data['end']) - $this->minutes($data['start']),
                 'is_recurring' => true,
@@ -452,6 +459,12 @@ final class WeekPlanEditor
         }
 
         return (object) ['oneOff' => $oneOff, 'tombstone' => $tombstone];
+    }
+
+    /** The palette key a Termin is stored with; null = "Standard" (the dark block). Categories colour their own blocks. */
+    private function tint(array $data): ?string
+    {
+        return $data['categoryId'] === null ? ($data['color'] ?? null) : null;
     }
 
     /** @return array{0:string,1:string} title and colour of a new block */

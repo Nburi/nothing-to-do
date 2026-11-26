@@ -23,6 +23,7 @@ final readonly class Block
         // "this week only"), and whether that occurrence differs from its template this week.
         public ?int $eventId = null,
         public bool $changed = false,
+        public ?string $tint = null, // palette key a Termin wears in the editor, null = Standard (ignored by the engine)
     ) {}
 
     /** Real elapsed minutes, which is what sessions and capacity are measured in. */

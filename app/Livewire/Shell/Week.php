@@ -139,7 +139,7 @@ class Week extends Component
         foreach ($this->columns as $column) {
             foreach ($column['blocks'] as $block) {
                 if ($block['category'] === null) {
-                    $termine[$block['tid']] ??= ['title' => $block['title'], 'days' => []];
+                    $termine[$block['tid']] ??= ['title' => $block['title'], 'tint' => $block['tint'], 'days' => []];
                     $termine[$block['tid']]['days'][] = $column['weekday'];
 
                     continue;
@@ -191,6 +191,7 @@ class Week extends Component
             'kind' => $category ? 'cat' : 'termin',
             'categoryId' => $category?->id,
             'title' => '',
+            'color' => null,
         ];
     }
 
@@ -218,6 +219,7 @@ class Week extends Component
             'kind' => $block['category'] === null ? 'termin' : 'cat',
             'categoryId' => $block['category'],
             'title' => $block['category'] === null ? $block['title'] : '',
+            'color' => $block['category'] === null ? $block['tint'] : null,
             'changed' => $block['changed'],
             'moved' => false,
         ];
@@ -276,6 +278,7 @@ class Week extends Component
         $editor = app(WeekPlanEditor::class);
         $category = ($f['kind'] ?? 'cat') === 'cat' ? $this->intOrNull($f['categoryId'] ?? null) : null;
         $title = ($f['kind'] ?? 'cat') === 'termin' ? trim((string) ($f['title'] ?? '')) : null;
+        $color = ($f['kind'] ?? 'cat') === 'termin' && in_array($f['color'] ?? null, ScheduleEvent::EVENT_COLORS, true) ? $f['color'] : null;
         $start = (string) ($f['start'] ?? '');
         $end = (string) ($f['end'] ?? '');
         $every = $scope === 'every';
@@ -286,7 +289,7 @@ class Week extends Component
             return;
         }
 
-        $message = $this->attempt(function () use ($editor, $f, $category, $title, $start, $end, $every, $scope) {
+        $message = $this->attempt(function () use ($editor, $f, $category, $title, $color, $start, $end, $every, $scope) {
             switch ($f['mode']) {
                 case 'new':
                     if (! in_array($scope, ['this', 'every'], true)) {
@@ -294,7 +297,7 @@ class Week extends Component
                     }
                     $days = $this->cleanDays($f['days'] ?? []);
                     if ($every) {
-                        $editor->addRepeating($this->user, $days, $start, $end, $category, $title);
+                        $editor->addRepeating($this->user, $days, $start, $end, $category, $title, $color);
 
                         return trans_choice('week.saved.new_every', count($days), ['days' => $this->dayList($days)]);
                     }
@@ -302,23 +305,23 @@ class Week extends Component
                         throw ValidationException::withMessages(['weekdays' => __('week.form.pick_day')]);
                     }
                     foreach ($days as $day) {
-                        $editor->addOnce($this->user, $this->dates[$day - 1], $start, $end, $category, $title);
+                        $editor->addOnce($this->user, $this->dates[$day - 1], $start, $end, $category, $title, $color);
                     }
 
                     return trans_choice('week.saved.new_once', count($days), ['count' => count($days), 'date' => $this->short($this->dates[$days[0] - 1])]);
 
                 case 'tnew':
-                    $editor->addRepeating($this->user, $this->cleanDays($f['days'] ?? []), $start, $end, $category, $title);
+                    $editor->addRepeating($this->user, $this->cleanDays($f['days'] ?? []), $start, $end, $category, $title, $color);
 
                     return __('week.saved.plan');
 
                 case 'tpl':
-                    $editor->updateTemplate($this->user, (int) $f['id'], $this->cleanDays($f['days'] ?? []), $start, $end, $category, $title);
+                    $editor->updateTemplate($this->user, (int) $f['id'], $this->cleanDays($f['days'] ?? []), $start, $end, $category, $title, $color);
 
                     return __('week.saved.plan');
 
                 case 'once':
-                    $editor->updateOnce($this->user, (int) $f['id'], (string) $f['newDate'], $start, $end, $category, $title);
+                    $editor->updateOnce($this->user, (int) $f['id'], (string) $f['newDate'], $start, $end, $category, $title, $color);
 
                     return __('week.saved.once');
 
@@ -548,7 +551,7 @@ class Week extends Component
             $from = CarbonImmutable::parse($date)->dayOfWeekIso;
             $to = CarbonImmutable::parse($newDate)->dayOfWeekIso;
             $days = $this->cleanDays([...array_diff($template->recurrenceDays(), [$from]), $to]);
-            $editor->updateTemplate($this->user, $id, $days, $start, $end, $category ?? $template->category_id, $category === null && $template->category_id === null ? $template->name : null);
+            $editor->updateTemplate($this->user, $id, $days, $start, $end, $category ?? $template->category_id, $category === null && $template->category_id === null ? $template->name : null, $category === null && $template->category_id === null ? $template->termin_color : null);
         } else {
             $editor->changeOccurrence($this->user, $id, $date, $start, $end, $category ?? $template->category_id, ChangeScope::EveryWeek);
         }
@@ -594,7 +597,7 @@ class Week extends Component
         // The Wochenplan on its own (no one-week changes, no pauses), read through the engine so
         // the session counts are the same numbers the suggestion and the early warning use.
         $plan = new WeekPlan($timezone, $templates->map(fn (EventTemplate $t) => new Template(
-            $t->id, $t->recurrenceDays(), $t->default_start ?: '08:00', (int) $t->duration, $t->category_id, $t->displayName(),
+            $t->id, $t->recurrenceDays(), $t->default_start ?: '08:00', (int) $t->duration, $t->category_id, $t->displayName(), $t->category_id === null ? $t->termin_color : null,
         ))->values()->all());
         $calculator = new SlotCalculator($reader->categories($this->user));
 
@@ -641,6 +644,7 @@ class Week extends Component
             'title' => $category?->name ?? ($block->title ?: __('week.form.untitled')),
             'category' => $category?->id,
             'color' => $category?->color,
+            'tint' => $category === null ? $block->tint : null,
             'pomodoro' => (bool) $category?->pomodoro_enabled,
             'sessions' => count(array_filter($slots, fn (SessionSlot $s) => $s->categoryId === $block->categoryId
                 && $s->start->gte($block->start) && $s->start->lt($block->end))),

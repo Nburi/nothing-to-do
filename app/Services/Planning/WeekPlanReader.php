@@ -76,7 +76,7 @@ final class WeekPlanReader
                 continue;
             }
 
-            $oneOffs[] = new OneOffBlock($date, $row->start_time, $row->durationMinutes(), $row->category_id, $row->title, $row->id);
+            $oneOffs[] = new OneOffBlock($date, $row->start_time, $row->durationMinutes(), $row->category_id, $row->title, $row->id, tint: $row->category_id === null ? $row->termin_color : null);
         }
 
         return new WeekPlan(
@@ -88,6 +88,7 @@ final class WeekPlanReader
                 (int) $t->duration,
                 $t->category_id,
                 $t->displayName(),
+                $t->category_id === null ? $t->termin_color : null,
             ))->values()->all(),
             $changes,
             $oneOffs,
