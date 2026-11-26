@@ -91,6 +91,27 @@ use App\Mcp\Tools\ReadHelpArticleTool;
 use App\Mcp\Tools\ListMySupportRequestsTool;
 use App\Mcp\Tools\UpdateSettingsTool;
 use App\Mcp\Tools\SubmitSupportRequestTool;
+use App\Mcp\Tools\ListProjectsTool;
+use App\Mcp\Tools\GetProjectTool;
+use App\Mcp\Tools\ListTaskGroupsTool;
+use App\Mcp\Tools\GetTaskGroupTool;
+use App\Mcp\Tools\CreateProjectTool;
+use App\Mcp\Tools\UpdateProjectTool;
+use App\Mcp\Tools\CreateTaskGroupTool;
+use App\Mcp\Tools\UpdateTaskGroupTool;
+use App\Mcp\Tools\AddProjectStageTool;
+use App\Mcp\Tools\UpdateProjectStageTool;
+use App\Mcp\Tools\RemoveProjectStageTool;
+use App\Mcp\Tools\AddProjectStepTool;
+use App\Mcp\Tools\AddGroupStepTool;
+use App\Mcp\Tools\PlaceStepTool;
+use App\Mcp\Tools\SetStepWaitsOnTool;
+use App\Mcp\Tools\AddNoteTool;
+use App\Mcp\Tools\UpdateNoteTool;
+use App\Mcp\Tools\AddGroupNoteTool;
+use App\Mcp\Tools\UpdateGroupNoteTool;
+use App\Mcp\Tools\DeleteNoteTool;
+use App\Mcp\Tools\DeleteGroupNoteTool;
 use App\Models\User;
 use App\Services\AppModules;
 
@@ -112,6 +133,10 @@ class McpServer
         $this->tools = [
             // Read
             new ListTasksTool,
+            new ListProjectsTool,
+            new GetProjectTool,
+            new ListTaskGroupsTool,
+            new GetTaskGroupTool,
             new GetBoardTool,
             new GetTaskTool,
             new ListCategoriesTool,
@@ -177,8 +202,25 @@ class McpServer
             new UpdateReminderTool,
             new UpdateSettingsTool,
             new SubmitSupportRequestTool,
+            new CreateProjectTool,
+            new UpdateProjectTool,
+            new CreateTaskGroupTool,
+            new UpdateTaskGroupTool,
+            new AddProjectStageTool,
+            new UpdateProjectStageTool,
+            new RemoveProjectStageTool,
+            new AddProjectStepTool,
+            new AddGroupStepTool,
+            new PlaceStepTool,
+            new SetStepWaitsOnTool,
+            new AddNoteTool,
+            new UpdateNoteTool,
+            new AddGroupNoteTool,
+            new UpdateGroupNoteTool,
             // Delete
             new DeleteTaskTool,
+            new DeleteNoteTool,
+            new DeleteGroupNoteTool,
             new DeleteCraftIdeaTool,
             new DeleteReminderTool,
             new DeleteScheduleEventTool,

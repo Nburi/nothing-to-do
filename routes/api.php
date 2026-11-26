@@ -7,6 +7,10 @@ use App\Http\Controllers\Api\EventCategoryController;
 use App\Http\Controllers\Api\EventTemplateController;
 use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Api\MeController;
+use App\Http\Controllers\Api\NoteController;
+use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\StepController;
+use App\Http\Controllers\Api\TaskGroupController;
 use App\Http\Controllers\Api\PlanningController;
 use App\Http\Controllers\Api\ScheduleEventController;
 use App\Http\Controllers\Api\ReminderController;
@@ -56,6 +60,30 @@ Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function (
     Route::put('/tasks/{task}/split', [TaskSplitController::class, 'update']);
     Route::delete('/tasks/{task}/split', [TaskSplitController::class, 'destroy']);
     Route::patch('/task-sessions/{session}', [TaskSplitController::class, 'part']);
+
+    // Refactor step 4.3: projects (stages, steps), task groups, note cards and where a step sits.
+    Route::put('/tasks/{task}/place', [StepController::class, 'place']);
+    Route::put('/tasks/{task}/waits-on', [StepController::class, 'waitsOn']);
+
+    Route::get('/projects', [ProjectController::class, 'index']);
+    Route::post('/projects', [ProjectController::class, 'store']);
+    Route::get('/projects/{project}', [ProjectController::class, 'show']);
+    Route::patch('/projects/{project}', [ProjectController::class, 'update']);
+    Route::post('/projects/{project}/stages', [ProjectController::class, 'storeStage']);
+    Route::post('/projects/{project}/steps', [ProjectController::class, 'storeStep']);
+    Route::post('/projects/{project}/notes', [NoteController::class, 'storeForProject']);
+    Route::patch('/stages/{stage}', [ProjectController::class, 'updateStage']);
+    Route::delete('/stages/{stage}', [ProjectController::class, 'destroyStage']);
+
+    Route::get('/task-groups', [TaskGroupController::class, 'index']);
+    Route::post('/task-groups', [TaskGroupController::class, 'store']);
+    Route::get('/task-groups/{group}', [TaskGroupController::class, 'show']);
+    Route::patch('/task-groups/{group}', [TaskGroupController::class, 'update']);
+    Route::post('/task-groups/{group}/steps', [TaskGroupController::class, 'storeStep']);
+    Route::post('/task-groups/{group}/notes', [NoteController::class, 'storeForGroup']);
+
+    Route::patch('/notes/{note}', [NoteController::class, 'update']);
+    Route::delete('/notes/{note}', [NoteController::class, 'destroy']);
 
     Route::get('/reminders', [ReminderController::class, 'index']);
     Route::post('/reminders', [ReminderController::class, 'store']);

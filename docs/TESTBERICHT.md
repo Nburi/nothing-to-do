@@ -164,6 +164,7 @@ screenshot comes out, Claude **stops and tells Niels**, and the affected rows mo
 | C65 | MUSS | R4 | Give a repeating Termin (e.g. the dentist) a colour in the Wochenplan and a one-off Termin another one in the Zeitplan. Do the blocks read well in your theme, light and dark? Does „Standard“ still look like before? | offen (Termin-Farben) |
 | C66 | SOLLTE | R4 | Switch the theme through a few of the seven (also dark): is every colour of a Termin block distinguishable and its text readable? Is the hollow ring for „Standard“ clear next to „Tinte“? | offen (Termin-Farben) |
 | C67 | SOLLTE | R4, R7 | Open a Termin from the Wochenplan in the Zeitplan: the colour is greyed out with „kommt aus dem Wochenplan“. Is that how you expect it (same as the name)? | offen (Termin-Farben) |
+| C80 | MUSS | R10 | After the switch (or on the dev server) connect your claude.ai connector to the refactor server and ask it to: list your projects, read one in full, add a step to a stage, and move it to another stage. Are the old tool names (`list_projects`, `get_project`, `create_task_group`, `add_group_note`) still found and does the answer match the Projekte page? | offen (API/MCP for projects, 4.3e) |
 | C9 | SOLLTE | R3 | Capture three ideas by voice on the train with one hand. | offen |
 | C10 | SOLLTE | R7 | Hand it cold to a friend with a different life. Did they understand it without help? | offen |
 | C11 | SOLLTE | R8 | With real old data, find one thing from last month. | offen |

@@ -25,6 +25,11 @@ class TaskResource extends JsonResource
             'size' => $this->size?->value,
             'area_id' => $this->area_id,
             'first_step' => $this->first_step,
+            // Step 4.3: where the task sits when it is a step of a project (with its stage) or of a group.
+            'project_id' => $this->project_id,
+            'group_id' => $this->project_id === null ? $this->group_id : null,
+            'stage_id' => $this->stage_id,
+            'waits_on_id' => $this->waits_on_id,
             'notes' => $this->notes,
             'repeat_rule' => $this->repeat_rule,
             'duration_minutes' => $this->duration_minutes,

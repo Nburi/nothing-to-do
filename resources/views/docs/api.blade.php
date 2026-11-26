@@ -5,6 +5,7 @@
             'conventions' => 'Konventionen',
             'me' => 'Account',
             'tasks' => 'Tasks',
+            'projects' => 'Projekte und Gruppen',
             'schedule' => 'Zeitplan',
             'categories' => 'Kategorien',
             'templates' => 'Vorlagen',
@@ -267,6 +268,60 @@
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">size</code> (quick, short, long, block), <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">hard_deadline</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">soft_deadline</code>,
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">area_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">first_step</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">later</code>.
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">deadline</code> / <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">due_date</code> funktionieren weiter und zeigen dieselben Daten.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        {{-- Projekte und Gruppen (Refactor, Schritte 4.3 und 4.3b) --}}
+        <section id="projects" class="rounded-card border border-line bg-surface p-6 shadow-map sm:p-8">
+            <h2 class="mb-1 text-base font-medium text-ink">Projekte und Gruppen</h2>
+            <p class="mb-4 text-sm text-ink-soft">Ein Projekt hat Etappen und Schritte, eine Gruppe ist ein kleines Bündel Schritte in einer Liste. Jeder Schritt ist ein normaler Task.</p>
+
+            <div class="space-y-4 text-sm">
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /projects · POST /projects · GET /projects/{id} · PATCH /projects/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Die Liste zeigt je Projekt, was auch das Board zeigt: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">current_stage</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">progress</code> der aktuellen Etappe, die nächsten zwei Schritte (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">next_steps</code>) und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">more</code>.
+                        Der Einzelabruf liefert zusätzlich alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stages</code>, alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">steps</code> (offen und erledigt) und die <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notes</code>. Es gibt noch kein Löschen, wie in der App.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /projects/{id}/stages · PATCH /stages/{id} · DELETE /stages/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Etappen in der Reihenfolge, in der du sie anlegst (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">target_date</code>). Löschen entfernt nur die Etappe: ihre Schritte bleiben im Projekt ohne Etappe, ihre Notizen gehen zurück nach „Lose“.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /projects/{id}/steps · POST /task-groups/{id}/steps</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">title</code> (Pflicht), bei Projekten optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">todos</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>, Standard <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>). Weitere Felder (Grösse, Fristen, Bereich) setzt <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">PATCH /tasks/{id}</code>.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">PUT /tasks/{id}/place · PUT /tasks/{id}/waits-on</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">place</code>: ein offener Schritt an einen Ort (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> = keine Etappe; <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">index</code> ab 0, Standard ans Ende). Umsortieren und Verschieben sind derselbe Aufruf; derselbe Ort noch einmal ändert nichts (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">move.changed</code> = false).
+                        Ein „wartet auf“, das der Umzug widerlegen würde, wird gelöst und steht in <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">move.cleared_waits_on</code>.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">waits-on</code>: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">waits_on_id</code> setzt den einen Schritt desselben Projekts, auf den dieser wartet; <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> löst ihn. Zwei Schritte, die aufeinander warten würden, gibt es nicht (422).
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">GET /task-groups · POST /task-groups · GET /task-groups/{id} · PATCH /task-groups/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">todos</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>) und optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">steps</code> (Titel). Gleiche Form wie bei Projekten, ohne Etappen.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /projects/{id}/notes · POST /task-groups/{id}/notes · PATCH /notes/{id} · DELETE /notes/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Notizkarten in Markdown (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">body</code>, bis 10000 Zeichen). <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">#tags</code> im Text werden geteilte Tags (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tags</code> in der Antwort). Eine neue Karte liegt in „Lose“ (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code> = <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code>); bei Projekten sortiert <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code> sie in eine Etappe.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">Neue Felder und Filter bei /tasks</p>
+                    <p class="mt-1 text-ink-soft">
+                        Jeder Task nennt <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">group_id</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">waits_on_id</code>. <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">GET /tasks</code> filtert zusätzlich nach <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">group_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">size</code> und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">area_id</code>.
                     </p>
                 </div>
             </div>
