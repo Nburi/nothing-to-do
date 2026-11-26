@@ -94,6 +94,11 @@ edit sequences that the new `WeekPlanReader` and the old screens show the same b
 **Rule:** never compare date columns with `whereColumn` or `=` on SQLite. Use `whereDate()`, the
 `forRange()` / `forDay()` scopes, or `date(...)` on both sides.
 
+**Also on `main`:** the live app got the same one-line fix as hotfix PR #14 (`fix/pause-date-compare`, found
+through the event form). Its regression test lives in `tests/Unit/SchedulePauseTest.php`
+(`test_pause_hides_a_template_occurrence_that_was_saved_through_eloquent`). Merged into the refactor with
+`feature/merge-main-hotfix-14`, so both branches now carry the identical code.
+
 ## Livewire tests no longer throw `ModelNotFoundException` (2026-11-06)
 
 **Symptom.** After updating Livewire from 4.3.1 to 4.4.8, every ownership test that did
