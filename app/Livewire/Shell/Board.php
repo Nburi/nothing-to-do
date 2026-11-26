@@ -127,7 +127,8 @@ class Board extends Component
     #[Computed]
     public function planning(): PlanningContext
     {
-        return PlanningContext::for($this->user, $this->now);
+        // The cards are read once for the board; the pick engine takes the hidden steps from them.
+        return PlanningContext::for($this->user, $this->now, hiddenStepIds: $this->cards->flatMap(fn (Bundle $b) => $b->hidden)->values()->all());
     }
 
     #[Computed]
@@ -143,7 +144,7 @@ class Board extends Component
     #[Computed]
     public function todoSession(): TodoSession
     {
-        return app(Suggestions::class)->todoSession($this->user, $this->now);
+        return app(Suggestions::class)->todoSession($this->user, $this->now, $this->planning);
     }
 
     /** Free time (step 3.4): the idea from Later, "mine", or why there is none; and the free slot for the time line. */

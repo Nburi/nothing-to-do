@@ -63,7 +63,7 @@
     {{-- Step 4.9: ⋯ opens Bearbeiten, Verschieben, Löschen. Next to the flag on the desktop, last on touch. --}}
     @php
         $menuClass = implode(' ', [
-            'grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent -my-1',
+            'grid size-11 wb:size-9 shrink-0 cursor-pointer place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent -my-1',
             $canStart ? '' : '-mr-1',
             'wb:absolute wb:top-1.5 wb:m-0 wb:bg-surface wb:opacity-0 wb:shadow-card wb:group-hover:opacity-100 wb:focus-visible:opacity-100',
             $canStart ? 'wb:right-[5.875rem]' : 'wb:right-[3.125rem]',

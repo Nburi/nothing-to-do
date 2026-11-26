@@ -14,7 +14,7 @@
         @php($on = (string) $value === (string) $key)
         <button type="button" role="radio" aria-checked="{{ $on ? 'true' : 'false' }}" @disabled($disabled)
             wire:click="$set('{{ $model }}', {{ $key === '' ? 'null' : "'".$key."'" }})" data-color="{{ $key === '' ? 'standard' : $key }}"
-            class="grid size-9 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+            class="grid size-11 wb:size-9 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
             aria-label="{{ $key === '' ? __('week.colors.standard') : __('week.colors.'.$key) }}" title="{{ $key === '' ? __('week.colors.standard') : __('week.colors.'.$key) }}">
             {{-- "Standard" is a hollow ring, so it never reads as the solid ink swatch next to it. --}}
             <span class="size-5 rounded-full" style="{{ $key === '' ? 'background: transparent; box-shadow: inset 0 0 0 2px var(--t-deep)' : 'background: '.$tone.'; box-shadow: 0 0 0 1px var(--t-line)' }}{{ $on ? ($key === '' ? ', 0 0 0 2px var(--t-surface), 0 0 0 4px var(--t-ink)' : '; box-shadow: 0 0 0 2px var(--t-surface), 0 0 0 4px var(--t-ink)') : '' }}"></span>

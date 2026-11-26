@@ -108,7 +108,15 @@ class ShellAccessibilityTest extends TestCase
     {
         $html = $this->actingAs($this->user)->get('/board')->getContent();
 
-        $this->assertStringNotContainsString('role="menu"', $html);
+        // The ⋯ menus of the rows (step 4.9) are real menus with arrow keys; only the battery must not be one.
+        $xpath = $this->xpath($html);
+        $groups = $xpath->query('//*[@role="group"][@aria-label="'.__('shell.battery.label').'"]');
+        $this->assertGreaterThan(0, $groups->length, 'the battery levels sit in a labelled group');
+
+        foreach ($groups as $group) {
+            $this->assertSame(0, $xpath->query('.//*[@role="menu" or @role="menuitemradio"]', $group)->length);
+        }
+
         $this->assertStringNotContainsString('menuitemradio', $html);
         $this->assertStringContainsString('aria-pressed="true"', $html);
     }

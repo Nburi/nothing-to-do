@@ -78,9 +78,9 @@ final class Suggestions
      * The To-do session: the most urgent loose To-dos that fit into 25 minutes, in the order they
      * are worked. Not tied to a block or the battery: it is what the board offers as one card.
      */
-    public function todoSession(User $user, ?CarbonImmutable $now = null): TodoSession
+    public function todoSession(User $user, ?CarbonImmutable $now = null, ?PlanningContext $context = null): TodoSession
     {
-        $context = PlanningContext::for($user, $now, $this->reader);
+        $context ??= PlanningContext::for($user, $now, $this->reader);
         $all = $this->rank($context, Battery::Okay, [], todosOnly: true);
         $picks = $this->bundler->bundle($all);
 
@@ -154,16 +154,13 @@ final class Suggestions
         return $picks[0]->taskId ?? null;
     }
 
-    /** @var array<int, list<int>> hidden project and group steps per user, read once per instance */
-    private array $hidden = [];
-
     /**
      * @param  bool  $todosOnly  only loose To-dos: project and group steps live in their own cards
      * @return list<Pick>
      */
     private function rank(PlanningContext $context, Battery $battery, array $exclude, bool $todosOnly = false): array
     {
-        $hidden = $this->hidden[$context->user->id] ??= app(NextSteps::class)->hiddenTaskIds($context->user);
+        $hidden = $context->hiddenStepIds();
         $candidates = $todosOnly
             ? array_values(array_filter($context->candidates, function (PickCandidate $c) use ($context) {
                 $task = $context->tasks[$c->id()];

@@ -24,6 +24,6 @@
     </div>
     <span wire:loading wire:target="select" class="text-xs text-ink-faint" role="status">{{ __('onboarding.language.applying') }}</span>
     @error('locale')
-        <p class="text-xs text-signal">{{ $message }}</p>
+        <p data-field-error role="alert" class="text-xs text-signal">{{ $message }}</p>
     @enderror
 </div>

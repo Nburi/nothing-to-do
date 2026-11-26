@@ -5,7 +5,7 @@
      @param Collection $pickable, int $total, bool $any, string $search, ?Collection $stages (project),
             ?string $groupList (group) --}}
 @php
-    $input = 'min-h-10 rounded-card border border-line bg-paper px-3 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $input = 'min-h-11 wb:min-h-10 rounded-card border border-line bg-paper px-3 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
 @endphp
 <section id="task-picker" class="flex flex-col gap-3 rounded-panel bg-surface p-4" style="border: var(--t-bw) solid var(--t-line)" aria-labelledby="picker-title" data-task-picker>
     <div class="flex items-start justify-between gap-2">
@@ -54,7 +54,7 @@
                         </div>
                         <button type="button" wire:click="adoptTask({{ $task->id }})" wire:loading.attr="disabled" wire:target="adoptTask({{ $task->id }})"
                             aria-label="{{ __('projects.adopt.add_title', ['title' => $task->title]) }}"
-                            class="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-card border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">
+                            class="inline-flex min-h-11 wb:min-h-10 shrink-0 items-center gap-1 rounded-card border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">
                             @include('shell.icon', ['name' => 'plus', 'class' => 'size-4']) {{ __('projects.adopt.add') }}
                         </button>
                     </li>

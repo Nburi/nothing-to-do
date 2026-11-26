@@ -96,7 +96,7 @@
         {{-- Step 4.3d: pull an existing board task in. --}}
         <div class="flex flex-wrap items-center gap-2">
             <button type="button" wire:click="{{ $picking ? 'closePicker' : 'openPicker' }}" aria-expanded="{{ $picking ? 'true' : 'false' }}" aria-controls="task-picker" data-open-picker
-                class="inline-flex min-h-9 items-center gap-1 rounded-full border border-line px-3 text-sm font-semibold text-ink hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">@include('shell.icon', ['name' => 'plus', 'class' => 'size-4']) {{ __('projects.adopt.button') }}</button>
+                class="inline-flex min-h-11 wb:min-h-9 items-center gap-1 rounded-full border border-line px-3 text-sm font-semibold text-ink hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">@include('shell.icon', ['name' => 'plus', 'class' => 'size-4']) {{ __('projects.adopt.button') }}</button>
         </div>
         @if ($picking)
             @include('shell.task-picker', ['pickable' => $this->pickable, 'total' => $this->pickableCount, 'any' => $this->hasPickable, 'search' => $pickSearch, 'stages' => $stages, 'groupList' => null])
@@ -202,7 +202,7 @@
 
         {{-- Step 4.3d: deleting is the quietest thing on the page: last, plain text, behind a confirm. --}}
         <div class="mt-2 flex border-t border-line pt-4">
-            <button type="button" wire:click="askDelete" data-delete-owner class="inline-flex min-h-10 items-center rounded-card px-3 text-sm font-semibold text-bad hover:bg-bad-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.delete.project') }}</button>
+            <button type="button" wire:click="askDelete" data-delete-owner class="inline-flex min-h-11 wb:min-h-10 items-center rounded-card px-3 text-sm font-semibold text-bad hover:bg-bad-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.delete.project') }}</button>
         </div>
     </main>
 

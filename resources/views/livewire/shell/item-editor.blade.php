@@ -13,7 +13,7 @@
                 style="border: var(--t-bw) solid var(--t-line)" novalidate>
                 <div class="flex items-center justify-between gap-3">
                     <h2 id="item-editor-title" class="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-faint">{{ __('items.sheet.title') }}</h2>
-                    <button type="button" wire:click="close" class="-mr-2 grid size-9 place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('items.sheet.close') }}" title="{{ __('items.sheet.esc') }}">
+                    <button type="button" wire:click="close" class="-mr-2 grid size-11 wb:size-9 place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('items.sheet.close') }}" title="{{ __('items.sheet.esc') }}">
                         @include('shell.icon', ['name' => 'close', 'class' => 'size-4'])
                     </button>
                 </div>
@@ -23,7 +23,7 @@
                     <input type="text" wire:model="title" maxlength="{{ \App\Services\Planning\Capture::MAX_LENGTH }}" autocomplete="off" autofocus
                         @class(['h-11 min-w-0 rounded-card bg-paper px-3 text-base text-ink focus:outline-hidden focus:ring-2 focus:ring-accent', 'border-bad' => $errors->has('title'), 'border-line' => ! $errors->has('title')])
                         style="border-width: var(--t-bw)" @error('title') aria-invalid="true" aria-describedby="item-editor-title-error" @enderror>
-                    @error('title') <span id="item-editor-title-error" class="text-xs font-semibold text-bad" role="alert">{{ $message }}</span> @enderror
+                    @error('title') <span data-field-error role="alert" id="item-editor-title-error" class="text-xs font-semibold text-bad">{{ $message }}</span> @enderror
                 </label>
 
                 <div>
@@ -35,7 +35,7 @@
                                 @class(['rounded-full border px-3 py-1.5 text-[13px] font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent', 'border-ink bg-ink text-paper' => $on, 'border-line bg-surface text-ink-soft hover:text-ink' => ! $on])>{{ __('shell.lists.'.$target) }}</button>
                         @endforeach
                     </div>
-                    @error('list') <p class="mt-1 text-xs font-semibold text-bad" role="alert">{{ $message }}</p> @enderror
+                    @error('list') <p data-field-error role="alert" class="mt-1 text-xs font-semibold text-bad">{{ $message }}</p> @enderror
                 </div>
 
                 @if ($list !== 'inbox')
@@ -50,7 +50,7 @@
                                 </button>
                             @endforeach
                         </div>
-                        @error('size') <p class="mt-1 text-xs font-semibold text-bad" role="alert">{{ $message }}</p> @else <p class="mt-1 text-xs text-ink-faint">{{ __('items.sheet.size_hint') }}</p> @enderror
+                        @error('size') <p data-field-error role="alert" class="mt-1 text-xs font-semibold text-bad">{{ $message }}</p> @else <p class="mt-1 text-xs text-ink-faint">{{ __('items.sheet.size_hint') }}</p> @enderror
                     </div>
                 @endif
 
@@ -61,7 +61,7 @@
                     <textarea wire:model="notes" rows="3" maxlength="5000" placeholder="{{ __('items.sheet.notes_placeholder') }}"
                         @class(['min-h-20 min-w-0 resize-y rounded-card bg-paper px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-2 focus:ring-accent', 'border-bad' => $errors->has('notes'), 'border-line' => ! $errors->has('notes')])
                         style="border-width: var(--t-bw)"></textarea>
-                    @error('notes') <span class="text-xs font-semibold text-bad" role="alert">{{ $message }}</span> @enderror
+                    @error('notes') <span data-field-error role="alert" class="text-xs font-semibold text-bad">{{ $message }}</span> @enderror
                 </label>
 
                 <div class="sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface px-5 py-3 wb:-mx-6 wb:-mb-6 wb:px-6">

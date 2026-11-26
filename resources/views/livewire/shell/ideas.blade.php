@@ -63,7 +63,7 @@
                         <div class="flex items-start gap-1">
                             <h2 class="line-clamp-4 min-w-0 flex-1 font-display text-[16px] leading-snug wrap-break-word text-ink" style="font-weight: var(--t-dw)" title="{{ $task->title }}">{{ $task->title }}</h2>
                             {{-- Step 4.9: edit, move to another list, delete (the same ⋯ menu as the board rows). --}}
-                            @include('shell.item-menu', ['task' => $task, 'trigger' => '-mr-2 -mt-1.5 grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent'])
+                            @include('shell.item-menu', ['task' => $task, 'trigger' => '-mr-2 -mt-1.5 grid size-11 wb:size-9 shrink-0 cursor-pointer place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent'])
                         </div>
                         @if ($task->area || $task->size)
                             <p class="flex flex-wrap items-center gap-x-1.5 text-xs text-ink-soft">

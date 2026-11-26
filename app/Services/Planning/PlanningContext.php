@@ -14,6 +14,7 @@ use App\Planning\PlannedTask;
 use App\Planning\SessionSlot;
 use App\Planning\SlotCalculator;
 use App\Planning\StartBy;
+use App\Services\Projects\NextSteps;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -32,6 +33,9 @@ final class PlanningContext
     public const MAX_HORIZON_DAYS = 60;
 
     private ?StartBy $startBy = null;
+
+    /** @var list<int>|null open steps of projects and groups the board does not show (NextSteps), read once per context */
+    private ?array $hiddenStepIds = null;
 
     /**
      * @param  Collection<int, Task>  $tasks  keyed by id, in board order
@@ -53,7 +57,8 @@ final class PlanningContext
         public readonly ?CarbonImmutable $nextBlockAt,
     ) {}
 
-    public static function for(User $user, ?CarbonImmutable $now = null, WeekPlanReader $reader = new WeekPlanReader): self
+    /** @param  list<int>|null  $hiddenStepIds  what the caller already knows from NextSteps (the board has built its cards), else read on first use */
+    public static function for(User $user, ?CarbonImmutable $now = null, WeekPlanReader $reader = new WeekPlanReader, ?array $hiddenStepIds = null): self
     {
         $now = UserClock::now($user, $now);
         $today = $now->toDateString();
@@ -87,7 +92,7 @@ final class PlanningContext
         $calculator = new SlotCalculator($categories);
         $slots = array_map(fn (array $b) => $calculator->slots($b), array_diff_key($blocks, [$yesterday => true]));
 
-        return new self(
+        $context = new self(
             $user,
             $now,
             $today,
@@ -99,6 +104,15 @@ final class PlanningContext
             self::categoryAt([...$blocks[$yesterday] ?? [], ...$blocks[$today] ?? []], $categories, $now),
             self::nextSlotStart($slots, $now),
         );
+        $context->hiddenStepIds = $hiddenStepIds;
+
+        return $context;
+    }
+
+    /** @return list<int> open steps the board does not show: the pick engine must not suggest them */
+    public function hiddenStepIds(): array
+    {
+        return $this->hiddenStepIds ??= app(NextSteps::class)->hiddenTaskIds($this->user);
     }
 
     /** @return list<PlannedTask> */

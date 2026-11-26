@@ -9,7 +9,7 @@
             <li wire:key="resting-{{ $card->ref() }}">
                 <button type="button" wire:click="wake('{{ $card->ref() }}')" wire:loading.attr="disabled"
                     title="{{ __('shell.order.wake') }}" aria-label="{{ __('shell.order.wake_named', ['name' => $card->name]) }}"
-                    class="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-semibold text-ink-soft transition hover:border-accent hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">
+                    class="inline-flex min-h-11 wb:min-h-9 max-w-full items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-semibold text-ink-soft transition hover:border-accent hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">
                     @include('shell.icon', ['name' => $card->isProject() ? 'project' : 'group', 'class' => 'size-3.5 shrink-0'])
                     <span class="truncate">{{ $card->name }}</span>
                 </button>
