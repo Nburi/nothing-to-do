@@ -75,7 +75,7 @@ final class PlanningContext
             default => $t->board_position,
         } ?? PHP_INT_MAX;
 
-        $tasks = Task::forUser($user)->active()->whereIn('list', Task::WORK_LISTS)->get()
+        $tasks = Task::forUser($user)->active()->whereIn('list', Task::WORK_LISTS)->with('stage:id,target_date')->get()
             ->sortBy(fn (Task $t) => [$t->list === 'todos' ? 0 : 1, $place($t), $t->sort_order, $t->created_at?->getTimestamp() ?? 0, $t->id])
             ->values();
 

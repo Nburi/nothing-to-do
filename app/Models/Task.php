@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBoardPosition;
 use App\Planning\PlannedTask;
 use App\Planning\Size;
 use App\Support\Markdown\Markdown;
 use Database\Factories\TaskFactory;
-use App\Models\Concerns\HasBoardPosition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,9 +18,10 @@ use Illuminate\Support\Carbon;
 
 class Task extends Model
 {
+    use HasBoardPosition;
+
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
-    use HasBoardPosition;
     use SoftDeletes;
 
     /** The board lists. `later` is the refactor's Later box (3-THINGS.md); the old board does not show it. */
@@ -183,6 +184,22 @@ class Task extends Model
     }
 
     /**
+     * The soft deadline the planning engine sees (step d-stage-soft): the task's own soft date, or the target
+     * date of its project stage, whichever is earlier. Derived on every read and never written to the task, so
+     * the step keeps its own date and moving the stage date moves the steps with it. The hard deadline is
+     * not touched. Eager-load `stage` (id, target_date) where many tasks are planned.
+     */
+    public function planningSoftDeadline(): ?string
+    {
+        $dates = array_filter([
+            $this->softDeadline()?->toDateString(),
+            $this->stage_id !== null ? $this->stage?->target_date?->toDateString() : null,
+        ]);
+
+        return $dates === [] ? null : min($dates);
+    }
+
+    /**
      * G1: a missing size counts as Short, but a To-do without size counts as Quick (10 min, To-do
      * session). Use `size` itself to tell "not sized yet" apart.
      */
@@ -205,7 +222,7 @@ class Task extends Model
                 ? (int) ceil($this->duration_minutes / $sessionMinutes)
                 : null,
             hardDeadline: $this->hardDeadline()?->toDateString(),
-            softDeadline: $this->softDeadline()?->toDateString(),
+            softDeadline: $this->planningSoftDeadline(),
             areaId: $this->area_id,
             important: (bool) $this->is_important,
         );

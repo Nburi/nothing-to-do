@@ -55,6 +55,7 @@ return [
     'add_stage' => 'Stage',
     'stage_name' => 'Name of the stage',
     'stage_date' => 'Target (optional)',
+    'stage_date_hint' => "The target counts as a soft deadline for this stage's open steps. A step's own earlier date still wins.",
     'stage_added' => 'Stage “:name” added.',
     'stage_removed' => 'Stage “:name” is gone. Its steps now have no stage.',
     'remove_stage' => 'Remove stage',
