@@ -187,6 +187,12 @@ return [
         'menu' => 'Zurück aufs Board',
         'done' => '„:title“ liegt wieder auf dem Board (:list).',
     ],
+    // ui-fixes: the ⋯ menu in the header of a project or group page (holds "löschen").
+    'owner_menu' => [
+        'title' => 'Weitere Aktionen',
+        'open' => 'Weitere Aktionen für „:name“',
+    ],
+
     'delete' => [
         'project' => 'Projekt löschen',
         'group' => 'Gruppe löschen',

@@ -41,10 +41,11 @@
                 <button type="button" wire:click="$set('editingName', false)" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
             </form>
         @else
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h1 class="min-w-0 wrap-break-word font-display text-2xl text-ink" style="font-weight: var(--t-dw)">{{ $group->name }}</h1>
                 <span class="text-sm text-ink-soft">{{ __('projects.group_holds', ['list' => __('projects.lists.'.$list)]) }} · {{ $doneCount }}/{{ $total }}</span>
                 <button type="button" wire:click="editName" class="text-sm font-semibold text-accent-ink hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.rename') }}</button>
+                @include('shell.owner-menu', ['kind' => 'group', 'name' => $group->name])
             </div>
         @endif
 
@@ -89,11 +90,6 @@
         </div>
         {{-- Step 4.3b: the group's note cards (no stages). --}}
         @include('shell.notes-panel', ['notes' => $this->notes, 'stages' => null, 'userTags' => $this->userTags, 'noteTag' => $noteTag, 'editingNote' => $editingNote])
-        </div>
-
-        {{-- Step 4.3d: deleting is the quietest thing on the page: last, plain text, behind a confirm. --}}
-        <div class="mt-2 flex border-t border-line pt-4">
-            <button type="button" wire:click="askDelete" data-delete-owner class="inline-flex min-h-11 wb:min-h-10 items-center rounded-card px-3 text-sm font-semibold text-bad hover:bg-bad-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('projects.delete.group') }}</button>
         </div>
     </main>
 
