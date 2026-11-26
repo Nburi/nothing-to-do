@@ -656,6 +656,7 @@ class Board extends Component
     #[On('capture-saved')]
     #[On('inbox-changed')]
     #[On('crunch-changed')]
+    #[On('items-changed')]
     public function listsChanged(): void
     {
         $this->fresh();

@@ -46,7 +46,7 @@ class MigrationRehearsalToolTest extends TestCase
     public function test_a_lost_row_is_a_problem(): void
     {
         $before = $this->snapshots->take();
-        Task::query()->first()->delete();
+        Task::query()->first()->forceDelete();
 
         $result = SnapshotComparison::compare($before, $this->snapshots->take());
 
@@ -129,7 +129,7 @@ class MigrationRehearsalToolTest extends TestCase
         $this->artisan('app:rehearsal-snapshot', ['name' => 'before', '--user' => 'niels@example.test'])->assertSuccessful();
         $this->assertFileExists($dir.'/before.json');
 
-        Task::query()->first()->delete();
+        Task::query()->first()->forceDelete();
         $this->artisan('app:rehearsal-snapshot', ['name' => 'after'])->assertSuccessful();
 
         $this->artisan('app:rehearsal-compare', ['before' => 'before', 'after' => 'after'])

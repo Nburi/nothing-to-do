@@ -17,3 +17,18 @@ the board order and grows with every step. The step notes in `docs/steps/` stay 
 - **Calm board:** at most two project or group cards at once. More wait in „Weitere Karten · n ruhen" under their
   column and are not suggested. „Nach oben holen" puts one at the top; the lowest card on show then rests.
 - New tasks, projects and groups go to the bottom of the order.
+
+## Editing, moving and deleting single items (step 4.9)
+
+- **The ⋯ button** on every row of a list (Inbox, To-dos, Tasks, Später, the „Wichtig" band, the phone's list sheets, the
+  session peek) and on every card of the Ideen page. Desktop: shows on hover or focus; touch: always there.
+  Menu: **Bearbeiten**, **Verschieben nach** (every other list), **Löschen**.
+- **Bearbeiten** opens one sheet (card on the desktop, bottom sheet on the phone) with title, list, size, hard and soft
+  date, area, first step and notes. Enter in the title saves, Esc closes. Later has no hard date.
+- **Every change leaves a toast with „Rückgängig"** (10 s): a save, a move and a delete. Undo puts the item back exactly,
+  also its place in the list. There is no confirm dialog.
+- **Delete is a soft delete** (`tasks.deleted_at`): day plans and parts stay, so undo loses nothing. The task of a running
+  session cannot be deleted. The REST API and MCP `delete_task` still delete for real.
+- A move goes to the bottom of the new list; an edit that keeps the list keeps the place. A date already in the past is
+  only refused when it is changed.
+- Rules live in `App\Services\Planning\ItemEditor`; the sheet and the toast in `App\Livewire\Shell\ItemEditor`.

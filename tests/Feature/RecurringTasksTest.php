@@ -180,7 +180,7 @@ class RecurringTasksTest extends TestCase
         $task->syncRepeat($user, true);
         $successor = Task::query()->where('repeated_from_id', $task->id)->sole();
 
-        $task->delete();
+        $task->forceDelete();
 
         $this->assertNull($successor->fresh()->repeated_from_id);
     }

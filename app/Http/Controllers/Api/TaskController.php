@@ -115,7 +115,8 @@ class TaskController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $this->userTask($request, $id)->delete();
+        // A real delete (with its parts and day plans): the REST API has no undo. The shell's soft delete is ItemEditor::delete().
+        $this->userTask($request, $id)->forceDelete();
 
         return response()->json(null, 204);
     }

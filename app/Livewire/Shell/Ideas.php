@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -127,6 +128,13 @@ class Ideas extends Component
 
         TaskMutator::applyUpdate($task, $this->user, ['is_completed' => false]);
         $this->notice = __('shell.ideas.undone');
+        $this->fresh();
+    }
+
+    /** An idea was edited, moved or deleted (step 4.9): read Later again. */
+    #[On('items-changed')]
+    public function itemsChanged(): void
+    {
         $this->fresh();
     }
 

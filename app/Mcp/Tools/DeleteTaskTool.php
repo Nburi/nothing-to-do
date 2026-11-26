@@ -78,7 +78,8 @@ class DeleteTaskTool extends McpTool
         $deletedId = $task->id;
         $deletedTitle = $task->title;
 
-        $task->delete();
+        // A real delete, as before: the tool asked for the exact title and has no undo. The shell's soft delete is ItemEditor::delete().
+        $task->forceDelete();
 
         return ['deleted' => true, 'id' => $deletedId, 'title' => $deletedTitle];
     }

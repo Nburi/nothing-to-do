@@ -218,7 +218,7 @@ trait ManagesTasks
 
     public function deleteTask(int $id): void
     {
-        $this->userTask($id)->delete();
+        $this->userTask($id)->forceDelete();
 
         if ($this->editingId === $id) {
             $this->cancelEdit();

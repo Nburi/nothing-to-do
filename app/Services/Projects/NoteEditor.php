@@ -117,7 +117,7 @@ final class NoteEditor
     {
         return DB::transaction(function () use ($user, $snapshot, $madeTaskId) {
             if ($madeTaskId !== null) {
-                Task::where('user_id', $user->id)->whereKey($madeTaskId)->where('is_completed', false)->delete();
+                Task::where('user_id', $user->id)->whereKey($madeTaskId)->where('is_completed', false)->forceDelete();
             }
 
             $stageId = $snapshot['stage_id'] && ProjectStage::whereKey($snapshot['stage_id'])->where('project_id', $snapshot['project_id'])->exists()
