@@ -1,6 +1,6 @@
 @include('errors.shell', [
-    'title' => 'Seite nicht gefunden',
-    'heading' => 'Diese Seite gibt es nicht.',
-    'message' => 'Der Link ist entweder falsch, oder das, wonach du suchst, wurde inzwischen entfernt.',
+    'title' => __('errors.not_found.title'),
+    'heading' => __('errors.not_found.heading'),
+    'message' => __('errors.not_found.message'),
     'iconClass' => 'error-icon-settle',
 ])

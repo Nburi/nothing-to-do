@@ -37,6 +37,7 @@ use Laravel\Sanctum\HasApiTokens;
     'last_login_at',
     'list_concept',
     'nudge_times',
+    'locale', 'shell_tour_seen_at',
     'mcp_oauth_write', 'mcp_oauth_delete',
 ])]
 #[Hidden(['password', 'remember_token'])]
@@ -453,6 +454,20 @@ class User extends Authenticatable
     }
 
     /**
+     * Step 5.1: whether the three-tap tour of the new app is still to be shown. Finishing and
+     * skipping both stamp the column; existing accounts were stamped by the migration.
+     */
+    public function needsShellTour(): bool
+    {
+        return $this->shell_tour_seen_at === null;
+    }
+
+    public function markShellTourSeen(): void
+    {
+        $this->forceFill(['shell_tour_seen_at' => now()])->save();
+    }
+
+    /**
      * @return array<string, string>
      */
     /**
@@ -512,6 +527,7 @@ class User extends Authenticatable
             'planner_enabled' => 'boolean',
             'hidden_modules' => 'array',
             'onboarding_completed_at' => 'datetime',
+            'shell_tour_seen_at' => 'datetime',
             'is_admin' => 'boolean',
             'mcp_oauth_write' => 'boolean',
             'mcp_oauth_delete' => 'boolean',

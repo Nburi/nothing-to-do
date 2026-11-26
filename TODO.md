@@ -104,6 +104,12 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [ ] 4.8 later: `set_task_order` (MCP) and the old board still write `sort_order`; they do not move the new board order. Decide at the switch (5.x) whether to retire them or map them.
 - [ ] 4.8 later: the "Nach oben holen" chip shows no idle time ("seit 12 Tagen" of the mockup); an order across the To-dos and Tasks columns was left out.
 
+## Refactor: phase 5, step 5.1 (2026-11-26)
+- [x] 5.1 Onboarding, empty states, German and English (`feature/onboarding-i18n`). Notes in `docs/steps/5.1.md`: language per user, three-tap tour, lang parity test, error pages localized, empty states and long titles checked (B1, B2).
+- [ ] 5.1 open for Niels: TESTBERICHT C70-C74; check the decisions in `docs/steps/5.1.md` (existing users are stamped as having seen the tour; at the switch maybe `UPDATE users SET shell_tour_seen_at = NULL`).
+- [ ] 5.4: the old tutorial (`/app/onboarding`, `OnboardingQuiz`, the redirect in `RegisteredUserController`) and the old-app strings that are not in `lang/` are retired with `/app`. Registration should then land on `/board`, where the tour opens by itself.
+- [ ] 5.1 later: the API answers (`/api/capture`, `/api/arrival`) and the old `Services/*` copy stay German; make the API follow `users.locale` if wanted.
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
@@ -116,4 +122,4 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - Answered 2026-11-06: no work suggestions outside pomodoro blocks; long break after every fourth session, counted per day.
 
 ## Known issues carried over
-- `lang/` exists since step 1.3 (`pick.php` only). Validation messages are still English until the shell (phase 2) sets the German locale.
+- ~~`lang/` ... validation messages are still English~~ Done in the shell since phase 2 (locale `de`, `lang/de/validation.php`); in 5.1 the locale is per user and `LangParityTest` keeps `de` and `en` in step.

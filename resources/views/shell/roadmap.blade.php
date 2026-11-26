@@ -36,7 +36,7 @@
                         @if ($state === 'done')@include('shell.icon', ['name' => 'check', 'class' => 'size-3 text-accent-fg'])@endif
                     </span>
                 </div>
-                <span data-roadmap-date @class(['col-start-2 row-start-2 font-mono text-[10.5px] text-ink-faint wb:col-start-1 wb:row-start-3 wb:px-1 wb:pt-0.5 wb:pb-0', 'pb-5' => ! $loop->last])>{{ $s->target_date ? $s->target_date->format('d.m.') : __('projects.no_date') }}</span>
+                <span data-roadmap-date @class(['col-start-2 row-start-2 font-mono text-[10.5px] text-ink-faint wb:col-start-1 wb:row-start-3 wb:px-1 wb:pt-0.5 wb:pb-0', 'pb-5' => ! $loop->last])>{{ $s->target_date ? \App\Support\Dates::padded($s->target_date) : __('projects.no_date') }}</span>
                 <span class="sr-only">{{ $state === 'done' ? __('projects.stage_done') : ($state === 'now' ? __('projects.stage_now') : __('projects.stage_waits', ['number' => $i])) }}</span>
             </li>
         @endforeach

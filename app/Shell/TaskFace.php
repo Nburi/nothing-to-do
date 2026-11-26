@@ -61,6 +61,6 @@ final class TaskFace
 
     private static function date(CarbonInterface $date): string
     {
-        return $date->format('j.n.');
+        return \App\Support\Dates::short($date);
     }
 }

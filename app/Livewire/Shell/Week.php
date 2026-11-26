@@ -755,7 +755,7 @@ class Week extends Component
 
     public function short(string $date): string
     {
-        return CarbonImmutable::parse($date)->format('j.n.');
+        return \App\Support\Dates::short($date);
     }
 
     public function weekday(string $date): string

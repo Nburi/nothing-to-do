@@ -20,7 +20,7 @@
         @include('shell.icon', ['name' => 'chevron', 'class' => 'ml-auto size-4 shrink-0 text-ink-faint'])
     </a>
     @if ($isProject && $stage)
-        <p class="-mt-2 truncate pl-6 text-xs text-ink-soft">{{ $stage->target_date ? __('projects.card.stage_until', ['name' => $stage->name, 'date' => $stage->target_date->format('d.m.')]) : $stage->name }}</p>
+        <p class="-mt-2 truncate pl-6 text-xs text-ink-soft">{{ $stage->target_date ? __('projects.card.stage_until', ['name' => $stage->name, 'date' => \App\Support\Dates::padded($stage->target_date)]) : $stage->name }}</p>
     @endif
     @if ($bundle->progress !== null)
         <div class="h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $bundle->progress['total'] }}" aria-valuenow="{{ $bundle->progress['done'] }}" aria-label="{{ __('projects.card.progress', $bundle->progress) }}">

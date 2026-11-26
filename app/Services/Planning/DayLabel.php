@@ -2,6 +2,7 @@
 
 namespace App\Services\Planning;
 
+use App\Support\Dates;
 use Carbon\CarbonImmutable;
 
 /** A date as the planning copy says it: heute / morgen / weekday within a week / "j.n.". */
@@ -16,7 +17,7 @@ final class DayLabel
             $days <= 0 => __('pick.day.today'),
             $days === 1 => __('pick.day.tomorrow'),
             $days <= 6 => $day->locale(app()->getLocale())->isoFormat('dddd'),
-            default => $day->format('j.n.'),
+            default => Dates::short($day),
         };
     }
 }

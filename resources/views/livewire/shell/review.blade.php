@@ -5,8 +5,11 @@
     $past = $r['past'];
     $next = $r['next'];
     $locale = app()->getLocale();
-    $day = fn (string $date, string $format) => \Illuminate\Support\Carbon::parse($date)->locale($locale)->isoFormat($format);
-    $range = $day($r['monday'], 'D.').'–'.$day($r['sunday'], 'D. MMMM');
+    // 'day', 'day_long', 'day_month' and 'weekday_date' are the patterns of lang/*/dates.php; anything else is a plain isoFormat pattern.
+    $day = fn (string $date, string $format) => in_array($format, ['day', 'day_long', 'day_month', 'weekday_date'], true)
+        ? \App\Support\Dates::iso($date, $format)
+        : \Illuminate\Support\Carbon::parse($date)->locale($locale)->isoFormat($format);
+    $range = $day($r['monday'], 'day').'–'.$day($r['sunday'], 'day_month');
     $weekUrl = \App\Livewire\Shell\Review::weekUrl();
     $maxDone = max(4, ...array_column($past['days'], 'count'));
     $maxNext = max(4, ...array_column($next['days'], 'capacity'), ...array_column($next['days'], 'load'));
@@ -14,7 +17,7 @@
     $card = 'flex min-w-0 flex-col gap-4 rounded-panel bg-surface p-4 wb:p-5';
     $eyebrow = 'font-mono text-[10.5px] font-medium uppercase tracking-widest text-ink-faint';
     $btn = 'inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-4 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
-    $chip = fn (array $row) => __($row['hard'] ? 'shell.review.hard_on' : 'shell.review.soft_on', ['date' => $day($row['date'], 'dd D.M.')]);
+    $chip = fn (array $row) => __($row['hard'] ? 'shell.review.hard_on' : 'shell.review.soft_on', ['date' => $day($row['date'], 'weekday_date')]);
 @endphp
 <div id="content" class="min-h-dvh pb-[calc(88px+env(safe-area-inset-bottom))] wb:pb-0">
     <div class="hidden wb:block">@include('shell.topbar', ['active' => 'review'])</div>
@@ -27,7 +30,7 @@
         <div class="flex flex-col gap-3">
             <div>
                 <h1 class="font-display text-2xl text-ink" style="font-weight: var(--t-dw)">{{ __($r['isSunday'] ? 'shell.review.title' : 'shell.review.title_last') }}</h1>
-                <p class="mt-1 text-sm text-ink-soft">{{ __('shell.review.subtitle', ['today' => $day($r['today'], 'dddd, D. MMMM'), 'range' => $range]) }}</p>
+                <p class="mt-1 text-sm text-ink-soft">{{ __('shell.review.subtitle', ['today' => $day($r['today'], 'day_long'), 'range' => $range]) }}</p>
             </div>
             <p class="max-w-[46ch] text-[17px] font-medium leading-snug text-ink wb:text-[19px]" data-review-sentence style="text-wrap: pretty">
                 {{ __('shell.review.sentence.'.$past['kind'], ['total' => $past['total'], 'average' => $past['average']]) }}
@@ -101,7 +104,7 @@
             <section class="{{ $card }}" style="border: var(--t-bw) solid var(--t-line)" aria-labelledby="review-next" data-review-next>
                 <h2 id="review-next" class="flex items-baseline gap-3 font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">
                     {{ __($r['isSunday'] ? 'shell.review.next_week' : 'shell.review.this_week') }}
-                    <span class="{{ $eyebrow }} ml-auto">{{ $day($next['days'][0]['date'], 'D.').'–'.$day($next['days'][6]['date'], 'D. MMMM') }}</span>
+                    <span class="{{ $eyebrow }} ml-auto">{{ $day($next['days'][0]['date'], 'day').'–'.$day($next['days'][6]['date'], 'day_month') }}</span>
                 </h2>
 
                 @if (! $next['hasBlocks'] && $next['load'] === 0)

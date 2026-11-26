@@ -20,11 +20,11 @@
     $reload ??= false;
     if (! $reload) {
         $backRoute = auth()->check() ? auth()->user()->defaultLandingRouteName() : 'home';
-        $backLabel = auth()->check() ? 'Zurück zum Board' : 'Zurück zur Startseite';
+        $backLabel = auth()->check() ? __('errors.back_to_board') : __('errors.back_to_start');
     }
 @endphp
 <!DOCTYPE html>
-<html lang="de" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-mode="{{ \App\Support\Theme::current()['mode'] }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -57,7 +57,7 @@
                             type="button"
                             onclick="location.reload()"
                             class="mt-8 rounded-card bg-forest px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110 active:scale-[0.98] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-                        >Seite neu laden</button>
+                        >{{ __('errors.reload') }}</button>
                     @else
                         <a
                             href="{{ route($backRoute) }}"

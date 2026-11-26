@@ -120,7 +120,7 @@ final class CrunchDecisions
         ], [
             'moveDate.required' => __('shell.crunch.errors.date_required'),
             'moveDate.date_format' => __('shell.crunch.errors.date_required'),
-            'moveDate.after' => __('shell.crunch.errors.date_later', ['date' => CarbonImmutable::parse($after)->format('j.n.Y')]),
+            'moveDate.after' => __('shell.crunch.errors.date_later', ['date' => \App\Support\Dates::full($after)]),
             'moveDate.before' => __('shell.crunch.errors.date_far'),
         ])->validate();
 

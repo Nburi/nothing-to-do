@@ -138,7 +138,7 @@
                             {{ $s ? ($i + 1).' · '.$s->name : ($stages->isEmpty() ? __('projects.then') : __('projects.no_stage')) }}
                         </h2>
                         @if ($s)
-                            <span class="text-xs text-ink-faint">{{ $s->target_date ? __('projects.until', ['date' => $s->target_date->format('d.m.Y')]) : __('projects.no_date') }}</span>
+                            <span class="text-xs text-ink-faint">{{ $s->target_date ? __('projects.until', ['date' => \App\Support\Dates::paddedFull($s->target_date)]) : __('projects.no_date') }}</span>
                             <span @class(['ml-auto font-mono text-[10.5px] uppercase tracking-wider', 'text-accent-ink' => $state !== 'waits', 'text-ink-faint' => $state === 'waits'])>
                                 {{ $state === 'done' ? __('projects.stage_done') : ($state === 'now' ? __('projects.stage_now') : __('projects.stage_waits', ['number' => $i])) }}
                             </span>

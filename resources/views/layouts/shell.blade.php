@@ -26,6 +26,8 @@
 
         @auth
             @include('shell.capture-sheet')
+            {{-- Step 5.1: the first-run tour (opens for accounts that have not seen it, or with ?tour=1). --}}
+            <livewire:shell.tour />
         @endauth
 
         @livewireScripts

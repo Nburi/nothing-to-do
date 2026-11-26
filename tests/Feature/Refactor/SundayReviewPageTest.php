@@ -135,7 +135,7 @@ class SundayReviewPageTest extends TestCase
     public function test_it_speaks_english(): void
     {
         $this->at('2026-11-22 20:00');
-        app()->setLocale('en'); // no per-user language setting yet; the app locale decides
+        $this->user->forceFill(['locale' => 'en'])->save(); // the per-user language decides (step 5.1)
 
         $this->actingAs($this->user)->get('/board/review')
             ->assertOk()

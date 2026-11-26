@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Planning\Session\Phase;
 use App\Services\FocusSession;
 use App\Services\PushNotifier;
+use App\Support\Locales;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
@@ -220,11 +221,12 @@ final class EveningNudge
         try {
             // Resolved only here: a missing or broken VAPID config throws while building the
             // notifier, and that must cost this one nudge, not the scheduler run.
-            app(PushNotifier::class)->notify($user, [
+            // Said in the language the user chose (step 5.1), not the scheduler's.
+            app(PushNotifier::class)->notify($user, Locales::within($user, fn () => [
                 'title' => __('shell.nudge.push.title'),
                 'body' => __('shell.nudge.push.body'),
                 'url' => self::URL,
-            ]);
+            ]));
         } catch (\Throwable $e) {
             // The board still offers the reset from the nudge time; no retry storm tonight.
             Log::warning('Evening nudge could not be sent', ['user_id' => $user->id, 'error' => $e->getMessage()]);
