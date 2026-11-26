@@ -14,6 +14,8 @@ use App\Services\Planning\BoardOrder;
 use App\Services\Planning\CrunchDecisions;
 use App\Services\Planning\CrunchOverview;
 use App\Services\Planning\CrunchView;
+use App\Services\Planning\DayLabel;
+use App\Services\Planning\DeadlineOffer;
 use App\Services\Planning\EveningReset;
 use App\Services\Planning\FreeTimeIdeas;
 use App\Services\Planning\IdeaOffer;
@@ -61,6 +63,15 @@ class Board extends Component
     /** The nudge links to /board?reset=1 (step 3.3): offer the reset even before the nudge time (EveningNudge::offerFrom). */
     #[Locked]
     public bool $resetRequested = false;
+
+    /**
+     * The quiet „Bis wann?" after marking an undated task „Wichtig" (step d-bis-wann): null, the question
+     * (set = null) or its confirmation with Undo (set = the date). Server-written, so locked.
+     *
+     * @var array{task: int, title: string, set: ?string, label: ?string}|null
+     */
+    #[Locked]
+    public ?array $deadlineOffer = null;
 
     /** The Ideen page's Inbox tab links to /board?open=inbox (step 3.4): open that list once. */
     #[Locked]
@@ -118,6 +129,17 @@ class Board extends Component
             'running' => $running,
             'key' => ($running ? 'run-' : 'idle-').$remaining,
         ];
+    }
+
+    /** The answers of the open „Bis wann?" question: choice => date. Empty while there is no question. */
+    #[Computed]
+    public function deadlineChoices(): array
+    {
+        if ($this->deadlineOffer === null || $this->deadlineOffer['set'] !== null) {
+            return [];
+        }
+
+        return app(DeadlineOffer::class)->choices($this->user, $this->now);
     }
 
     /**
@@ -588,8 +610,66 @@ class Board extends Component
         $this->notice = null;
         $this->guard(function () use ($taskId, $important) {
             $task = Task::forUser($this->user)->active()->findOrFail($taskId);
-            TaskMutator::applyUpdate($task, $this->user, ['is_important' => $important]);
+            $wasMarked = (bool) $task->is_important;
+            $task = TaskMutator::applyUpdate($task, $this->user, ['is_important' => $important]);
+
+            if ($important && ! $wasMarked && app(DeadlineOffer::class)->open($task)) {
+                $this->deadlineOffer = ['task' => $task->id, 'title' => $task->title, 'set' => null, 'label' => null];
+            } elseif (! $important && ($this->deadlineOffer['task'] ?? null) === $task->id) {
+                $this->deadlineOffer = null;
+            }
         });
+    }
+
+    /** One of the answers to „Bis wann?" (today, tomorrow, week): a soft deadline for the marked task. */
+    public function chooseDeadline(string $choice): void
+    {
+        $offer = $this->deadlineOffer;
+        $date = $this->deadlineChoices[$choice] ?? null;
+        if ($offer === null || $offer['set'] !== null || $date === null) {
+            return;
+        }
+
+        $this->notice = null;
+        try {
+            $saved = app(DeadlineOffer::class)->choose($this->user, $offer['task'], $date);
+        } catch (ModelNotFoundException) {
+            $saved = null;
+        }
+
+        $this->deadlineOffer = $saved ? [...$offer, 'set' => $date, 'label' => DayLabel::for($date, UserClock::now($this->user, $this->now))] : null;
+        $this->notice = match ($saved) {
+            true => null,
+            false => __('shell.important.when.has_date'),
+            null => __('shell.errors.task_gone'),
+        };
+        $this->fresh();
+    }
+
+    /** "Ohne Datum", Escape, or the offer timed out: nothing is written, and the task is not asked again. */
+    public function dismissDeadline(): void
+    {
+        $this->deadlineOffer = null;
+        $this->fresh();
+    }
+
+    /** Undo of the answer: the task has no date again. */
+    public function undoDeadline(): void
+    {
+        $offer = $this->deadlineOffer;
+        if ($offer === null || $offer['set'] === null) {
+            return;
+        }
+
+        $this->deadlineOffer = null;
+        try {
+            $this->notice = app(DeadlineOffer::class)->undo($this->user, $offer['task'], $offer['set'])
+                ? __('shell.important.when.undone')
+                : __('shell.important.when.undo_changed');
+        } catch (ModelNotFoundException) {
+            $this->notice = __('shell.errors.task_gone');
+        }
+        $this->fresh();
     }
 
     /**
@@ -693,7 +773,7 @@ class Board extends Component
     /** Drop this request's cached reads, so the render after an action shows the new state. */
     private function fresh(): void
     {
-        foreach (['now', 'planning', 'session', 'suggestion', 'todoSession', 'cards', 'bundles', 'resting', 'loose', 'band', 'lists', 'entries', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch'] as $computed) {
+        foreach (['now', 'planning', 'session', 'suggestion', 'todoSession', 'cards', 'bundles', 'resting', 'loose', 'band', 'lists', 'entries', 'counts', 'important', 'sessionTask', 'nextInSession', 'timer', 'doneToday', 'timeline', 'resetStage', 'resetTimer', 'idea', 'crunch', 'deadlineChoices'] as $computed) {
             unset($this->{$computed});
         }
     }

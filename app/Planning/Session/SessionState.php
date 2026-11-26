@@ -10,7 +10,11 @@ namespace App\Planning\Session;
  */
 final readonly class SessionState
 {
-    /** @param  list<int>  $doneTaskIds  tasks finished on $counterDate */
+    /**
+     * @param  list<int>  $doneTaskIds  tasks finished on $counterDate
+     * @param  ?int  $pauseEndsAt  set only while the evening reset holds the pomodoro (step d-reset-pause): when the
+     *                             pause ends by itself. A pause the user made leaves it null and stays until Resume.
+     */
     public function __construct(
         public Phase $phase,
         public ?int $taskId = null,
@@ -20,6 +24,7 @@ final readonly class SessionState
         public int $sessionsToday = 0,
         public ?string $counterDate = null,
         public array $doneTaskIds = [],
+        public ?int $pauseEndsAt = null,
     ) {}
 
     public static function idle(): self
@@ -55,6 +60,7 @@ final readonly class SessionState
             (int) ($data['sessionsToday'] ?? 0),
             $data['counterDate'] ?? null,
             array_map('intval', $data['doneTaskIds'] ?? []),
+            isset($data['pauseEndsAt']) ? (int) $data['pauseEndsAt'] : null,
         );
     }
 }

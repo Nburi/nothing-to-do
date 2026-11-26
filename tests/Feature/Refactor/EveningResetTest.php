@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Planning\Battery;
 use App\Planning\ResetStage;
+use App\Planning\Session\Phase;
 use App\Planning\Size;
 use App\Services\FocusSession;
 use App\Services\Planning\EveningReset;
@@ -247,5 +248,96 @@ class EveningResetTest extends TestCase
         $this->user->forceFill(['nudge_times' => []])->save();
 
         $this->assertSame(ResetStage::Hidden, $this->stage());
+    }
+
+    // ---- step d-reset-pause (A141): the reset started by hand holds the pomodoro ----
+
+    private function runningWork(): Task
+    {
+        $task = Task::where('title', 'Formular')->first();
+        $this->at('19:40');
+        app(FocusSession::class)->start($this->user, $task->id);
+
+        return $task;
+    }
+
+    private function remaining(): int
+    {
+        return app(FocusSession::class)->remainingSeconds($this->user);
+    }
+
+    public function test_abschalten_during_work_pauses_the_pomodoro_and_time_up_gives_the_time_back(): void
+    {
+        $this->runningWork();
+
+        $this->at('19:50');
+        $this->board()->call('beginReset');
+        $this->assertTrue(app(FocusSession::class)->current($this->user)->isPaused());
+        $this->assertSame(15 * 60, $this->remaining());
+
+        $this->at('19:58'); // the reset is still running: the clock stands still
+        $this->assertSame(15 * 60, $this->remaining());
+
+        $this->at('20:02'); // the reset ran out at 20:00: 2 of the 10 minutes after it were free again
+        $this->assertFalse(app(FocusSession::class)->current($this->user)->isPaused());
+        $this->assertSame(13 * 60, $this->remaining());
+        $this->assertSame(ResetStage::Battery, $this->stage());
+    }
+
+    public function test_ending_the_reset_early_resumes_the_pomodoro_at_once(): void
+    {
+        $this->runningWork();
+        $this->at('19:50');
+        $this->board()->call('beginReset');
+
+        $this->at('19:53');
+        $this->board()->call('closeReset');
+
+        $state = app(FocusSession::class)->current($this->user);
+        $this->assertFalse($state->isPaused());
+        $this->assertSame(15 * 60, $this->remaining(), 'the three minutes of the reset cost no work time');
+    }
+
+    public function test_stopping_the_session_during_the_reset_leaves_no_pause_behind(): void
+    {
+        $this->runningWork();
+        $this->at('19:50');
+        $this->board()->call('beginReset');
+
+        app(FocusSession::class)->stop($this->user);
+        $this->at('20:30');
+
+        $state = app(FocusSession::class)->current($this->user);
+        $this->assertSame(Phase::Idle, $state->phase);
+        $this->assertFalse($state->isPaused());
+    }
+
+    public function test_a_reload_during_the_reset_shows_the_same_held_session_and_the_reset(): void
+    {
+        $this->runningWork();
+        $this->at('19:50');
+        $this->board()->call('beginReset');
+
+        $this->at('19:54');
+        $this->board()->assertSee('data-reset="running"', false)->assertSee('data-shell-mode="session"', false);
+        $this->assertSame(15 * 60, $this->remaining());
+    }
+
+    public function test_a_pause_the_user_made_before_the_reset_is_still_there_after_it(): void
+    {
+        $this->runningWork();
+        $this->at('19:45');
+        app(FocusSession::class)->pause($this->user);
+        $this->board()->call('beginReset');
+
+        $this->at('20:30');
+        $this->assertTrue(app(FocusSession::class)->current($this->user)->isPaused());
+    }
+
+    public function test_abschalten_from_the_idle_board_creates_no_session_state_to_pause(): void
+    {
+        $this->board()->call('beginReset')->assertSee('data-reset="running"', false);
+
+        $this->assertSame(Phase::Idle, app(FocusSession::class)->current($this->user)->phase);
     }
 }

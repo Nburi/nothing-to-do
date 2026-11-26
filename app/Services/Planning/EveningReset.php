@@ -7,6 +7,7 @@ use App\Models\SchedulePause;
 use App\Models\User;
 use App\Planning\Battery;
 use App\Planning\ResetStage;
+use App\Services\FocusSession;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
 
@@ -20,6 +21,8 @@ use Carbon\CarbonImmutable;
  *   EveningNudge::offerFrom; 17:00 for users who never set one), or at any time when the
  *   nudge link (/board?reset=1) asks for it. Not on paused days, not during a running session, never
  *   again once it was done or skipped. Starting it by hand ("Abschalten") always works.
+ * - Started by hand during a running work session, it holds the pomodoro: the timer pauses for the reset and runs
+ *   on afterwards, however the reset ends (time up, ended early, page closed). A break and a pause the user made are not touched.
  * - Ten minutes at most. Skipping or ending early just closes it: nothing is counted, no
  *   streak, no message. A reset that ran out is closed by time alone, so reads never write.
  * - At its end the battery is asked once, unless tonight's battery was already answered
@@ -74,6 +77,9 @@ final class EveningReset
     {
         $now ??= CarbonImmutable::now();
         $this->evening($user, $now)->update(['reset_started_at' => $now, 'reset_closed_at' => null]);
+
+        // A running work session waits for the reset and goes on afterwards (see FocusSession::pauseForReset).
+        app(FocusSession::class)->pauseForReset($user, $now->addMinutes(self::MINUTES), $now);
     }
 
     /** "Überspringen" or ending early: silent, nothing is counted. */
@@ -87,6 +93,7 @@ final class EveningReset
         }
 
         $evening->update(['reset_closed_at' => $now]);
+        app(FocusSession::class)->endReset($user, $now);
     }
 
     /** The question at the end of the reset. Null is "Später", which counts as Okay. */

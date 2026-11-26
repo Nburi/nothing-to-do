@@ -55,6 +55,7 @@ return [
     'add_stage' => 'Etappe',
     'stage_name' => 'Name der Etappe',
     'stage_date' => 'Ziel (optional)',
+    'stage_date_hint' => 'Das Ziel gilt als weiche Frist für die offenen Schritte dieser Etappe. Ein früheres eigenes Datum eines Schritts gilt weiter.',
     'stage_added' => 'Etappe „:name“ ist dazugekommen.',
     'stage_removed' => 'Etappe „:name“ ist weg. Ihre Schritte stehen jetzt ohne Etappe.',
     'remove_stage' => 'Etappe entfernen',

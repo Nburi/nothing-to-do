@@ -89,7 +89,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 ## Refactor: phase 4, step 4.6 („Wichtig")
 - [x] 4.6 „Wichtig" marker (`feature/important-marker`, based on #21 and #27). Notes in `docs/steps/4.6.md`. No migration: `tasks.is_important` from the old app is the marker.
 - [ ] 4.6 open for Niels: TESTBERICHT C44 and C45 (C45 needs a production copy: count the marked tasks per user, users of the old Eisenhower board may have many). Check the decisions in `docs/steps/4.6.md`.
-- [ ] 4.6 question: should marking a task without a date offer an optional „Bis wann?" Not built. Recommendation: yes, as a quiet inline offer (Heute · Morgen · Diese Woche) that writes the soft deadline and is easy to ignore.
+- [x] 4.6 question „Bis wann?" answered yes by Niels and built in `feature/deadline-flow` (see the deadline flow section below).
 - [ ] 4.6 later: the crunch decisions (4.2) do not know „Wichtig": a marked task can still be offered for shrink or drop. Look at it in the 4.5 review.
 - [ ] 4.6 later: the mockup "Reihenfolge und Drag and Drop" is undecided (where „Wichtig" ranks, one shared order, drag and drop). 4.6 builds only deadline tiers → „Wichtig" → board order, as R5 says.
 - [x] 4.6 known: the Stapel piles are about 56 px wide at 390 px (same issue as in the 3.4 line above), so a marked top card shows the flag and "Wich…" only. Same fix, flag and "Wichtig · Short" now sit on one line under the title.
@@ -119,6 +119,14 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 5.4 build, small PRs before the switch: merge `main` into `refactor/refactor` (conflicts today in `ERRORS.md` and `ScheduleEvent.php`, runbook D7); the landing page for everybody (D5); the version number (D4); the first-run cards as a screen (text in `docs/announcement-draft.md`); redirect `/app/crafts` together with the craft idea copy.
 - [ ] 5.4 after the switch: delete `Schedule`, `WeekPlan`, `WeekReviewPage`, their views and `Tests\Support\LegacyScreens` with the old-screen tests (list in `docs/steps/5.4-prep.md`).
 - [ ] 5.4 not tested: the migrations on MariaDB/MySQL and with a mixed group, a category link and a „Wichtig“ flood on real data; the runbook's `--ignore=tasks.project_id` in `app:rehearsal-compare`. Needs the production copy.
+
+## Refactor: deadline flow (2026-11-26, `feature/deadline-flow`)
+- [x] d-bis-wann: marking an undated task „Wichtig" offers „Bis wann?" (Heute · Morgen · Diese Woche, soft deadline, undo, once per task). Migration `add_deadline_asked_at_to_tasks_table` (additive). Notes in `docs/steps/deadline-flow.md`.
+- [x] d-stage-soft: a stage's target date counts as the soft deadline of its open steps in the engine (derived, nothing written). No migration.
+- [x] d-reset-pause: „Abschalten" by hand pauses a running work phase and gives the time back. No migration (JSON state).
+- [ ] Open for Niels: TESTBERICHT C130 to C133 and the decisions at the end of `docs/steps/deadline-flow.md` (Sunday as „Diese Woche", the 14 s fade, a past stage date makes steps late).
+- [ ] Later: a soft-slip rule for stage dates (a missed stage date keeps its steps late until the stage date is moved), and the Sunday review does not list stage dates.
+- [ ] Later: the MCP `create_task` / `update_task` and the REST API do not offer „Bis wann?" when `is_important` is set (no screen to ask on); `deadline_asked_at` is not exposed.
 
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:

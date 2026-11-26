@@ -78,6 +78,7 @@
                         <label for="stage-date" class="text-xs font-semibold text-ink-soft">{{ __('projects.stage_date') }}</label>
                         <input id="stage-date" type="date" wire:model="stageDate" @class([$input, 'border-bad' => $errors->has('stageDate'), 'border-line' => ! $errors->has('stageDate')])>
                         @error('stageDate')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
+                        <p class="max-w-64 text-xs text-ink-faint">{{ __('projects.stage_date_hint') }}</p>
                     </div>
                     <button type="submit" wire:loading.attr="disabled" wire:target="addStage" class="{{ $btn }} bg-accent text-accent-fg">{{ __('projects.create') }}</button>
                     <button type="button" wire:click="cancelStage" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
@@ -127,6 +128,7 @@
                             <label for="edit-stage-date" class="text-xs font-semibold text-ink-soft">{{ __('projects.stage_date') }}</label>
                             <input id="edit-stage-date" type="date" wire:model="editStageDate" @class([$input, 'border-bad' => $errors->has('editStageDate'), 'border-line' => ! $errors->has('editStageDate')])>
                             @error('editStageDate')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
+                            <p class="max-w-64 text-xs text-ink-faint">{{ __('projects.stage_date_hint') }}</p>
                         </div>
                         <button type="submit" class="{{ $btn }} bg-accent text-accent-fg">{{ __('projects.save') }}</button>
                         <button type="button" wire:click="cancelStage" class="{{ $btn }} text-ink-soft">{{ __('projects.cancel') }}</button>
@@ -138,7 +140,7 @@
                             {{ $s ? ($i + 1).' · '.$s->name : ($stages->isEmpty() ? __('projects.then') : __('projects.no_stage')) }}
                         </h2>
                         @if ($s)
-                            <span class="text-xs text-ink-faint">{{ $s->target_date ? __('projects.until', ['date' => \App\Support\Dates::paddedFull($s->target_date)]) : __('projects.no_date') }}</span>
+                            <span class="text-xs text-ink-faint" @if ($s->target_date) title="{{ __('projects.stage_date_hint') }}" @endif>{{ $s->target_date ? __('projects.until', ['date' => \App\Support\Dates::paddedFull($s->target_date)]) : __('projects.no_date') }}</span>
                             <span @class(['ml-auto font-mono text-[10.5px] uppercase tracking-wider', 'text-accent-ink' => $state !== 'waits', 'text-ink-faint' => $state === 'waits'])>
                                 {{ $state === 'done' ? __('projects.stage_done') : ($state === 'now' ? __('projects.stage_now') : __('projects.stage_waits', ['number' => $i])) }}
                             </span>
