@@ -413,6 +413,9 @@
 
     html {
         -webkit-text-size-adjust: 100%;
+        /* The page scrollbar's room is always reserved, so nothing shifts sideways when the document starts
+           or stops overflowing (a card of the narrow Stapel layout jumped by the scrollbar's width). */
+        scrollbar-gutter: stable;
     }
 
     /* Alpine: hide x-cloak elements until Alpine has initialised. */

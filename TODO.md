@@ -44,7 +44,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 ## Refactor: phase 3 (started 2026-11-11, gate waived by Niels, stacked on PR #17)
 - [x] Phase 3 preview picks (2026-11-11): fold A "Falten" at 520 ms (above the plan's 400 ms, on purpose), reset as a calm screen, battery at the end of the reset, nudge at a **fixed time** per weekday, Ideen view as cards. Preview: https://claude.ai/artifact/Y5ieY4W47HaZwjzGFGR48W
 - [x] 3.1 "The board folds away" (`feature/board-folds`). Notes in `docs/steps/3.1.md`.
-- [ ] 3.1 known issue: in the Stapel layout in a narrow *desktop* window the card jumps 20 px after the fold (a scrollbar shows for ~400 ms). Not on phones. Two fixes failed and were reverted; next idea `scrollbar-gutter: stable`. Waiting for Niels: fix now or leave it?
+- [x] 3.1 known issue (narrow Stapel jump): fixed with `scrollbar-gutter: stable` on `html` (`feature/ui-fixes`, decision d-scroll-jump); Niels checks C122.
 - [x] 3.2 Battery check-in and reset (`feature/battery-reset`). Notes in `docs/steps/3.2.md`. Offered from 17:00 or via `/board?reset=1` until 3.3 brings the nudge time per weekday.
 - [ ] 3.2 open for Niels: should a reset started by hand during a work session pause the pomodoro? (now it keeps running)
 - [x] 3.3 Nudge at a fixed time per weekday (`feature/nudge-time`). Notes in `docs/steps/3.3.md`. Time-based only; the reset is offered from the nudge time (17:00 for users who never set one).
@@ -98,6 +98,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 
 - [x] Daily To-do session, unsized To-do = Quick, Okay tie rule: `feature/todo-session` (PR waits for Niels, see `docs/steps/4.7.md`).
 - [ ] Niels: C48, C49, C50 in `docs/TESTBERICHT.md`.
+- [ ] Niels: C120, C121, C122 in `docs/TESTBERICHT.md` (`feature/ui-fixes`: â‹¯ menus flip upward, delete moved into the header menu, confirm width, scrollbar gutter). Not done on purpose: the `#tag` suggestion list under the note field still opens downward (short, at most a few entries).
 - [x] Shared board order (C31) built in step 4.8 (see below); the To-do session card stays first in the To-dos column.
 
 ## Refactor: phase 4, step 4.8 (shared board order and calm board, 2026-11-24)
