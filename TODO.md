@@ -53,7 +53,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 3.4 open for Niels: TESTBERICHT C14–C16; check the decisions in `docs/steps/3.4.md` (Jetzt machen = session, soft deadlines also stop ideas, 06:00–24:00 and 30 min, Stapel tab "Später" → Ideen page).
 - [ ] 5.4: run `php artisan app:copy-craft-ideas --dry-run`, then without, at the switch (copies the old Bastelideen into Later; idempotent, craft_ideas untouched). Not on prod before that.
 - [x] Shell: editing, moving and deleting single items (also on the Ideen cards): step 4.9, `docs/steps/4.9.md`. Open: the rows inside the To-do session card have no ⋯ menu yet; deleted tasks are kept (no purge, no trash view).
-- [ ] Stapel board at 390 px: the four piles are only ~56 px wide, titles break mid-word ("Math e-…"); already in the 3.2 screenshots, not from 3.4. Look at `shell/pile.blade.php` / the pile grid.
+- [x] Stapel board at 390 px: the four piles are only ~56 px wide, titles break mid-word ("Math e-…"); already in the 3.2 screenshots, not from 3.4. Look at `shell/pile.blade.php` / the pile grid. Fixed in `feature/stapel-piles`: the pile `<button>` shrank to its content, now `w-full` (167 px at 390 px); the flag moved to the meta line.
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
 
@@ -88,7 +88,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 4.6 question: should marking a task without a date offer an optional „Bis wann?" Not built. Recommendation: yes, as a quiet inline offer (Heute · Morgen · Diese Woche) that writes the soft deadline and is easy to ignore.
 - [ ] 4.6 later: the crunch decisions (4.2) do not know „Wichtig": a marked task can still be offered for shrink or drop. Look at it in the 4.5 review.
 - [ ] 4.6 later: the mockup "Reihenfolge und Drag and Drop" is undecided (where „Wichtig" ranks, one shared order, drag and drop). 4.6 builds only deadline tiers → „Wichtig" → board order, as R5 says.
-- [ ] 4.6 known: the Stapel piles are about 56 px wide at 390 px (same issue as in the 3.4 line above), so a marked top card shows the flag and "Wich…" only.
+- [x] 4.6 known: the Stapel piles are about 56 px wide at 390 px (same issue as in the 3.4 line above), so a marked top card shows the flag and "Wich…" only. Same fix, flag and "Wichtig · Short" now sit on one line under the title.
 
 ## Refactor: phase 4, step 4.7 (To-do session, 2026-11-24)
 
