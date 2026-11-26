@@ -3,6 +3,20 @@
 What the app can do and how it works. This file was listed in CLAUDE.md but did not exist; it starts here with
 the board order and grows with every step. The step notes in `docs/steps/` stay the detailed source.
 
+## Deadline flow (decisions d-bis-wann, d-stage-soft, d-reset-pause; notes in `docs/steps/deadline-flow.md`)
+
+- **„Bis wann?" after marking „Wichtig".** Marking a task that has no date of its own (no hard, soft or stage date, not in
+  Later) shows one quiet card: Heute · Morgen · Diese Woche · Ohne Datum. A date is written as the *soft* deadline;
+  „Rückgängig" takes it back. It is a bottom sheet on the phone and a small floating card on the desktop, never modal, gone after
+  14 s, and works in board and session mode. **Asked once per task, ever** (`tasks.deadline_asked_at`). „Diese Woche" is the
+  Sunday and is left out when it would repeat Heute or Morgen.
+- **A stage's target date is a soft deadline for its open steps.** The planning engine (pick, start-by, crunch forecast)
+  uses the earlier of the step's own soft date and its stage's target date. Derived, never written to the step; moving
+  the stage date moves the steps. The hard deadline is not touched.
+- **„Abschalten" by hand pauses the pomodoro.** Started while work runs, the timer waits for the ten minutes and runs on
+  afterwards (time up, „Schon fertig", a stopped session and a reload are all covered). A break and a pause the
+  user made are left alone.
+
 ## Board order and the calm board (step 4.8)
 
 - **One order for everything on the board.** Loose tasks, projects and groups share one order per user
