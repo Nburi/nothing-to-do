@@ -2,21 +2,22 @@
      the arrows are gone; the menu and the keyboard replace them): to the top or bottom of its list and,
      on a project, into any other stage or into none. "Wartet auf" stays here too (projects only). Every
      item is a plain server call (moveStep / setWaitsOn), so the toast with "Rückgängig" works the same
-     as after a drag. A bottom sheet below 720 px, a popover from there.
+     as after a drag. A bottom sheet below 720 px, a popover from there (placed by resources/js/popover.js:
+     it flips upward at the bottom of the screen).
      @param Task $task, string $lane, bool $first, bool $last, string $icon (the trigger's classes, with
             the fade of a waiting step), ?Task $blocker, ?Collection $stages (project), ?Collection $others --}}
 @php
     $item = 'flex min-h-11 w-full items-center gap-2.5 rounded-[6px] px-2.5 text-left text-sm text-ink transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 disabled:hover:bg-transparent wb:min-h-9';
     $heading = 'px-2.5 pt-2 pb-1 font-mono text-[10.5px] uppercase tracking-widest text-ink-faint';
 @endphp
-<div class="relative" x-data="{ open: false }" @keydown.escape.window="if (open) { open = false; $refs.trigger.focus() }" @click.outside="open = false">
-    <button type="button" x-ref="trigger" @click="open = ! open" :aria-expanded="open" aria-haspopup="menu" class="{{ $icon }} cursor-pointer"
+<div class="relative" x-data="popover()" @keydown.escape.window="if (open) { open = false; $refs.trigger.focus() }" @click.outside="open = false">
+    <button type="button" x-ref="trigger" @click="toggle()" :aria-expanded="open" aria-haspopup="menu" class="{{ $icon }} cursor-pointer"
         aria-label="{{ __('projects.move.menu', ['title' => $task->title]) }}">
         @include('shell.icon', ['name' => 'dots', 'class' => 'size-4'])
     </button>
     <div x-show="open" x-cloak class="fixed inset-0 z-40 bg-black/40 wb:hidden" @click="open = false" aria-hidden="true"></div>
-    <div x-show="open" x-cloak x-trap.noscroll="open" role="menu" data-step-menu aria-label="{{ __('projects.move.menu_title') }}"
-        class="fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col gap-0.5 overflow-y-auto rounded-t-panel bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-card wb:absolute wb:inset-x-auto wb:bottom-auto wb:right-0 wb:top-full wb:z-20 wb:mt-1 wb:max-h-none wb:w-72 wb:rounded-card wb:p-2"
+    <div x-show="open" x-cloak x-trap.noscroll="open" role="menu" data-step-menu x-ref="panel" :style="style" aria-label="{{ __('projects.move.menu_title') }}"
+        class="fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col gap-0.5 overflow-y-auto rounded-t-panel bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-card wb:inset-x-auto wb:bottom-auto wb:w-72 wb:rounded-card wb:p-2"
         style="border: var(--t-bw) solid var(--t-line)">
         <p class="truncate px-2.5 pb-1 text-sm font-semibold text-ink wb:hidden">{{ $task->title }}</p>
         <p class="{{ $heading }}">{{ __('projects.move.section') }}</p>
