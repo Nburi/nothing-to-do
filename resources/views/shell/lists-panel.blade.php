@@ -1,7 +1,7 @@
 {{-- The four lists behind tabs, plus „Wichtig" (step 4.6): the Stapel sheet (piles, bottom tabs, drawer)
      and the Werkbank peek panel during a session. Opened by the parent's Alpine `peek`
      (inbox|todos|tasks|later|important).
-     @param $layout, $mode, $lists, $bundles (step 4.3), $counts, $important (open marked tasks), $suggestedId, $locked --}}
+     @param $layout, $mode, $lists, $bundles (step 4.3), $todoSession (To-do session), $counts, $important (open marked tasks), $suggestedId, $locked --}}
 <div class="flex min-h-0 flex-1 flex-col">
     @php
         $tabClass = 'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
@@ -38,6 +38,9 @@
                     <li>
                         <a href="{{ route('shell.ideas') }}" wire:navigate class="flex min-h-11 w-full items-center justify-center gap-2 rounded-card border border-line px-4 text-sm font-semibold text-ink transition hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('shell.ideas.as_cards') }}</a>
                     </li>
+                @endif
+                @if ($list === 'todos')
+                    @include('shell.todo-session', ['todoSession' => $todoSession, 'layout' => $layout, 'mode' => $mode, 'suggestedId' => $suggestedId, 'locked' => $locked])
                 @endif
                 @foreach ($bundles[$list] as $bundle)
                     @include('shell.bundle', ['bundle' => $bundle, 'layout' => $layout, 'mode' => $mode, 'suggestedId' => $suggestedId, 'locked' => $locked])

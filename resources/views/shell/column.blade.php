@@ -14,6 +14,10 @@
     @endif
 </h3>
 <ul class="flex flex-col gap-1.5">
+    {{-- The To-do session: the day's To-dos as one card, first in the To-dos column. --}}
+    @if ($list === 'todos')
+        @include('shell.todo-session', ['todoSession' => $todoSession, 'layout' => 'werkbank', 'mode' => 'board', 'suggestedId' => $suggestedId, 'locked' => false])
+    @endif
     {{-- Step 4.3: projects and groups first, one card each with their next two steps. --}}
     @foreach ($bundles[$list] as $bundle)
         @include('shell.bundle', ['bundle' => $bundle, 'layout' => 'werkbank', 'mode' => 'board', 'suggestedId' => $suggestedId, 'locked' => false])

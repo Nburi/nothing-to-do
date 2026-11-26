@@ -22,7 +22,8 @@ use App\Planning\StartBy;
  *    ahead of every unmarked one whatever the battery or the size says.
  * 3. The battery orders inside the tiers:
  *    - Okay: deadline order (earliest binding deadline, hard before soft),
- *      then „Wichtig", then smaller first, then the board order.
+ *      then „Wichtig", then the board order. Size does not decide at Okay:
+ *      when picks tie, the board order comes first (To-do session, 2026-11-24).
  *    - Low: a warm-up of up to two Quick tasks goes first, whatever their
  *      tier; then smaller before bigger, and Long / Block work is shrunk to
  *      one session tonight ("the rest comes later"). Late work is never shrunk.
@@ -80,8 +81,8 @@ final readonly class PickEngine
         }
 
         usort($pool, fn (PickCandidate $a, PickCandidate $b) => match ($battery) {
-            Battery::Okay => [$tier($a), ...$urgencyKey($a), $size($a), $a->position, $a->id()]
-                <=> [$tier($b), ...$urgencyKey($b), $size($b), $b->position, $b->id()],
+            Battery::Okay => [$tier($a), ...$urgencyKey($a), $a->position, $a->id()]
+                <=> [$tier($b), ...$urgencyKey($b), $b->position, $b->id()],
             Battery::Low => [$tier($a), $size($a), ...$urgencyKey($a), $a->position, $a->id()]
                 <=> [$tier($b), $size($b), ...$urgencyKey($b), $b->position, $b->id()],
             Battery::Good => [$tier($a), -$size($a), ...$urgencyKey($a), $a->position, $a->id()]

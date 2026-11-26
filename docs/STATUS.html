@@ -610,7 +610,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["3.4", "Free-time ideas", "merged", 21], ["3.5", "Beta 2", "waiting"], ["3.6", "Review rounds", "todo"] ] },
     { code: "P4", name: "Planning and foresight", steps: [
       ["4.1", "Week plan editor", "merged", 24], ["4.2", "Crunch decisions", "merged", 23], ["4.3", "Projects (4.3a #25, 4.3b #28, 4.3c #34)", "merged", 25],
-      ["4.4", "Sunday review", "merged", 26], ["4.6", "„Wichtig“ marker", "merged", 33], ["4.5", "Review rounds", "todo"] ] },
+      ["4.4", "Sunday review", "merged", 26], ["4.6", "„Wichtig“ marker", "merged", 33], ["4.7", "To-do session", "review", 37], ["4.5", "Review rounds", "todo"] ] },
     { code: "P5", name: "Everyone, then release", steps: [
       ["5.1", "Onboarding", "todo"], ["5.2", "A11y, perf", "todo"], ["5.3", "Voice capture", "todo"],
       ["5.4", "Migration + switch", "todo"], ["5.5", "RC review", "todo"] ] }
@@ -715,7 +715,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
   for (var s7 = 71; s7 <= 73; s7++) A.push(["A" + s7, "pass"]); // arrival by location
   for (var s8 = 74; s8 <= 75; s8++) A.push(["A" + s8, "pass"]); // 4.3c
   cells("cellsA", A);
-  cells("cellsB", [["B1","part"],["B2","part"],["B3","pass"],["B4","pass"],["B5","pass"],["B6","part"],["B7","pass"],["B8","pass"],["B9","pass"],["B10","pass"],["B11","pass"],["B12","pass"],["B13","pass"],["B14","pass"],["B15","pass"],["B19","pass"],["B20","pass"],["B25","pass"],["B26","pass"],["B27","pass"],["B28","pass"],["B30","pass"],["B31","pass"],["B32","pass"],["B37","pass"],["B38","pass"],["B39","pass"],["B40","pass"],["B41","pass"],["B42","pass"],["B43","pass"],["B44","pass"],["B45","pass"]]);
+  cells("cellsB", [["B1","part"],["B2","part"],["B3","pass"],["B4","pass"],["B5","pass"],["B6","part"],["B7","pass"],["B8","pass"],["B9","pass"],["B10","pass"],["B11","pass"],["B12","pass"],["B13","pass"],["B14","pass"],["B15","pass"],["B19","pass"],["B20","pass"],["B25","pass"],["B26","pass"],["B27","pass"],["B28","pass"],["B30","pass"],["B31","pass"],["B32","pass"],["B37","pass"],["B38","pass"],["B39","pass"],["B40","pass"],["B41","pass"],["B42","pass"],["B43","pass"],["B44","pass"],["B45","pass"],["B46","pass"]]);
   var C = []; for (var j = 1; j <= 16; j++) C.push(["C" + j, [9,10,11,16].indexOf(j) >= 0 ? "should" : "must"]);
   C.push(["C17","must"],["C18","must"],["C19","must"],["C20","should"],["C21","should"],["C22","should"]); // 4.1
   C.push(["C23","must"],["C24","must"],["C25","must"],["C26","should"],["C27","should"]); // 4.2
@@ -724,6 +724,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
   C.push(["C41","must"],["C42","should"],["C43","must"]); // 4.3b
   C.push(["C44","must"],["C45","must"]); // 4.6
   C.push(["C46","must"],["C47","must"]); // 4.3c
+  C.push(["C48","must"],["C49","must"],["C50","should"]); // 4.7 To-do session
   var done17 = { C1:"pass", C6:"pass", C8:"pass", C17:"pass", C19:"pass", C20:"pass", C21:"pass", C22:"pass", C24:"pass", C27:"pass", C29:"pass", C30:"pass", C31:"pass", C2:"part" }; // C-tests 17 Nov, as recorded in TESTBERICHT
   var done24 = { C46:"pass", C47:"pass" }; // C-tests 24 Nov (4.3c, drag and drop of steps)
   C.forEach(function (c) { if (done17[c[0]]) c[1] = done17[c[0]]; if (done24[c[0]]) c[1] = done24[c[0]]; });
