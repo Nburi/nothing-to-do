@@ -4,8 +4,8 @@
     $categories = $this->categories;
     $areas = $this->areas;
     $colors = \App\Models\ScheduleEvent::EVENT_COLORS;
-    $btn = 'inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60';
-    $chip = 'inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $btn = 'inline-flex min-h-11 wb:min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60';
+    $chip = 'inline-flex min-h-11 wb:min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
 @endphp
 <div class="flex flex-col gap-4" data-card="categories">
     <div>
@@ -19,7 +19,7 @@
             @if ($undoId)
                 <button type="button" wire:click="undo" wire:loading.attr="disabled" class="font-semibold underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep">{{ __('week.undo') }}</button>
             @endif
-            <button type="button" wire:click="dismiss" class="rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
+            <button type="button" wire:click="dismiss" class="-my-2 -mr-2.5 grid size-11 place-items-center rounded-full opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="{{ __('shell.close') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-4'])</button>
         </p>
     @endif
 
@@ -34,7 +34,7 @@
                 <div class="flex items-center gap-2" x-data="{ open: false }">
                     <div class="relative">
                         <button type="button" @click="open = !open" @keydown.escape="open = false" :aria-expanded="open"
-                            class="grid size-8 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+                            class="grid size-11 wb:size-8 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                             aria-label="{{ __('week.categories.color', ['name' => $category->name]) }}">
                             <span class="size-5 rounded-full" style="background: var(--color-{{ $category->color }}); box-shadow: 0 0 0 2px var(--t-surface), 0 0 0 3px var(--t-line)"></span>
                         </button>
@@ -42,7 +42,7 @@
                             class="absolute left-0 top-10 z-20 flex gap-1.5 rounded-card bg-surface p-2 shadow-card" style="border: var(--t-bw) solid var(--t-line)" role="group" aria-label="{{ __('week.categories.colors') }}">
                             @foreach ($colors as $color)
                                 <button type="button" wire:click="setColor({{ $category->id }}, '{{ $color }}')" @click="open = false"
-                                    class="grid size-8 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+                                    class="grid size-11 wb:size-8 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                                     aria-label="{{ __('week.colors.'.$color) }}" aria-pressed="{{ $category->color === $color ? 'true' : 'false' }}">
                                     <span class="size-5 rounded-full" style="background: var(--color-{{ $color }}); {{ $category->color === $color ? 'box-shadow: 0 0 0 2px var(--t-surface), 0 0 0 4px var(--t-ink)' : '' }}"></span>
                                 </button>
@@ -51,15 +51,15 @@
                     </div>
                     <input type="text" value="{{ $category->name }}" maxlength="255"
                         x-data x-on:keydown.enter.prevent="$el.blur()" x-on:blur="if ($el.value.trim() !== @js($category->name)) $wire.rename({{ $category->id }}, $el.value)"
-                        class="min-w-0 flex-1 rounded-card border border-transparent bg-transparent px-2 py-1 text-[15px] font-semibold text-ink hover:border-line focus:border-line focus:bg-surface focus:outline-hidden"
+                        class="min-h-11 wb:min-h-0 min-w-0 flex-1 rounded-card border border-transparent bg-transparent px-2 py-1 text-[15px] font-semibold text-ink hover:border-line focus:border-line focus:bg-surface focus:outline-hidden"
                         aria-label="{{ __('week.categories.name') }}" @error('rename.'.$category->id) aria-invalid="true" @enderror>
                     <button type="button" wire:click="delete({{ $category->id }})" wire:loading.attr="disabled" wire:target="delete({{ $category->id }})"
-                        class="grid size-9 shrink-0 place-items-center rounded-full text-ink-faint hover:bg-surface hover:text-bad focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+                        class="grid size-11 wb:size-9 shrink-0 place-items-center rounded-full text-ink-faint hover:bg-surface hover:text-bad focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                         aria-label="{{ __('week.categories.delete', ['name' => $category->name]) }}">
                         @include('shell.icon', ['name' => 'close', 'class' => 'size-4'])
                     </button>
                 </div>
-                @error('rename.'.$category->id)<p class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
+                @error('rename.'.$category->id)<p data-field-error role="alert" class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
 
                 <button type="button" role="switch" aria-checked="{{ $category->pomodoro_enabled ? 'true' : 'false' }}" wire:click="togglePomodoro({{ $category->id }})"
                     class="inline-flex items-center gap-2.5 self-start rounded-card text-sm text-ink-soft focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
@@ -96,7 +96,7 @@
                             @endif
                         </div>
                         @if ($areaFor === $category->id)
-                            @error('areaName')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                            @error('areaName')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                         @endif
                         @if ($linked === [])
                             <span class="text-xs text-ink-faint">{{ __('week.categories.no_areas') }}</span>
@@ -111,22 +111,22 @@
         <label class="flex min-w-0 flex-1 basis-52 flex-col gap-1 text-xs font-medium text-ink-soft">
             {{ __('week.categories.new') }}
             <input type="text" wire:model="newName" maxlength="255" placeholder="{{ __('week.categories.new_placeholder') }}"
-                class="h-10 rounded-card border border-line bg-surface px-3 text-sm text-ink focus:border-accent focus:outline-hidden" @error('newName') aria-invalid="true" @enderror>
+                class="h-11 wb:h-10 rounded-card border border-line bg-surface px-3 text-sm text-ink focus:border-accent focus:outline-hidden" @error('newName') aria-invalid="true" @enderror>
         </label>
         <div class="flex items-center gap-1" role="radiogroup" aria-label="{{ __('week.categories.colors') }}">
             @foreach ($colors as $color)
                 <button type="button" wire:click="$set('newColor', '{{ $color }}')" role="radio" aria-checked="{{ $newColor === $color ? 'true' : 'false' }}" aria-label="{{ __('week.colors.'.$color) }}"
-                    class="grid size-8 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                    class="grid size-11 wb:size-8 place-items-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                     <span class="size-5 rounded-full" style="background: var(--color-{{ $color }}); {{ $newColor === $color ? 'box-shadow: 0 0 0 2px var(--t-surface), 0 0 0 4px var(--t-ink)' : '' }}"></span>
                 </button>
             @endforeach
         </div>
-        <label class="inline-flex h-10 items-center gap-2 text-sm text-ink-soft">
-            <input type="checkbox" wire:model="newPomodoro" class="size-4 accent-accent">{{ __('week.categories.pomodoro') }}
+        <label class="inline-flex h-11 wb:h-10 items-center gap-2 text-sm text-ink-soft">
+            <input type="checkbox" wire:model="newPomodoro" class="size-5 accent-accent wb:size-4">{{ __('week.categories.pomodoro') }}
         </label>
-        <button type="submit" class="{{ $btn }} h-10 bg-accent text-accent-fg hover:brightness-110" wire:loading.attr="disabled" wire:target="add">
+        <button type="submit" class="{{ $btn }} h-11 wb:h-10 bg-accent text-accent-fg hover:brightness-110" wire:loading.attr="disabled" wire:target="add">
             @include('shell.icon', ['name' => 'plus', 'class' => 'size-4']){{ __('week.categories.add') }}
         </button>
-        @error('newName')<p class="w-full text-sm text-bad">{{ $message }}</p>@enderror
+        @error('newName')<p data-field-error role="alert" class="w-full text-sm text-bad">{{ $message }}</p>@enderror
     </form>
 </div>

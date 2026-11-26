@@ -27,6 +27,9 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md Â
 - [x] 1.8 Review of phase 1: code review (6 fixes), `EveningFlowTest` (found and fixed a hard-deadline bug in `DeadlineFeasibility`), requirement check, rehearsal on a dev-DB copy: nothing lost. Notes in `docs/steps/1.8-review.md`.
 - [ ] Phase 1 gate, open part: the dry run on a **production** copy (0.3) still needs the dump.
 - [x] Prod `.env`: `APP_LOCALE=de` is not needed: `config/app.php` forces `de` and ignores the variable (`GermanLocaleTest`, checked 2026-11-25).
+- [x] 5.2 Accessibility, reduced motion, performance: built in `feature/a11y-perf`, audit table and measurements in `docs/steps/5.2.md`. Open for Niels: TESTBERICHT C90 (screen reader), C91 (small targets on the iPhone), C92 (oldest phone, reduced motion), C93 (dark themes), C94 (decision: layout cookie for the 1 MB board).
+- [ ] 5.2 later: `/board` is about 1 MB with 700 tasks (both layouts and the Stapel list sheet are in the page); render only the layout in use (cookie), about âˆ’45 %. `/board/ideas` shows all of Later as cards (454 KB for 120). Needs a decision (C94).
+- [ ] 5.2 later: the old screens (`/app/*`) were not audited; they go away with the switch (5.4).
 - [ ] 1.7 follow-up: no HTTP/Livewire entry points yet (that's the session view, 3.1) and no API/MCP endpoints (1.5).
 
 ## Refactor: phase 2 (started 2026-11-09)

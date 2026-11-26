@@ -47,9 +47,10 @@ final class Suggestions
         private readonly TodoBundler $bundler = new TodoBundler,
     ) {}
 
-    public function current(User $user, ?CarbonImmutable $now = null): Suggestion
+    /** @param  PlanningContext|null  $context  a read of the plan the caller already has (the board builds one per render) */
+    public function current(User $user, ?CarbonImmutable $now = null, ?PlanningContext $context = null): Suggestion
     {
-        $context = PlanningContext::for($user, $now, $this->reader);
+        $context ??= PlanningContext::for($user, $now, $this->reader);
 
         return $this->suggest($context, $this->evening($user, $context->today));
     }

@@ -8,4 +8,4 @@
         </button>
     @endforeach
 </div>
-@error('size') <p class="mt-1 text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+@error('size') <p data-field-error role="alert" class="mt-1 text-xs font-semibold text-bad">{{ $message }}</p> @enderror

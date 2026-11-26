@@ -108,6 +108,52 @@ class ThemeContrastTest extends TestCase
         $this->assertLessThan(self::MIN, Contrast::ratio($text, $p['surface']), "{$id} {$mode}: a ghost must stay quieter than real text");
     }
 
+    /**
+     * Step 5.2: the shell tints its panels with `color-mix(colour N %, base)` (the Werkbank columns, the
+     * Stapel tray and page). Ink, soft and faint text on those must still reach 4.5:1; the first audit
+     * found faint text at 4.2:1 on the Stapel page (Topografie light).
+     */
+    #[DataProvider('themesAndModes')]
+    public function test_text_stays_readable_on_the_tinted_panels_of_the_shell(string $id, string $mode): void
+    {
+        $p = config("themes.themes.{$id}.{$mode}");
+        // [tint token, percent, base token] exactly as written in the views.
+        $panels = [
+            'stapel page (warn 5 % on bg)' => ['warn', 5, 'bg'],
+            'werkbank column (ink 4 % on bg)' => ['ink', 4, 'bg'],
+            'stapel tray (ink 5 % on surface)' => ['ink', 5, 'surface'],
+            'ink 3 % on surface' => ['ink', 3, 'surface'],
+            'ink 4 % on surface' => ['ink', 4, 'surface'],
+            'warn 6 % on surface' => ['warn', 6, 'surface'],
+            'accent 12 % on surface' => ['accent', 12, 'surface'],
+            // Selected chips and notices: a soft tint behind secondary text (the hint under a selected option).
+            'accent-soft' => ['accent', 15, 'surface'],
+            'good-soft' => ['good', 15, 'surface'],
+            'warn-soft' => ['warn', 15, 'surface'],
+            'bad-soft' => ['bad', 15, 'surface'],
+        ];
+
+        $failures = [];
+
+        foreach ($panels as $name => [$tint, $percent, $base]) {
+            $background = Contrast::mix($p[$tint], $p[$base], $percent / 100);
+
+            foreach (['ink', 'soft', 'faint', 'accent-ink', 'good', 'warn', 'bad'] as $text) {
+                // A tint is never behind text of its own colour family except in the pairs the first test covers.
+                if (str_ends_with($name, '-soft') && in_array($text, ['accent-ink', 'good', 'warn', 'bad'], true)) {
+                    continue;
+                }
+                $ratio = Contrast::ratio($p[$text], $background);
+
+                if ($ratio < self::MIN) {
+                    $failures[] = sprintf('%s on %s: %s on %s = %.2f', $text, $name, $p[$text], $background, $ratio);
+                }
+            }
+        }
+
+        $this->assertSame([], $failures, "{$id} {$mode} has text below 4.5:1 on a tinted panel");
+    }
+
     public function test_every_theme_defines_the_same_tokens(): void
     {
         $expected = array_keys(config('themes.themes.topografie.light'));

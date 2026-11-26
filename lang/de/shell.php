@@ -4,6 +4,7 @@
 // Short, plain, a little dry; informal "du" (CONVENTIONS 13).
 return [
     'skip_to_content' => 'Zum Inhalt springen',
+    'close' => 'Schliessen',
     'nav' => [
         'board' => 'Board',
         'week' => 'Woche',

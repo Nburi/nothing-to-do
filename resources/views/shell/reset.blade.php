@@ -19,7 +19,7 @@
     <div class="m-auto flex w-full max-w-[460px] flex-col items-center gap-7 px-6 pt-[max(40px,env(safe-area-inset-top))] pb-[max(40px,env(safe-area-inset-bottom))] text-center">
         @if ($stage === ResetStage::Battery)
             <p class="font-mono text-[11px] uppercase tracking-widest text-ink-faint">{{ __('shell.checkin.eyebrow') }}</p>
-            <h1 id="reset-title" class="font-display text-[28px] leading-tight text-balance text-ink wb:text-[34px]" style="font-weight: var(--t-dw)">{{ __('shell.checkin.title') }}</h1>
+            <h2 id="reset-title" class="font-display text-[28px] leading-tight text-balance text-ink wb:text-[34px]" style="font-weight: var(--t-dw)">{{ __('shell.checkin.title') }}</h2>
 
             <div class="grid w-full grid-cols-3 gap-2.5" role="group" aria-labelledby="reset-title">
                 @foreach (\App\Planning\Battery::cases() as $level)
@@ -57,7 +57,7 @@
                 </span>
             </div>
 
-            <h1 id="reset-title" class="font-display text-[26px] leading-tight text-balance text-ink wb:text-[30px]" style="font-weight: var(--t-dw)">{{ __('shell.reset.title') }}</h1>
+            <h2 id="reset-title" class="font-display text-[26px] leading-tight text-balance text-ink wb:text-[30px]" style="font-weight: var(--t-dw)">{{ __('shell.reset.title') }}</h2>
 
             <ul class="flex flex-wrap justify-center gap-2" aria-label="{{ __('shell.reset.ideas_label') }}">
                 @foreach (__('shell.reset.ideas') as $idea)

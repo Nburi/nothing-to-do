@@ -246,12 +246,20 @@ document.addEventListener('alpine:init', () => {
                 el.style.left = left + 'px';
                 el.style.top = top + 'px';
             };
+            // Step 5.2: whoever opened the form gets the focus back when it closes (Escape, save, cancel).
+            const opener = document.activeElement;
             run();
             const ro = new ResizeObserver(run);
             ro.observe(el);
             const onResize = () => run();
             window.addEventListener('resize', onResize);
-            el._cleanup = () => { ro.disconnect(); window.removeEventListener('resize', onResize); };
+            // Alpine runs these when the morph removes the form (it used to leak the resize listener).
+            (el._x_cleanups ??= []).push(() => {
+                ro.disconnect();
+                window.removeEventListener('resize', onResize);
+                const lost = !document.activeElement || document.activeElement === document.body;
+                if (lost && opener && opener !== document.body && opener.isConnected) opener.focus({ preventScroll: true });
+            });
             el.querySelector('[data-autofocus]')?.focus({ preventScroll: true });
         },
 

@@ -3,6 +3,7 @@
 // Refactor step 2.2: the new app shell (Werkbank on desktop, Stapel on mobile).
 return [
     'skip_to_content' => 'Skip to content',
+    'close' => 'Close',
     'nav' => [
         'board' => 'Board',
         'week' => 'Week',

@@ -6,13 +6,15 @@
     $sub = $top && $list !== 'done' ? \App\Shell\TaskFace::meta($top) : null;
     // w-full: a <button> shrinks to its content inside a block parent, which squeezed the card to ~56 px.
     $pileClass = 'group flex w-full min-w-0 flex-col gap-2 text-left focus:outline-hidden';
+    // The list first, then how many, then the top card: the visual order, not the card's title first.
+    $pileName = $label.' ('.$count.')'.($top && $list !== 'done' ? ': '.$top->title : '');
 @endphp
 @if ($list === 'later')
-    <x-shell.action key="browse_later" layout="stapel" :mode="$mode" @click="peek = 'later'" class="{{ $pileClass }}">
+    <x-shell.action key="browse_later" layout="stapel" :mode="$mode" @click="peek = 'later'" class="{{ $pileClass }}" :aria-label="$pileName">
         @include('shell.pile-face')
     </x-shell.action>
 @elseif ($list === 'done')
     <div class="{{ $pileClass }}">@include('shell.pile-face')</div>
 @else
-    <button type="button" @click="peek = '{{ $list }}'" class="{{ $pileClass }}">@include('shell.pile-face')</button>
+    <button type="button" @click="peek = '{{ $list }}'" class="{{ $pileClass }}" aria-label="{{ $pileName }}">@include('shell.pile-face')</button>
 @endif

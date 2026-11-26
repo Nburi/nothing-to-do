@@ -41,7 +41,7 @@
             @endif
             <label class="mt-1 flex flex-col gap-1 px-2.5 pb-1 text-xs font-semibold text-ink-soft">
                 {{ __('projects.waits_on') }}
-                <select wire:change="setWaitsOn({{ $task->id }}, $event.target.value)" @change="open = false" class="min-h-10 rounded-card border border-line bg-paper px-2 text-sm font-normal text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                <select wire:change="setWaitsOn({{ $task->id }}, $event.target.value)" @change="open = false" class="min-h-11 wb:min-h-10 rounded-card border border-line bg-paper px-2 text-sm font-normal text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
                     <option value="" @selected($blocker === null)>{{ __('projects.waits_on_none') }}</option>
                     @foreach ($others as $o)
                         @continue($o->id === $task->id)

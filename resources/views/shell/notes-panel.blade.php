@@ -11,7 +11,7 @@
         ? collect([['key' => 'none', 'label' => __('projects.notes.loose'), 'hint' => __('projects.notes.loose_hint'), 'stage' => null]])
             ->concat($stages->values()->map(fn ($s, $i) => ['key' => 'stage-'.$s->id, 'label' => __('projects.notes.in_stage', ['name' => ($i + 1).' · '.$s->name]), 'hint' => null, 'stage' => $s]))
         : collect([['key' => 'none', 'label' => null, 'hint' => null, 'stage' => null]]);
-    $chip = 'inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-xs transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
+    $chip = 'inline-flex min-h-11 wb:min-h-8 items-center gap-1 rounded-full border px-2.5 text-xs transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
     $input = 'w-full rounded-card border bg-paper px-3 py-2 text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
 @endphp
 <section class="flex flex-col gap-3 rounded-panel bg-surface p-4" style="border: var(--t-bw) solid var(--t-line)" aria-labelledby="notes-title"
@@ -35,9 +35,9 @@
         </ul>
         <div class="flex items-center justify-between gap-2">
             <p id="note-hint" class="text-xs text-ink-faint">{{ __('projects.notes.hint') }}</p>
-            <button type="submit" wire:loading.attr="disabled" wire:target="addNote" class="inline-flex min-h-9 shrink-0 items-center rounded-card border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">{{ __('projects.notes.add') }}</button>
+            <button type="submit" wire:loading.attr="disabled" wire:target="addNote" class="inline-flex min-h-11 wb:min-h-9 shrink-0 items-center rounded-card border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">{{ __('projects.notes.add') }}</button>
         </div>
-        @error('noteDraft')<p id="note-draft-error" class="text-sm text-bad">{{ $message }}</p>@enderror
+        @error('noteDraft')<p data-field-error role="alert" id="note-draft-error" class="text-sm text-bad">{{ $message }}</p>@enderror
     </form>
 
     {{-- Tag filter (tags are shared across projects; the filter works inside this page). --}}
@@ -67,7 +67,7 @@
             @if ($pile['label'])
                 <p class="font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">{{ $pile['label'] }}@if ($pile['hint']) · <span class="normal-case tracking-normal">{{ $pile['hint'] }}</span>@endif</p>
             @endif
-            <ul x-data="notePile" data-pile="{{ $pile['key'] }}" class="flex min-h-9 flex-col gap-1.5 rounded-card">
+            <ul x-data="notePile" data-pile="{{ $pile['key'] }}" class="flex min-h-11 wb:min-h-9 flex-col gap-1.5 rounded-card">
                 @forelse ($items as $note)
                     <li wire:key="note-{{ $note->id }}" data-note="{{ $note->id }}" class="group/note relative flex gap-2 rounded-card bg-paper px-3 py-2 text-sm" style="border: var(--t-bw) solid var(--t-line)">
                         @if ($editingNote === $note->id)
@@ -76,10 +76,10 @@
                                 <textarea id="edit-note-{{ $note->id }}" x-ref="e" wire:model="editNoteBody" rows="4" maxlength="{{ \App\Services\Projects\NoteEditor::BODY_MAX }}"
                                     @keydown.escape="$wire.cancelNote()" @keydown.enter="if (! $event.shiftKey && ! $event.isComposing) { $event.preventDefault(); $el.closest('form').requestSubmit() }"
                                     @class([$input, 'resize-y', 'border-bad' => $errors->has('editNoteBody'), 'border-line' => ! $errors->has('editNoteBody')])></textarea>
-                                @error('editNoteBody')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+                                @error('editNoteBody')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
                                 <div class="flex gap-2">
-                                    <button type="submit" class="inline-flex min-h-9 items-center rounded-card bg-accent px-3 text-sm font-semibold text-accent-fg">{{ __('projects.save') }}</button>
-                                    <button type="button" wire:click="cancelNote" class="inline-flex min-h-9 items-center rounded-card px-3 text-sm font-semibold text-ink-soft">{{ __('projects.cancel') }}</button>
+                                    <button type="submit" class="inline-flex min-h-11 wb:min-h-9 items-center rounded-card bg-accent px-3 text-sm font-semibold text-accent-fg">{{ __('projects.save') }}</button>
+                                    <button type="button" wire:click="cancelNote" class="inline-flex min-h-11 wb:min-h-9 items-center rounded-card px-3 text-sm font-semibold text-ink-soft">{{ __('projects.cancel') }}</button>
                                 </div>
                             </form>
                         @else
@@ -96,7 +96,7 @@
                                     @endif
                                     <button type="button" wire:click="noteToStep({{ $note->id }})" wire:loading.attr="disabled" class="{{ $chip }} border-transparent font-semibold text-accent-ink hover:bg-accent-soft">{{ __('projects.notes.to_step') }}</button>
                                     <details class="relative ml-auto" x-data @click.outside="$el.open = false">
-                                        <summary class="grid size-8 cursor-pointer list-none place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden" aria-label="{{ __('projects.notes.actions') }}">
+                                        <summary class="grid size-11 wb:size-8 cursor-pointer list-none place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden" aria-label="{{ __('projects.notes.actions') }}">
                                             @include('shell.icon', ['name' => 'dots', 'class' => 'size-4'])
                                         </summary>
                                         <div class="absolute right-0 z-20 mt-1 flex w-40 flex-col rounded-card bg-surface p-1 shadow-card" style="border: var(--t-bw) solid var(--t-line)">

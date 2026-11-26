@@ -12,7 +12,7 @@
             $plain = $btn.' bg-surface text-ink hover:bg-paper';
             $field = 'rounded-card bg-paper px-3 py-2 font-mono text-sm text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
         @endphp
-        <div class="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="crunch-title">
+        <div class="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="crunch-title" x-trap.noscroll.noautofocus.noreturn="true" x-restore-focus>
             <div class="absolute inset-0 bg-black/40" wire:click="close"></div>
 
             <section
@@ -43,7 +43,7 @@
                             @endif
                         </p>
                     </div>
-                    <button type="button" wire:click="close" class="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.crunch.close') }}">
+                    <button type="button" wire:click="close" class="grid size-11 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.crunch.close') }}">
                         @include('shell.icon', ['name' => 'close', 'class' => 'size-5'])
                     </button>
                 </header>
@@ -100,7 +100,7 @@
                                                 <input id="crunch-move-date" type="date" wire:model="moveDate" min="{{ $now->addDay()->toDateString() }}"
                                                     @class([$field, 'bg-surface', 'ring-2 ring-bad' => $errors->has('moveDate')]) style="border: var(--t-bw) solid var(--t-line)"
                                                     aria-invalid="{{ $errors->has('moveDate') ? 'true' : 'false' }}" @error('moveDate') aria-describedby="crunch-move-date-error" @enderror>
-                                                @error('moveDate') <p id="crunch-move-date-error" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                                                @error('moveDate') <p data-field-error role="alert" id="crunch-move-date-error" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
                                                 {{-- The engine's proposal: the first day this task fits. The date above starts out as that day; the user still confirms. --}}
                                                 @if ($item->fitDate)
                                                     <p class="text-sm text-ink">{{ __('shell.crunch.fit_hint', ['date' => \App\Services\Planning\DayLabel::for($item->fitDate, $now), 'task' => $t->title]) }}</p>
@@ -111,7 +111,7 @@
                                                     <input type="checkbox" wire:model="moveSure" class="mt-0.5 size-4 accent-[var(--t-accent)]" @error('moveSure') aria-describedby="crunch-move-sure-error" @enderror>
                                                     <span>{{ __('shell.crunch.move_sure') }}<span class="block text-xs text-ink-faint">{{ __('shell.crunch.move_sure_hint') }}</span></span>
                                                 </label>
-                                                @error('moveSure') <p id="crunch-move-sure-error" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                                                @error('moveSure') <p data-field-error role="alert" id="crunch-move-sure-error" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
                                                 <div class="flex flex-wrap gap-2">
                                                     <button type="submit" class="{{ $btn }} bg-accent text-accent-fg" wire:loading.attr="disabled" wire:target="moveHard">
                                                         <span wire:loading.remove wire:target="moveHard">{{ __('shell.crunch.move_confirm') }}</span>
@@ -161,8 +161,8 @@
                                         <input type="time" wire:model="addEnd" step="300" @class([$field, 'bg-surface', 'ring-2 ring-bad' => $errors->has('addEnd')]) style="border: var(--t-bw) solid var(--t-line)">
                                     </label>
                                 </div>
-                                @error('addDate') <p class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
-                                @error('addEnd') <p class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                                @error('addDate') <p data-field-error role="alert" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                                @error('addEnd') <p data-field-error role="alert" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
                                 @if (count($v->categories) > 1)
                                     <label class="flex flex-col gap-1 text-xs text-ink-soft">{{ __('shell.crunch.add_category') }}
                                         <select wire:model="addCategory" @class([$field, 'bg-surface font-display', 'ring-2 ring-bad' => $errors->has('addCategory')]) style="border: var(--t-bw) solid var(--t-line)">
@@ -172,7 +172,7 @@
                                         </select>
                                     </label>
                                 @endif
-                                @error('addCategory') <p class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                                @error('addCategory') <p data-field-error role="alert" class="text-xs font-semibold text-bad">{{ $message }}</p> @enderror
                                 <div class="flex flex-wrap gap-2">
                                     <button type="submit" class="{{ $btn }} bg-accent text-accent-fg" wire:loading.attr="disabled" wire:target="addTime">
                                         <span wire:loading.remove wire:target="addTime">{{ __('shell.crunch.add_confirm') }}</span>

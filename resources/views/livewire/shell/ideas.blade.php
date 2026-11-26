@@ -5,28 +5,28 @@
     $shown = $ideas->take(\App\Livewire\Shell\Ideas::LIMIT);
     $offeredId = $this->offeredId;
     $locked = $this->locked;
-    $btn = 'inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60';
+    $btn = 'inline-flex min-h-11 wb:min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60';
 @endphp
 <div id="content" class="min-h-dvh pb-[calc(88px+env(safe-area-inset-bottom))] wb:pb-0">
     <div class="hidden wb:block">@include('shell.topbar', ['active' => 'ideas'])</div>
     <header class="sticky top-0 z-20 flex items-center gap-2 bg-paper px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))] wb:hidden">
-        <a href="{{ route('shell.board') }}" wire:navigate class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.ideas.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
+        <a href="{{ route('shell.board') }}" wire:navigate class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.ideas.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
         <span class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">nothing-to-do</span>
     </header>
 
-    @if ($notice)
-        <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status">
+    <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4" role="status">
+            @if ($notice)
             <p class="pointer-events-auto flex max-w-md items-center gap-3 rounded-card bg-deep px-4 py-2.5 text-sm font-medium text-on-deep shadow-card">
                 <span class="min-w-0 wrap-break-word">{{ $notice }}</span>
                 @if ($undoId)
                     <button type="button" wire:click="undoDone" wire:loading.attr="disabled" class="shrink-0 font-semibold underline underline-offset-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep">{{ __('shell.ideas.undo') }}</button>
                 @endif
-                <button type="button" wire:click="dismiss" class="shrink-0 rounded-full p-1 opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="OK">
+                <button type="button" wire:click="dismiss" class="shrink-0 -my-2 -mr-2.5 grid size-11 place-items-center rounded-full opacity-80 hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep" aria-label="{{ __('shell.close') }}">
                     @include('shell.icon', ['name' => 'close', 'class' => 'size-4'])
                 </button>
             </p>
-        </div>
-    @endif
+            @endif
+    </div>
 
     <main class="mx-auto flex max-w-6xl flex-col gap-5 px-4 pt-4 wb:px-6 wb:py-8">
         <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">

@@ -9,7 +9,7 @@
     $days = $form['days'] ?? [];
     $isTermin = ($form['kind'] ?? 'cat') === 'termin';
     $weekdayOf = fn (string $d) => \Carbon\CarbonImmutable::parse($d)->dayOfWeekIso;
-    $field = 'h-10 rounded-card border border-line bg-paper px-3 text-sm text-ink focus:border-accent focus:outline-hidden aria-invalid:border-bad';
+    $field = 'h-11 wb:h-10 rounded-card border border-line bg-paper px-3 text-sm text-ink focus:border-accent focus:outline-hidden aria-invalid:border-bad';
     $err = fn (string $k) => $errors->has('form.'.$k);
     $title = match ($mode) {
         'new', 'tnew' => __('week.form.new'),
@@ -34,7 +34,7 @@
             <h2 id="week-form-title" class="font-display text-lg text-ink" style="font-weight: var(--t-dw)">{{ $title }}</h2>
             <p class="font-mono text-xs text-ink-faint">{{ $sub }}</p>
         </div>
-        <button type="button" wire:click="closeForm" class="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('week.cancel') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
+        <button type="button" wire:click="closeForm" class="grid size-11 wb:size-9 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-paper focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('week.cancel') }}">@include('shell.icon', ['name' => 'close', 'class' => 'size-5'])</button>
     </div>
 
     @if ($mode !== 'occ')
@@ -52,7 +52,7 @@
             {{ __('week.form.name') }}
             <input type="text" wire:model="form.title" maxlength="255" data-autofocus placeholder="{{ __('week.form.name_placeholder') }}" class="{{ $field }}" @if ($err('title')) aria-invalid="true" @endif @disabled($mode === 'occ')>
         </label>
-        @error('form.title')<p class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
+        @error('form.title')<p data-field-error role="alert" class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
         {{-- Colour of a Termin: the same palette as the categories, plus "Standard" (the current dark block). An occurrence
              of the Wochenplan takes its colour from the series, like its name: change it in the Wochenplan. --}}
         <div class="flex flex-col gap-1">
@@ -78,7 +78,7 @@
                     @endforeach
                 </div>
             @endif
-            @error('form.categoryId')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+            @error('form.categoryId')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
         </div>
     @endif
 
@@ -108,7 +108,7 @@
         </label>
     </div>
     @foreach (['newDate', 'start', 'end'] as $k)
-        @error('form.'.$k)<p class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
+        @error('form.'.$k)<p data-field-error role="alert" class="-mt-2 text-sm text-bad">{{ $message }}</p>@enderror
     @endforeach
 
     @if (in_array($mode, ['new', 'tnew', 'tpl'], true))
@@ -123,7 +123,7 @@
                     </button>
                 @endforeach
             </div>
-            @error('form.days')<p class="text-sm text-bad">{{ $message }}</p>@enderror
+            @error('form.days')<p data-field-error role="alert" class="text-sm text-bad">{{ $message }}</p>@enderror
         </div>
     @endif
 

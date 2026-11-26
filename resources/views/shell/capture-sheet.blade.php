@@ -9,7 +9,7 @@
 @endphp
 <script type="application/json" id="capture-config">{!! json_encode($captureConfig, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
 
-<div x-data x-show="$store.capture.sheetOpen" x-cloak class="fixed inset-0 z-[55] flex items-end justify-center wb:items-start wb:pt-[12vh]" role="dialog" aria-modal="true" aria-label="{{ __('capture.line.label') }}">
+<div x-data x-show="$store.capture.sheetOpen" x-cloak x-trap.noscroll.noautofocus.noreturn="$store.capture.sheetOpen" x-restore-focus="$store.capture.sheetOpen" @keydown.escape.window="if ($store.capture.sheetOpen) $store.capture.sheetOpen = false" class="fixed inset-0 z-[55] flex items-end justify-center wb:items-start wb:pt-[12vh]" role="dialog" aria-modal="true" aria-label="{{ __('capture.line.label') }}">
     <div class="absolute inset-0 bg-black/30" @click="$store.capture.sheetOpen = false"></div>
     <div
         x-data="captureLine('sheet')"
@@ -26,7 +26,7 @@
                     placeholder="{{ __('capture.line.placeholder') }}" autocomplete="off" enterkeyhint="done"
                     @keydown.escape.prevent="close()" :aria-invalid="error ? 'true' : 'false'"
                     class="min-w-0 flex-1 border-0 bg-transparent p-0 text-base text-ink placeholder:text-ink-faint focus:ring-0">
-                <button type="submit" class="grid size-9 place-items-center rounded-full bg-accent text-accent-fg disabled:opacity-60" :disabled="saving" aria-label="{{ __('capture.line.label') }}">
+                <button type="submit" class="grid size-11 place-items-center rounded-full bg-accent text-accent-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-60" :disabled="saving" aria-label="{{ __('capture.line.label') }}">
                     @include('shell.icon', ['name' => 'check', 'class' => 'size-5'])
                 </button>
             </label>
@@ -34,9 +34,9 @@
         <p class="flex items-center gap-2 text-sm" role="status">
             <span x-show="saving" class="text-ink-faint">{{ __('capture.line.saving') }}</span>
             <span x-show="! saving && error" class="font-semibold text-bad" x-text="error"></span>
-            <button type="button" x-show="! saving && offline" @click="save()" class="font-semibold text-accent-ink underline underline-offset-2">{{ __('capture.line.retry') }}</button>
+            <button type="button" x-show="! saving && offline" @click="save()" class="inline-flex min-h-11 items-center font-semibold text-accent-ink underline underline-offset-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('capture.line.retry') }}</button>
             <span x-show="! saving && ! error" class="text-ink-faint">{{ __('capture.line.hint') }}</span>
-            <button type="button" @click="close()" class="ml-auto rounded-card px-2 py-1 font-semibold text-ink-soft hover:text-ink">{{ __('capture.line.close') }}</button>
+            <button type="button" @click="close()" class="ml-auto inline-flex min-h-11 items-center rounded-card px-3 font-semibold text-ink-soft hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">{{ __('capture.line.close') }}</button>
         </p>
     </div>
 </div>
@@ -46,6 +46,6 @@
     <p class="pointer-events-auto flex items-center gap-3 rounded-card bg-deep py-2 pr-2 pl-4 text-sm font-semibold text-on-deep shadow-card">
         @include('shell.icon', ['name' => 'check', 'class' => 'size-4'])
         <span x-text="$store.capture.toast"></span>
-        <button type="button" x-show="$store.capture.lastId" @click="$store.capture.undo()" class="rounded-card px-2 py-1 underline underline-offset-2 hover:bg-white/10">{{ __('capture.line.undo') }}</button>
+        <button type="button" x-show="$store.capture.lastId" @click="$store.capture.undo()" class="inline-flex min-h-11 items-center rounded-card px-3 underline underline-offset-2 hover:bg-white/10 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-on-deep">{{ __('capture.line.undo') }}</button>
     </p>
 </div>

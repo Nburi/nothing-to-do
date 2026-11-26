@@ -12,20 +12,20 @@
                 <x-shell.action key="browse_later" :layout="$layout" :mode="$mode" role="tab"
                     @click="peek = 'later'" x-bind:aria-selected="peek === 'later'"
                     x-bind:class="peek === 'later' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink'"
-                    class="{{ $tabClass }}">{{ __('shell.lists.later') }} <span class="font-mono text-xs opacity-70">{{ $counts['later'] }}</span></x-shell.action>
+                    class="{{ $tabClass }}">{{ __('shell.lists.later') }} <span class="font-mono text-xs font-normal">{{ $counts['later'] }}</span></x-shell.action>
             @else
                 <button type="button" role="tab" @click="peek = '{{ $list }}'" x-bind:aria-selected="peek === '{{ $list }}'"
                     x-bind:class="peek === '{{ $list }}' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink'"
-                    class="{{ $tabClass }}">{{ __('shell.lists.'.$list) }} <span class="font-mono text-xs opacity-70">{{ $counts[$list] }}</span></button>
+                    class="{{ $tabClass }}">{{ __('shell.lists.'.$list) }} <span class="font-mono text-xs font-normal">{{ $counts[$list] }}</span></button>
             @endif
         @endforeach
         <button type="button" role="tab" data-peek-tab="important" @click="peek = 'important'" x-bind:aria-selected="peek === 'important'"
             x-bind:class="peek === 'important' ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink'"
-            class="{{ $tabClass }}">{{ __('shell.important.label') }} <span class="font-mono text-xs opacity-70">{{ $important->count() }}</span></button>
+            class="{{ $tabClass }}">{{ __('shell.important.label') }} <span class="font-mono text-xs font-normal">{{ $important->count() }}</span></button>
     </div>
     <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         @foreach (\App\Models\Task::LISTS as $list)
-            <div x-show="peek === '{{ $list }}'" x-cloak class="flex flex-col gap-2" role="tabpanel">
+            <div x-show="peek === '{{ $list }}'" x-cloak class="flex flex-col gap-2" role="tabpanel" aria-label="{{ __('shell.lists.'.$list) }}">
             <ul @if (in_array($list, \App\Models\Task::WORK_LISTS, true)) data-order-list x-data="boardOrder(@js(['text' => __('shell.order')]))" @endif class="flex flex-col gap-2">
                 @if ($list === 'inbox' && $counts['inbox'] > 0)
                     <li>
@@ -63,7 +63,7 @@
             </div>
         @endforeach
         {{-- Step 4.6: everything marked „Wichtig" in one place (Inbox, To-dos, Tasks; parked ideas stay out). --}}
-        <ul x-show="peek === 'important'" x-cloak data-peek-panel="important" class="flex flex-col gap-2" role="tabpanel">
+        <ul x-show="peek === 'important'" x-cloak data-peek-panel="important" class="flex flex-col gap-2" aria-label="{{ __('shell.important.label') }}">
             @forelse ($important->take(\App\Livewire\Shell\Board::LIST_LIMIT) as $task)
                 @include('shell.item', ['task' => $task, 'layout' => $layout, 'mode' => $mode, 'suggested' => false, 'locked' => $locked, 'keyScope' => 'important', 'tagged' => false])
             @empty

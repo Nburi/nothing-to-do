@@ -19,7 +19,7 @@
             $left = count($queue);
             $counts = $this->counts;
         @endphp
-        <div class="fixed inset-0 z-50 flex items-end justify-center wb:items-center" role="dialog" aria-modal="true" aria-label="{{ __('sort.title') }}">
+        <div class="fixed inset-0 z-50 flex items-end justify-center wb:items-center" role="dialog" aria-modal="true" aria-label="{{ __('sort.title') }}" x-trap.noscroll.noautofocus.noreturn="true" x-restore-focus>
             <div class="absolute inset-0 hidden bg-black/45 wb:block" wire:click="close"></div>
 
             {{-- ═════ Desktop (Werkbank): the card with 1 / 2 / 3 and Enter. ═════ --}}
@@ -29,7 +29,7 @@
                 tabindex="-1" x-init="$nextTick(() => { if ($el.getClientRects().length) $el.focus({ preventScroll: true }) })"
                 wire:key="sort-panel-{{ $total }}-{{ $placed }}-{{ $left }}">
                 @if ($task)
-                    <div class="h-1 overflow-hidden rounded-full" style="background: color-mix(in srgb, var(--t-ink) 10%, var(--t-surface))" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $total }}" aria-valuenow="{{ $done }}">
+                    <div class="h-1 overflow-hidden rounded-full" style="background: color-mix(in srgb, var(--t-ink) 10%, var(--t-surface))" role="progressbar" aria-label="{{ __('sort.progress', ['current' => min($done + 1, $total), 'total' => $total]) }}" aria-valuemin="0" aria-valuemax="{{ $total }}" aria-valuenow="{{ $done }}">
                         <span class="block h-full bg-accent transition-all duration-300" style="width: {{ $total ? round($done / $total * 100) : 0 }}%"></span>
                     </div>
                     <div class="flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-widest text-ink-faint">
@@ -61,7 +61,7 @@
                             </button>
                         @endforeach
                     </div>
-                    @error('list') <p class="-mt-2 text-xs font-semibold text-bad">{{ $message }}</p> @enderror
+                    @error('list') <p data-field-error role="alert" class="-mt-2 text-xs font-semibold text-bad">{{ $message }}</p> @enderror
 
                     @unless ($isLater)
                         <div>
@@ -85,7 +85,7 @@
                             class="inline-flex min-h-11 items-center gap-2 rounded-card bg-accent px-5 font-semibold text-accent-fg transition hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60">
                             <span wire:loading.remove wire:target="place">{{ __('sort.place') }}</span>
                             <span wire:loading wire:target="place">…</span>
-                            <kbd class="rounded border border-current px-1 font-mono text-[10.5px] opacity-70">Enter</kbd>
+                            <kbd class="rounded border border-current px-1 font-mono text-[10.5px]">Enter</kbd>
                         </button>
                     </div>
                 @else
@@ -96,7 +96,8 @@
             {{-- ═════ Phone (Stapel): the Inbox as a deck, three piles to throw it on. ═════
                  Pick the size on the top card, then drag it onto To-dos, Tasks or Später, or tap a pile.
                  The card follows the finger 1:1 and springs back if it is not over a pile (CONVENTIONS 7). --}}
-            <div class="relative flex h-dvh w-full flex-col wb:hidden" style="background: color-mix(in srgb, var(--t-warn) 5%, var(--t-bg))" x-data="sortDeck">
+            <div class="relative flex h-dvh w-full flex-col focus:outline-hidden wb:hidden" style="background: color-mix(in srgb, var(--t-warn) 5%, var(--t-bg))" x-data="sortDeck"
+                tabindex="-1" x-init="$nextTick(() => { if ($el.getClientRects().length) $el.focus({ preventScroll: true }) })">
                 <header class="flex items-center gap-3 px-4 pb-2 pt-[max(14px,env(safe-area-inset-top))]">
                     <h2 class="font-display text-[17px] text-ink" style="font-weight: var(--t-dw)">{{ __('sort.title') }}</h2>
                     @if ($task)

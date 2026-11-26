@@ -1,7 +1,7 @@
 <div id="content" class="min-h-dvh">
     <div class="hidden wb:block">@include('shell.topbar', ['active' => 'settings'])</div>
     <header class="flex items-center gap-2 px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))] wb:hidden">
-        <a href="{{ route('shell.board') }}" wire:navigate class="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.settings.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
+        <a href="{{ route('shell.board') }}" wire:navigate class="grid size-11 wb:size-9 place-items-center rounded-full text-ink-soft hover:bg-surface focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('shell.settings.back') }}">@include('shell.icon', ['name' => 'back', 'class' => 'size-5'])</a>
         <span class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">nothing-to-do</span>
     </header>
 

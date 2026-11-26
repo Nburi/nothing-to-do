@@ -58,16 +58,16 @@
         <label class="flex min-w-0 flex-1 basis-48 flex-col gap-1">
             <span class="text-sm font-medium text-ink">{{ __('capture.tokens.name') }}</span>
             <input type="text" wire:model="name" maxlength="40" placeholder="{{ __('capture.tokens.name_placeholder') }}"
-                @class(['h-10 rounded-card bg-paper px-3 text-sm text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-2 focus:ring-accent', 'border-bad' => $errors->has('name'), 'border-line' => ! $errors->has('name')])
+                @class(['h-11 wb:h-10 rounded-card bg-paper px-3 text-sm text-ink placeholder:text-ink-faint focus:outline-hidden focus:ring-2 focus:ring-accent', 'border-bad' => $errors->has('name'), 'border-line' => ! $errors->has('name')])
                 style="border-width: var(--t-bw)" @error('name') aria-invalid="true" aria-describedby="token-name-error" @enderror>
             @error('name')
-                <span id="token-name-error" class="text-xs font-semibold text-bad">{{ $message }}</span>
+                <span data-field-error role="alert" id="token-name-error" class="text-xs font-semibold text-bad">{{ $message }}</span>
             @else
                 <span class="text-xs text-ink-faint">{{ __('capture.tokens.name_hint') }}</span>
             @enderror
         </label>
         <button type="submit" wire:loading.attr="disabled" wire:target="create"
-            class="mb-5 inline-flex h-10 items-center gap-2 rounded-card bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60">
+            class="mb-5 inline-flex h-11 wb:h-10 items-center gap-2 rounded-card bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60">
             {{ $this->tokens->isEmpty() ? __('capture.tokens.create') : __('capture.tokens.another') }}
         </button>
     </form>
