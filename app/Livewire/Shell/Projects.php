@@ -37,6 +37,12 @@ class Projects extends Component
 
     public string $newList = 'tasks';
 
+    /** Step 4.3d: a deleted project or group sends its one plain line here (flashed, so it shows once). */
+    public function mount(): void
+    {
+        $this->notice = session('projects.notice');
+    }
+
     #[Computed]
     public function user(): User
     {

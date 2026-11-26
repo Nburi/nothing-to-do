@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Shell;
 
+use App\Livewire\Concerns\ManagesMembership;
 use App\Livewire\Concerns\ManagesNotes;
 use App\Livewire\Concerns\ManagesStepMoves;
 use App\Models\ProjectStage;
@@ -28,10 +29,12 @@ use Livewire\Component;
  * Step 4.3: one group. A few tasks of one list in the group's order; the first two are what the
  * board shows. New steps land in the group's list. Step 4.3b: note cards with #tags (ManagesNotes).
  * Step 4.3c: steps move by dragging, keyboard or the ⋯ menu within the one list (ManagesStepMoves).
+ * Step 4.3d: board tasks of the group's list move in and out, the group can be deleted (ManagesMembership).
  */
 #[Layout('layouts.shell')]
 class GroupPage extends Component
 {
+    use ManagesMembership;
     use ManagesNotes;
     use ManagesStepMoves;
 
@@ -152,6 +155,12 @@ class GroupPage extends Component
             return;
         }
 
+        if (in_array($undo['kind'] ?? null, ['adopt', 'release'], true)) {
+            $this->undoMembership($undo);
+
+            return;
+        }
+
         if (($undo['kind'] ?? null) === 'note') {
             $this->undoNote($undo);
             $this->notice = __('projects.undone');
@@ -221,7 +230,7 @@ class GroupPage extends Component
 
     private function fresh(): void
     {
-        foreach (['group', 'steps', 'doneCount', 'locked'] as $computed) {
+        foreach (['group', 'steps', 'doneCount', 'locked', 'impact'] as $computed) {
             unset($this->{$computed});
         }
     }

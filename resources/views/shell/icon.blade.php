@@ -29,7 +29,9 @@
         'grip' => '<circle cx="9" cy="6" r="1.25"/><circle cx="15" cy="6" r="1.25"/><circle cx="9" cy="12" r="1.25"/><circle cx="15" cy="12" r="1.25"/><circle cx="9" cy="18" r="1.25"/><circle cx="15" cy="18" r="1.25"/>',
         'to-top' => '<path d="M6 5h12M12 19V9M7 13l5-5 5 5"/>',
         'to-bottom' => '<path d="M6 19h12M12 5v10M7 11l5 5 5-5"/>',
-        'arrow-right' => '<path d="M5 12h14M13 6l6 6-6 6"/>',
+        'arrow-up' => '<path d="M12 19V5M6 11l6-6 6 6"/>',
+        'arrow-down' => '<path d="M12 5v14M6 13l6 6 6-6"/>',
+        'arrow-right' =>'<path d="M5 12h14M13 6l6 6-6 6"/>',
         'flag' => '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
     ];
 @endphp

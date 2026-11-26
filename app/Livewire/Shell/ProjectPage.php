@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Shell;
 
+use App\Livewire\Concerns\ManagesMembership;
 use App\Livewire\Concerns\ManagesNotes;
 use App\Livewire\Concerns\ManagesStepMoves;
 use App\Models\Project;
@@ -32,10 +33,13 @@ use Livewire\Component;
  * dependencies (stage 2 waits on stage 1); "wartet auf" covers the rare single step.
  * Step 4.3b: note cards with #tags in a column beside the stages (ManagesNotes).
  * Step 4.3c: steps move by dragging, keyboard or the ⋯ menu, between stages too (ManagesStepMoves).
+ * Step 4.3d: stages change their order, board tasks move in and out, the project can be deleted
+ * (ManagesMembership).
  */
 #[Layout('layouts.shell')]
 class ProjectPage extends Component
 {
+    use ManagesMembership;
     use ManagesNotes;
     use ManagesStepMoves;
 
@@ -201,6 +205,24 @@ class ProjectPage extends Component
         });
     }
 
+    /** One place earlier (-1) or later (+1) in the roadmap; undoable. A step's "wartet auf" that now contradicts is let go. */
+    public function shiftStage(int $id, int $by): void
+    {
+        $this->guard(function () use ($id, $by) {
+            $stage = $this->stage($id);
+            $at = $this->project->stages->search(fn (ProjectStage $s) => $s->id === $stage->id);
+            $move = app(ProjectEditor::class)->moveStage($stage, (int) $at + ($by < 0 ? -1 : 1));
+
+            if (! $move->changed) {
+                return;
+            }
+
+            $this->undo = ['kind' => 'stages', 'order' => $move->order, 'cleared' => $move->cleared];
+            $text = __('projects.stage_move.moved', ['name' => $stage->name, 'number' => $move->toIndex + 1]);
+            $this->notice = $move->cleared === [] ? $text : $text.' '.__('projects.move.waits_cleared');
+        });
+    }
+
     // ---- steps -------------------------------------------------------------------------------
 
     public function addStep(string $key): void
@@ -273,6 +295,15 @@ class ProjectPage extends Component
             TaskMutator::applyUpdate($task, $this->user, ['is_completed' => false]);
         } elseif (($undo['kind'] ?? null) === 'move') {
             $this->undoMove($undo);
+
+            return;
+        } elseif (in_array($undo['kind'] ?? null, ['adopt', 'release'], true)) {
+            $this->undoMembership($undo);
+
+            return;
+        } elseif (($undo['kind'] ?? null) === 'stages') {
+            app(ProjectEditor::class)->restoreStageOrder($this->project, (array) $undo['order'], (array) $undo['cleared']);
+            $this->say(__('projects.move.undone'));
 
             return;
         } elseif (($undo['kind'] ?? null) === 'note') {
@@ -354,7 +385,7 @@ class ProjectPage extends Component
 
     private function fresh(): void
     {
-        foreach (['project', 'steps', 'bundle', 'doneByStage', 'locked'] as $computed) {
+        foreach (['project', 'steps', 'bundle', 'doneByStage', 'locked', 'impact'] as $computed) {
             unset($this->{$computed});
         }
     }
