@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ScheduleEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 /**
@@ -18,13 +19,14 @@ use Tests\TestCase;
 class ScheduleBadgeHighlightTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     public function test_visiting_with_an_owned_event_id_highlights_that_block(): void
     {
         $user = User::factory()->create();
         $event = ScheduleEvent::factory()->for($user)->on('2026-08-24')->create();
 
-        $response = $this->actingAs($user)->get('/app/schedule?event='.$event->id);
+        $response = $this->actingAs($user)->get($this->legacy('schedule').'?event='.$event->id);
 
         $response->assertOk();
         $response->assertSee('badge-jump-highlight', false);
@@ -35,7 +37,7 @@ class ScheduleBadgeHighlightTest extends TestCase
         $user = User::factory()->create();
         $event = ScheduleEvent::factory()->for($user)->on('2026-09-14')->create();
 
-        $response = $this->actingAs($user)->get('/app/schedule?event='.$event->id);
+        $response = $this->actingAs($user)->get($this->legacy('schedule').'?event='.$event->id);
 
         $response->assertOk();
         $response->assertSee('badge-jump-highlight', false);
@@ -46,7 +48,7 @@ class ScheduleBadgeHighlightTest extends TestCase
         $user = User::factory()->create();
         $foreignEvent = ScheduleEvent::factory()->for(User::factory())->on('2026-08-24')->create();
 
-        $response = $this->actingAs($user)->get('/app/schedule?event='.$foreignEvent->id);
+        $response = $this->actingAs($user)->get($this->legacy('schedule').'?event='.$foreignEvent->id);
 
         $response->assertOk();
         $response->assertDontSee('badge-jump-highlight', false);
@@ -56,7 +58,7 @@ class ScheduleBadgeHighlightTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/app/schedule?event=999999');
+        $response = $this->actingAs($user)->get($this->legacy('schedule').'?event=999999');
 
         $response->assertOk();
         $response->assertDontSee('badge-jump-highlight', false);
@@ -66,7 +68,7 @@ class ScheduleBadgeHighlightTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get('/app/schedule?event=not-a-number');
+        $response = $this->actingAs($user)->get($this->legacy('schedule').'?event=not-a-number');
 
         $response->assertOk();
         $response->assertDontSee('badge-jump-highlight', false);

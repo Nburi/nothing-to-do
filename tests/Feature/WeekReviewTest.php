@@ -9,11 +9,13 @@ use App\Services\WeekReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 class WeekReviewTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     protected function tearDown(): void
     {
@@ -254,8 +256,8 @@ class WeekReviewTest extends TestCase
     {
         $user = $this->user();
 
-        $this->get(route('review'))->assertRedirect(route('login'));
-        $this->actingAs($user)->get(route('review'))->assertOk()->assertSee('Wochenrückblick');
+        $this->get($this->legacy('review'))->assertRedirect(route('login'));
+        $this->actingAs($user)->get($this->legacy('review'))->assertOk()->assertSee('Wochenrückblick');
         $this->actingAs($user)->get(route('progress'))->assertSee(route('review'), false);
     }
 

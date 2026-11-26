@@ -362,7 +362,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
         <div class="agroup">
           <div class="eyebrow">At the switch (5.4)</div>
           <ul class="items">
-            <li><span class="tag plain">Later</span><span><b>Prod setup.</b> <code>APP_LOCALE=de</code> in the prod <code>.env</code>, then <code>php artisan app:copy-craft-ideas --dry-run</code> and for real (copies the old Bastelideen into Later; not on prod before 5.4). Decide with C45 whether to keep or clear the „Wichtig“ marks of users who had many on the old Eisenhower board.</span></li>
+            <li><span class="tag plain">Later</span><span><b>Prod setup.</b> the night is written down in <code>docs/RELEASE_RUNBOOK.md</code> (PR #47): decisions D1–D8 on top, then <code>php artisan app:copy-craft-ideas --dry-run</code> and for real (copies the old Bastelideen into Later; not on prod before 5.4). Decide with C45 whether to keep or clear the „Wichtig“ marks of users who had many on the old Eisenhower board.</span></li>
           </ul>
         </div>
       </article>
@@ -438,8 +438,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot review"></span>Built, in review</div>
-        <div class="n">0</div>
-        <div class="sub">every open PR is merged (24 Nov)</div>
+        <div class="n">1</div>
+        <div class="sub">#47, 5.4 prep (25 Nov); #36–#46 are open too</div>
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot waiting"></span>Waiting on you</div>
@@ -448,8 +448,8 @@ footer { font-size: 0.82rem; color: var(--muted); }
       </div>
       <div class="counter">
         <div class="lbl"><span class="dot todo"></span>Not started</div>
-        <div class="n">7</div>
-        <div class="sub">3.6 and 4.5 reviews, phase 5 (5.1 to 5.5)</div>
+        <div class="n">6</div>
+        <div class="sub">3.6 and 4.5 reviews, phase 5 (5.1 to 5.3, 5.5)</div>
       </div>
     </div>
     <p class="summary-note">Every build step through 4.6 is built and merged into <code>refactor/refactor</code> (24 Nov), the test branch: 19 PRs and then #34 (4.3c), 2276 tests green, frontend build passing. Main is merged in up to #30; hotfix #14 (23 Nov) is not in it yet. The prod copy is here, which opens the dry run and six C-tests.</p>
@@ -575,7 +575,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       <li><span class="when">Merge of 24 Nov</span><span class="what">All sibling PRs merged into <code>refactor/refactor</code> with conflicts in the board view, <code>Board.php</code>, <code>ActionRegistry.php</code>, the routes, the lang files, the icons, <code>TODO.md</code> and TESTBERICHT; both sides kept everywhere. Where the lines sit on the board is my pick (week links, crunch line, Sunday line, then the „Wichtig“ card). Tell me if the order should change.</span></li>
       <li><span class="when">Main vs refactor</span><span class="what">Main has hotfix #14 (23 Nov, two commits) that the refactor does not have yet. The refactor has the same fix since 1.2, so a merge will conflict in the week plan code.</span></li>
             <li><span class="when">Later release</span><span class="what">1.1 follow-up: switch raw-SQL reads to the new columns, then drop <code>deadline</code> / <code>due_date</code>.</span></li>
-      <li><span class="when">At switch 5.4</span><span class="what">Set <code>APP_LOCALE=de</code> on prod; run <code>app:copy-craft-ideas --dry-run</code>, then for real. Check the „Wichtig“ marks of users from the old Eisenhower board (C45).</span></li>
+      <li><span class="when">At switch 5.4</span><span class="what">Follow <code>docs/RELEASE_RUNBOOK.md</code> (PR #47; <code>APP_LOCALE</code> is not needed, the config forces <code>de</code>); run <code>app:copy-craft-ideas --dry-run</code>, then for real. Check the „Wichtig“ marks of users from the old Eisenhower board (C45).</span></li>
       <li><span class="when">Local</span><span class="what">The main checkout is on <code>feature/week-plan</code> with an uncommitted <code>package-lock.json</code> change. Your 17 Nov notes (<code>docs/c-tests/</code>) and two 4.1 screenshots (<code>docs/screens/</code>) are untracked there. This board's source is <code>docs/STATUS.html</code> on <code>refactor/refactor</code>.</span></li>
     </ul>
   </section>
@@ -614,7 +614,7 @@ footer { font-size: 0.82rem; color: var(--muted); }
       ["4.4", "Sunday review", "merged", 26], ["4.6", "„Wichtig“ marker", "merged", 33], ["4.7", "To-do session", "review", 37], ["4.8", "Board order + calm board", "review", 39], ["4.9", "Edit, move, delete items", "review", 42], ["4.5", "Review rounds", "todo"] ] },
     { code: "P5", name: "Everyone, then release", steps: [
       ["5.1", "Onboarding, de + en", "review", 46], ["5.2", "A11y, perf", "todo"], ["5.3", "Voice capture", "todo"],
-      ["5.4", "Migration + switch", "todo"], ["5.5", "RC review", "todo"] ] }
+      ["5.4", "Migration + switch (prep)", "review", 47], ["5.5", "RC review", "todo"] ] }
   ];
   var colorVar = { merged: "var(--merged)", review: "var(--review)", waiting: "var(--waiting)", todo: "var(--todo-line)" };
 

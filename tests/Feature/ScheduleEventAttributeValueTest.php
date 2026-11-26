@@ -8,11 +8,13 @@ use App\Models\ScheduleEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\Support\LegacyScreens;
 use Tests\TestCase;
 
 class ScheduleEventAttributeValueTest extends TestCase
 {
     use RefreshDatabase;
+    use LegacyScreens;
 
     private function actingUser(): User
     {
@@ -255,7 +257,7 @@ class ScheduleEventAttributeValueTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->on(now()->toDateString())->at('08:00', '09:00')->create(['category_id' => $category->id]);
         $event->attributeValues()->attach($type->id, ['value' => 'Lauf']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         // The container the queries resolve against.
@@ -275,7 +277,7 @@ class ScheduleEventAttributeValueTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->on(now()->toDateString())->at('08:00', '08:15')->create(['category_id' => $category->id]);
         $event->attributeValues()->attach($type->id, ['value' => 'Lauf']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         $response->assertSee('tl-opt tl-opt-attrs', false);
@@ -291,7 +293,7 @@ class ScheduleEventAttributeValueTest extends TestCase
         $event = ScheduleEvent::factory()->for($user)->on(now()->toDateString())->at('08:00', '08:15')->create(['category_id' => $category->id]);
         $event->attributeValues()->attach($duration->id, ['value' => '45']);
 
-        $response = $this->get('/app/schedule');
+        $response = $this->get($this->legacy('schedule'));
 
         $response->assertOk();
         $response->assertDontSee('mt-0.5 flex flex-wrap', false);

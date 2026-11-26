@@ -14,7 +14,6 @@ use App\Livewire\Onboarding;
 use App\Livewire\Planner;
 use App\Livewire\Progress;
 use App\Livewire\PublicHelp;
-use App\Livewire\Schedule;
 use App\Livewire\Settings;
 use App\Livewire\Shell\Board as ShellBoard;
 use App\Livewire\Shell\GroupPage as ShellGroupPage;
@@ -26,8 +25,6 @@ use App\Livewire\Shell\Settings as ShellSettings;
 use App\Livewire\Shell\Week as ShellWeek;
 use App\Livewire\SupportCenter;
 use App\Livewire\TaskBoard;
-use App\Livewire\WeekPlan;
-use App\Livewire\WeekReviewPage;
 use App\Mcp\McpServer;
 use App\Models\HelpArticle;
 use Illuminate\Support\Facades\Route;
@@ -127,7 +124,7 @@ Route::get('/board/settings', ShellSettings::class)
     ->name('shell.settings');
 
 // Step 4.1: the week plan editor. Zeitplan at /board/week (?w=Monday, ?pause=1 opens the pause sheet),
-// Wochenplan at /board/week/plan. The old /app/weekplan stays until the switch (5.4).
+// Wochenplan at /board/week/plan. The old /app/schedule and /app/weekplan redirect here (see below).
 Route::get('/board/week/{view?}', ShellWeek::class)
     ->middleware('auth')
     ->whereIn('view', ['plan'])
@@ -160,11 +157,14 @@ Route::get('/app', TaskBoard::class)
     ->middleware('auth')
     ->name('app');
 
-Route::get('/app/schedule', Schedule::class)
+// Retired at the switch (step 5.4): the shell's week editor replaced both screens. The route names
+// stay (users' default landing page, module visits, old links and pushes use them); 302 on purpose,
+// so a rollback brings the old screens back without browsers remembering the detour.
+Route::redirect('/app/schedule', '/board/week')
     ->middleware('auth')
     ->name('schedule');
 
-Route::get('/app/weekplan', WeekPlan::class)
+Route::redirect('/app/weekplan', '/board/week/plan')
     ->middleware('auth')
     ->name('weekplan');
 
@@ -219,8 +219,9 @@ Route::get('/app/progress', Progress::class)
     ->middleware('auth')
     ->name('progress');
 
-// Wochenrückblick — part of the Fortschritt module (hidden with it, see WeekReviewPage::mount()).
-Route::get('/app/review', WeekReviewPage::class)
+// Wochenrückblick — part of the Fortschritt module. Retired at the switch (step 5.4): the quiet
+// Sunday review at /board/review replaced it; the MCP tool get_week_review still answers from WeekReview.
+Route::redirect('/app/review', '/board/review')
     ->middleware('auth')
     ->name('review');
 

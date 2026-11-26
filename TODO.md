@@ -26,7 +26,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 1.5 Capture and API parity: `POST /api/capture` with a narrow token (`app:capture-token`), REST + MCP for suggestion, battery, session, forecast, drop/shrink, areas and the new task fields. Default locale `de`. Notes in `docs/steps/1.5.md`.
 - [x] 1.8 Review of phase 1: code review (6 fixes), `EveningFlowTest` (found and fixed a hard-deadline bug in `DeadlineFeasibility`), requirement check, rehearsal on a dev-DB copy: nothing lost. Notes in `docs/steps/1.8-review.md`.
 - [ ] Phase 1 gate, open part: the dry run on a **production** copy (0.3) still needs the dump.
-- [ ] Prod `.env`: `APP_LOCALE=de` before the switch (5.4).
+- [x] Prod `.env`: `APP_LOCALE=de` is not needed: `config/app.php` forces `de` and ignores the variable (`GermanLocaleTest`, checked 2026-11-25).
 - [ ] 1.7 follow-up: no HTTP/Livewire entry points yet (that's the session view, 3.1) and no API/MCP endpoints (1.5).
 
 ## Refactor: phase 2 (started 2026-11-09)
@@ -51,7 +51,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] The older push commands (`app:send-progress-reminders`, event notifications) inject `PushNotifier` and crash every tick on a server without VAPID keys (see ERRORS.md, 2026-11-16). Fixed 2026-11-25 (`feature/push-commands-no-vapid`): they skip with one line, nothing is stamped.
 - [x] 3.4 Free-time ideas, "Meins behalten", Ideen view (`feature/free-time-ideas`). Notes in `docs/steps/3.4.md`.
 - [ ] 3.4 open for Niels: TESTBERICHT C14–C16; check the decisions in `docs/steps/3.4.md` (Jetzt machen = session, soft deadlines also stop ideas, 06:00–24:00 and 30 min, Stapel tab "Später" → Ideen page).
-- [ ] 5.4: run `php artisan app:copy-craft-ideas --dry-run`, then without, at the switch (copies the old Bastelideen into Later; idempotent, craft_ideas untouched). Not on prod before that.
+- [ ] 5.4: run `php artisan app:copy-craft-ideas --dry-run`, then without, at the switch, **after** `migrate` (runbook step 12; copies the old Bastelideen into Later; idempotent, craft_ideas untouched). Not on prod before that. Redirect `/app/crafts` to `/board/ideas` together with it, not earlier (the Ideen view is empty until the copy ran).
 - [x] Shell: editing, moving and deleting single items (also on the Ideen cards): step 4.9, `docs/steps/4.9.md`. Open: the rows inside the To-do session card have no ⋯ menu yet; deleted tasks are kept (no purge, no trash view).
 - [x] Stapel board at 390 px: the four piles are only ~56 px wide, titles break mid-word ("Math e-…"); already in the 3.2 screenshots, not from 3.4. Look at `shell/pile.blade.php` / the pile grid. Fixed in `feature/stapel-piles`: the pile `<button>` shrank to its content, now `w-full` (167 px at 390 px); the flag moved to the meta line.
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
@@ -64,7 +64,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 4.1 colour choice for Termine (Niels, 2026-11-24, `feature/termin-colors`, `docs/steps/4.1.md` "Colours for Termine"). Waiting for Niels: C65–C67.
 - [ ] 4.1 C8 (tasks could not be created at first): not reproduced, see ERRORS.md; if it comes back, note the message, the screen and the HTTP status.
 - [ ] 4.1 later: resize a block by dragging its edge; move a block to another day by dragging on the phone; rename / delete areas.
-- [ ] 5.4: retire `/app/weekplan` and `/app/schedule` (the shell no longer links them).
+- [x] 5.4: `/app/weekplan` and `/app/schedule` redirect to `/board/week/plan` and `/board/week` (`feature/switch-prep`, `docs/steps/5.4-prep.md`). The old components stay until after the switch.
 
 ## Refactor: phase 4, step 4.3 (started 2026-11-17)
 - [x] 4.3a Projects and groups with their next two steps (`feature/projects-next-step`): stages, "wartet auf", board cards, Projekte page, mixed old groups become projects. Notes in `docs/steps/4.3.md`.
@@ -81,7 +81,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 4.4 Quiet Sunday review (`feature/sunday-review`): `/board/review`, variant A "two halves", a quiet line on the board on Sunday and Monday. Notes in `docs/steps/4.4.md`.
 - [ ] 4.4 open for Niels: TESTBERICHT C34–C36; check the decisions in `docs/steps/4.4.md` (Sunday judged like a finished week, "noch in der Inbox" instead of "sortiert", no session count, the line stays after a visit).
 - [ ] 4.4 after 4.1 and 4.2 are merged: "Woche anpassen" switches to `/board/week` and "Ansehen" opens the crunch screen by themselves; check both once, and add a link to the review from the week editor if Niels wants one there.
-- [ ] 5.4: redirect the old `/app/review` to `/board/review` (Niels, 2026-11-17); `get_week_review` (MCP) keeps answering from `WeekReview`.
+- [x] 5.4: the old `/app/review` redirects to `/board/review` (Niels, 2026-11-17); `get_week_review` (MCP) keeps answering from `WeekReview` (`feature/switch-prep`).
 
 ## Refactor: phase 4, step 4.6 („Wichtig")
 - [x] 4.6 „Wichtig" marker (`feature/important-marker`, based on #21 and #27). Notes in `docs/steps/4.6.md`. No migration: `tasks.is_important` from the old app is the marker.
@@ -110,10 +110,17 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 5.4: the old tutorial (`/app/onboarding`, `OnboardingQuiz`, the redirect in `RegisteredUserController`) and the old-app strings that are not in `lang/` are retired with `/app`. Registration should then land on `/board`, where the tour opens by itself.
 - [ ] 5.1 later: the API answers (`/api/capture`, `/api/arrival`) and the old `Services/*` copy stay German; make the API follow `users.locale` if wanted.
 
+## Refactor: phase 5, step 5.4 preparation (2026-11-25, `feature/switch-prep`)
+- [x] 5.4 prep: redirects of the three old week screens, `php artisan app:switch-preflight` (read-only), `docs/RELEASE_RUNBOOK.md`, `docs/announcement-draft.md`. Notes in `docs/steps/5.4-prep.md`.
+- [ ] 5.4 waiting for Niels: the decisions D1–D8 at the top of the runbook (category links, many „Wichtig“ marks, Datenschutz text, version number, landing page, the remaining old screens, hotfixes only on `main`, heads-up timing); the production-copy tests C3, C11, C15, C32, C43, C45 and C100–C106.
+- [ ] 5.4 build, small PRs before the switch: merge `main` into `refactor/refactor` (conflicts today in `ERRORS.md` and `ScheduleEvent.php`, runbook D7); the landing page for everybody (D5); the version number (D4); the first-run cards as a screen (text in `docs/announcement-draft.md`); redirect `/app/crafts` together with the craft idea copy.
+- [ ] 5.4 after the switch: delete `Schedule`, `WeekPlan`, `WeekReviewPage`, their views and `Tests\Support\LegacyScreens` with the old-screen tests (list in `docs/steps/5.4-prep.md`).
+- [ ] 5.4 not tested: the migrations on MariaDB/MySQL and with a mixed group, a category link and a „Wichtig“ flood on real data; the runbook's `--ignore=tasks.project_id` in `app:rehearsal-compare`. Needs the production copy.
+
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.
-  - Prod categories linked to a project, group or Agenda entry (`task_source` project / group / agenda_entry / agenda_generic) now show no link and fall back to the normal suggestion. Decide in 5.4 whether to clear them or turn them into a text link. Since 4.3 projects and groups are back, so a project/group link could become "suggest this project's next steps in this block".
+  - Prod categories linked to a project, group or Agenda entry (`task_source` project / group / agenda_entry / agenda_generic) now show no link and fall back to the normal suggestion. Decide in 5.4 whether to clear them or turn them into a text link (runbook decision D1). Since 4.3 projects and groups are back, so a project/group link could become "suggest this project's next steps in this block".
   - `main` (prod) also has `phpseclib/phpseclib` 4.0.1 (CPU-exhaustion advisory, pulled in by Passport). Fixed here (4.0.3); prod needs the same patch update as a hotfix.
 - The app has no version number yet (global rule 9). Introduce one (e.g. `config/app.php` `version`, shown in settings)? Suggestion: start the refactor at `2.0.0_1`.
 - The security hotfix for the live app (#7, Laravel TokenGuard advisory, Livewire XSS) is merged into `main`; deploy it to prod if not done yet.

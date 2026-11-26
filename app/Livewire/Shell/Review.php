@@ -17,7 +17,7 @@ use Livewire\Component;
  * planned work). Read-only: it changes nothing and warns about nothing (the warning is step 4.2).
  *
  * Reached from a quiet line on the board on Sunday and Monday (both layouts) or by its URL.
- * The old /app/review stays as it is until the switch (5.4), then redirects here (TODO.md).
+ * The old /app/review redirects here since the switch preparation (5.4).
  */
 #[Layout('layouts.shell')]
 class Review extends Component
@@ -34,10 +34,9 @@ class Review extends Component
         return app(SundayReview::class)->for($this->user);
     }
 
-    /** The week editor of step 4.1 once it is merged, the old week plan until then. */
     public static function weekUrl(): string
     {
-        return Route::has('shell.week') ? route('shell.week') : route('weekplan');
+        return route('shell.week');
     }
 
     public function render(): View
