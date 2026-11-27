@@ -143,7 +143,7 @@ screenshot comes out, Claude **stops and tells Niels**, and the affected rows mo
 | B92 | R7, C7 | Step 5.2: reduced motion (emulated `prefers-reduced-motion`): the fold becomes an instant change with the focus on the title; no transition or animation over 50 ms anywhere. | Live check at 1280 and 390 px (own headless Chrome, `reducedMotion: 'reduce'`) | bestanden (Schritt 5.2, 2026-11-25): kein `shell-folding`, 0 Übergänge > 50 ms (sonst 647), 0 Animationen > 50 ms, Session-Karte steht nach der Serverantwort da. Screens `docs/screens/5.2-session-*-reduced.png`. Nicht geprüft: ältestes Handy (C92). |
 | B93 | R7 | Step 5.2: touch targets on the phone (390 px) and the look of the board unchanged at both widths. | Live check (own headless Chrome, hit areas counted) and screenshots | bestanden (Schritt 5.2, 2026-11-25): 0 Bedienelemente unter 44 px (Trefferfläche mitgezählt) auf allen Seiten ausser zwei Kästchen-Zeilen; Board bei 1280 und Listenblatt bei 390 sehen aus wie vorher (`docs/screens/5.2-board-werkbank.png`, `5.2-board-stapel-sheet.png`). |
 
-| B80 | R8 | Api parity: the Datenschutz page shows the sentence about the 30 days for deleted tasks under „Aufbewahrungsdauer“. | Live check at 1280 and 390 px | offen |
+| B80 | R8 | Api parity: the Datenschutz page shows the sentence about the 30 days for deleted tasks under „Aufbewahrungsdauer“. | Live check at 390 px (Playwright, screenshot `docs/screens/api-parity-datenschutz-390.png`) | bestanden (Api parity, 2026-11-27): the sentence stands under „Aufbewahrungsdauer“, no sideways scroll. 1280 px not looked at (same static page). |
 
 ## C. Niels prüft
 
