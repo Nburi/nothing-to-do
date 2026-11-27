@@ -19,6 +19,11 @@ Status: `[ ]` offen · `[x]` umgesetzt
   - Offen, vom Tester noch zu klären: Öffnet sich das Bearbeiten-Sheet gar nicht, oder lässt sich nicht speichern? Gilt es für alle Aufgaben oder nur für bestimmte (Projekt, Hausaufgabe, geteilte Aufgabe)? Gibt es eine Fehlermeldung?
   - Beim Umsetzen zuerst reproduzieren, nicht raten. Relevante Stellen: Doppeltipp auf den Titel und der Stift auf der Karte (`startEdit`), `partials/edit-sheet.blade.php`, `ManagesTasks::saveEdit`.
 
+- [ ] **4. Mobil: Swipe in der Inbox (Wunsch / evtl. Bug).** Der Tester will das Swipen mobil "wieder einführen", um eine einzelne Inbox-Aufgabe zu sortieren. Eine Richtung soll "Bearbeiten" sein, die andere ist noch offen.
+  - Befund im Code: Swipe gibt es noch. `task-card-mobile.blade.php` setzt in der Inbox rechts = To-Dos, links = Tasks. Ausserhalb der Inbox ist rechts = Heute/aus Heute, links = Bearbeiten. Das Ziel "wieder einführen" stimmt also nur, wenn das Swipen in der Praxis nicht funktioniert oder in der gewählten Ansicht nicht angeboten wird.
+  - Offen: In welchem Listen-Konzept wurde getestet (3 Dinge hat eine Inbox, Simple/Kanban nicht)? Was passiert beim Swipen genau (nichts, falsche Aktion)?
+  - Designkonflikt: Sortieren in der Inbox ist eine Zweier-Entscheidung (To-Do oder Task) und braucht beide Richtungen. Wird eine Richtung "Bearbeiten", bleibt nur eine zum Sortieren. Bearbeiten ist schon per Doppeltipp auf den Titel erreichbar. Zu entscheiden: Richtung 1 = To-Do, Richtung 2 = Task (jetziger Stand), oder Richtung 1 = Bearbeiten, Richtung 2 = ein Sortierziel (der andere über das Bearbeiten-Sheet).
+
 ## Umgesetzt
 
 _(noch leer)_
