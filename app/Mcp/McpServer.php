@@ -9,6 +9,7 @@ use App\Mcp\Tools\CreateTaskTool;
 use App\Mcp\Tools\CreateTasksTool;
 use App\Mcp\Tools\UpdateTasksTool;
 use App\Mcp\Tools\DeleteTaskTool;
+use App\Mcp\Tools\DissolveTaskGroupTool;
 use App\Mcp\Tools\GetBoardTool;
 use App\Mcp\Tools\GetForecastTool;
 use App\Mcp\Tools\GetProgressTool;
@@ -56,9 +57,11 @@ use App\Mcp\Tools\UpdateWeekPlanBlockTool;
 use App\Mcp\Tools\CreateCategoryTool;
 use App\Mcp\Tools\UpdateCategoryTool;
 use App\Mcp\Tools\SetCategoryTaskLinkTool;
+use App\Mcp\Tools\BringToTopTool;
 use App\Mcp\Tools\ClearCategoryTaskLinkTool;
 use App\Mcp\Tools\CreateCategoryAttributeTool;
 use App\Mcp\Tools\UpdateCategoryAttributeTool;
+use App\Mcp\Tools\MoveTaskTool;
 use App\Mcp\Tools\PauseScheduleTool;
 use App\Mcp\Tools\UnpauseScheduleTool;
 use App\Mcp\Tools\SetDayFrameTool;
@@ -73,6 +76,7 @@ use App\Mcp\Tools\ListCraftIdeasTool;
 use App\Mcp\Tools\ListRemindersTool;
 use App\Mcp\Tools\CreateReminderTool;
 use App\Mcp\Tools\UpdateReminderTool;
+use App\Mcp\Tools\DeleteProjectTool;
 use App\Mcp\Tools\DeleteReminderTool;
 use App\Mcp\Tools\RescheduleOverdueTasksTool;
 use App\Mcp\Tools\PlanTaskTool;
@@ -106,6 +110,8 @@ use App\Mcp\Tools\AddProjectStepTool;
 use App\Mcp\Tools\AddGroupStepTool;
 use App\Mcp\Tools\PlaceStepTool;
 use App\Mcp\Tools\SetStepWaitsOnTool;
+use App\Mcp\Tools\SetTaskBundleTool;
+use App\Mcp\Tools\AddMoreTimeTool;
 use App\Mcp\Tools\AddNoteTool;
 use App\Mcp\Tools\UpdateNoteTool;
 use App\Mcp\Tools\AddGroupNoteTool;
@@ -167,6 +173,10 @@ class McpServer
             new CompleteTaskTool,
             new ReopenTaskTool,
             new SetTaskOrderTool,
+            new BringToTopTool,
+            new MoveTaskTool,
+            new AddMoreTimeTool,
+            new SetTaskBundleTool,
             new SetListConceptTool,
             new SetModuleVisibilityTool,
             new SetDefaultLandingPageTool,
@@ -219,6 +229,8 @@ class McpServer
             new UpdateGroupNoteTool,
             // Delete
             new DeleteTaskTool,
+            new DeleteProjectTool,
+            new DissolveTaskGroupTool,
             new DeleteNoteTool,
             new DeleteGroupNoteTool,
             new DeleteCraftIdeaTool,

@@ -48,6 +48,8 @@ class TaskResource extends JsonResource
             ])->values()),
             'completed_at' => $this->completed_at?->toIso8601String(),
             'sort_order' => $this->sort_order,
+            // Place in the one shared board order of loose tasks, projects and groups (step 4.8); lower = further up.
+            'board_position' => $this->board_position,
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
         ];

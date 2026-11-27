@@ -68,6 +68,8 @@ class ProjectController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:'.ProjectStage::NAME_MAX],
             'target_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            // Place in the roadmap, 0 = first (clamped). A "waits on" link the move contradicts is let go.
+            'position' => ['sometimes', 'integer', 'min:0'],
         ]);
 
         $editor->updateStage(
@@ -76,7 +78,29 @@ class ProjectController extends Controller
             array_key_exists('target_date', $data) ? $data['target_date'] : $model->target_date?->toDateString(),
         );
 
-        return response()->json(['data' => ProjectsPayload::stage($model->refresh())]);
+        $payload = ['data' => ProjectsPayload::stage($model->refresh())];
+        if (isset($data['position'])) {
+            $move = $editor->moveStage($model, (int) $data['position']);
+            $payload = ['data' => ProjectsPayload::stage($model->refresh()), 'move' => [
+                'changed' => $move->changed,
+                'from_index' => $move->fromIndex,
+                'to_index' => $move->toIndex,
+                'cleared_waits_on' => $move->cleared,
+            ]];
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Delete the project. No step is lost: every task of it stays on the board in its own list without
+     * project, stage or "waits on" link; its stages and note cards go (ProjectEditor::deleteProject()).
+     */
+    public function destroy(Request $request, int $project, ProjectEditor $editor): JsonResponse
+    {
+        $editor->deleteProject($this->ownedProject($request->user(), $project));
+
+        return response()->json(null, 204);
     }
 
     /** The stage goes, its steps stay in the project without a stage, its note cards go back to "Lose". */

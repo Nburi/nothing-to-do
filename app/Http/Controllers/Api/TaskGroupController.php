@@ -53,6 +53,14 @@ class TaskGroupController extends Controller
         return response()->json(['data' => ProjectsPayload::group($request->user(), $model->refresh())]);
     }
 
+    /** Dissolve the group: its tasks stay on the board as plain tasks of their list; its note cards go. */
+    public function destroy(Request $request, int $group, ProjectEditor $editor): JsonResponse
+    {
+        $editor->deleteGroup($this->ownedGroup($request->user(), $group));
+
+        return response()->json(null, 204);
+    }
+
     public function storeStep(Request $request, int $group, ProjectEditor $editor): JsonResponse
     {
         $model = $this->ownedGroup($request->user(), $group);

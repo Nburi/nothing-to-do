@@ -8,6 +8,7 @@ use App\Http\Resources\TaskResource;
 use App\Services\Projects\ProjectEditor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /** Steps 4.3 and 4.3c: where a step of a project or group sits, and what it waits on. */
 class StepController extends Controller
@@ -41,6 +42,42 @@ class StepController extends Controller
                 'cleared_waits_on' => $move->cleared,
             ],
         ]]);
+    }
+
+    /**
+     * Move a board task into a project or group (`project_id` or `group_id`, plus an optional
+     * `stage_id` of that project), or out again (the key you pass is null: the task is a plain board
+     * task of its list). Only an open, loose, non-recurring task can move in, and a group takes only
+     * tasks of its own list; to move a step from one project to another, release it first.
+     */
+    public function bundle(Request $request, int $task, ProjectEditor $editor): JsonResponse
+    {
+        $user = $request->user();
+        $model = $user->tasks()->findOrFail($task);
+        $data = $request->validate([
+            'project_id' => ['nullable', 'integer'],
+            'group_id' => ['nullable', 'integer'],
+            'stage_id' => ['nullable', 'integer'],
+        ]);
+
+        $projectId = $data['project_id'] ?? null;
+        $groupId = $data['group_id'] ?? null;
+        if (! $request->has('project_id') && ! $request->has('group_id')) {
+            throw ValidationException::withMessages(['project_id' => 'Pass project_id or group_id (null to take the task out of its project or group).']);
+        }
+        if ($projectId !== null && $groupId !== null) {
+            throw ValidationException::withMessages(['group_id' => 'A task belongs to a project or a group, not both.']);
+        }
+
+        if ($projectId === null && $groupId === null) {
+            $editor->release($model);
+        } else {
+            $into = $projectId !== null ? $this->ownedProject($user, $projectId) : $this->ownedGroup($user, $groupId);
+            $stage = $this->stageOrNull($user, $data['stage_id'] ?? null);
+            $this->editing($projectId !== null ? 'project_id' : 'group_id', fn () => $editor->adopt($user, $into, $model, $stage));
+        }
+
+        return (new TaskResource($model->refresh()))->response();
     }
 
     /** "Wartet auf": the step waits on another step of its project (waits_on_id null = on nothing). */
