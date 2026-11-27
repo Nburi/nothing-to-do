@@ -251,6 +251,57 @@ class McpApiParityTest extends TestCase
         $this->tool('update_settings', ['locale' => 'fr']);
     }
 
+    public function test_area_tools_manage_areas_and_link_them_to_categories(): void
+    {
+        $created = $this->tool('create_area', ['name' => 'Haushalt', 'color' => 'forest']);
+        $this->assertSame('Haushalt', $created['name']);
+        $this->assertSame('forest', $created['color']);
+        $this->assertSame([$created['id']], collect($this->tool('list_areas', [])['areas'])->pluck('id')->all());
+
+        $this->assertSame('Garten', $this->tool('update_area', ['id' => $created['id'], 'name' => 'Garten'])['name']);
+
+        // A category suggests areas; another user's area id is dropped.
+        $foreign = User::factory()->create()->areas()->create(['name' => 'Fremd', 'color' => 'ink', 'sort_order' => 0]);
+        $category = $this->tool('create_category', ['name' => 'Deep work', 'color' => 'signal', 'area_ids' => [$created['id'], $foreign->id]]);
+        $this->assertSame([$created['id']], $category['area_ids']);
+        $this->assertSame([], $this->tool('update_category', ['id' => $category['id'], 'area_ids' => []])['area_ids']);
+    }
+
+    public function test_delete_area_needs_the_name_and_keeps_the_tasks(): void
+    {
+        $area = $this->tool('create_area', ['name' => 'Haushalt']);
+        $task = $this->task('Fenster putzen', ['area_id' => $area['id']]);
+
+        try {
+            $this->tool('delete_area', ['id' => $area['id'], 'confirm_name' => 'haushalt']);
+            $this->fail('the name has to match exactly');
+        } catch (McpToolExecutionException) {
+            $this->assertCount(1, $this->tool('list_areas', [])['areas']);
+        }
+
+        $this->assertTrue($this->tool('delete_area', ['id' => $area['id'], 'confirm_name' => 'Haushalt'])['deleted']);
+        $this->assertSame([], $this->tool('list_areas', [])['areas']);
+        $this->assertNotNull(Task::find($task->id));
+        $this->assertNull($task->fresh()->area_id);
+    }
+
+    public function test_area_tools_ignore_strangers_and_follow_the_abilities(): void
+    {
+        $foreign = User::factory()->create()->areas()->create(['name' => 'Fremd', 'color' => 'ink', 'sort_order' => 0]);
+        try {
+            $this->tool('update_area', ['id' => $foreign->id, 'name' => 'Meins']);
+            $this->fail('a stranger\'s area is not found');
+        } catch (McpToolExecutionException) {
+            $this->assertSame('Fremd', $foreign->fresh()->name);
+        }
+
+        $names = fn (array $abilities) => collect($this->server->availableTools($this->user, fn (string $a) => in_array($a, $abilities, true)))->map->name();
+        $this->assertContains('list_areas', $names([McpAbility::READ]));
+        $this->assertNotContains('create_area', $names([McpAbility::READ]));
+        $this->assertContains('update_area', $names([McpAbility::READ, McpAbility::WRITE]));
+        $this->assertNotContains('delete_area', $names([McpAbility::READ, McpAbility::WRITE]));
+    }
+
     public function test_update_project_stage_moves_a_stage_with_position(): void
     {
         $project = $this->editor()->createProject($this->user, 'Umzug');

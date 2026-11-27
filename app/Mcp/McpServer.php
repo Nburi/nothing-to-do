@@ -113,6 +113,10 @@ use App\Mcp\Tools\SetStepWaitsOnTool;
 use App\Mcp\Tools\SetTaskBundleTool;
 use App\Mcp\Tools\AddMoreTimeTool;
 use App\Mcp\Tools\AddNoteTool;
+use App\Mcp\Tools\CreateAreaTool;
+use App\Mcp\Tools\DeleteAreaTool;
+use App\Mcp\Tools\ListAreasTool;
+use App\Mcp\Tools\UpdateAreaTool;
 use App\Mcp\Tools\UpdateNoteTool;
 use App\Mcp\Tools\AddGroupNoteTool;
 use App\Mcp\Tools\UpdateGroupNoteTool;
@@ -146,6 +150,7 @@ class McpServer
             new GetBoardTool,
             new GetTaskTool,
             new ListCategoriesTool,
+            new ListAreasTool,
             new GetProgressTool,
             new GetSettingsTool,
             new GetSuggestionTool,
@@ -173,6 +178,8 @@ class McpServer
             new CompleteTaskTool,
             new ReopenTaskTool,
             new SetTaskOrderTool,
+            new CreateAreaTool,
+            new UpdateAreaTool,
             new BringToTopTool,
             new MoveTaskTool,
             new AddMoreTimeTool,
@@ -230,6 +237,7 @@ class McpServer
             // Delete
             new DeleteTaskTool,
             new DeleteProjectTool,
+            new DeleteAreaTool,
             new DissolveTaskGroupTool,
             new DeleteNoteTool,
             new DeleteGroupNoteTool,
