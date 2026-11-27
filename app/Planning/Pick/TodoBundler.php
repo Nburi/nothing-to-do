@@ -39,4 +39,14 @@ final readonly class TodoBundler
 
         return $session;
     }
+
+    /**
+     * How many 25 minute slots a bundle takes: one, or more for a single task that is longer than a slot.
+     *
+     * @param  list<Pick>  $bundle
+     */
+    public function slotsOf(array $bundle): int
+    {
+        return max(1, (int) ceil(array_sum(array_map(fn (Pick $p) => $p->minutes, $bundle)) / $this->rhythm->workMinutes));
+    }
 }

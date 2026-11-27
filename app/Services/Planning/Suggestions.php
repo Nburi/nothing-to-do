@@ -6,10 +6,13 @@ use App\Models\Evening;
 use App\Models\Task;
 use App\Models\User;
 use App\Planning\Battery;
+use App\Planning\Block;
+use App\Planning\Category;
 use App\Planning\Pick\Pick;
 use App\Planning\Pick\PickCandidate;
 use App\Planning\Pick\PickEngine;
 use App\Planning\Pick\TodoBundler;
+use App\Planning\SessionSlot;
 use App\Services\Projects\NextSteps;
 use App\Support\UserClock;
 use Carbon\CarbonImmutable;
@@ -88,6 +91,49 @@ final class Suggestions
             collect($picks)->map(fn (Pick $p) => $context->tasks[$p->taskId])->values(),
             $picks,
             count($all) - count($picks),
+            $this->blockPlan($context),
+        );
+    }
+
+    /**
+     * What the engine would work in the rest of today's work block (the one running, else the next one
+     * today): its ranking, filled session after session into the block's slots. Null when no work block
+     * is left today. Same area rules, link and hidden steps as the pick; the battery is left out (Okay),
+     * so the list does not jump when tonight's question is answered.
+     */
+    private function blockPlan(PlanningContext $context): ?BlockPlan
+    {
+        $ahead = array_values(array_filter($context->slots[$context->today] ?? [], fn (SessionSlot $s) => $s->end->getTimestamp() > $context->now->getTimestamp()));
+        $category = $ahead === [] ? null : ($context->categories[$ahead[0]->categoryId] ?? null);
+        if ($category === null) {
+            return null;
+        }
+
+        $block = collect($context->blocks[$context->today] ?? [])->first(fn (Block $b) => $b->categoryId === $category->id
+            && $b->start->getTimestamp() <= $ahead[0]->start->getTimestamp() && $ahead[0]->end->getTimestamp() <= $b->end->getTimestamp());
+        $slots = array_values(array_filter($ahead, fn (SessionSlot $s) => $s->categoryId === $category->id
+            && ($block === null || ($block->start->getTimestamp() <= $s->start->getTimestamp() && $s->end->getTimestamp() <= $block->end->getTimestamp()))));
+
+        $remaining = $this->rank($context, Battery::Okay, [], category: $category);
+        $sessions = [];
+        for ($i = 0; $remaining !== [] && $i < count($slots);) {
+            $bundle = $this->bundler->bundle($remaining);
+            $ids = array_map(fn (Pick $p) => $p->taskId, $bundle);
+            $sessions[] = [
+                'start' => $slots[$i]->start,
+                'rows' => array_map(fn (Pick $p) => ['task' => $context->tasks[$p->taskId], 'minutes' => $p->minutes], $bundle),
+            ];
+            $i += $this->bundler->slotsOf($bundle);
+            $remaining = array_values(array_filter($remaining, fn (Pick $p) => ! in_array($p->taskId, $ids, true)));
+        }
+
+        return new BlockPlan(
+            $category->name,
+            $block->start ?? $slots[0]->start,
+            $block->end ?? $slots[count($slots) - 1]->end,
+            $slots[0]->start->getTimestamp() <= $context->now->getTimestamp(),
+            $sessions,
+            count($remaining),
         );
     }
 
@@ -158,7 +204,7 @@ final class Suggestions
      * @param  bool  $todosOnly  only loose To-dos: project and group steps live in their own cards
      * @return list<Pick>
      */
-    private function rank(PlanningContext $context, Battery $battery, array $exclude, bool $todosOnly = false): array
+    private function rank(PlanningContext $context, Battery $battery, array $exclude, bool $todosOnly = false, ?Category $category = null): array
     {
         $hidden = $context->hiddenStepIds();
         $candidates = $todosOnly
@@ -169,7 +215,7 @@ final class Suggestions
             }))
             : $context->candidates;
 
-        return $this->engine->rank($candidates, $battery, $context->category, $context->startBy(), $context->today, [...$exclude, ...$hidden]);
+        return $this->engine->rank($candidates, $battery, $category ?? $context->category, $context->startBy(), $context->today, [...$exclude, ...$hidden]);
     }
 
     private function suggestion(Pick $pick, PlanningContext $context, Battery $battery, int $alternatives): Suggestion
