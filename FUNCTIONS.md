@@ -29,6 +29,25 @@ the board order and grows with every step. The step notes in `docs/steps/` stay 
   also its place in the list. There is no confirm dialog.
 - **Delete is a soft delete** (`tasks.deleted_at`): day plans and parts stay, so undo loses nothing. The task of a running
   session cannot be deleted. The REST API and MCP `delete_task` still delete for real.
+- **A deleted task is kept for 30 days, then removed for good.** The daily command `app:purge-deleted` (03:30) force-deletes
+  only tasks whose `deleted_at` is more than 30 days old (a task deleted exactly 30 days ago is still kept); its day plans,
+  parts and links go with it. Projects and groups are not soft-deleted, soft-deleted categories are left alone.
+  `app:purge-deleted --dry-run` only counts. The Datenschutz page says so.
 - A move goes to the bottom of the new list; an edit that keeps the list keeps the place. A date already in the past is
   only refused when it is changed.
 - Rules live in `App\Services\Planning\ItemEditor`; the sheet and the toast in `App\Livewire\Shell\ItemEditor`.
+
+## API and MCP in the new app (api parity, 2026-11-27)
+What the app can do is possible over REST and MCP too; `docs/steps/api-parity.md` has the full audit and the open gaps.
+- **Board order:** `board_position` is on every task, project and group (`ref` on cards: `project:3`). `POST /api/board/order`
+  (`refs`) and `POST /api/board/top` (`ref`, „Nach oben holen“); MCP `set_task_order` (`ids` or `refs`) and `bring_to_top`.
+  The old entry points (REST `tasks/reorder`, `set_task_order`, the old board's drops) write `sort_order` and move the board order too:
+  the tasks swap the places they already hold, nothing else moves.
+- **Crunch:** `POST /api/tasks/{id}/move` / `move_task` („Verschieben“: with `date` the hard deadline, without it the soft one a
+  week on) and `POST /api/forecast/more-time` / `add_more_time` („Mehr Zeit“: one block of a pomodoro category within 14 days).
+- **Projects and groups:** `DELETE /api/projects/{id}`, `DELETE /api/task-groups/{id}` (MCP `delete_project`,
+  `dissolve_task_group`, confirmed by name): steps always stay as plain tasks. `PUT /api/tasks/{id}/bundle` / `set_task_bundle`
+  moves a board task in or out; `position` on `PATCH /api/stages/{id}` / `update_project_stage` moves a stage in the roadmap.
+- **Areas over MCP:** `list_areas`, `create_area`, `update_area`, `delete_area`; `area_ids` on `create_category`, `update_category`.
+- **Settings:** `locale` and `nudge_times` (evening nudge per ISO weekday) on `GET/PATCH /api/me`, `get_settings`, `update_settings`.
+- `DELETE /api/tasks/{id}` and `delete_task` stay permanent (no 30 days, no undo); the docs page says so.
