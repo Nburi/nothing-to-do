@@ -13,13 +13,19 @@ use App\Planning\StartBy;
  *
  * 1. Area filter. Inside a block only tasks whose area the block's category
  *    accepts are candidates (E5: no area fits anywhere; a category without
- *    links accepts only tasks without area). No category = no filter.
+ *    links accepts only tasks without area). No category = no filter. A step
+ *    of the project or group the category is linked to passes whatever its
+ *    area: the link is the more specific statement (step 5.4).
  * 2. Tiers, from the start-by dates (DeadlineFeasibility::startBy):
  *    0 = late or has to start today, 1 = has a deadline, 2 = no deadline but
- *    marked „Wichtig" (R5, step 4.6), 3 = no deadline. A lower tier always
- *    comes first; deadlines are never traded for comfort, and „Wichtig" never
- *    jumps a deadline. Without a date a marked task is its own tier: it goes
- *    ahead of every unmarked one whatever the battery or the size says.
+ *    a step of the project or group this block's category is linked to
+ *    (step 5.4, the pool is already cut to the steps the board shows),
+ *    3 = no deadline but marked „Wichtig" (R5, step 4.6), 4 = no deadline.
+ *    A lower tier always comes first; deadlines are never traded for
+ *    comfort, and neither „Wichtig" nor a link jumps a deadline. Without a
+ *    date a linked step goes ahead of a marked one (the block says what it is
+ *    for), and a marked task ahead of every unmarked one whatever the battery
+ *    or the size says.
  * 3. The battery orders inside the tiers:
  *    - Okay: deadline order (earliest binding deadline, hard before soft),
  *      then „Wichtig", then the board order. Size does not decide at Okay:
@@ -50,15 +56,17 @@ final readonly class PickEngine
             $candidates,
             fn (PickCandidate $c) => ! in_array($c->id(), $exclude, true)
                 && $c->task->remainingMinutes() > 0
-                && ($category === null || $category->accepts($c->task->areaId)),
+                && ($category === null || $category->accepts($c->task->areaId) || $category->prefers($c->task)),
         ));
+        $linked = fn (PickCandidate $c): bool => $category?->prefers($c->task) ?? false;
 
         $tier = fn (PickCandidate $c): int => match (true) {
             $startBy->isLate($c->id()) => 0,
             $c->task->hasDeadline() && ($startBy->of($c->id()) ?? '9999-12-31') <= $today => 0,
             $c->task->hasDeadline() => 1,
-            $c->task->important => 2,
-            default => 3,
+            $linked($c) => 2,
+            $c->task->important => 3,
+            default => 4,
         };
 
         // Deadline first (binding date, hard before soft), then „Wichtig": a marker never beats a date.
@@ -66,6 +74,7 @@ final readonly class PickEngine
             $c->task->bindingDeadline() ?? '9999-12-31',
             $c->task->bindingIsHard() ? 0 : 1,
             $c->task->important ? 0 : 1,
+            $linked($c) ? 0 : 1,
         ];
 
         $size = fn (PickCandidate $c): int => $c->task->remainingMinutes();
@@ -114,7 +123,8 @@ final readonly class PickEngine
             $tier === 0 => Reason::StartsToday,
             $battery === Battery::Good && $c->isBig() && $tier === 1 => Reason::BiggestFirst,
             $tier === 1 => Reason::NextDeadline,
-            $tier === 2 => Reason::Important,
+            $tier === 2 => Reason::Linked,
+            $tier === 3 => Reason::Important,
             $c->isQuick() => Reason::QuickOne,
             default => Reason::NoDeadline,
         };

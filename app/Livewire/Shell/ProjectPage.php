@@ -211,16 +211,51 @@ class ProjectPage extends Component
         $this->guard(function () use ($id, $by) {
             $stage = $this->stage($id);
             $at = $this->project->stages->search(fn (ProjectStage $s) => $s->id === $stage->id);
-            $move = app(ProjectEditor::class)->moveStage($stage, (int) $at + ($by < 0 ? -1 : 1));
 
-            if (! $move->changed) {
+            $this->placeStage($stage, (int) $at + ($by < 0 ? -1 : 1));
+        });
+    }
+
+    /**
+     * A stage dragged to a new place (board-followups): the page sends every stage ref ("stage:ID") in the
+     * order it now shows. Exactly one stage moved, so the one whose removal leaves both orders equal is placed
+     * through the same path as the buttons. A list that does not match the project's stages (one was added or
+     * removed meanwhile) changes nothing: the page is redrawn with what the server has.
+     *
+     * @param  list<string>  $refs
+     */
+    public function reorderStages(array $refs): void
+    {
+        $this->guard(function () use ($refs) {
+            $new = collect($refs)->map(fn ($ref) => is_string($ref) && preg_match('/^stage:(\d+)$/', $ref, $m) === 1 ? (int) $m[1] : null)->all();
+            $old = $this->project->stages->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+            if (in_array(null, $new, true) || count($new) !== count($old) || array_diff($old, $new) !== [] || $new === $old) {
                 return;
             }
 
-            $this->undo = ['kind' => 'stages', 'order' => $move->order, 'cleared' => $move->cleared];
-            $text = __('projects.stage_move.moved', ['name' => $stage->name, 'number' => $move->toIndex + 1]);
-            $this->notice = $move->cleared === [] ? $text : $text.' '.__('projects.move.waits_cleared');
+            foreach ($new as $at => $id) {
+                if (array_values(array_diff($old, [$id])) === array_values(array_diff($new, [$id]))) {
+                    $this->placeStage($this->stage($id), $at);
+
+                    return;
+                }
+            }
         });
+    }
+
+    /** One stage to a place; undoable. A step's "wartet auf" that now contradicts is let go. */
+    private function placeStage(ProjectStage $stage, int $index): void
+    {
+        $move = app(ProjectEditor::class)->moveStage($stage, $index);
+
+        if (! $move->changed) {
+            return;
+        }
+
+        $this->undo = ['kind' => 'stages', 'order' => $move->order, 'cleared' => $move->cleared];
+        $text = __('projects.stage_move.moved', ['name' => $stage->name, 'number' => $move->toIndex + 1]);
+        $this->notice = $move->cleared === [] ? $text : $text.' '.__('projects.move.waits_cleared');
     }
 
     // ---- steps -------------------------------------------------------------------------------

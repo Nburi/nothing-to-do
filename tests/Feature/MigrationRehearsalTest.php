@@ -41,6 +41,8 @@ class MigrationRehearsalTest extends TestCase
     /** Old columns a newer migration changes on purpose: "table.column" => why. Any other change is a bug. */
     private const INTENDED_CHANGES = [
         'tasks.list' => '2026_10_31_000001 moves tasks out of the removed "projects" list into "tasks" (it cannot be undone).',
+        'event_categories.task_source' => '2026_11_27_000001 turns an Agenda link into a text link (down restores it, the original is kept in legacy_task_source).',
+        'event_categories.linked_text' => '2026_11_27_000001 gives that text link the entry title as its label (down removes it again).',
     ];
 
     /** The two-step renames (REFACTOR_PLAN § 3): the new column must hold exactly the old one's values. */

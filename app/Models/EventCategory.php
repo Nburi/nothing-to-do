@@ -21,6 +21,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class EventCategory extends Model
 {
+    /** `task_source` values the pick engine understands (step 5.4): suggest the next steps of a project or group. */
+    public const SOURCE_PROJECT = 'project';
+
+    public const SOURCE_GROUP = 'group';
+
     /** @use HasFactory<EventCategoryFactory> */
     use HasFactory;
 
@@ -42,6 +47,8 @@ class EventCategory extends Model
         return [
             'pomodoro_enabled' => 'boolean',
             'sort_order' => 'integer',
+            'linked_project_id' => 'integer',
+            'linked_group_id' => 'integer',
         ];
     }
 
@@ -108,6 +115,41 @@ class EventCategory extends Model
         $this->pinnedTasks()->sync(
             collect($ids)->mapWithKeys(fn (int $id, int $order) => [$id => ['sort_order' => $order]])->all()
         );
+    }
+
+    /**
+     * Points the category at a project or a group, or clears that (step 5.4): in its blocks the pick engine
+     * then suggests the next steps of it first (after deadline work). Nothing else is deleted: a text hint
+     * or pinned tasks stay stored, they are just no longer the active source. Clearing only touches a
+     * project or group link.
+     *
+     * @param  'project'|'group'|null  $kind  null clears
+     */
+    public function linkSteps(?string $kind, ?int $id): void
+    {
+        if ($kind === null || $id === null) {
+            if (in_array($this->task_source, [self::SOURCE_PROJECT, self::SOURCE_GROUP], true)) {
+                $this->forceFill(['task_source' => null, 'linked_project_id' => null, 'linked_group_id' => null])->save();
+            }
+
+            return;
+        }
+
+        $this->forceFill([
+            'task_source' => $kind === self::SOURCE_PROJECT ? self::SOURCE_PROJECT : self::SOURCE_GROUP,
+            'linked_project_id' => $kind === self::SOURCE_PROJECT ? $id : null,
+            'linked_group_id' => $kind === self::SOURCE_PROJECT ? null : $id,
+        ])->save();
+    }
+
+    /** "project:12", "group:5" or "" for the link select of the category editor. */
+    public function stepsLinkValue(): string
+    {
+        return match (true) {
+            $this->task_source === self::SOURCE_PROJECT && $this->linked_project_id !== null => 'project:'.$this->linked_project_id,
+            $this->task_source === self::SOURCE_GROUP && $this->linked_group_id !== null => 'group:'.$this->linked_group_id,
+            default => '',
+        };
     }
 
     /** Short display label for the current link, shown next to a category in Settings. Null when nothing is linked. */
@@ -190,6 +232,9 @@ class EventCategory extends Model
             id: $this->id,
             pomodoro: (bool) $this->pomodoro_enabled,
             areaIds: $this->areas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            name: $this->name,
+            linkedProjectId: $this->task_source === self::SOURCE_PROJECT ? $this->linked_project_id : null,
+            linkedGroupId: $this->task_source === self::SOURCE_GROUP ? $this->linked_group_id : null,
         );
     }
 

@@ -164,6 +164,7 @@ return [
         'earlier' => 'Move stage :name one place earlier',
         'later' => 'Move stage :name one place later',
         'moved' => 'Stage “:name” is now stage :number.',
+        'keys_hint' => 'Space on the grip lifts the stage. Arrow up and down change its place, Space drops it, Escape cancels. On a phone: press and hold the heading.',
     ],
     'adopt' => [
         'button' => 'Existing task',

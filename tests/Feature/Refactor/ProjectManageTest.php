@@ -262,6 +262,44 @@ class ProjectManageTest extends TestCase
         $this->assertSame([0, 1, 2], $p->stages()->pluck('sort_order')->map(fn ($n) => (int) $n)->all());
     }
 
+    public function test_dragging_a_stage_sends_the_new_order_and_moves_it_like_the_buttons(): void
+    {
+        [$p, $one, $two, $three] = $this->threeStages();
+
+        $this->page($p)->call('reorderStages', ["stage:{$three->id}", "stage:{$one->id}", "stage:{$two->id}"])
+            ->assertSee('Etappe „Drei“ ist jetzt Etappe 1.')
+            ->call('undoLast');
+
+        $this->assertSame([$one->id, $two->id, $three->id], $this->stageOrder($p));
+
+        $this->page($p)->call('reorderStages', ["stage:{$two->id}", "stage:{$three->id}", "stage:{$one->id}"]);
+        $this->assertSame([$two->id, $three->id, $one->id], $this->stageOrder($p));
+    }
+
+    public function test_a_dragged_order_that_does_not_match_the_stages_changes_nothing(): void
+    {
+        [$p, $one, $two, $three] = $this->threeStages();
+        $foreign = $this->editor->addStage($this->project(), 'Fremd', null);
+
+        foreach ([
+            ["stage:{$two->id}", "stage:{$one->id}"], // one stage missing
+            ["stage:{$three->id}", "stage:{$one->id}", "stage:{$foreign->id}"], // a stage of another project
+            ['stage:x', 'stage:1', 'task:3'], // not stage refs
+            ["stage:{$one->id}", "stage:{$two->id}", "stage:{$three->id}"], // nothing moved
+        ] as $refs) {
+            $this->page($p)->call('reorderStages', $refs)->assertSet('undo', null);
+        }
+
+        $this->assertSame([$one->id, $two->id, $three->id], $this->stageOrder($p));
+    }
+
+    public function test_the_stage_heading_carries_a_grip_and_the_buttons_stay(): void
+    {
+        [$p] = $this->threeStages();
+
+        $this->page($p)->assertSeeHtml('data-stage-grip')->assertSeeHtml('data-stage-earlier')->assertSeeHtml('data-entry="stage:');
+    }
+
     public function test_a_move_past_the_edge_changes_nothing_and_says_nothing(): void
     {
         [$p, $one, $two, $three] = $this->threeStages();

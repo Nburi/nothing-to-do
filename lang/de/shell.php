@@ -85,6 +85,12 @@ return [
         'meta' => ':count · :minutes min',
         'start' => 'Session starten · :minutes min',
         'waiting' => '+ :count To-do wartet auf die nächste Session|+ :count To-dos warten auf die nächste Session',
+        // Under the card: what the engine plans for the rest of today's work block (BlockPlan).
+        'block' => [
+            'title' => 'Heute im Block „:name“',
+            'meta' => '{1} 1 Aufgabe · :minutes min|[2,*] :count Aufgaben · :minutes min',
+            'waiting' => '+ :count weitere Aufgabe passt heute nicht mehr in den Block|+ :count weitere Aufgaben passen heute nicht mehr in den Block',
+        ],
     ],
     'start_this' => 'Diese Aufgabe starten',
     'another' => 'Anderes',

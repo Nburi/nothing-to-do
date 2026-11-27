@@ -26,6 +26,8 @@ enum Reason: string
     /** Has a deadline that is not pressing yet; it is simply next in line. */
     case NextDeadline = 'next_deadline';
 
+    /** No deadline, but a step of the project or group this block's category is linked to (step 5.4). */
+    case Linked = 'linked';
     /** No deadline, but the user marked it „Wichtig" (R5): it goes before the rest of the list. */
     case Important = 'important';
 
