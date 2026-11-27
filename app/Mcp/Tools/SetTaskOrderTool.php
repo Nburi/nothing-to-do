@@ -5,12 +5,15 @@ namespace App\Mcp\Tools;
 use App\Mcp\McpAbility;
 use App\Mcp\McpTool;
 use App\Models\User;
+use App\Services\Planning\BoardOrder;
 use Illuminate\Support\Facades\Validator;
 
 /**
  * A concept-agnostic reorder: writes `sort_order` sequentially for the given
- * ids, which every list concept's own ordering ties back to eventually
- * (Task::scopeBoardOrdered()). Deliberately simpler than
+ * ids (the old screens and every list concept's own ordering read it) and,
+ * since the shared board order of step 4.8, lets the open loose tasks among
+ * them swap the `board_position` they hold, so the new board follows too
+ * (BoardOrder::placeTasks()). Deliberately simpler than
  * mirroring each concept's own zone-based reorder endpoint (three_things'
  * list+today zones, simple's today/other zones, eisenhower's quadrant axes,
  * kanban's columns) — those each also flip other fields (is_today, list) as
@@ -71,6 +74,9 @@ class SetTaskOrderTool extends McpTool
             $task->update(['sort_order' => $position]);
             $updated[] = $task->id;
         }
+
+        // The new board follows: the tasks swap the places they already hold in the shared order (step 4.8).
+        app(BoardOrder::class)->placeTasks($user, $updated);
 
         return [
             'updated_count' => count($updated),

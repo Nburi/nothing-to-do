@@ -7,6 +7,7 @@ use App\Models\ScheduleEvent;
 use App\Models\Task;
 use App\Services\AppModules;
 use App\Services\ListConcepts;
+use App\Services\Planning\BoardOrder;
 use App\Services\PomodoroSessionService;
 use App\Services\TaskSuggestor;
 use Illuminate\Support\Collection;
@@ -518,6 +519,8 @@ class TaskBoard extends Component
 
             $task->update($updates);
         }
+
+        app(BoardOrder::class)->placeTasks(auth()->user(), $ids);
     }
 
     /** Mobile swipe outcomes. */
@@ -578,6 +581,8 @@ class TaskBoard extends Component
 
             $task->update($updates);
         }
+
+        app(BoardOrder::class)->placeTasks(auth()->user(), $ids);
     }
 
     // ── "Eisenhower" concept — quadrant drag, Today toggle ─────────────
@@ -643,6 +648,8 @@ class TaskBoard extends Component
 
             $task->update($updates);
         }
+
+        app(BoardOrder::class)->placeTasks(auth()->user(), $ids);
     }
 
     // ── "Kanban" concept — column drag, move pill, swipe ───────────────
@@ -745,6 +752,8 @@ class TaskBoard extends Component
             $task = $this->applyKanbanColumn($task, $column);
             $task->update(['sort_order' => $position]);
         }
+
+        app(BoardOrder::class)->placeTasks(auth()->user(), $ids);
     }
 
     /**
