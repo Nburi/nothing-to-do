@@ -104,6 +104,11 @@
         dein Konto, werden deine Daten gelöscht bzw. anonymisiert, soweit
         keine gesetzliche Aufbewahrungspflicht entgegensteht.
     </p>
+    <p>
+        Eine Aufgabe, die du in der App löschst, bleibt noch 30 Tage im Hintergrund
+        gespeichert, damit du das Löschen rückgängig machen kannst. Danach wird sie
+        endgültig entfernt.
+    </p>
 
     <h2>Deine Rechte</h2>
     <p>

@@ -19,7 +19,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 4.2 open for Niels: TESTBERICHT C23 (two weeks of real deadlines) and C25 (push on the dev server); C24 and C27 passed and C26 is for later (Niels, 2026-11-17). Pick a chart variant from the mockup https://claude.ai/artifact/5BMmX14sitY3VRGNhCBNQL (C24 finding 2), then the chart is rebuilt. Check the decisions in `docs/steps/4.2.md` (push window 08–21, "seen on the board" means no push, soft +7 days, Mehr Zeit suggestion rule, fitting date).
 - [ ] 4.2 found (engine, look at it in 4.5): with two hard tasks on the same date, `DeadlineFeasibility` pass 2 falls back to pass 1, so soft work stays planned before a late hard task and is not listed as slipped. The crunch screen suggests soft work first anyway; the missing minutes are honest.
 - [ ] 4.2 found: the "Mehr Zeit" label counts the new block's sessions alone (e.g. +4); right before an existing block the merged run can give one session less (browser check: 200 → 125 min missing, not 100). Count with the neighbours in 4.5.
-- [ ] 4.2 later: "move" and "Mehr Zeit" have no REST/MCP endpoint yet (drop and shrink do, since 1.5).
+- [x] 4.2 later: "move" and "Mehr Zeit" have REST and MCP endpoints now (`feature/api-parity`: `POST /tasks/{id}/move`, `POST /forecast/more-time`, `move_task`, `add_more_time`).
 - [ ] 4.2 later: the fitting date runs the engine once per late hard task and candidate day (5 ms for 3 tasks in a 14-day window, 77 ms in 60 days, about 0.6 s for 10 tasks that fit nowhere in 60 days). Only the crunch screen pays. If it ever feels slow, look at stopping the scan early.
 - [x] 1.2 Week plan: `WeekPlanEditor` (explicit `ChangeScope`, moves, tombstones, pauses), reader from 1.3, property test against the old screens. Notes in `docs/steps/1.2.md`.
 - [x] Hotfix for `main`: `ScheduleEvent::scopeVisible()` compares pause dates as strings, so a paused day still shows an occurrence edited in the form (fixed on the refactor in 1.2, see ERRORS.md). `main` has the same fix as PR #14; it is merged into the refactor with `feature/merge-main-hotfix-14` (2026-11-24), nothing pushed to `main`.
@@ -55,7 +55,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] 3.4 Free-time ideas, "Meins behalten", Ideen view (`feature/free-time-ideas`). Notes in `docs/steps/3.4.md`.
 - [ ] 3.4 open for Niels: TESTBERICHT C14–C16; check the decisions in `docs/steps/3.4.md` (Jetzt machen = session, soft deadlines also stop ideas, 06:00–24:00 and 30 min, Stapel tab "Später" → Ideen page).
 - [ ] 5.4: run `php artisan app:copy-craft-ideas --dry-run`, then without, at the switch, **after** `migrate` (runbook step 12; copies the old Bastelideen into Later; idempotent, craft_ideas untouched). Not on prod before that. Redirect `/app/crafts` to `/board/ideas` together with it, not earlier (the Ideen view is empty until the copy ran).
-- [x] Shell: editing, moving and deleting single items (also on the Ideen cards): step 4.9, `docs/steps/4.9.md`. Open: the rows inside the To-do session card have no ⋯ menu yet; deleted tasks are kept (no purge, no trash view).
+- [x] Shell: editing, moving and deleting single items (also on the Ideen cards): step 4.9, `docs/steps/4.9.md`. Open: the rows inside the To-do session card have no ⋯ menu yet; deleted tasks are kept for 30 days and then purged (`app:purge-deleted`, `feature/api-parity`); still no trash view.
 - [x] Stapel board at 390 px: the four piles are only ~56 px wide, titles break mid-word ("Math e-…"); already in the 3.2 screenshots, not from 3.4. Look at `shell/pile.blade.php` / the pile grid. Fixed in `feature/stapel-piles`: the pile `<button>` shrank to its content, now `w-full` (167 px at 390 px); the flag moved to the meta line.
 - [ ] Outside blocks, the plain card says "Der Rest des Abends gehört dir." also in the morning and next to the 3.4 deadline line ("Keine Idee aus Später, solange …"); the copy could say less there.
 - [ ] 3.5 Beta 2, 3.6 review rounds.
@@ -78,7 +78,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [x] Projects/groups: delete, reorder stages, move an existing board task into a project or group (step 4.3d, `docs/steps/4.3d.md`; same gap as "editing, moving and deleting single items").
 - [ ] Projects: should a stage's target date become the soft deadline of its steps (early warning)? Ask Niels.
 - [x] Projects in the API/MCP of the new model (the old project tools on `main` speak the old model). Built 2026-11-25 (`feature/api-mcp-new-model`, notes in `docs/steps/4.3e.md`).
-- [ ] API/MCP after the open PRs merge: `delete_project` / `dissolve_task_group` (project delete, #36), `move`-a-board-task-into-a-project (#36), `set_task_order` on the shared board order (#39). See `docs/steps/4.3e.md`, "Not in this step".
+- [x] API/MCP after the open PRs merged: `delete_project` / `dissolve_task_group`, moving a board task into or out of a project or group, stage order and `set_task_order` on the shared board order. Built 2026-11-27 (`feature/api-parity`, `docs/steps/api-parity.md`).
 
 ## Refactor: phase 4, step 4.4 (2026-11-17)
 - [x] 4.4 Quiet Sunday review (`feature/sunday-review`): `/board/review`, variant A "two halves", a quiet line on the board on Sunday and Monday. Notes in `docs/steps/4.4.md`.
@@ -104,7 +104,7 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 
 - [x] One shared order of loose tasks, projects and groups, drag and drop, the „Wichtig" band, at most two cards on the board: `feature/board-order` (stacked on #37, notes in `docs/steps/4.8.md`). Migration `2026_11_24_000001_add_board_position` (additive, backfilled).
 - [ ] Niels: C51, C52, C53, C54 in `docs/TESTBERICHT.md`; check the decisions in `docs/steps/4.8.md` (band placement, marked To-dos in the session card, new work at the bottom, no visible grip on the phone).
-- [ ] 4.8 later: `set_task_order` (MCP) and the old board still write `sort_order`; they do not move the new board order. Decide at the switch (5.x) whether to retire them or map them.
+- [x] 4.8 later: `set_task_order` (MCP), REST `tasks/reorder` and the old board now also move the shared board order (`BoardOrder::placeTasks`, `feature/api-parity`); they still write `sort_order` for the old screens. Retire them with the old screens at the switch (5.4).
 - [ ] 4.8 later: the "Nach oben holen" chip shows no idle time ("seit 12 Tagen" of the mockup); an order across the To-dos and Tasks columns was left out.
 
 ## Refactor: phase 5, step 5.1 (2026-11-26)
@@ -120,6 +120,18 @@ Open tasks between sessions. The full build order is in [docs/REFACTOR_PLAN.md �
 - [ ] 5.4 after the switch: delete `Schedule`, `WeekPlan`, `WeekReviewPage`, their views and `Tests\Support\LegacyScreens` with the old-screen tests (list in `docs/steps/5.4-prep.md`).
 - [ ] 5.4 not tested: the migrations on MariaDB/MySQL and with a mixed group, a category link and a „Wichtig“ flood on real data; the runbook's `--ignore=tasks.project_id` in `app:rehearsal-compare`. Needs the production copy.
 
+## Api parity (2026-11-27, `feature/api-parity`)
+- [x] Shared board order for the old entry points; audit of the new app against REST and MCP; closed gaps: crunch move and „Mehr Zeit“, project and group delete, task in or out of a bundle, stage position, board order and „Nach oben holen“, areas over MCP, `locale` and `nudge_times`. Notes: `docs/steps/api-parity.md`.
+- [x] Purge: `app:purge-deleted` removes tasks deleted more than 30 days ago (daily 03:30).
+- [ ] Api parity open for Niels: TESTBERICHT C140–C142, and the decisions in `docs/steps/api-parity.md` section 5 (tasks only in the purge, the Datenschutz sentence).
+- [ ] Api gap, evening reset: no endpoint to open or close the reset or read its stage (`EveningReset`, `ResetStage`).
+- [ ] Api gap, idea offer on the board („Anderer Vorschlag“ for free time, „Meins behalten“, undo): `FreeTimeIdeas` has no endpoint and the suggestion payload carries no idea.
+- [ ] Api gap, week plan at occurrence level: this one / this and following / all, move one occurrence, bring a cancelled one back. REST and MCP edit whole blocks only; REST has no pauses and no week-plan blocks.
+- [ ] Api gap, colour of a Termin: `color` is mirrored to `termin_color`, so a Termin cannot be set back to „Standard“ through the API, and `termin_color` is not in the payload. Needs a decision (a nullable `termin_color` field).
+- [ ] Api gap, restore: `DELETE /tasks/{id}` and `delete_task` delete for good while the app keeps a deleted task 30 days. Decide together with a trash view (none yet).
+- [ ] Api gap, small ones: the To-do session card, the Sunday review over REST, capture tokens (UI only).
+- [ ] Purge, question: soft-deleted categories (`event_categories.deleted_at`) are not purged; forcing one sets `category_id` to null on its past events. Decide whether they go after 30 days too and what happens to the events.
+- [ ] Purge: progress statistics that count finished tasks lose a deleted finished task after 30 days (it is gone for good). Fine as decided; mention it if numbers look lower after a month.
 ## Open questions for Niels
 - `main` merged into `refactor/refactor` on 2026-11-16 (`feature/merge-main`): all 21 newer migrations are in; main's features for Projekte, Gruppen, Agenda, Notfallmodus and Vorbereiten were dropped, their tables stay and the data export still reads them. Open from it:
   - The Datenschutz page (`legal/datenschutz.blade.php`) still describes the class Agenda and Projekte. Legal text, so Niels decides what it says after the switch.

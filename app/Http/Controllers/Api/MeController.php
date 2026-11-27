@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
+use App\Services\Planning\EveningNudge;
+use App\Support\Locales;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,6 +29,9 @@ class MeController extends Controller
             'notify_event_upcoming' => (bool) $user->notify_event_upcoming,
             'timezone_offset' => $user->timezoneOffsetHours(),
             'timezone_auto_dst' => (bool) $user->timezone_auto_dst,
+            'locale' => Locales::for($user),
+            // The evening nudge ("Abschalten") per ISO weekday, 1 = Monday; null = no nudge that day.
+            'nudge_times' => self::nudgeTimes($user),
             'local_now' => $user->localNow()->toIso8601String(),
             'counts' => [
                 'inbox' => Task::forUser($user)->inList('inbox')->active()->count(),
@@ -54,10 +60,28 @@ class MeController extends Controller
             'notify_event_upcoming' => ['sometimes', 'boolean'],
             'timezone_offset' => ['sometimes', 'numeric', 'between:-12,14'],
             'timezone_auto_dst' => ['sometimes', 'boolean'],
+            'locale' => ['sometimes', Rule::in(Locales::SUPPORTED)],
+            'nudge_times' => ['sometimes', 'array'],
+            'nudge_times.*' => ['nullable', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
         ]);
 
+        $nudge = $data['nudge_times'] ?? null;
+        unset($data['nudge_times']);
         $user->update($data);
 
+        // Only the weekdays you pass change; null (or "") switches one off. Days 1-7, Monday first.
+        if ($nudge !== null) {
+            app(EveningNudge::class)->save($user, array_replace(EveningNudge::times($user), array_intersect_key($nudge, array_flip(EveningNudge::WEEKDAYS))));
+        }
+
         return $this->show($request);
+    }
+
+    /** @return array<int, ?string> every ISO weekday, null where there is no nudge */
+    private static function nudgeTimes(\App\Models\User $user): array
+    {
+        $saved = EveningNudge::times($user);
+
+        return collect(EveningNudge::WEEKDAYS)->mapWithKeys(fn (int $day) => [$day => $saved[$day] ?? null])->all();
     }
 }

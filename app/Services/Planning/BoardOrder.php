@@ -88,6 +88,27 @@ final class BoardOrder
         });
     }
 
+    /**
+     * The same as place(), for callers that only know task ids: the old board's drops, the REST
+     * reorder and MCP `set_task_order`. They keep writing `sort_order` (the old screens read it) and
+     * call this so the new board follows. Only open loose tasks have a place of their own; steps of a
+     * project or group sit where their card sits, and finished tasks have none.
+     *
+     * @param  array<int, int|string>  $ids  task ids in the new order, first = top
+     * @return int how many tasks changed their position
+     */
+    public function placeTasks(User $user, array $ids): int
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $loose = Task::forUser($user)->active()->whereNull('project_id')->whereNull('group_id')
+            ->whereKey($ids)->pluck('id')->all();
+
+        return $this->place($user, array_map(
+            fn (int $id) => 'task:'.$id,
+            array_values(array_filter($ids, fn (int $id) => in_array($id, $loose, true))),
+        ));
+    }
+
     /** "Nach oben holen": the entry becomes the first of the whole board. */
     public function toTop(User $user, string $ref): bool
     {

@@ -62,5 +62,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:evaluate-streak-days')->everyMinute()->withoutOverlapping();
         $schedule->command('app:prune-error-occurrences')->daily()->withoutOverlapping();
         $schedule->command('app:run-planning-checks')->hourly()->withoutOverlapping();
+        $schedule->command('app:purge-deleted')->dailyAt('03:30')->withoutOverlapping();
     })
     ->create();

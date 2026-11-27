@@ -33,6 +33,7 @@ class UpdateCategoryTool extends McpTool
                 'name' => ['type' => 'string'],
                 'color' => self::colorSchema(),
                 'pomodoro_enabled' => ['type' => 'boolean'],
+                'area_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'The areas this category suggests (list_areas). Replaces the whole set; ids of other users are dropped.'],
             ],
             'required' => ['id'],
         ];

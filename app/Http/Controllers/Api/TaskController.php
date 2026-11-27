@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Planning\Size;
+use App\Services\Planning\BoardOrder;
 use App\Support\TaskMutator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -171,6 +172,9 @@ class TaskController extends Controller
 
             $task->update($updates);
         }
+
+        // The new board follows (shared order, step 4.8); sort_order stays for the old screens.
+        app(BoardOrder::class)->placeTasks($request->user(), $data['ids']);
 
         return response()->json(['status' => 'ok']);
     }

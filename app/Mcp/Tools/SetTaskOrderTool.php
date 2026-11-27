@@ -5,12 +5,15 @@ namespace App\Mcp\Tools;
 use App\Mcp\McpAbility;
 use App\Mcp\McpTool;
 use App\Models\User;
+use App\Services\Planning\BoardOrder;
 use Illuminate\Support\Facades\Validator;
 
 /**
  * A concept-agnostic reorder: writes `sort_order` sequentially for the given
- * ids, which every list concept's own ordering ties back to eventually
- * (Task::scopeBoardOrdered()). Deliberately simpler than
+ * ids (the old screens and every list concept's own ordering read it) and,
+ * since the shared board order of step 4.8, lets the open loose tasks among
+ * them swap the `board_position` they hold, so the new board follows too
+ * (BoardOrder::placeTasks()). Deliberately simpler than
  * mirroring each concept's own zone-based reorder endpoint (three_things'
  * list+today zones, simple's today/other zones, eisenhower's quadrant axes,
  * kanban's columns) — those each also flip other fields (is_today, list) as
@@ -27,8 +30,11 @@ class SetTaskOrderTool extends McpTool
 
     public function description(): string
     {
-        return 'Set the manual sort order for a list of tasks — pass their ids in the order you want them '
-            .'to appear. Does not change any other field (list, today-flag); use update_task for that.';
+        return 'Set the manual order of tasks — pass their ids in the order you want them to appear. '
+            .'This moves them on the board too: they swap the places they already hold in the board order, so '
+            .'nothing else on the board moves. To order project and group cards together with tasks, pass refs '
+            .'("task:12", "project:3", "group:4"; the ref of a card is on every project and group) instead of '
+            .'or as well as ids. Does not change any other field (list, today-flag); use update_task for that.';
     }
 
     public function inputSchema(): array
@@ -37,8 +43,9 @@ class SetTaskOrderTool extends McpTool
             'type' => 'object',
             'properties' => [
                 'ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'Task ids, in the desired order.'],
+                'refs' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Board entries, in the desired order: "task:12", "project:3" or "group:4".'],
             ],
-            'required' => ['ids'],
+            'anyOf' => [['required' => ['ids']], ['required' => ['refs']]],
         ];
     }
 
@@ -55,9 +62,12 @@ class SetTaskOrderTool extends McpTool
     public function handle(User $user, array $arguments): array
     {
         $data = Validator::make($arguments, [
-            'ids' => ['required', 'array', 'min:1'],
+            'ids' => ['required_without:refs', 'array', 'min:1'],
             'ids.*' => ['integer'],
+            'refs' => ['required_without:ids', 'array', 'min:1', 'max:200'],
+            'refs.*' => ['string', 'regex:/^(task|project|group):\d+$/'],
         ])->validate();
+        $data['ids'] ??= [];
 
         $updated = [];
 
@@ -72,7 +82,13 @@ class SetTaskOrderTool extends McpTool
             $updated[] = $task->id;
         }
 
+        // The new board follows: the tasks swap the places they already hold in the shared order (step 4.8).
+        $board = app(BoardOrder::class);
+        $board->placeTasks($user, $updated);
+        $cards = isset($data['refs']) ? $board->place($user, $data['refs']) : 0;
+
         return [
+            'board_changed_count' => $cards,
             'updated_count' => count($updated),
             'updated_ids' => $updated,
             'skipped_ids' => array_values(array_diff(array_map('intval', $data['ids']), $updated)),

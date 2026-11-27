@@ -7,6 +7,8 @@ use App\Mcp\McpAbility;
 use App\Mcp\McpTool;
 use App\Models\User;
 use App\Services\HeaderBadges;
+use App\Services\Planning\EveningNudge;
+use App\Support\Locales;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -50,6 +52,7 @@ class UpdateSettingsTool extends McpTool
             // Zeit
             'timezone_offset' => ['rules' => ['numeric', 'between:-12,14'], 'schema' => ['type' => 'number', 'minimum' => -12, 'maximum' => 14, 'description' => 'UTC offset in hours of the user\'s standard time, e.g. 1 for Swiss winter time.']],
             'timezone_auto_dst' => ['rules' => ['boolean'], 'schema' => ['type' => 'boolean', 'description' => 'Add one hour automatically while European summer time is active.']],
+            'locale' => ['rules' => ['string', ['in', Locales::SUPPORTED]], 'schema' => ['type' => 'string', 'enum' => Locales::SUPPORTED, 'description' => 'The app language (de or en).']],
             'task_reset_time' => ['rules' => self::TIME, 'schema' => ['type' => 'string', 'description' => 'HH:MM after which finished tasks disappear from the board.']],
             // Vorschauen
             'deadline_preview_enabled' => ['rules' => ['boolean'], 'schema' => ['type' => 'boolean', 'description' => 'Zeitplan shows hard deadlines a few days ahead.']],
@@ -68,7 +71,7 @@ class UpdateSettingsTool extends McpTool
     {
         return 'Change account settings. Pass only what should change. Covers: daily_task_goal, reminders and '
             .'notifications (notify_*, *_time), the Pomodoro rhythm (pomodoro_*), timezone (timezone_offset, '
-            .'timezone_auto_dst), task_reset_time, previews, planner_enabled '
+            .'timezone_auto_dst), locale (de/en), nudge_times (evening nudge per weekday), task_reset_time, previews, planner_enabled '
             .'and header_badges (ordered list of {key, enabled}; keys: '.implode(', ', array_keys(HeaderBadges::CATALOG)).'). '
             .'Other settings have their own tools: set_list_concept, set_module_visibility, set_default_landing_page, '
             .'set_day_frame. get_settings shows the current values.';
@@ -91,6 +94,12 @@ class UpdateSettingsTool extends McpTool
             ],
         ];
 
+        $properties['nudge_times'] = [
+            'type' => 'object',
+            'description' => 'The evening nudge ("Abschalten" push) per ISO weekday, keys "1" (Monday) to "7" (Sunday), values "HH:MM" or null for no nudge that day. Only the weekdays you pass change.',
+            'additionalProperties' => ['type' => ['string', 'null']],
+        ];
+
         return ['type' => 'object', 'properties' => $properties];
     }
 
@@ -107,7 +116,7 @@ class UpdateSettingsTool extends McpTool
     public function handle(User $user, array $arguments): array
     {
         $fields = self::fields();
-        $unknown = array_diff(array_keys($arguments), [...array_keys($fields), 'header_badges']);
+        $unknown = array_diff(array_keys($arguments), [...array_keys($fields), 'header_badges', 'nudge_times']);
 
         if ($unknown !== []) {
             throw new McpToolExecutionException('Unknown setting(s): '.implode(', ', $unknown).'. See this tool\'s input schema for what can be changed.');
@@ -121,6 +130,8 @@ class UpdateSettingsTool extends McpTool
         foreach ($fields as $key => $field) {
             $rules[$key] = ['sometimes', ...array_map(fn ($r) => is_array($r) ? Rule::in($r[1]) : $r, $field['rules'])];
         }
+        $rules['nudge_times'] = ['sometimes', 'array'];
+        $rules['nudge_times.*'] = ['nullable', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'];
         $rules['header_badges'] = ['sometimes', 'array'];
         $rules['header_badges.*.key'] = ['required', Rule::in(array_keys(HeaderBadges::CATALOG))];
         $rules['header_badges.*.enabled'] = ['required', 'boolean'];
@@ -128,7 +139,7 @@ class UpdateSettingsTool extends McpTool
         $data = Validator::make($arguments, $rules)->validate();
 
         $updates = $data;
-        unset($updates['header_badges']);
+        unset($updates['header_badges'], $updates['nudge_times']);
 
         if (isset($data['header_badges'])) {
             $current = collect(HeaderBadges::preferenceRowsFor($user))->keyBy('key');
@@ -147,6 +158,11 @@ class UpdateSettingsTool extends McpTool
         }
 
         $user->update($updates);
+
+        if (isset($data['nudge_times'])) {
+            $days = array_intersect_key($data['nudge_times'], array_flip(EveningNudge::WEEKDAYS));
+            app(EveningNudge::class)->save($user, array_replace(EveningNudge::times($user), $days));
+        }
 
         return ['updated' => array_keys($data)];
     }

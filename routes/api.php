@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AreaController;
+use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Api\ArrivalController;
 use App\Http\Controllers\Api\CaptureController;
 use App\Http\Controllers\Api\EventCategoryController;
@@ -63,12 +64,14 @@ Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function (
 
     // Refactor step 4.3: projects (stages, steps), task groups, note cards and where a step sits.
     Route::put('/tasks/{task}/place', [StepController::class, 'place']);
+    Route::put('/tasks/{task}/bundle', [StepController::class, 'bundle']);
     Route::put('/tasks/{task}/waits-on', [StepController::class, 'waitsOn']);
 
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::post('/projects', [ProjectController::class, 'store']);
     Route::get('/projects/{project}', [ProjectController::class, 'show']);
     Route::patch('/projects/{project}', [ProjectController::class, 'update']);
+    Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
     Route::post('/projects/{project}/stages', [ProjectController::class, 'storeStage']);
     Route::post('/projects/{project}/steps', [ProjectController::class, 'storeStep']);
     Route::post('/projects/{project}/notes', [NoteController::class, 'storeForProject']);
@@ -79,6 +82,7 @@ Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function (
     Route::post('/task-groups', [TaskGroupController::class, 'store']);
     Route::get('/task-groups/{group}', [TaskGroupController::class, 'show']);
     Route::patch('/task-groups/{group}', [TaskGroupController::class, 'update']);
+    Route::delete('/task-groups/{group}', [TaskGroupController::class, 'destroy']);
     Route::post('/task-groups/{group}/steps', [TaskGroupController::class, 'storeStep']);
     Route::post('/task-groups/{group}/notes', [NoteController::class, 'storeForGroup']);
 
@@ -111,6 +115,11 @@ Route::middleware(['auth:sanctum', RejectNarrowTokens::class])->group(function (
     Route::get('/forecast', [PlanningController::class, 'forecast']);
     Route::post('/tasks/{task}/drop', [PlanningController::class, 'drop']);
     Route::post('/tasks/{task}/shrink', [PlanningController::class, 'shrink']);
+    Route::post('/tasks/{task}/move', [PlanningController::class, 'move']);
+    Route::post('/forecast/more-time', [PlanningController::class, 'moreTime']);
+
+    Route::post('/board/order', [BoardController::class, 'order']);
+    Route::post('/board/top', [BoardController::class, 'top']);
 
     Route::get('/areas', [AreaController::class, 'index']);
     Route::post('/areas', [AreaController::class, 'store']);

@@ -33,6 +33,7 @@ class CreateCategoryTool extends McpTool
                 'name' => ['type' => 'string', 'description' => 'Max 255 characters.'],
                 'color' => self::colorSchema(),
                 'pomodoro_enabled' => ['type' => 'boolean', 'description' => 'Run a Pomodoro timer during blocks of this category.'],
+                'area_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'description' => 'The areas this category suggests (list_areas). Replaces the whole set; ids of other users are dropped.'],
             ],
             'required' => ['name', 'color'],
         ];

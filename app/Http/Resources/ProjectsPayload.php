@@ -25,6 +25,8 @@ final class ProjectsPayload
         return [
             'id' => $b->id,
             'kind' => $b->kind,
+            // "project:3" / "group:4": the reference of this card in the shared board order (POST /api/board/order).
+            'ref' => $b->ref(),
             'name' => $b->name,
             // The board column the card sits in; null = nothing to do right now, so no card on the board.
             'list' => $b->list,
@@ -64,6 +66,7 @@ final class ProjectsPayload
 
         return self::bundle(self::bundleOf($user, 'project', $project->id)) + [
             'sort_order' => $project->sort_order,
+            'board_position' => $project->board_position,
             'stages' => $stages->map(fn (ProjectStage $s) => self::stage($s) + [
                 'open' => $counts[$s->id]['open'] ?? 0,
                 'done' => $counts[$s->id]['done'] ?? 0,
@@ -82,6 +85,7 @@ final class ProjectsPayload
 
         return self::bundle(self::bundleOf($user, 'group', $group->id)) + [
             'sort_order' => $group->sort_order,
+            'board_position' => $group->board_position,
             'steps' => TaskResource::collection($steps)->resolve(),
             'notes' => self::notes(Note::where('user_id', $user->id)->where('group_id', $group->id)),
             'created_at' => $group->created_at?->toIso8601String(),
