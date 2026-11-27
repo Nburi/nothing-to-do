@@ -11,6 +11,10 @@
  * A dashed slot shows where the drop lands. The server decides (Board::reorder): this file only measures,
  * puts the entry where it will be while the request runs and puts it back with a plain note if that fails.
  * Entries never leave their list: a project card belongs to the column its next step is in.
+ *
+ * The same script orders the stages of a project page (docs/steps/board-followups.md): `cfg.method` names the
+ * Livewire method that saves (default `reorder`) and `cfg.zone` a selector inside each entry that is the lift
+ * handle and the ghost (the stage's heading line), so a tall entry full of steps is lifted by its heading only.
  */
 const HOLD_MS = 350; // press and hold that lifts an entry on a touch screen
 const START_PX = 4; // a grip drag with a mouse starts after this much movement
@@ -41,6 +45,8 @@ function scrub(node) {
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('boardOrder', (cfg = {}) => {
         const T = cfg.text ?? {};
+        const method = cfg.method ?? 'reorder';
+        const zone = cfg.zone ?? null;
         let root = null;
         let wire = null;
         let S = null; // a lift with a pointer
@@ -54,6 +60,8 @@ document.addEventListener('alpine:init', () => {
         const entries = () => [...root.children].filter((child) => child.matches('[data-entry]'));
         const visible = () => entries().filter((entry) => !entry.hasAttribute('data-lifted'));
         const titleOf = (entry) => entry.dataset.title ?? '';
+        /** The part of an entry that is lifted, measured and copied: the zone when there is one, else the entry. */
+        const bodyOf = (entry) => (zone && entry.querySelector(zone)) || entry;
 
         /** Said to screen readers; cleared first so the same sentence twice is still read twice. */
         function say(text) {
@@ -92,7 +100,7 @@ document.addEventListener('alpine:init', () => {
             const refs = entries().map((e) => e.dataset.entry);
             entry.setAttribute('aria-busy', 'true');
             try {
-                await wire.reorder(refs);
+                await wire[method](refs);
                 const now = root.querySelector('[data-entry="' + entry.dataset.entry + '"]');
                 if (focusAfter) now?.querySelector('[data-grip]')?.focus({ preventScroll: true });
             } catch (error) {
@@ -107,19 +115,21 @@ document.addEventListener('alpine:init', () => {
         // ---- a lift with a pointer --------------------------------------------------------------------
 
         function lift(entry, event, how) {
-            const rect = entry.getBoundingClientRect();
-            const copy = entry.cloneNode(true);
+            const body = bodyOf(entry);
+            const rect = body.getBoundingClientRect();
+            const copy = body.cloneNode(true);
             [copy, ...copy.querySelectorAll('*')].forEach(scrub);
             copy.style.borderColor = 'var(--t-accent)';
             const ghost = make('div', 'pointer-events-none fixed left-0 top-0 z-[70] shadow-card', { 'aria-hidden': 'true' });
             ghost.style.width = rect.width + 'px';
             ghost.style.willChange = 'transform';
             ghost.style.borderRadius = getComputedStyle(entry).borderRadius;
+            if (body !== entry) ghost.classList.add('rounded-panel', 'bg-surface', 'px-4', 'py-3');
             ghost.appendChild(copy);
             document.body.appendChild(ghost);
 
-            const slot = make('li', 'rounded-card border-2 border-dashed border-accent bg-accent-soft', { 'data-ph': '', 'aria-hidden': 'true' });
-            slot.style.height = rect.height + 'px';
+            const slot = make(entry.tagName === 'LI' ? 'li' : 'div', 'rounded-card border-2 border-dashed border-accent bg-accent-soft', { 'data-ph': '', 'aria-hidden': 'true' });
+            slot.style.height = (body !== entry ? rect.height + 24 : rect.height) + 'px';
             const origin = visible().indexOf(entry);
             entry.setAttribute('data-lifted', '');
             entry.style.display = 'none';
@@ -140,7 +150,7 @@ document.addEventListener('alpine:init', () => {
             const others = visible();
             let index = others.length;
             for (let i = 0; i < others.length; i++) {
-                const r = others[i].getBoundingClientRect();
+                const r = bodyOf(others[i]).getBoundingClientRect();
                 if (event.clientY < r.top + r.height / 2) { index = i; break; }
             }
             const before = index >= others.length ? tailOf(others) : others[index];
@@ -216,6 +226,9 @@ document.addEventListener('alpine:init', () => {
             if (S || K || event.button > 0) return;
             const entry = event.target.closest('[data-entry]');
             if (!entry || entry.parentElement !== root) return;
+            // A zone entry (a stage) is lifted by its heading line only; its steps have their own lift.
+            if (zone && (!event.target.closest(zone) || !entry.querySelector(zone))) return;
+            if (zone && event.target.closest('button:not([data-grip]), a, select, input, textarea')) return;
 
             if (event.pointerType === 'mouse') {
                 if (!event.target.closest('[data-grip]')) return;
@@ -275,6 +288,7 @@ document.addEventListener('alpine:init', () => {
             if (!grip) return;
             const entry = grip.closest('[data-entry]');
             if (!entry || entry.parentElement !== root) return;
+            if (zone && !grip.closest(zone)) return; // the grip of a step inside a stage belongs to the step lift
 
             if (K) {
                 if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); stepKey(event.key === 'ArrowUp' ? -1 : 1); }
@@ -308,7 +322,7 @@ document.addEventListener('alpine:init', () => {
                 window.addEventListener('pointercancel', onCancel);
                 window.addEventListener('touchmove', onTouchMove, { passive: false });
                 // A failed drop is handled here, calmly: no error dialog, no "page expired" confirm().
-                offs.push(wire.$interceptRequest('reorder', ({ onError }) => { onError(({ preventDefault }) => preventDefault()); }));
+                offs.push(wire.$interceptRequest(method, ({ onError }) => { onError(({ preventDefault }) => preventDefault()); }));
             },
             destroy() {
                 if (S) end('cancel');

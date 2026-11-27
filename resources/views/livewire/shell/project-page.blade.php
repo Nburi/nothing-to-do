@@ -104,8 +104,11 @@
         {{-- Step 4.3c: the script of dragging, keyboard and announcements (resources/js/step-drag.js) owns this
              wrapper; `contents` keeps the lanes the flex children they were. --}}
         <div x-data="stepDrag(@js(['text' => __('projects.move.js')]))" class="contents">
+        <p id="stage-drag-hint" class="sr-only">{{ __('projects.stage_move.keys_hint') }}</p>
         <p id="step-drag-hint" class="sr-only">{{ $stages->isNotEmpty() ? __('projects.move.keys_hint') : __('projects.move.keys_hint_list') }}</p>
-        {{-- Stages with their steps, then the steps in no stage. --}}
+        {{-- Stages with their steps, then the steps in no stage. The stages are ordered by dragging their heading
+             (resources/js/board-order.js, the board's drag); the buttons next to it stay for touch and keyboard. --}}
+        <div x-data="boardOrder(@js(['text' => __('shell.order'), 'method' => 'reorderStages', 'zone' => '[data-stage-head]']))" class="contents">
         @foreach ([...$groups, ['key' => 'none', 'stage' => null, 'steps' => $loose]] as $g)
             @php
                 $s = $g['stage'];
@@ -114,6 +117,7 @@
                 $doneCount = $s ? (int) ($done[$s->id] ?? 0) : 0;
             @endphp
             <section wire:key="sec-{{ $g['key'] }}" aria-labelledby="h-{{ $g['key'] }}" data-lane-box
+                @if ($s && $stages->count() > 1) data-entry="stage:{{ $s->id }}" data-title="{{ $s->name }}" @endif
                 @class(['flex flex-col gap-2.5 rounded-panel p-4', 'bg-surface' => $state !== 'waits', 'bg-paper' => $state === 'waits'])
                 style="border: var(--t-bw) solid {{ $state === 'now' ? 'var(--t-accent)' : 'var(--t-line)' }}">
                 @if ($s && $editingStage === $s->id)
@@ -133,7 +137,7 @@
                         <button type="button" wire:click="removeStage({{ $s->id }})" class="{{ $btn }} ml-auto text-bad hover:bg-bad-soft">{{ __('projects.remove_stage') }}</button>
                     </form>
                 @else
-                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <div @if ($s && $stages->count() > 1) data-stage-head @endif class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                         <h2 id="h-{{ $g['key'] }}" class="font-display text-[15px] text-ink" style="font-weight: var(--t-dw)">
                             {{ $s ? ($i + 1).' · '.$s->name : ($stages->isEmpty() ? __('projects.then') : __('projects.no_stage')) }}
                         </h2>
@@ -146,6 +150,11 @@
                             {{-- Step 4.3d: the stage's place in the roadmap. Plain buttons, so keyboard and touch both reach them. --}}
                             @if ($stages->count() > 1)
                                 <span class="-my-1 inline-flex items-center" data-stage-order>
+                                    <button type="button" data-grip data-stage-grip aria-pressed="false" aria-describedby="stage-drag-hint"
+                                        aria-label="{{ __('shell.order.grip_named', ['title' => $s->name]) }}" title="{{ __('shell.order.grip') }}"
+                                        class="grid size-8 touch-none place-items-center rounded-full text-ink-faint transition hover:bg-paper hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent wb:cursor-grab">
+                                        @include('shell.icon', ['name' => 'grip', 'class' => 'size-4'])
+                                    </button>
                                     @foreach ([[-1, 'earlier', 'arrow-up', $i === 0], [1, 'later', 'arrow-down', $i === $stages->count() - 1]] as [$by, $key, $icon, $edge])
                                         <button type="button" wire:click="shiftStage({{ $s->id }}, {{ $by }})" wire:loading.attr="disabled" wire:target="shiftStage" @disabled($edge)
                                             data-stage-{{ $key }} aria-label="{{ __('projects.stage_move.'.$key, ['name' => $s->name]) }}" title="{{ __('projects.stage_move.'.$key, ['name' => $s->name]) }}"
@@ -192,6 +201,7 @@
                 </form>
             </section>
         @endforeach
+        </div>
         </div>
             </div>
             <div :class="tab === 'notes' ? 'block' : 'hidden'" class="wb:block lg:sticky lg:top-20">

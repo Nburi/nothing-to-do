@@ -164,6 +164,7 @@ return [
         'earlier' => 'Etappe :name eine Stelle nach vorn',
         'later' => 'Etappe :name eine Stelle nach hinten',
         'moved' => 'Etappe „:name“ ist jetzt Etappe :number.',
+        'keys_hint' => 'Leertaste auf dem Griff hebt die Etappe an. Pfeil hoch und runter ändern den Platz, Leertaste legt ab, Escape bricht ab. Am Handy: die Überschrift lange drücken.',
     ],
     'adopt' => [
         'button' => 'Vorhandene Aufgabe',

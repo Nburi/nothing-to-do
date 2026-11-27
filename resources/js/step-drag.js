@@ -530,6 +530,7 @@ document.addEventListener('alpine:init', () => {
             const grip = event.target.closest?.('[data-grip]');
             if (!grip || !root.contains(grip) || S) return;
             const row = grip.closest('[data-step]');
+            if (!row) return; // the grip of a stage (board-order.js), not of a step
             if (!K) {
                 if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
                     event.preventDefault();
