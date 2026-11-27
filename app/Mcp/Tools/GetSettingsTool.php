@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Services\AppModules;
 use App\Services\HeaderBadges;
 use App\Services\ListConcepts;
+use App\Services\Planning\EveningNudge;
+use App\Support\Locales;
 
 class GetSettingsTool extends McpTool
 {
@@ -44,6 +46,9 @@ class GetSettingsTool extends McpTool
             )),
             'hidden_modules' => AppModules::hiddenKeys($user),
             'default_page' => $user->default_page,
+            'locale' => Locales::for($user),
+            // The evening nudge per ISO weekday (1 = Monday); null = no nudge that day.
+            'nudge_times' => collect(EveningNudge::WEEKDAYS)->mapWithKeys(fn (int $day) => [$day => EveningNudge::times($user)[$day] ?? null])->all(),
         ];
 
         $settings += [

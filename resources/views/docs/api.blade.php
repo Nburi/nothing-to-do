@@ -71,12 +71,14 @@
             <div class="space-y-4 text-sm">
                 <div>
                     <p class="font-mono text-xs text-overprint">GET /me</p>
-                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus/Autostart, Benachrichtigungs-Einstellungen, Zeitzone, lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today).</p>
+                    <p class="mt-1 text-ink-soft">Name, E-Mail, Pomodoro-Rhythmus/Autostart, Benachrichtigungs-Einstellungen, Zeitzone, Sprache (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">locale</code>), Abend-Erinnerung je Wochentag (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">nudge_times</code>, 1 = Montag, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> = keine), lokale Uhrzeit, Board-Zähler (inbox/todos/tasks/today).</p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">PATCH /me</p>
                     <p class="mt-1 text-ink-soft">
                         Felder (alle optional): <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task_reset_time</code>,
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">locale</code> (de oder en),
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">nudge_times</code> (Wochentag 1&ndash;7 &rarr; <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">HH:MM</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code>; nur die genannten Tage ändern sich),
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_work</code>,
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_short_break</code>,
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">pomodoro_long_break</code>,
@@ -140,11 +142,14 @@
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">DELETE /tasks/{id}</p>
+                    <p class="mt-1 text-ink-soft">
+                        Löscht den Task endgültig, mit allen Teilen und Tagesplänen. Das Löschen in der App ist anders: dort bleibt ein gelöschter Task 30 Tage lang zurückholbar und wird danach entfernt.
+                    </p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /tasks/reorder</p>
                     <p class="mt-1 text-ink-soft">
-                        Entspricht Drag &amp; Drop: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code>,
+                        Entspricht Drag &amp; Drop (die alte Ansicht; die Reihenfolge auf dem neuen Board bewegt sich mit, siehe <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">POST /board/order</code>): <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code>,
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">today</code>,
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">ids</code> (vollständige, geordnete ID-Liste der Zielzone).
                     </p>
@@ -249,10 +254,20 @@
                     </p>
                 </div>
                 <div>
-                    <p class="font-mono text-xs text-overprint">GET /forecast · POST /tasks/{id}/drop · POST /tasks/{id}/shrink</p>
+                    <p class="font-mono text-xs text-overprint">GET /forecast · POST /tasks/{id}/drop · POST /tasks/{id}/shrink · POST /tasks/{id}/move · POST /forecast/more-time</p>
                     <p class="mt-1 text-ink-soft">
                         Auslastung pro Tag (Kapazität in Sessions, geplante Minuten, überlastet ja/nein), was zu spät würde und welche weichen
                         Termine zuerst rutschen sollen. <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">drop</code> legt einen Task in „Später“ (nichts wird gelöscht), <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">shrink</code> macht ihn eine Grösse kleiner.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">move</code> schiebt eine Frist, wie „Verschieben“ auf dem Crunch-Screen: mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">date</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">YYYY-MM-DD</code>) die harte Frist (muss nach der bisherigen liegen), ohne die weiche eine Woche weiter. 422, wenn der Task keine Frist dieser Art hat.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">more-time</code> ist „Mehr Zeit“: ein einmaliger Block (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">date</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">start_time</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">end_time</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">category_id</code> einer Kategorie mit Pomodoro) in den nächsten 14 Tagen; rückgängig mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">DELETE /schedule-events/{id}</code>.
+                    </p>
+                </div>
+                <div>
+                    <p class="font-mono text-xs text-overprint">POST /board/order · POST /board/top</p>
+                    <p class="mt-1 text-ink-soft">
+                        Die eine Reihenfolge des Boards: Tasks, Projekte und Gruppen stehen in einer gemeinsamen Ordnung (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">board_position</code>, kleiner = weiter oben; steht bei jedem Task, Projekt und jeder Gruppe).
+                        Einträge heissen <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">task:12</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">project:3</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">group:4</code> (bei Projekten und Gruppen als <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">ref</code>). <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">order</code> nimmt <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">refs</code> in der neuen Reihenfolge; die Einträge tauschen nur die Plätze, die sie schon hatten, alles andere bleibt, wo es ist.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">top</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">ref</code>) ist „Nach oben holen“. Fremde, unbekannte und erledigte Einträge werden übersprungen.
                     </p>
                 </div>
                 <div>
@@ -280,16 +295,16 @@
 
             <div class="space-y-4 text-sm">
                 <div>
-                    <p class="font-mono text-xs text-overprint">GET /projects · POST /projects · GET /projects/{id} · PATCH /projects/{id}</p>
+                    <p class="font-mono text-xs text-overprint">GET /projects · POST /projects · GET /projects/{id} · PATCH /projects/{id} · DELETE /projects/{id}</p>
                     <p class="mt-1 text-ink-soft">
                         Die Liste zeigt je Projekt, was auch das Board zeigt: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">current_stage</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">progress</code> der aktuellen Etappe, die nächsten zwei Schritte (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">next_steps</code>) und <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">more</code>.
-                        Der Einzelabruf liefert zusätzlich alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stages</code>, alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">steps</code> (offen und erledigt) und die <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notes</code>. Es gibt noch kein Löschen, wie in der App.
+                        Der Einzelabruf liefert zusätzlich alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stages</code>, alle <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">steps</code> (offen und erledigt) und die <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">notes</code>. Löschen (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">DELETE /projects/{id}</code>) behält jeden Schritt, offen oder erledigt, als normalen Task auf dem Board; Etappen und Notizkarten gehen mit.
                     </p>
                 </div>
                 <div>
                     <p class="font-mono text-xs text-overprint">POST /projects/{id}/stages · PATCH /stages/{id} · DELETE /stages/{id}</p>
                     <p class="mt-1 text-ink-soft">
-                        Etappen in der Reihenfolge, in der du sie anlegst (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">target_date</code>). Löschen entfernt nur die Etappe: ihre Schritte bleiben im Projekt ohne Etappe, ihre Notizen gehen zurück nach „Lose“.
+                        Etappen in der Reihenfolge, in der du sie anlegst (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">target_date</code>). Löschen entfernt nur die Etappe: ihre Schritte bleiben im Projekt ohne Etappe, ihre Notizen gehen zurück nach „Lose“. Mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">position</code> (bei <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">PATCH /stages/{id}</code>, ab 0) wandert die Etappe an eine andere Stelle der Roadmap; ein „wartet auf“, das das widerlegen würde, wird gelöst (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">move.cleared_waits_on</code>).
                     </p>
                 </div>
                 <div>
@@ -299,17 +314,18 @@
                     </p>
                 </div>
                 <div>
-                    <p class="font-mono text-xs text-overprint">PUT /tasks/{id}/place · PUT /tasks/{id}/waits-on</p>
+                    <p class="font-mono text-xs text-overprint">PUT /tasks/{id}/place · PUT /tasks/{id}/waits-on · PUT /tasks/{id}/bundle</p>
                     <p class="mt-1 text-ink-soft">
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">place</code>: ein offener Schritt an einen Ort (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> = keine Etappe; <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">index</code> ab 0, Standard ans Ende). Umsortieren und Verschieben sind derselbe Aufruf; derselbe Ort noch einmal ändert nichts (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">move.changed</code> = false).
                         Ein „wartet auf“, das der Umzug widerlegen würde, wird gelöst und steht in <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">move.cleared_waits_on</code>.
                         <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">waits-on</code>: <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">waits_on_id</code> setzt den einen Schritt desselben Projekts, auf den dieser wartet; <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> löst ihn. Zwei Schritte, die aufeinander warten würden, gibt es nicht (422).
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">bundle</code>: ein Task vom Board in ein Projekt (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">project_id</code>, optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">stage_id</code>) oder eine Gruppe (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">group_id</code>) holen; mit <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">null</code> (also <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">{"project_id": null}</code>) wieder heraus, er ist dann ein normaler Task seiner Liste. Hinein darf nur ein offener, loser Task ohne Wiederholung, eine Gruppe nimmt nur Tasks ihrer Liste (sonst 422); für den Umzug in ein anderes Projekt erst herausnehmen.
                     </p>
                 </div>
                 <div>
-                    <p class="font-mono text-xs text-overprint">GET /task-groups · POST /task-groups · GET /task-groups/{id} · PATCH /task-groups/{id}</p>
+                    <p class="font-mono text-xs text-overprint">GET /task-groups · POST /task-groups · GET /task-groups/{id} · PATCH /task-groups/{id} · DELETE /task-groups/{id}</p>
                     <p class="mt-1 text-ink-soft">
-                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">todos</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>) und optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">steps</code> (Titel). Gleiche Form wie bei Projekten, ohne Etappen.
+                        <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">name</code>, <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">list</code> (<code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">todos</code> oder <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">tasks</code>) und optional <code class="rounded-sm bg-paper px-1 py-0.5 font-mono text-xs">steps</code> (Titel). Gleiche Form wie bei Projekten, ohne Etappen. Löschen löst die Gruppe auf: ihre Tasks bleiben als normale Tasks auf dem Board, die Notizkarten gehen.
                     </p>
                 </div>
                 <div>

@@ -230,6 +230,27 @@ class McpApiParityTest extends TestCase
         $this->tool('set_task_order', []);
     }
 
+    public function test_settings_tools_read_and_write_the_language_and_the_nudge_times(): void
+    {
+        $settings = $this->tool('get_settings', []);
+        $this->assertSame('de', $settings['locale']);
+        $this->assertNull($settings['nudge_times'][1]);
+
+        $this->assertSame(['locale', 'nudge_times'], $this->tool('update_settings', ['locale' => 'en', 'nudge_times' => ['1' => '18:30', '3' => '19:00']])['updated']);
+        $settings = $this->tool('get_settings', []);
+        $this->assertSame('en', $settings['locale']);
+        $this->assertSame('18:30', $settings['nudge_times'][1]);
+        $this->assertSame('19:00', $settings['nudge_times'][3]);
+
+        $this->tool('update_settings', ['nudge_times' => ['1' => null]]);
+        $settings = $this->tool('get_settings', []);
+        $this->assertNull($settings['nudge_times'][1]);
+        $this->assertSame('19:00', $settings['nudge_times'][3], 'days that were not passed keep their time');
+
+        $this->expectException(ValidationException::class);
+        $this->tool('update_settings', ['locale' => 'fr']);
+    }
+
     public function test_update_project_stage_moves_a_stage_with_position(): void
     {
         $project = $this->editor()->createProject($this->user, 'Umzug');

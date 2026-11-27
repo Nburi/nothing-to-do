@@ -287,6 +287,29 @@ class ApiParityTest extends TestCase
         $this->assertSame(BoardOrder::ref($first), 'project:'.$first->id);
     }
 
+    // ── Settings the new app has: language and evening nudge ───────────────
+
+    public function test_me_reads_and_writes_the_language_and_the_nudge_times(): void
+    {
+        $this->getJson('/api/me')->assertOk()->assertJsonPath('locale', 'de')->assertJsonPath('nudge_times.1', null);
+
+        $this->patchJson('/api/me', ['locale' => 'en', 'nudge_times' => ['1' => '18:30', '5' => '17:00']])
+            ->assertOk()->assertJsonPath('locale', 'en')->assertJsonPath('nudge_times.1', '18:30')->assertJsonPath('nudge_times.5', '17:00')->assertJsonPath('nudge_times.2', null);
+        $this->assertSame('en', $this->user->fresh()->locale);
+
+        // Only the days you pass change; null switches one off.
+        $this->patchJson('/api/me', ['nudge_times' => ['1' => null, '2' => '09:15']])
+            ->assertOk()->assertJsonPath('nudge_times.1', null)->assertJsonPath('nudge_times.2', '09:15')->assertJsonPath('nudge_times.5', '17:00');
+    }
+
+    public function test_me_rejects_an_unknown_language_and_bad_nudge_times(): void
+    {
+        $this->patchJson('/api/me', ['locale' => 'fr'])->assertStatus(422)->assertJsonValidationErrors('locale');
+        $this->patchJson('/api/me', ['nudge_times' => ['1' => '25:00']])->assertStatus(422);
+        $this->patchJson('/api/me', ['nudge_times' => ['1' => 'abends']])->assertStatus(422);
+        $this->assertSame('de', $this->user->fresh()->locale);
+    }
+
     public function test_the_new_routes_need_a_token(): void
     {
         $this->app['auth']->forgetGuards();
