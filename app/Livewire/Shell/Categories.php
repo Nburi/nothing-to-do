@@ -4,7 +4,9 @@ namespace App\Livewire\Shell;
 
 use App\Models\Area;
 use App\Models\EventCategory;
+use App\Models\Project;
 use App\Models\ScheduleEvent;
+use App\Models\TaskGroup;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -61,6 +63,20 @@ class Categories extends Component
     public function areas(): Collection
     {
         return Area::forUser($this->user)->ordered()->get();
+    }
+
+    /** @return Collection<int, Project> the projects a category can be linked to */
+    #[Computed]
+    public function projects(): Collection
+    {
+        return Project::forUser($this->user)->orderBy('name')->get(['id', 'name']);
+    }
+
+    /** @return Collection<int, TaskGroup> groups that are still a group (a mixed group became a project: link that) */
+    #[Computed]
+    public function groups(): Collection
+    {
+        return TaskGroup::forUser($this->user)->whereNull('project_id')->orderBy('name')->get(['id', 'name']);
     }
 
     public function add(): void
@@ -126,6 +142,30 @@ class Categories extends Component
         $ids = $category->areas->pluck('id')->all();
         $ids = in_array($areaId, $ids, true) ? array_diff($ids, [$areaId]) : [...$ids, $areaId];
         $category->syncAreas(array_values($ids)); // drops ids that are not the user's own
+        $this->fresh();
+    }
+
+    /**
+     * The category's link to a project or group (step 5.4): "project:ID", "group:ID" or "" for none. Anything
+     * that is not the user's own project or group is ignored, so a link can never point into another account.
+     */
+    public function setLink(int $id, string $value): void
+    {
+        $category = $this->category($id);
+        if ($category === null) {
+            return;
+        }
+
+        if (preg_match('/^(project|group):(\d+)$/', $value, $m) === 1) {
+            $target = $m[1] === 'project' ? Project::forUser($this->user)->find((int) $m[2]) : TaskGroup::forUser($this->user)->find((int) $m[2]);
+            if ($target === null) {
+                return;
+            }
+            $category->linkSteps($m[1], $target->id);
+        } else {
+            $category->linkSteps(null, null);
+        }
+
         $this->fresh();
     }
 
@@ -211,7 +251,7 @@ class Categories extends Component
 
     private function fresh(): void
     {
-        unset($this->categories, $this->areas);
+        unset($this->categories, $this->areas, $this->projects, $this->groups);
     }
 
     public function render(): View

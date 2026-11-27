@@ -23,7 +23,7 @@ final class SwitchPreflight
 
     public const NOTE = 'note';
 
-    /** Category links of the old app that point at something the refactor dropped. */
+    /** Category links of the old app that point at a project, a group or the Agenda (see droppedCategoryLinks). */
     public const DROPPED_TASK_SOURCES = ['project', 'group', 'agenda_entry', 'agenda_generic'];
 
     /** Orphan checks: [table, column, referenced table]. A foreign key may not point at nothing. */
@@ -162,7 +162,10 @@ final class SwitchPreflight
             $mixed->count(), $this->ids($mixed->all()));
     }
 
-    /** Categories linked to a project, group or Agenda entry: the new app shows no link for them. Niels decides what happens. */
+    /**
+     * Categories linked to a project, group or Agenda entry. Decided (5.4, "catlinks"): project and group links become
+     * "suggest its next steps in this block" and stay as they are; the Agenda ones become a text link at migrate.
+     */
     private function droppedCategoryLinks(): ?array
     {
         if (! $this->has('event_categories', 'task_source')) {
@@ -173,7 +176,7 @@ final class SwitchPreflight
             ->whereIn('task_source', self::DROPPED_TASK_SOURCES)
             ->when($this->has('event_categories', 'deleted_at'), fn ($q) => $q->whereNull('deleted_at'));
 
-        return $this->check('categories.dropped_links', self::WARN, 'categories linked to a project, group or Agenda entry (decision pending)',
+        return $this->check('categories.dropped_links', self::NOTE, 'categories linked to a project, group or Agenda entry (project and group suggest their next steps, Agenda becomes a text link)',
             (clone $query)->count(), $this->sampleIds(clone $query, 'event_categories'));
     }
 

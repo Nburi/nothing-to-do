@@ -9,6 +9,7 @@ return [
         'shrunk' => 'Only :minutes minutes today. The rest comes later.',
         'biggest_first' => 'The biggest piece with a deadline. Good for a full battery.',
         'next_deadline' => 'Due :deadline. Next in line.',
+        'linked' => 'The next step for what this block is meant for.',
         'important' => 'You marked it important. Better not forget it.',
         'quick_one' => 'Small, done in a few minutes.',
         'no_deadline' => 'No deadline. Next on your list.',

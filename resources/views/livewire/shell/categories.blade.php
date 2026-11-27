@@ -5,6 +5,8 @@
     $areas = $this->areas;
     $colors = \App\Models\ScheduleEvent::EVENT_COLORS;
     $btn = 'inline-flex min-h-11 wb:min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-card px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60';
+    $projects = $this->projects;
+    $groups = $this->groups;
     $chip = 'inline-flex min-h-11 wb:min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent';
 @endphp
 <div class="flex flex-col gap-4" data-card="categories">
@@ -102,6 +104,35 @@
                             <span class="text-xs text-ink-faint">{{ __('week.categories.no_areas') }}</span>
                         @endif
                     </div>
+
+                    {{-- Step 5.4 (category links): "suggest this project's or group's next steps in this block". --}}
+                    @if ($projects->isNotEmpty() || $groups->isNotEmpty() || $category->stepsLinkValue() !== '')
+                        <div class="flex flex-col gap-1.5" data-category-link>
+                            <label for="link-{{ $category->id }}" class="text-xs font-medium text-ink-faint">{{ __('week.categories.link_label') }}</label>
+                            <select id="link-{{ $category->id }}" wire:change="setLink({{ $category->id }}, $event.target.value)" wire:loading.attr="disabled" wire:target="setLink"
+                                class="min-h-11 wb:min-h-9 w-full max-w-sm rounded-card border border-line bg-surface px-3 text-sm text-ink focus:border-accent focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent">
+                                <option value="" @selected($category->stepsLinkValue() === '')>{{ __('week.categories.link_none') }}</option>
+                                @if ($projects->isNotEmpty())
+                                    <optgroup label="{{ __('week.categories.link_projects') }}">
+                                        @foreach ($projects as $project)
+                                            <option value="project:{{ $project->id }}" @selected($category->stepsLinkValue() === 'project:'.$project->id)>{{ $project->name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                                @if ($groups->isNotEmpty())
+                                    <optgroup label="{{ __('week.categories.link_groups') }}">
+                                        @foreach ($groups as $group)
+                                            <option value="group:{{ $group->id }}" @selected($category->stepsLinkValue() === 'group:'.$group->id)>{{ $group->name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                            </select>
+                            <span class="text-xs text-ink-faint">{{ $category->stepsLinkValue() !== '' ? __('week.categories.link_hint') : __('week.categories.link_hint_off') }}</span>
+                            @if ($category->task_source === 'text' && filled($category->linked_text))
+                                <span class="text-xs text-ink-faint" data-category-link-text>{{ __('week.categories.link_text', ['text' => $category->linked_text]) }}</span>
+                            @endif
+                        </div>
+                    @endif
                 @endif
             </li>
         @endforeach

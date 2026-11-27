@@ -208,6 +208,8 @@ class Task extends Model
             softDeadline: $this->softDeadline()?->toDateString(),
             areaId: $this->area_id,
             important: (bool) $this->is_important,
+            projectId: $this->project_id,
+            groupId: $this->group_id,
         );
     }
 
