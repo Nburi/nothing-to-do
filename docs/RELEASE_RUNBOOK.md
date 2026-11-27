@@ -185,7 +185,7 @@ php artisan migrate:status | tail -25               # all Ran, same batch number
 php artisan app:rehearsal-snapshot after --user=<your email>
 php artisan app:rehearsal-compare before after \
   --same=tasks.deadline:tasks.hard_deadline --same=tasks.due_date:tasks.soft_deadline \
-  --ignore=tasks.list --ignore=tasks.project_id
+  --ignore=tasks.list --ignore=tasks.project_id --ignore=event_categories.task_source --ignore=event_categories.linked_text
 ```
 Expected: "Nothing lost". `tasks.list` changes on purpose (migration 1) and `tasks.project_id` for the tasks of
 converted groups (migration 17). If the compare names anything else, stop and go to section 7.

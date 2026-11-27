@@ -32,3 +32,18 @@ the board order and grows with every step. The step notes in `docs/steps/` stay 
 - A move goes to the bottom of the new list; an edit that keeps the list keeps the place. A date already in the past is
   only refused when it is changed.
 - Rules live in `App\Services\Planning\ItemEditor`; the sheet and the toast in `App\Livewire\Shell\ItemEditor`.
+
+## Board follow-ups (step 5.4)
+
+- **The work block under the To-do session card.** Below the card the board lists what the engine plans for the rest of
+  today's work block (the pomodoro block running now, else the next one today): session after session, the tasks of the
+  pick engine's ranking filled into the block's 25 minute slots, with the time of each session and the minutes of each
+  task. The heading folds the list. Tasks that do not fit today are counted ("+ n weitere …"). No work block left today:
+  no list. Same ranking as the pick (area filter, category link, only the steps the board shows), always at battery Okay.
+- **Stages by drag.** On a project page a stage's heading has a grip next to the arrow buttons: drag it with the mouse,
+  press and hold the heading on the phone, or Space / ↑ ↓ / Space on the grip. The arrow buttons stay. Same saving, same
+  "Rückgängig" and same release of contradicting „wartet auf" links as the buttons.
+- **Category links.** In Einstellungen › Kategorien every work-time category can be pointed at a project or a group
+  ("Nächste Schritte vorschlagen aus"). In that category's blocks its next steps are suggested first, after everything with
+  a deadline and ahead of „Wichtig"; a linked step is also found when its area is not one of the category's. Old links to a
+  project or group from the old app work as they are; Agenda links become a text hint.
